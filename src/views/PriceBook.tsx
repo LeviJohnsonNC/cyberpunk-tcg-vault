@@ -4,6 +4,7 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { PRICES, cad, imageUrl, shortSet } from '../lib/data';
 import { buildPriceBook, sortLines, toCsv, type Basis, type Group, type Line, type SortKey } from '../lib/pricebook';
 import { useStore } from '../lib/store';
+import { Masthead, MetricStrip } from '../components/ui';
 import './pricebook.css';
 
 const BASIS_CLASS: Record<string, string> = { Market: 'market', 'Beta proxy': 'proxy', 'Low listing': 'low' };
@@ -61,7 +62,7 @@ function Marquee({ top, loading, onOpen, goAdd }: { top: Line | null; loading: b
         <div className="pb-marquee-copy">
           <h2 className="pb-marquee-name">Nothing on the books</h2>
           <p className="pb-marquee-sub">Add cards and your most valuable one headlines here.</p>
-          <button className="pb-btn on-accent" onClick={goAdd}>Add cards</button>
+          <button className="btn quiet" onClick={goAdd}>Add cards</button>
         </div>
         <Skyline />
       </section>
@@ -141,28 +142,22 @@ export function PriceBook({ onOpen, goAdd }: { onOpen: (slug: string) => void; g
   return (
     <div className="pb">
       <div className="pb-hero">
-        <div className="pb-masthead">
-          <p className="pb-eyebrow"><span className="pb-eyebrow-mark" aria-hidden="true" />The Afterlife / Night Market</p>
-          <h1 className="pb-title">Price <br />Book<span className="pb-bang">!</span></h1>
-          <p className="pb-subline">Near Mint prices <span aria-hidden="true">◆</span> CAD</p>
-        </div>
+        <Masthead
+          size="hero"
+          eyebrow="The Afterlife / Night Market"
+          title={<>Price <br />Book</>}
+          sub={<>Near Mint prices <span className="sep" aria-hidden="true">◆</span> CAD</>}
+        />
         <Marquee top={pb.top} loading={loading} onOpen={onOpen} goAdd={goAdd} />
       </div>
 
-      <dl className="pb-strip">
-        <div>
-          <dt>Total value<span>{pb.count} cards</span></dt>
-          <dd className="num">{cad(pb.total)}</dd>
-        </div>
-        <div>
-          <dt>Average / card<span>Near Mint</span></dt>
-          <dd className="num">{cad(pb.average)}</dd>
-        </div>
-        <div>
-          <dt>Trade bait<span>{pb.extrasCopies} extra {pb.extrasCopies === 1 ? 'copy' : 'copies'}</span></dt>
-          <dd className="num">{cad(pb.extrasValue)}</dd>
-        </div>
-      </dl>
+      <MetricStrip
+        items={[
+          { label: 'Total value', context: `${pb.count} cards`, value: cad(pb.total) },
+          { label: 'Average / card', context: 'Near Mint', value: cad(pb.average) },
+          { label: 'Trade bait', context: `${pb.extrasCopies} extra ${pb.extrasCopies === 1 ? 'copy' : 'copies'}`, value: cad(pb.extrasValue) },
+        ]}
+      />
 
       <div className="pb-body">
         <section className="pb-holdings" aria-labelledby="pb-holdings-title">

@@ -4,7 +4,17 @@ The Vault's visual language. It's named for the Afterlife, the Night City merc b
 
 **Reference implementation:** the Price Book (`src/views/PriceBook.tsx` + `src/views/pricebook.css`). When in doubt, match it.
 
-**Migration status:** the app header and Price Book use Afterlife. Collection, Deck Builder, Meta Intel and Add Cards still use the legacy 2077 yellow styling (via the alias tokens in `theme.css`). Migrate one view at a time by replacing legacy tokens and classes with the semantic ones below.
+**Status:** every screen uses Afterlife (Collection, Price Book, Deck Builder, Meta Intel, Add Cards, card drawer, sign-in). The old 2077 yellow layer and its fonts have been removed. There are no legacy tokens left.
+
+## Where things live
+
+| File | Contains |
+| --- | --- |
+| `src/theme.css` | All tokens + self-hosted font imports |
+| `src/styles.css` | App shell and shared classes (panels, buttons, chips, inputs, tables, tags, drawer, deck-builder and meta pieces, toasts) |
+| `src/components/ui.tsx` + `ui.css` | Shared Afterlife components: `Masthead`, `MetricStrip`, `ConfirmDialog` |
+| `src/components/DeleteCollection.tsx` | Destructive flow pattern (button + confirm + backup) |
+| `src/views/pricebook.css` | Price Book-only pieces (marquee, holdings grid, rail) |
 
 ## Core rules
 
@@ -16,7 +26,7 @@ The Vault's visual language. It's named for the Afterlife, the Night City merc b
 
 ## Tokens
 
-All tokens live in **`src/theme.css`** (imported first by `src/styles.css`). Use semantic tokens in new code. The legacy aliases (`--y`, `--red`, `--panel`…) exist only so unmigrated views keep working.
+All tokens live in **`src/theme.css`** (imported first by `src/styles.css`). Never hardcode a hex value in a component. Add a semantic token instead.
 
 ### Color
 
@@ -38,6 +48,8 @@ All tokens live in **`src/theme.css`** (imported first by `src/styles.css`). Use
 | `--color-basis-market` | `#A5F0C2` | Price basis: Market |
 | `--color-basis-proxy` | `#FBE1A0` | Price basis: Beta proxy |
 | `--color-basis-low` | `#FFA98F` | Price basis: Low listing |
+| `--color-danger` | `#FF6B86` | Destructive actions, validation errors, "missing" markers |
+| `--color-success` | `#A5F0C2` | Positive confirmation (legal deck, fully owned, toasts) |
 | `--color-rarity-epic` / `-rare` / `-top` | `#E5B2FF` / `#9FD8FF` / `#FBE1A0` | Rarity chips (Epic, Rare, Secret/Iconic/Nova) |
 | `--color-card-yellow` / `-blue` / `-red` / `-green` | | Card-colour bars and pips |
 
@@ -60,18 +72,21 @@ Fonts are self-hosted via `@fontsource` packages (imported in `theme.css`), so t
 - `--space-1`…`--space-6`: 4, 8, 12, 16, 24, 32px.
 - `--focus-ring`: two-tone ring (canvas gap + pink). Applied globally on `:focus-visible`. Don't remove it.
 
-## Component patterns (from the Price Book)
+## Component patterns
 
-| Pattern | Class | Notes |
+| Pattern | Where | Notes |
 | --- | --- | --- |
-| **Masthead** | `.pb-masthead`, `.pb-eyebrow`, `.pb-title`, `.pb-subline` | Mono pink eyebrow with skewed mark; italic 800 condensed title, skewX(-4deg), pink punctuation; mono subline. One per screen. |
+| **Masthead** | `<Masthead>` (`ui.tsx`) | The screen's focal point. Mono pink eyebrow (`THE AFTERLIFE / <SECTION>`) with skewed mark; italic 800 condensed title, skewX(-4deg); pink end mark; mono subline with pink `◆` separators. `size="hero"` (Price Book only, ends in `!`) or `size="compact"` (every other screen, ends in a pink `.`). Optional page actions sit on the right. One per screen. |
+| **Metric strip** | `<MetricStrip>` (`ui.tsx`) | Cream ticket band of 2 to 4 headline metrics. Phones: 3 items stack, 4 items go 2×2. |
+| **Confirm dialog** | `<ConfirmDialog>` (`ui.tsx`) | Native `<dialog>`: focus trap, Esc and backdrop cancel, Cancel focused first. `tone="danger"` gives a red top rule and title. Use for every destructive action; offer an undo path (e.g. a backup download). |
+| **Panel** | `.panel`, `.panel.hot`, `.panel-title` | Quiet surface. `.hot` adds a cream top rule for the primary panel on a screen. Titles in condensed display caps; `.aside` for mono metadata on the right. |
+| **Buttons** | `.btn` (primary pink), `.btn.quiet` (neutral), `.btn.ghost` (pink outline), `.btn.danger` / `.btn.danger-ghost` | One primary per area. Destructive actions are always danger-ghost until confirmed. |
 | **Marquee** | `.pb-marquee` | Clipped corners, pink gradient, conic sunburst, halftone mask, SVG skyline, tilted card in a cream frame, cream ticket label. Fed by real data; has loading, empty and missing-art states. |
 | **Ticket** | `.pb-ticket` | Small cream label, mono caps, rotate(-2deg), hard ink shadow. |
 | **Metric strip** | `.pb-strip` (a `<dl>`) | Cream band, dashed dividers, label + context line on the left, display number on the right. Stacks vertically on phones. |
 | **Data table** | `.pb-rows` / `.pb-row` | CSS grid with explicit ARIA table roles. Identity cell = thumbnail + name + subtitle + printing ID. Numbers right-aligned, mono, tabular. Position totals in pink. |
 | **Tags** | `.pb-tag.basis-*`, `.pb-rarity.r-*` | Outlined mono chips; colour + text label together. |
 | **Breakdown rail** | `.pb-rail` / `.pb-breakdown` | Label ×count, bar, value. Dashed separators. Explanations in a `<details>` disclosure, not tooltips. |
-| **Buttons** | `.pb-btn`, `.pb-select` | Quiet outline; pink outline for actions; fills pink on hover. |
 | **App header** | `.appbar`, `.brand-badge`, `.navlink[aria-current]` | Plum-black band; skewed pink badge; active section gets a 3px pink underline. |
 
 ## Responsive behaviour
@@ -80,6 +95,8 @@ Fonts are self-hosted via `@fontsource` packages (imported in `theme.css`), so t
 - **<1100px:** marquee stacks under the masthead; rail stacks under holdings.
 - **<760px:** metric strip stacks. Table rows reflow into a two-column card: the identity on the left, and total / basis / quantity on the right. Rarity and unit price move into a compact metadata line under the name. Card identity, quantity, total and pricing basis are always visible, with no horizontal page scroll.
 - **<900px header:** brand and status on one row; nav becomes a horizontally scrollable row underneath.
+- **Collection table on phones:** secondary columns (colour, type, cost, power, RAM, unit) hide; art, name, owned and value always fit (checked at 360px).
+- **Deck Builder:** the deck column is sticky beside the card pool on laptops and stacks below it under 1100px.
 - Page height follows content (no fixed-height scroll panes on working surfaces).
 - Motion respects `prefers-reduced-motion`.
 

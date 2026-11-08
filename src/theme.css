@@ -2,11 +2,8 @@
  * Theme tokens. Single source of truth for color, type, spacing and shape.
  * Read docs/design-system.md before adding or changing tokens.
  *
- * Two layers:
- *   1. Semantic tokens (--color-*, --font-*, --space-*, --cut-*) describe a job, not a hue.
- *      New UI must use these.
- *   2. Legacy 2077 aliases (--y, --red, --panel...) keep views that haven't migrated yet working.
- *      Do not use them in new code; migrate a view by swapping them for semantic tokens.
+ * Semantic tokens (--color-*, --font-*, --space-*, --cut-*) describe a job, not a hue.
+ * Components and views must use these, never raw hex values.
  */
 @import '@fontsource/barlow-condensed/600.css';
 @import '@fontsource/barlow-condensed/700.css';
@@ -43,6 +40,8 @@
   --color-basis-market: #a5f0c2;
   --color-basis-proxy: #fbe1a0;
   --color-basis-low: #ffa98f;
+  --color-danger: #ff6b86; /* destructive actions, validation errors */
+  --color-success: #a5f0c2; /* positive confirmation (same hue as market basis) */
   --color-rarity-epic: #e5b2ff;
   --color-rarity-rare: #9fd8ff;
   --color-rarity-top: #fbe1a0; /* secret / iconic */
@@ -68,28 +67,5 @@
   --space-6: 32px;
   --focus-ring: 0 0 0 2px var(--color-canvas), 0 0 0 4px var(--color-accent);
 
-  /* ---- Legacy 2077 aliases (unmigrated views only) ---- */
-  --y: #fcee0a;
-  --y-dim: #b8ad06;
-  --red: #ff003c;
-  --red-dim: #8a0021;
-  --cyan: #02d7f2;
-  --cyan-dim: #036a78;
-  --bg: var(--color-canvas);
-  --bg2: var(--color-canvas-deep);
-  --panel: var(--color-surface);
-  --panel2: var(--color-surface-raised);
-  --line: var(--color-divider);
-  --text: var(--color-text);
-  --muted: var(--color-text-muted);
-  --ok: #34f5a0;
-  --c-yellow: #fcee0a;
-  --c-blue: #02d7f2;
-  --c-red: #ff3355;
-  --c-green: #39ff88;
-  --notch: 14px;
-  --head: 'Orbitron', 'Rajdhani', sans-serif;
-  --body: 'Rajdhani', system-ui, sans-serif;
-  --mono: 'Share Tech Mono', ui-monospace, monospace;
   color-scheme: dark;
 }

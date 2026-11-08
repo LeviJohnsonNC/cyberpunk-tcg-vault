@@ -3,6 +3,9 @@ import { BY_SLUG, CARDS, cad, defaultPrinting, priceFor, searchCards, shortSet }
 import { useStore, type Entry } from '../lib/store';
 import { cloudEnabled } from '../lib/supabase';
 import { CardImg, Pip } from '../components/bits';
+import { Masthead } from '../components/ui';
+import { DeleteCollection } from '../components/DeleteCollection';
+import { downloadCollection } from '../lib/exportCollection';
 
 interface ScanRow {
   key: string;
@@ -27,7 +30,7 @@ async function shrink(file: File, max = 1600): Promise<string> {
 const sortedCards = [...CARDS].sort((a, b) => a.display.localeCompare(b.display));
 
 export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
-  const { addMany, setQty, entries, session, mode, toast, clearCollection } = useStore();
+  const { addMany, setQty, entries, session, mode, toast } = useStore();
   const [q, setQ] = useState('');
   const [qtyFor, setQtyFor] = useState<Record<string, number>>({});
   const [printFor, setPrintFor] = useState<Record<string, string>>({});
@@ -92,13 +95,6 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
   };
   const editScan = (key: string, patch: Partial<ScanRow>) => setScan((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
 
-  const exportJson = () => {
-    const blob = new Blob([JSON.stringify({ app: 'cyberpunk-tcg-vault', version: 1, exportedAt: new Date().toISOString(), entries }, null, 1)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `cyberpunk-tcg-collection-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-  };
   const importJson = async (file: File, how: 'add' | 'replace') => {
     try {
       const data = JSON.parse(await file.text());
@@ -119,14 +115,20 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
 
   return (
     <section>
-      <div className="section-head">
-        <h2>Add Cards</h2>
-        <p>Type to search, or upload photos of your cards laid out on a table. The scanner proposes matches. Nothing is saved until you confirm.</p>
-      </div>
-      <div className="grid cols-2">
+      <Masthead
+        eyebrow="The Afterlife / Intake"
+        title="Add Cards"
+        sub={<>Search <span className="sep" aria-hidden="true">◆</span> scan a photo <span className="sep" aria-hidden="true">◆</span> import a file</>}
+      />
+      <p className="muted" style={{ maxWidth: '70ch' }}>
+        Type to search, or upload photos of your cards laid out on a table. The scanner proposes matches, and nothing is saved until you confirm.
+      </p>
+      <div className="grid cols-2 section-gap">
         <div className="panel hot">
           <div className="panel-title">Search &amp; add</div>
+          <label className="sr-only" htmlFor="add-search">Search cards</label>
           <input
+            id="add-search"
             autoFocus
             className="input search"
             style={{ width: '100%' }}
@@ -164,10 +166,14 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
           </div>
         </div>
 
-        <div className="panel red">
+        <div className="panel">
           <div className="panel-title">Photo scan <span className="aside">{mode === 'cloud' ? 'AI-assisted' : cloudEnabled ? 'Sign in required' : 'Needs server'}</span></div>
           <div
             className={`dropzone ${over ? 'over' : ''}`}
+            role="button"
+            tabIndex={0}
+            aria-label="Upload card photos"
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileRef.current?.click(); } }}
             onClick={() => fileRef.current?.click()}
             onDragOver={(e) => { e.preventDefault(); setOver(true); }}
             onDragLeave={() => setOver(false)}
@@ -186,7 +192,7 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
               <div className="row" style={{ margin: '12px 0 8px' }}>
                 <span className="mono tiny">REVIEW {scan.length} MATCHES · {scanTotal} CARDS</span>
                 <span className="spacer" />
-                <button className="btn ghost sm" onClick={() => setScan([])}>Discard</button>
+                <button className="btn quiet sm" onClick={() => setScan([])}>Discard</button>
                 <button className="btn sm" onClick={commitScan}>Add {scanTotal} to vault</button>
               </div>
               <div className="result-list">
@@ -194,7 +200,7 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
                   const c = BY_SLUG.get(s.slug)!;
                   return (
                     <div key={s.key} className="scan-row" style={{ opacity: s.on ? 1 : 0.45 }}>
-                      <input type="checkbox" checked={s.on} onChange={(e) => editScan(s.key, { on: e.target.checked })} style={{ accentColor: 'var(--y)' }} />
+                      <input type="checkbox" checked={s.on} onChange={(e) => editScan(s.key, { on: e.target.checked })} style={{ accentColor: 'var(--color-accent)' }} aria-label="Include this match" />
                       <CardImg className="thumb" slug={s.slug} alt="" />
                       <div>
                         <select className="select" style={{ width: '100%', padding: '4px 6px' }} value={s.slug} onChange={(e) => editScan(s.key, { slug: e.target.value, printingId: defaultPrinting(BY_SLUG.get(e.target.value)!).id })}>
@@ -202,7 +208,7 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
                         </select>
                         <div className="tiny muted">
                           {s.read && <>read "{s.read}" · </>}
-                          <span style={{ color: s.confidence < 0.6 ? 'var(--red)' : undefined }}>{Math.round(s.confidence * 100)}% sure</span>
+                          <span className={s.confidence < 0.6 ? 'danger-text' : undefined}>{Math.round(s.confidence * 100)}% sure</span>
                         </div>
                       </div>
                       <select className="select" style={{ padding: '4px 6px', fontSize: 12 }} value={s.printingId} onChange={(e) => editScan(s.key, { printingId: e.target.value })}>
@@ -221,16 +227,19 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
       <div className="panel" style={{ marginTop: 16 }}>
         <div className="panel-title">Import / export</div>
         <div className="row">
-          <button className="btn ghost" onClick={exportJson} disabled={!entries.length}>Export collection (.json)</button>
-          <button className="btn ghost" onClick={() => importRef.current?.click()}>Import file (merge)</button>
+          <button className="btn quiet" onClick={() => downloadCollection(entries)} disabled={!entries.length}>Export collection (.json)</button>
+          <button className="btn quiet" onClick={() => importRef.current?.click()}>Import file (merge)</button>
           <input ref={importRef} type="file" accept="application/json,.json" hidden onChange={(e) => e.target.files?.[0] && importJson(e.target.files[0], 'add')} />
-          <button className="btn ghost" onClick={() => loadSample(entries.length ? 'add' : 'replace')}>Load sample collection (101 cards)</button>
-          <span className="spacer" />
-          <button className="btn red sm" disabled={!entries.length} onClick={() => confirm('Remove every card from your vault? This cannot be undone.') && clearCollection()}>Clear vault</button>
+          <button className="btn quiet" onClick={() => loadSample(entries.length ? 'add' : 'replace')}>Load sample collection (101 cards)</button>
         </div>
-        <p className="tiny muted" style={{ marginBottom: 0 }}>
+        <p className="tiny muted">
           The sample is the project creator's own collection: The Heist starter deck plus Welcome to Night City boosters.
         </p>
+        <div className="danger-zone row">
+          <span className="tiny muted">Starting over? Delete every card in your vault. Decks are kept.</span>
+          <span className="spacer" />
+          <DeleteCollection />
+        </div>
       </div>
     </section>
   );

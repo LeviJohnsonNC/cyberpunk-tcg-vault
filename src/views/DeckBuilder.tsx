@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { BY_SLUG, CARDS, COLORS, RECOMMENDED, TYPES, cad, fitsRam, ramLimits, refPrice, searchCards, type Card } from '../lib/data';
 import { newId, useStore, type Deck } from '../lib/store';
 import { Bars, CardImg, Pip } from '../components/bits';
+import { Masthead } from '../components/ui';
 
 const blank = (): Deck => ({ id: newId(), name: 'New crew', legends: [], cards: {}, sideboard: {}, notes: '', updatedAt: '' });
 const sum = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a + b, 0);
@@ -188,8 +189,13 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
 
   return (
     <section>
-      <div className="toolbar">
-        <select className="select" value="" onChange={(e) => loadSel(e.target.value)}>
+      <Masthead
+        eyebrow="The Afterlife / Crew Builder"
+        title="Deck Builder"
+        sub={<>3 Legends <span className="sep" aria-hidden="true">◆</span> 40 to 50 cards <span className="sep" aria-hidden="true">◆</span> RAM checked live</>}
+      />
+      <div className="toolbar section-gap">
+        <select className="select" aria-label="Load a deck" value="" onChange={(e) => loadSel(e.target.value)}>
           <option value="">Load deck…</option>
           <option value="__new">+ New empty deck</option>
           {decks.length > 0 && (
@@ -201,20 +207,20 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
             {RECOMMENDED.map((d) => <option key={d.id} value={d.id}>{d.name} ({d.tier === 'owned' ? 'budget' : 'upgraded'})</option>)}
           </optgroup>
         </select>
-        <input className="input" style={{ flex: '1 1 220px', fontFamily: 'var(--head)', color: 'var(--y)' }} value={deck.name} onChange={(e) => update((d) => ({ ...d, name: e.target.value.slice(0, 80) }))} />
+        <input className="input deck-name" aria-label="Deck name" value={deck.name} onChange={(e) => update((d) => ({ ...d, name: e.target.value.slice(0, 80) }))} />
         <button className="btn" onClick={() => { saveDeck(deck); setDirty(false); toast('Deck saved'); }}>{dirty ? 'Save*' : 'Save'}</button>
-        <button className="btn ghost" onClick={() => { const c = { ...structuredClone(deck), id: newId(), name: `${deck.name} (copy)` }; setDeck(c); saveDeck(c); setDirty(false); toast('Saved as copy'); }}>Save copy</button>
-        <button className="btn ghost" onClick={() => copy(deckText(), 'Decklist')}>Copy list</button>
-        <button className="btn ghost" onClick={() => setShowImport((s) => !s)}>Import</button>
+        <button className="btn quiet" onClick={() => { const c = { ...structuredClone(deck), id: newId(), name: `${deck.name} (copy)` }; setDeck(c); saveDeck(c); setDirty(false); toast('Saved as copy'); }}>Save copy</button>
+        <button className="btn quiet" onClick={() => copy(deckText(), 'Decklist')}>Copy list</button>
+        <button className="btn quiet" aria-expanded={showImport} onClick={() => setShowImport((s) => !s)}>Import</button>
         {decks.some((d) => d.id === deck.id) && (
-          <button className="btn red sm" onClick={() => { if (confirm(`Delete "${deck.name}"?`)) { deleteDeck(deck.id); setDeck(blank()); setDirty(false); } }}>Delete</button>
+          <button className="btn danger-ghost sm" onClick={() => { if (confirm(`Delete "${deck.name}"?`)) { deleteDeck(deck.id); setDeck(blank()); setDirty(false); } }}>Delete</button>
         )}
       </div>
 
       {showImport && (
         <div className="panel hot" style={{ marginBottom: 14 }}>
           <div className="panel-title">Paste a decklist</div>
-          <textarea className="input" style={{ width: '100%', minHeight: 140, fontFamily: 'var(--mono)' }} placeholder={'1 V: Corporate Exile\n3 Psycho Squad\n// Sideboard\n2 Floor It'} value={importText} onChange={(e) => setImportText(e.target.value)} />
+          <textarea className="input mono" aria-label="Decklist to import" style={{ width: '100%', minHeight: 140 }} placeholder={'1 V: Corporate Exile\n3 Psycho Squad\n// Sideboard\n2 Floor It'} value={importText} onChange={(e) => setImportText(e.target.value)} />
           <div className="row" style={{ marginTop: 8 }}><button className="btn" onClick={doImport}>Import list</button><span className="muted tiny">One card per line, "qty name". Lines starting with // set sections.</span></div>
         </div>
       )}
@@ -249,20 +255,20 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
               const have = owned.get(c.slug) ?? 0;
               const ramBad = deck.legends.length > 0 && !fitsRam(c, v.lim);
               return (
-                <div key={c.slug} className={`pcard ${have === 0 ? 'dim' : ''}`} onClick={() => add(c)} onContextMenu={(e) => { e.preventDefault(); onOpen(c.slug); }} title={`${c.display}\nRight-click for details`}>
+                <button key={c.slug} className={`pcard ${have === 0 ? 'dim' : ''}`} onClick={() => add(c)} onContextMenu={(e) => { e.preventDefault(); onOpen(c.slug); }} title={`Add ${c.display}. Right-click for details.`} aria-label={`Add ${c.display}. You own ${have}${inDeck ? `, ${inDeck} in deck` : ''}`}>
                   <CardImg slug={c.slug} alt={c.display} />
                   <span className="tag">own {have}</span>
                   {inDeck > 0 && <span className="tag inDeck">{inDeck}</span>}
                   {ramBad && <span className="tag bad">RAM {c.ram}</span>}
-                  <div className="name">{c.name}{c.sub ? <span className="muted">: {c.sub}</span> : null}</div>
-                </div>
+                  <span className="name">{c.name}{c.sub ? <span className="csub"> · {c.sub}</span> : null}</span>
+                </button>
               );
             })}
           </div>
         </div>
 
         {/* DECK */}
-        <div style={{ display: 'grid', gap: 16 }}>
+        <div className="builder-side">
           <div className="panel hot">
             <div className="panel-title">Legend crew <span className="aside">RAM comes from Legends</span></div>
             <div className="legend-slots">
@@ -272,7 +278,7 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
                   <div key={i} className={`legend-slot ${c ? 'filled' : ''}`}>
                     {c ? (
                       <>
-                        <b style={{ cursor: 'pointer' }} onClick={() => onOpen(c.slug)}>{c.name}</b>
+                        <button className="link cname" onClick={() => onOpen(c.slug)}>{c.name}</button>
                         <span className="csub">{c.sub}</span>
                         <span className="row" style={{ gap: 6 }}>
                           <Pip color={c.color} /> <span className="mono tiny">RAM {c.ram}</span>
@@ -306,9 +312,9 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
                       return (
                         <div key={c.slug} className={`dl-row ${c.color} ${s ? 'missing' : ''}`}>
                           <span className="cost">{c.cost ?? '—'}</span>
-                          <span style={{ cursor: 'pointer' }} onClick={() => onOpen(c.slug)}>
+                          <button className="link" onClick={() => onOpen(c.slug)}>
                             {c.display} {s > 0 && <span className="short">need {s}</span>}
-                          </span>
+                          </button>
                           <span className="qty">
                             <button className="iconbtn minus" onClick={() => remove(c.slug, 'cards')}>−</button>
                             <b>{n}</b>
@@ -350,11 +356,11 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
               {v.passes.map((i) => <li key={i}>{i}</li>)}
             </ul>
             <div className="grid cols-2" style={{ marginTop: 12, gap: 8 }}>
-              <div className="mono tiny">UNITS <b style={{ color: 'var(--y)' }}>{typeCount('Unit')}</b> · GEAR <b style={{ color: 'var(--y)' }}>{typeCount('Gear')}</b> · PROGRAMS <b style={{ color: 'var(--y)' }}>{typeCount('Program')}</b></div>
-              <div className="mono tiny">SELLABLE <b style={{ color: sellable >= 18 ? 'var(--ok)' : 'var(--red)' }}>{sellable}</b> · AVG COST <b style={{ color: 'var(--y)' }}>{avgCost.toFixed(2)}</b></div>
+              <div className="stat-line">Units <b>{typeCount('Unit')}</b> · Gear <b>{typeCount('Gear')}</b> · Programs <b>{typeCount('Program')}</b></div>
+              <div className="stat-line">Sellable <b className={sellable >= 18 ? 'good' : 'bad'}>{sellable}</b> · Avg cost <b>{avgCost.toFixed(2)}</b></div>
             </div>
             {sellable < 18 && v.n > 0 && (
-              <p className="tiny" style={{ color: '#ffb3c1', marginBottom: 0 }}>
+              <p className="tiny danger-text" style={{ marginBottom: 0 }}>
                 Low on sellable cards. Eddies only come from selling Gear or Programs (once per turn) and spending Legends. Most lists run 20 or more.
               </p>
             )}
@@ -367,27 +373,27 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
               Acquisition <span className="aside">Deck value {cad(deckValue)}</span>
             </div>
             {missing.length === 0 ? (
-              <p style={{ margin: 0, color: 'var(--ok)' }}>You own every card in this deck. Sleeve up.</p>
+              <p style={{ margin: 0, color: 'var(--color-success)' }}>You own every card in this deck. Sleeve up.</p>
             ) : (
               <>
                 <div className="row" style={{ marginBottom: 8 }}>
                   <span>Missing <b>{missing.reduce((a, x) => a + x.n, 0)}</b> cards</span>
                   <span className="spacer" />
-                  <b style={{ fontFamily: 'var(--head)', color: 'var(--red)', fontSize: 20 }}>{cad(missingCost)}</b>
+                  <b className="price-line"><span className="big">{cad(missingCost)}</span></b>
                 </div>
                 <div className="decklist">
                   {missing.map((x) => (
                     <div key={x.slug} className={`dl-row ${x.c.color}`}>
                       <span className="cost">{x.n}×</span>
-                      <span style={{ cursor: 'pointer' }} onClick={() => onOpen(x.slug)}>{x.c.display}</span>
+                      <button className="link" onClick={() => onOpen(x.slug)}>{x.c.display}</button>
                       <span className="mono tiny">{cad(x.unit)}</span>
-                      <span className="mono tiny" style={{ color: 'var(--y)' }}>{cad(x.unit * x.n)}</span>
+                      <span className="mono tiny accent">{cad(x.unit * x.n)}</span>
                     </div>
                   ))}
                 </div>
                 <div className="row" style={{ marginTop: 10 }}>
                   <button className="btn sm" onClick={() => copy(missing.map((x) => `${x.n} ${x.c.name}${x.c.sub ? ` - ${x.c.sub}` : ''}`).join('\n'), 'Shopping list')}>Copy shopping list</button>
-                  <a className="btn sm ghost" href="https://www.tcgplayer.com/massentry?productline=Cyberpunk%20TCG" target="_blank" rel="noreferrer">TCGplayer mass entry ↗</a>
+                  <a className="btn sm quiet" href="https://www.tcgplayer.com/massentry?productline=Cyberpunk%20TCG" target="_blank" rel="noreferrer">TCGplayer mass entry ↗</a>
                 </div>
               </>
             )}

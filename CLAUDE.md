@@ -15,7 +15,9 @@ Run `npm run check` (lint + tests + typecheck/build) before committing. Tests li
 
 **Read `docs/design-system.md` before changing any UI.** It defines the Afterlife design language, the core rules, tokens, type roles, component patterns and responsive behaviour.
 
-- Tokens live in `src/theme.css`. Use semantic tokens (`--color-*`, `--font-*`, `--space-*`, `--cut-*`) in new code. Legacy 2077 aliases (`--y`, `--red`…) are for unmigrated views only.
+- Tokens live in `src/theme.css`. Use semantic tokens (`--color-*`, `--font-*`, `--space-*`, `--cut-*`); never hardcode hex values in components.
+- Build screens from the shared pieces: `Masthead`, `MetricStrip`, `ConfirmDialog` (`src/components/ui.tsx`) and the classes in `src/styles.css`.
 - The Price Book (`src/views/PriceBook.tsx`, `src/views/pricebook.css`) is the reference implementation.
+- Destructive actions go through `ConfirmDialog` (see `DeleteCollection.tsx`).
 - Avoid em-dashes in UI copy.
 - Before calling UI work done: check laptop and phone widths, long names, missing art, loading/empty states and keyboard focus.

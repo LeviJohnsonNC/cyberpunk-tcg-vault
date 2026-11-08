@@ -1,0 +1,70 @@
+/* Shared Afterlife components: masthead, metric strip, confirm dialog. Semantic tokens only. */
+
+.al-num { font-variant-numeric: tabular-nums; }
+
+/* ---------- masthead ---------- */
+.al-masthead { display: flex; align-items: flex-end; gap: var(--space-5); flex-wrap: wrap; }
+.al-masthead-text { min-width: 0; }
+.al-masthead-aside { margin-left: auto; display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+.al-eyebrow {
+  margin: 0 0 var(--space-2); display: flex; align-items: center; gap: var(--space-2);
+  font: 500 13px/1.2 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-accent);
+}
+.al-eyebrow-mark { width: 12px; height: 12px; background: var(--color-accent); transform: skewX(-14deg); flex: none; }
+.al-title {
+  margin: 0; font: italic 800 clamp(48px, 6vw, 76px) / 0.86 var(--font-display); letter-spacing: -0.005em;
+  text-transform: uppercase; color: var(--color-text); transform: skewX(-4deg); transform-origin: left bottom;
+}
+.al-bang { color: var(--color-accent); }
+.al-subline { margin: var(--space-3) 0 0; font: 500 12px/1.4 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-text-muted); }
+.al-subline .sep { color: var(--color-accent); margin: 0 6px; }
+.al-masthead-hero { flex-direction: column; align-items: flex-start; justify-content: center; }
+.al-masthead-hero .al-eyebrow { margin-bottom: var(--space-3); }
+.al-masthead-hero .al-title { font-size: clamp(72px, 9vw, 132px); line-height: 0.84; }
+.al-masthead-hero .al-subline { margin-top: var(--space-4); }
+
+/* ---------- metric strip ---------- */
+.al-strip {
+  margin: var(--space-5) 0; display: grid;
+  background: var(--color-ticket); color: var(--color-ticket-ink); box-shadow: 0 5px 0 var(--color-accent-deep);
+}
+.al-strip > div { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-4) var(--space-5); min-width: 0; }
+.al-strip > div + div { border-left: 2px dashed rgba(36, 22, 31, 0.35); }
+.al-strip dt { font: 700 14px/1.2 var(--font-ui); text-transform: uppercase; letter-spacing: 0.04em; min-width: 0; }
+.al-strip dt span { display: block; margin-top: 3px; font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--color-ticket-muted); }
+.al-strip dd { margin: 0; font: 800 clamp(26px, 2.6vw, 40px) / 1 var(--font-display); white-space: nowrap; }
+
+/* ---------- dialog ---------- */
+.al-dialog {
+  padding: 0; border: 1px solid var(--color-divider); border-top: 3px solid var(--color-accent); background: var(--color-surface);
+  color: var(--color-text); width: min(460px, calc(100vw - 32px)); font-family: var(--font-ui);
+  clip-path: polygon(0 0, calc(100% - var(--cut-sm)) 0, 100% var(--cut-sm), 100% 100%, 0 100%);
+}
+.al-dialog.tone-danger { border-top-color: var(--color-danger); }
+.al-dialog::backdrop { background: rgba(10, 6, 12, 0.72); backdrop-filter: blur(3px); }
+.al-dialog[open] { animation: al-pop 0.14s ease-out; }
+@keyframes al-pop { from { transform: translateY(8px); opacity: 0; } }
+.al-dialog-body { padding: var(--space-5); }
+.al-dialog h2 { margin: 0 0 var(--space-3); font: 800 30px/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.01em; }
+.al-dialog.tone-danger h2 { color: var(--color-danger); }
+.al-dialog-content { color: var(--color-text-muted); font-size: 15px; line-height: 1.5; }
+.al-dialog-content p { margin: 0 0 var(--space-3); }
+.al-dialog-content b { color: var(--color-text); }
+.al-dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-5); }
+@media (prefers-reduced-motion: reduce) { .al-dialog[open] { animation: none; } }
+
+@media (max-width: 1100px) {
+  .al-masthead-hero .al-title { font-size: clamp(64px, 14vw, 120px); }
+  .al-masthead-hero .al-title br { display: none; }
+}
+@media (max-width: 760px) {
+  .al-strip { grid-template-columns: 1fr !important; }
+  .al-strip > div + div { border-left: 0; border-top: 2px dashed rgba(36, 22, 31, 0.35); }
+  .al-strip > div { padding: var(--space-3) var(--space-4); }
+  .al-strip[data-count='4'] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .al-strip[data-count='4'] > div { flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+  .al-strip[data-count='4'] > div:nth-child(2n) { border-left: 2px dashed rgba(36, 22, 31, 0.35); }
+  .al-strip[data-count='4'] > div:nth-child(2) { border-top: 0; }
+  .al-title { font-size: clamp(44px, 13vw, 64px); }
+  .al-masthead-aside { margin-left: 0; width: 100%; }
+}

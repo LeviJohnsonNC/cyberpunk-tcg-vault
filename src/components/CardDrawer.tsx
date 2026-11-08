@@ -28,11 +28,11 @@ export function CardDrawer({ slug, onClose }: { slug: string; onClose: () => voi
           </div>
           <div style={{ display: 'grid', gap: 14, alignContent: 'start' }}>
             <div>
-              <div className="mono tiny muted">{card.type.toUpperCase()} // #{base?.num}</div>
-              <h2 style={{ margin: '4px 0 0', fontFamily: 'var(--head)', fontSize: 24, color: 'var(--y)', letterSpacing: '0.04em' }}>
+              <div className="label accent">{card.type} · #{base?.num}</div>
+              <h2 className="drawer-title">
                 {card.name}
               </h2>
-              {card.sub && <div style={{ fontSize: 18, color: 'var(--muted)' }}>{card.sub}</div>}
+              {card.sub && <div className="drawer-sub">{card.sub}</div>}
             </div>
             <dl className="kv">
               <dt>Color</dt><dd><Pip color={card.color} /></dd>
@@ -47,8 +47,8 @@ export function CardDrawer({ slug, onClose }: { slug: string; onClose: () => voi
             <div className="rules"><Rules text={card.text} /></div>
             {ref && (
               <div className="row">
-                <span className="mono">REF PRICE</span>
-                <b style={{ fontFamily: 'var(--head)', color: 'var(--y)', fontSize: 20 }}>{cad(ref.usd * PRICES.fx.usdToCad)}</b>
+                <span className="label">Ref price</span>
+                <b className="price-line"><span className="big">{cad(ref.usd * PRICES.fx.usdToCad)}</span></b>
                 <span className={`badge ${priceConfidence(ref).tone}`}>{priceConfidence(ref).label}</span>
                 <a href={ref.url} target="_blank" rel="noreferrer" className="tiny">TCGplayer ↗</a>
               </div>

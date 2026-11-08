@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react';
 import { CARDS, COLORS, TYPES, cad, defaultPrinting, priceFor, rarityRank, searchCards, type Card } from '../lib/data';
 import { useStore, type Entry } from '../lib/store';
-import { CardImg, Pip, RarityBadge, Stat } from '../components/bits';
+import { CardImg, Pip, RarityBadge } from '../components/bits';
+import { Masthead, MetricStrip } from '../components/ui';
+import { DeleteCollection } from '../components/DeleteCollection';
+import { downloadCollection } from '../lib/exportCollection';
 
 type SortKey = 'name' | 'color' | 'type' | 'cost' | 'power' | 'ram' | 'rarity' | 'qty' | 'unit' | 'value';
 
@@ -69,9 +72,11 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
   const totalValue = valueOf(entries);
   const toggle = (arr: string[], v: string, set: (a: string[]) => void) => set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
   const th = (k: SortKey, label: string, cls = '') => (
-    <th className={cls} onClick={() => setSort((s) => ({ k, dir: s.k === k ? ((-s.dir) as 1 | -1) : k === 'name' ? 1 : -1 }))}>
-      {label}
-      {sort.k === k && <span className="arrow">{sort.dir === 1 ? '▲' : '▼'}</span>}
+    <th className={`sortable ${cls}`} aria-sort={sort.k === k ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'}>
+      <button onClick={() => setSort((s) => ({ k, dir: s.k === k ? ((-s.dir) as 1 | -1) : k === 'name' ? 1 : -1 }))}>
+        {label}
+        {sort.k === k && <span className="arrow" aria-hidden="true">{sort.dir === 1 ? '▲' : '▼'}</span>}
+      </button>
     </th>
   );
   const rarities = [...new Set(CARDS.map((c) => c.rarity))].sort((a, b) => rarityRank(a) - rarityRank(b));
@@ -85,12 +90,22 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
 
   return (
     <section>
-      <div className="grid cols-4" style={{ marginBottom: 16 }}>
-        <Stat k="Cards owned" v={total} s={`${owned.size} unique of ${CARDS.length}`} />
-        <Stat k="Collection value" v={cad(totalValue)} s="TCGplayer market, in CAD" tone="red" />
-        <Stat k="Legends" v={CARDS.filter((c) => c.type === 'Legend' && owned.has(c.slug)).length} s="unique Legends owned" tone="cyan" />
-        <Stat k="Set completion" v={`${Math.round((owned.size / CARDS.length) * 100)}%`} s="unique cards, Welcome to Night City" />
-      </div>
+      <Masthead
+        eyebrow="The Afterlife / Inventory"
+        title="Collection"
+        sub={<>{owned.size} unique <span className="sep" aria-hidden="true">◆</span> {CARDS.length} in Welcome to Night City</>}
+      >
+        <button className="btn quiet sm" disabled={!entries.length} onClick={() => downloadCollection(entries)}>Export</button>
+        <DeleteCollection />
+      </Masthead>
+      <MetricStrip
+        items={[
+          { label: 'Cards owned', context: `${owned.size} unique`, value: total },
+          { label: 'Collection value', context: 'TCGplayer market, CAD', value: cad(totalValue) },
+          { label: 'Legends', context: 'unique owned', value: CARDS.filter((c) => c.type === 'Legend' && owned.has(c.slug)).length },
+          { label: 'Set completion', context: 'unique cards', value: `${Math.round((owned.size / CARDS.length) * 100)}%` },
+        ]}
+      />
 
       {entries.length === 0 && (
         <div className="callout y" style={{ marginBottom: 16 }}>
@@ -104,7 +119,7 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
 
       <div className="panel">
         <div className="toolbar">
-          <div className="chips">
+          <div className="chips" role="group" aria-label="Scope">
             <button className={`chip ${scope === 'mine' ? 'on' : ''}`} onClick={() => setScope('mine')}>My cards</button>
             <button className={`chip ${scope === 'all' ? 'on' : ''}`} onClick={() => setScope('all')}>Full database</button>
           </div>
@@ -138,17 +153,17 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
           <table className="data">
             <thead>
               <tr>
-                <th className="nosort" />
+                <th><span className="sr-only">Art</span></th>
                 {th('name', 'Card')}
-                {th('color', 'Color')}
-                {th('type', 'Type')}
-                {th('cost', 'Cost', 'num')}
-                {th('power', 'Pwr', 'num')}
-                {th('ram', 'RAM', 'num')}
+                {th('color', 'Color', 'hide-sm')}
+                {th('type', 'Type', 'hide-sm')}
+                {th('cost', 'Cost', 'num hide-sm')}
+                {th('power', 'Pwr', 'num hide-sm')}
+                {th('ram', 'RAM', 'num hide-sm')}
                 {th('rarity', 'Rarity', 'hide-sm')}
-                <th className="nosort hide-sm">Traits</th>
+                <th className="hide-sm">Traits</th>
                 {th('qty', 'Owned')}
-                {th('unit', 'Unit', 'num')}
+                {th('unit', 'Unit', 'num hide-sm')}
                 {th('value', 'Value', 'num')}
               </tr>
             </thead>
@@ -157,17 +172,17 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
                 <tr key={c.slug} className={qty === 0 && scope === 'all' ? 'unowned' : ''} onClick={() => onOpen(c.slug)}>
                   <td><CardImg className="thumb" slug={c.slug} alt="" /></td>
                   <td>
-                    <div className="cname">{c.name}</div>
+                    <button className="cname" onClick={(e) => { e.stopPropagation(); onOpen(c.slug); }}>{c.name}</button>
                     {c.sub && <div className="csub">{c.sub}</div>}
-                    {es.some((e) => e.note) && <span className="badge warn" title={es.map((e) => e.note).join(' ')}>Note</span>}
+                    {es.some((e) => e.note) && <span className="badge warn" title={es.map((e) => e.note).join(' ')}>Check finish</span>}
                   </td>
-                  <td><Pip color={c.color} /></td>
-                  <td>
+                  <td className="hide-sm"><Pip color={c.color} /></td>
+                  <td className="hide-sm">
                     {c.type} {c.sellable && <span className="badge sell" title="Has a sell tag">€$</span>}
                   </td>
-                  <td className="num">{c.cost ?? '—'}</td>
-                  <td className="num">{c.power != null ? (c.type === 'Gear' ? `+${c.power}` : c.power) : '—'}</td>
-                  <td className="num">{c.ram ?? '—'}</td>
+                  <td className="num hide-sm">{c.cost ?? '—'}</td>
+                  <td className="num hide-sm">{c.power != null ? (c.type === 'Gear' ? `+${c.power}` : c.power) : '—'}</td>
+                  <td className="num hide-sm">{c.ram ?? '—'}</td>
                   <td className="hide-sm"><RarityBadge r={c.rarity} /></td>
                   <td className="hide-sm csub">{c.traits.join(' · ')}</td>
                   <td onClick={(e) => e.stopPropagation()}>
@@ -177,8 +192,8 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
                       <button className="iconbtn" onClick={() => bump(c, es, 1)}>+</button>
                     </span>
                   </td>
-                  <td className="num">{unit ? cad(unit) : '—'}</td>
-                  <td className="num" style={{ color: value ? 'var(--y)' : undefined }}>{value ? cad(value) : '—'}</td>
+                  <td className="num hide-sm">{unit ? cad(unit) : '—'}</td>
+                  <td className={`num ${value ? 'accent' : ''}`}>{value ? cad(value) : '—'}</td>
                 </tr>
               ))}
             </tbody>

@@ -2,6 +2,9 @@ import { BY_SLUG, RECOMMENDED, cad, refPrice } from '../lib/data';
 import { useStore } from '../lib/store';
 import { CardImg, Pip } from '../components/bits';
 import { validate, deckFromRecommended } from './DeckBuilder';
+import { Masthead } from '../components/ui';
+
+const CARD_COLOR: Record<string, string> = { Yellow: 'var(--color-card-yellow)', Blue: 'var(--color-card-blue)', Red: 'var(--color-card-red)', Green: 'var(--color-card-green)' };
 
 const LEGEND_PICKS: [string, string, number][] = [
   ['River Ward: Detective on the Hunt', 'Yellow', 27.8],
@@ -39,12 +42,13 @@ export function MetaIntel({ onOpen, openInBuilder }: { onOpen: (slug: string) =>
 
   return (
     <section>
-      <div className="section-head">
-        <h2>Meta Intel</h2>
-        <p>How the game plays, what the early data says, and five Yellow and Blue decks ranked against your collection.</p>
-      </div>
+      <Masthead
+        eyebrow="The Afterlife / Fixer's Notes"
+        title="Meta Intel"
+        sub={<>How it plays <span className="sep" aria-hidden="true">◆</span> early data <span className="sep" aria-hidden="true">◆</span> decks scored against your vault</>}
+      />
 
-      <div className="callout" style={{ marginBottom: 16 }}>
+      <div className="callout section-gap" style={{ marginBottom: 16 }}>
         <b>Honest read:</b> sanctioned constructed play only started on Nov 6, 2026, and the first Edgerunner Open Regional
         (Chicago) is Dec 11-13. There is no tournament-proven tier list yet. The data below is deck-building popularity, not
         win rates. The deck recommendations are reasoned from card efficiency and colour identity, and labelled with a
@@ -67,7 +71,7 @@ export function MetaIntel({ onOpen, openInBuilder }: { onOpen: (slug: string) =>
           {LEGEND_PICKS.map(([n, c, p]) => (
             <div className="hbar" key={n} style={{ gridTemplateColumns: '1fr 70px 52px' }}>
               <span className="tiny"><Pip color={c} bare /> {n.split(':')[0]}</span>
-              <div className="track"><div style={{ width: `${(p / 30) * 100}%`, background: c === 'Yellow' ? 'var(--c-yellow)' : c === 'Blue' ? 'var(--c-blue)' : c === 'Red' ? 'var(--c-red)' : 'var(--c-green)' }} /></div>
+              <div className="track"><div style={{ width: `${(p / 30) * 100}%`, background: CARD_COLOR[c] }} /></div>
               <span className="num tiny">{p}%</span>
             </div>
           ))}
@@ -107,14 +111,14 @@ export function MetaIntel({ onOpen, openInBuilder }: { onOpen: (slug: string) =>
         </div>
       </div>
 
-      <div className="section-head"><h2 style={{ fontSize: 18 }}>Recommended decks</h2><p>Completion and cost update live against your collection.</p></div>
+      <div className="subhead"><h2>Recommended decks</h2><p>Completion and cost update live against your collection.</p></div>
       <div className="grid cols-2">
         {RECOMMENDED.map((d) => {
           const comp = completion(d.id);
           const v = validate(deckFromRecommended(d.id)!);
           const pct = Math.round((comp.have / comp.total) * 100);
           return (
-            <div key={d.id} className={`panel deck-card ${d.tier === 'owned' ? 'hot' : 'red'}`}>
+            <div key={d.id} className={`panel deck-card ${d.tier === 'owned' ? 'hot' : ''}`}>
               <div className="row">
                 <div>
                   <div className="arch">{d.tier === 'owned' ? 'Budget build' : `Upgrade${d.base ? ` of ${RECOMMENDED.find((x) => x.id === d.base)?.name}` : ''}`} · {d.archetype}</div>
@@ -122,20 +126,20 @@ export function MetaIntel({ onOpen, openInBuilder }: { onOpen: (slug: string) =>
                 </div>
                 <span className="spacer" />
                 <span className={`badge ${v.legal ? 'ok' : 'low'}`}>{v.legal ? 'Legal' : 'Check'}</span>
-                <span className="badge warn">Confidence: {d.confidence}</span>
+                <span className="badge">Confidence: {d.confidence}</span>
               </div>
               <div className="legend-row">
                 {d.legends.map((s) => (
-                  <div key={s} style={{ cursor: 'pointer' }} onClick={() => onOpen(s)} title={BY_SLUG.get(s)?.display}>
-                    <CardImg slug={s} alt={BY_SLUG.get(s)?.display ?? s} />
-                  </div>
+                  <button key={s} onClick={() => onOpen(s)} title={BY_SLUG.get(s)?.display} aria-label={`Open ${BY_SLUG.get(s)?.display}`}>
+                    <CardImg className="noart" slug={s} alt="" />
+                  </button>
                 ))}
-                <div style={{ display: 'grid', alignContent: 'center', gap: 6, marginLeft: 8 }}>
-                  <div className="mono tiny">YOU OWN <b style={{ color: 'var(--y)' }}>{comp.have}/{comp.total}</b> ({pct}%)</div>
-                  <div className="track" style={{ height: 8, width: 160, background: 'var(--bg2)', border: '1px solid var(--line)' }}>
-                    <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? 'var(--ok)' : 'var(--y)' }} />
+                <div className="completion">
+                  <div className="stat-line">You own <b>{comp.have}/{comp.total}</b> ({pct}%)</div>
+                  <div className="track" role="img" aria-label={`${pct}% owned`}>
+                    <div className={pct === 100 ? 'done' : ''} style={{ width: `${pct}%` }} />
                   </div>
-                  <div className="mono tiny">TO COMPLETE <b style={{ color: comp.cost ? 'var(--red)' : 'var(--ok)' }}>{comp.cost ? cad(comp.cost) : 'nothing'}</b></div>
+                  <div className="stat-line">To complete <b className={comp.cost ? '' : 'good'}>{comp.cost ? cad(comp.cost) : 'nothing'}</b></div>
                   <button className="btn sm" onClick={() => openInBuilder(d.id)}>Open in builder</button>
                 </div>
               </div>
@@ -152,8 +156,8 @@ export function MetaIntel({ onOpen, openInBuilder }: { onOpen: (slug: string) =>
                   ))}
                 </ul>
               </div>
-              <div className="tiny"><b className="mono">MULLIGAN</b> {d.mulligan}</div>
-              <div className="tiny" style={{ color: '#ffb3c1' }}><b className="mono">WEAK SPOTS</b> {d.weaknesses}</div>
+              <div className="tiny"><span className="label">Mulligan</span> {d.mulligan}</div>
+              <div className="tiny weak"><span className="label danger-text">Weak spots</span> {d.weaknesses}</div>
             </div>
           );
         })}

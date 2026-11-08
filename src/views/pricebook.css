@@ -6,20 +6,6 @@
 
 /* ---------- hero: masthead + marquee ---------- */
 .pb-hero { display: grid; grid-template-columns: minmax(260px, 0.55fr) minmax(0, 1fr); gap: var(--space-6); align-items: stretch; }
-.pb-masthead { display: flex; flex-direction: column; justify-content: center; }
-.pb-eyebrow {
-  margin: 0 0 var(--space-3); display: flex; align-items: center; gap: var(--space-2);
-  font: 500 13px/1.2 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-accent);
-}
-.pb-eyebrow-mark { width: 12px; height: 12px; background: var(--color-accent); transform: skewX(-14deg); }
-.pb-title {
-  margin: 0; font: italic 800 clamp(72px, 9vw, 132px) / 0.84 var(--font-display); letter-spacing: -0.01em;
-  text-transform: uppercase; color: var(--color-text); transform: skewX(-4deg); transform-origin: left bottom;
-}
-.pb-bang { color: var(--color-accent); }
-.pb-subline { margin: var(--space-4) 0 0; font: 500 12px/1 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-text-muted); }
-.pb-subline span { color: var(--color-accent); margin: 0 6px; }
-
 .pb-marquee {
   position: relative; min-height: 270px; overflow: hidden; isolation: isolate;
   border: 1px solid var(--color-accent);
@@ -63,18 +49,7 @@
 .pb-marquee-noart { display: grid; place-items: center; height: 100%; padding: var(--space-3); text-align: center; font: 700 18px/1 var(--font-display); text-transform: uppercase; color: var(--color-text-muted); }
 .pb-marquee.is-empty .pb-marquee-copy, .pb-marquee.is-loading .pb-marquee-copy { right: var(--space-5); }
 .pb-marquee.is-empty .pb-marquee-name { font-size: clamp(30px, 3.4vw, 46px); }
-.pb-marquee.is-empty .pb-btn { margin-top: var(--space-3); }
-
-/* ---------- valuation strip ---------- */
-.pb-strip {
-  margin: var(--space-5) 0 var(--space-5); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
-  background: var(--color-ticket); color: var(--color-ticket-ink); box-shadow: 0 5px 0 var(--color-accent-deep);
-}
-.pb-strip > div { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-4) var(--space-5); min-width: 0; }
-.pb-strip > div + div { border-left: 2px dashed rgba(36, 22, 31, 0.35); }
-.pb-strip dt { font: 700 14px/1.2 var(--font-ui); text-transform: uppercase; letter-spacing: 0.04em; }
-.pb-strip dt span { display: block; margin-top: 3px; font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--color-ticket-muted); }
-.pb-strip dd { margin: 0; font: 800 clamp(28px, 2.8vw, 40px) / 1 var(--font-display); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pb-marquee.is-empty .btn { margin-top: var(--space-3); }
 
 /* ---------- body: holdings + rail ---------- */
 .pb-body { display: grid; grid-template-columns: minmax(0, 7fr) minmax(280px, 3fr); gap: var(--space-5); align-items: start; }
@@ -91,7 +66,6 @@
 .pb-btn { border-color: var(--color-accent); color: var(--color-accent); }
 .pb-btn:hover { background: var(--color-accent); color: var(--color-accent-ink); }
 .pb-btn:disabled { opacity: 0.4; cursor: not-allowed; background: var(--color-canvas); color: var(--color-accent); }
-.pb-btn.on-accent { background: var(--color-accent-ink); color: var(--color-text); border-color: var(--color-accent-ink); }
 
 .pb-rows { border-top: 1px solid var(--color-divider); }
 .pb-row {
@@ -170,15 +144,10 @@
 /* ---------- responsive ---------- */
 @media (max-width: 1100px) {
   .pb-hero { grid-template-columns: 1fr; gap: var(--space-4); }
-  .pb-title { font-size: clamp(64px, 14vw, 120px); }
-  .pb-title br { display: none; }
   .pb-body { grid-template-columns: 1fr; }
   .pb-rail { position: static; }
 }
 @media (max-width: 760px) {
-  .pb-strip { grid-template-columns: 1fr; }
-  .pb-strip > div + div { border-left: 0; border-top: 2px dashed rgba(36, 22, 31, 0.35); }
-  .pb-strip > div { padding: var(--space-3) var(--space-4); }
   .pb-marquee { min-height: 250px; }
   .pb-marquee-copy { right: 40%; left: var(--space-4); bottom: var(--space-4); }
   .pb-marquee-card { right: 6%; top: 56px; width: 34%; max-width: 140px; transform: rotate(8deg); }
