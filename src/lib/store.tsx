@@ -25,6 +25,7 @@ type Toast = { id: number; msg: string; tone?: 'ok' | 'err' };
 
 interface StoreValue {
   ready: boolean;
+  syncing: boolean; // cloud collection is loading
   mode: 'local' | 'cloud';
   session: Session | null;
   entries: Entry[];
@@ -84,6 +85,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [entries, setEntries] = useState<Entry[]>(() => readLS(LS_COL, [] as Entry[]));
   const [decks, setDecks] = useState<Deck[]>(() => readLS(LS_DECKS, [] as Deck[]));
   const [localPending, setLocalPending] = useState(0);
+  const [syncing, setSyncing] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const tid = useRef(0);
   const mode: 'local' | 'cloud' = supabase && session ? 'cloud' : 'local';
@@ -115,12 +117,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return;
     }
     let cancelled = false;
+    setSyncing(true);
     (async () => {
       const [col, dk] = await Promise.all([
         supabase.from('collection_items').select('card_slug, printing_id, qty, note'),
         supabase.from('decks').select('*').order('updated_at', { ascending: false }),
       ]);
       if (cancelled) return;
+      setSyncing(false);
       if (col.error || dk.error) {
         toast(`Cloud load failed: ${(col.error || dk.error)?.message}`, 'err');
         return;
@@ -242,7 +246,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const value: StoreValue = {
-    ready, mode, session, entries, owned, setQty, addMany, clearCollection,
+    ready, syncing, mode, session, entries, owned, setQty, addMany, clearCollection,
     decks, saveDeck, deleteDeck, signOut, localPending, pushLocalToCloud, toasts, toast,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

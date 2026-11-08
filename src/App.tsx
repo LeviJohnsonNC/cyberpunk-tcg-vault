@@ -44,27 +44,34 @@ export default function App() {
   const total = [...store.owned.values()].reduce((a, b) => a + b, 0);
 
   return (
-    <div className="app">
-      <header className="topbar">
-        <div className="brand">
-          <div className="brand-mark">CV</div>
-          <div>
-            <h1 className="glitch" data-text="Cyberpunk TCG Vault">Cyberpunk TCG Vault</h1>
-            <small>NIGHT CITY CARD OPS // WELCOME TO NIGHT CITY</small>
+    <>
+      <header className="appbar">
+        <div className="appbar-inner">
+          <a className="brand" href="#/collection" aria-label="Cyberpunk TCG Vault, home">
+            <span className="brand-badge"><span>CV</span></span>
+            <span className="brand-name">Vault</span>
+          </a>
+          <nav className="navlinks" aria-label="Sections">
+            {TABS.map((t) => (
+              <button key={t.id} className="navlink" aria-current={route.tab === t.id ? 'page' : undefined} onClick={() => go(t.id)}>
+                {t.label}
+              </button>
+            ))}
+          </nav>
+          <div className="status">
+            <span className="hide-sm" title={store.mode === 'cloud' ? 'Synced to your account' : 'Saved in this browser only'}>
+              <span className={`dot ${store.mode === 'local' ? 'local' : ''}`} />
+              {store.mode === 'cloud' ? 'Cloud sync' : 'Local mode'}
+            </span>
+            <span className="hide-sm">{total} cards</span>
+            {cloudEnabled && <AuthBox />}
           </div>
-        </div>
-        <div className="status">
-          <span className="hide-sm">
-            <span className={`dot ${store.mode === 'local' ? 'local' : ''}`} />
-            <span className="lbl">{store.mode === 'cloud' ? 'CLOUD SYNC' : 'LOCAL MODE'}</span>
-          </span>
-          <span className="hide-sm">{total} CARDS</span>
-          {cloudEnabled && <AuthBox />}
         </div>
       </header>
 
+    <div className="app page">
       {store.localPending > 0 && (
-        <div className="callout y" style={{ marginTop: 14 }}>
+        <div className="callout y" style={{ marginBottom: 14 }}>
           <div className="row">
             <span>
               You have <b>{store.localPending}</b> collection entries saved in this browser. Upload them to your account?
@@ -75,18 +82,9 @@ export default function App() {
         </div>
       )}
 
-      <nav className="tabs">
-        {TABS.map((t, i) => (
-          <button key={t.id} className={`tab ${route.tab === t.id ? 'active' : ''}`} onClick={() => go(t.id)}>
-            <span className="num">0{i + 1}</span>
-            {t.label}
-          </button>
-        ))}
-      </nav>
-
       <main>
         {route.tab === 'collection' && <Collection onOpen={setOpenCard} goAdd={() => go('add')} />}
-        {route.tab === 'prices' && <PriceBook onOpen={setOpenCard} />}
+        {route.tab === 'prices' && <PriceBook onOpen={setOpenCard} goAdd={() => go('add')} />}
         {route.tab === 'builder' && <DeckBuilder onOpen={setOpenCard} initialDeck={route.deck} />}
         {route.tab === 'meta' && <MetaIntel onOpen={setOpenCard} openInBuilder={(id) => go('builder', id)} />}
         {route.tab === 'add' && <AddCards onOpen={setOpenCard} />}
@@ -111,5 +109,6 @@ export default function App() {
         <a href="https://github.com/LeviJohnsonNC/cyberpunk-tcg-vault" target="_blank" rel="noreferrer">GitHub</a>
       </footer>
     </div>
+    </>
   );
 }

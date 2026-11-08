@@ -15,7 +15,7 @@ A Night City-styled collection tracker, CAD price book and deck builder for the 
 
 | Piece | Tech |
 | --- | --- |
-| Front end | React 19 + Vite + TypeScript, hand-rolled CSS (no UI kit) |
+| Front end | React 19 + Vite + TypeScript, hand-rolled CSS on shared tokens (`src/theme.css`, see `docs/design-system.md`) |
 | Auth + data | Supabase (Postgres + RLS) |
 | Photo scan | Vercel serverless function (`api/scan.ts`) → OpenRouter vision model |
 | Card + price data | `scripts/sync-data.mjs`, run daily by GitHub Actions and committed to `src/data/` |
@@ -81,6 +81,8 @@ To test photo scanning locally, use `vercel dev` with the server env vars below.
 ## Project layout
 
 ```
+docs/design-system.md    Afterlife design language (read before UI changes)
+CLAUDE.md                agent instructions
 api/scan.ts              photo-scan function (auth, rate limit, OpenRouter, fuzzy match)
 api/_cards.ts            generated card-name list for the scanner
 scripts/sync-data.mjs    card DB + TCGplayer + FX sync

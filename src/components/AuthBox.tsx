@@ -17,7 +17,7 @@ export function AuthBox() {
     return (
       <span className="row" style={{ gap: 8 }}>
         <span className="hide-sm">{session.user.email}</span>
-        <button className="btn ghost sm" onClick={signOut}>Sign out</button>
+        <button className="btn ghost sm signout" onClick={signOut}>Sign out</button>
       </span>
     );
   }
@@ -49,7 +49,7 @@ export function AuthBox() {
 
   return (
     <span style={{ position: 'relative' }}>
-      <button className="btn sm" onClick={() => setOpen((o) => !o)}>Sign in</button>
+      <button className="btn signin" aria-expanded={open} onClick={() => setOpen((o) => !o)}>Sign in</button>
       {open && (
         <div className="panel hot" style={{ position: 'absolute', right: 0, top: 40, width: 320, zIndex: 60 }}>
           <div className="panel-title">Jack in</div>

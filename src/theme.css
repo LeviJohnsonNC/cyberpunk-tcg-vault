@@ -1,0 +1,95 @@
+/*
+ * Theme tokens. Single source of truth for color, type, spacing and shape.
+ * Read docs/design-system.md before adding or changing tokens.
+ *
+ * Two layers:
+ *   1. Semantic tokens (--color-*, --font-*, --space-*, --cut-*) describe a job, not a hue.
+ *      New UI must use these.
+ *   2. Legacy 2077 aliases (--y, --red, --panel...) keep views that haven't migrated yet working.
+ *      Do not use them in new code; migrate a view by swapping them for semantic tokens.
+ */
+@import '@fontsource/barlow-condensed/600.css';
+@import '@fontsource/barlow-condensed/700.css';
+@import '@fontsource/barlow-condensed/800.css';
+@import '@fontsource/barlow-condensed/800-italic.css';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+
+:root {
+  /* ---- Afterlife: surfaces ---- */
+  --color-canvas: #17101b;
+  --color-canvas-deep: #110b14; /* header band, wells */
+  --color-surface: #201625;
+  --color-surface-raised: #2a1c30;
+  --color-divider: #4a3248;
+
+  /* ---- Afterlife: text ---- */
+  --color-text: #fff0e6;
+  --color-text-muted: #c9aabf;
+  --color-text-faint: #8e7488;
+
+  /* ---- Afterlife: emphasis ---- */
+  --color-accent: #ff8cbb; /* emphasis + active state */
+  --color-accent-deep: #c4568a; /* marquee shading, pressed */
+  --color-accent-ink: #1b0f1d; /* text on accent */
+  --color-ticket: #f6dca9; /* headline-metric grouping */
+  --color-ticket-ink: #24161f; /* text on ticket */
+  --color-ticket-muted: #6e5545;
+
+  /* ---- Afterlife: meaning (always paired with a text label) ---- */
+  --color-basis-market: #a5f0c2;
+  --color-basis-proxy: #fbe1a0;
+  --color-basis-low: #ffa98f;
+  --color-rarity-epic: #e5b2ff;
+  --color-rarity-rare: #9fd8ff;
+  --color-rarity-top: #fbe1a0; /* secret / iconic */
+  --color-card-yellow: #f5d76e;
+  --color-card-blue: #7ccbef;
+  --color-card-red: #ff8a9a;
+  --color-card-green: #9be7a8;
+
+  /* ---- Type roles ---- */
+  --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif; /* mastheads, big numbers */
+  --font-ui: 'Inter', system-ui, sans-serif; /* interface copy */
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace; /* metadata, numeric alignment */
+
+  /* ---- Shape + space ---- */
+  --cut-sm: 10px; /* clipped corner, small components */
+  --cut-lg: 26px; /* clipped corner, marquee */
+  --radius-sm: 3px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --focus-ring: 0 0 0 2px var(--color-canvas), 0 0 0 4px var(--color-accent);
+
+  /* ---- Legacy 2077 aliases (unmigrated views only) ---- */
+  --y: #fcee0a;
+  --y-dim: #b8ad06;
+  --red: #ff003c;
+  --red-dim: #8a0021;
+  --cyan: #02d7f2;
+  --cyan-dim: #036a78;
+  --bg: var(--color-canvas);
+  --bg2: var(--color-canvas-deep);
+  --panel: var(--color-surface);
+  --panel2: var(--color-surface-raised);
+  --line: var(--color-divider);
+  --text: var(--color-text);
+  --muted: var(--color-text-muted);
+  --ok: #34f5a0;
+  --c-yellow: #fcee0a;
+  --c-blue: #02d7f2;
+  --c-red: #ff3355;
+  --c-green: #39ff88;
+  --notch: 14px;
+  --head: 'Orbitron', 'Rajdhani', sans-serif;
+  --body: 'Rajdhani', system-ui, sans-serif;
+  --mono: 'Share Tech Mono', ui-monospace, monospace;
+  color-scheme: dark;
+}

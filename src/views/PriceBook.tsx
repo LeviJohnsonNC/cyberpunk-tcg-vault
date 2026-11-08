@@ -1,162 +1,275 @@
-import { useMemo, useState } from 'react';
-import { BY_SLUG, PRICES, PRINTING_INDEX, cad, priceConfidence, priceFor, rarityRank, shortSet } from '../lib/data';
+// Price Book: reference implementation of the Afterlife design language.
+// See docs/design-system.md. Uses only semantic tokens (src/theme.css) and pricebook.css.
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { PRICES, cad, imageUrl, shortSet } from '../lib/data';
+import { buildPriceBook, sortLines, toCsv, type Basis, type Group, type Line, type SortKey } from '../lib/pricebook';
 import { useStore } from '../lib/store';
-import { CardImg, Pip, RarityBadge, Stat } from '../components/bits';
+import './pricebook.css';
 
-export function PriceBook({ onOpen }: { onOpen: (slug: string) => void }) {
-  const { entries } = useStore();
-  const [sortBy, setSortBy] = useState<'total' | 'unit' | 'name'>('total');
+const BASIS_CLASS: Record<string, string> = { Market: 'market', 'Beta proxy': 'proxy', 'Low listing': 'low' };
+const COLOR_VAR: Record<string, string> = {
+  Yellow: 'var(--color-card-yellow)',
+  Blue: 'var(--color-card-blue)',
+  Red: 'var(--color-card-red)',
+  Green: 'var(--color-card-green)',
+};
+const rarityClass = (r: string) =>
+  r === 'Epic' ? 'epic' : r === 'Rare' ? 'rare' : /Secret|Iconic|Nova/.test(r) ? 'top' : 'base';
 
-  const lines = useMemo(
-    () =>
-      entries
-        .map((e) => {
-          const card = BY_SLUG.get(e.slug)!;
-          const pr = priceFor(e.slug, e.printingId);
-          const printing = PRINTING_INDEX.get(e.printingId)?.printing;
-          return { e, card, printing, unit: pr?.cad ?? 0, total: (pr?.cad ?? 0) * e.qty, conf: pr ? priceConfidence(pr.point) : null, url: pr?.point.url };
-        })
-        .filter((l) => l.card),
-    [entries],
+function BasisTag({ basis }: { basis: Basis | null }) {
+  if (!basis) return <span className="pb-tag">Unpriced</span>;
+  return <span className={`pb-tag basis-${BASIS_CLASS[basis]}`}>{basis}</span>;
+}
+
+function Thumb({ slug, className }: { slug: string; className: string }) {
+  const [err, setErr] = useState(false);
+  return err ? (
+    <span className={`${className} pb-noart`} aria-hidden="true">No art</span>
+  ) : (
+    <img className={className} src={imageUrl(slug)} alt="" loading="lazy" onError={() => setErr(true)} />
   );
-  const sorted = [...lines].sort((a, b) =>
-    sortBy === 'name' ? a.card.display.localeCompare(b.card.display) : sortBy === 'unit' ? b.unit - a.unit : b.total - a.total,
-  );
-  const total = lines.reduce((a, l) => a + l.total, 0);
-  const topUnit = lines.reduce<(typeof lines)[number] | null>((m, l) => (!m || l.unit > m.unit ? l : m), null);
-  const count = lines.reduce((a, l) => a + l.e.qty, 0);
+}
 
-  const group = (key: (l: (typeof lines)[number]) => string) => {
-    const m = new Map<string, { v: number; n: number }>();
-    for (const l of lines) {
-      const k = key(l);
-      const cur = m.get(k) ?? { v: 0, n: 0 };
-      cur.v += l.total;
-      cur.n += l.e.qty;
-      m.set(k, cur);
-    }
-    return [...m.entries()];
-  };
-  const byRarity = group((l) => l.card.rarity).sort((a, b) => rarityRank(a[0]) - rarityRank(b[0]));
-  const byColor = group((l) => l.card.color).sort((a, b) => b[1].v - a[1].v);
-  const byConf = group((l) => l.conf?.label ?? 'Unpriced');
-
-  // extras beyond a 3-copy playset are trade bait
-  const ownedBySlug = new Map<string, number>();
-  for (const l of lines) ownedBySlug.set(l.card.slug, (ownedBySlug.get(l.card.slug) ?? 0) + l.e.qty);
-  const extras = [...ownedBySlug.entries()]
-    .filter(([, n]) => n > 3)
-    .map(([slug, n]) => ({ slug, n: n - 3, unit: priceFor(slug)?.cad ?? 0 }))
-    .sort((a, b) => b.unit * b.n - a.unit * a.n);
-  const extrasValue = extras.reduce((a, x) => a + x.unit * x.n, 0);
-
-  const exportCsv = () => {
-    const rows = [['Card', 'Set', 'Number', 'Rarity', 'Qty', 'Unit CAD', 'Total CAD', 'Price basis']];
-    for (const l of sorted) rows.push([l.card.display, l.printing?.set ?? '', l.printing?.num ?? '', l.card.rarity, String(l.e.qty), l.unit.toFixed(2), l.total.toFixed(2), l.conf?.label ?? '']);
-    const csv = rows.map((r) => r.map((x) => `"${x.replace(/"/g, '""')}"`).join(',')).join('\n');
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-    a.download = `cyberpunk-tcg-pricebook-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-  };
-
-  const bar = (rows: [string, { v: number; n: number }][], color?: boolean) => {
-    const max = Math.max(0.01, ...rows.map((r) => r[1].v));
-    return rows.map(([k, x]) => (
-      <div className="hbar" key={k}>
-        <span>{color ? <Pip color={k} /> : k} <span className="muted tiny">×{x.n}</span></span>
-        <div className="track"><div style={{ width: `${(x.v / max) * 100}%` }} /></div>
-        <span className="num">{cad(x.v)}</span>
-      </div>
-    ));
-  };
-
-  if (!entries.length) {
-    return <div className="callout y">Add cards to your vault to see the price book.</div>;
-  }
-
+/* ---------- marquee ---------- */
+function Skyline() {
   return (
-    <section>
-      <div className="section-head">
-        <h2>Price Book</h2>
-        <p>
-          Values use TCGplayer market prices (Near Mint), converted at 1 USD = {PRICES.fx.usdToCad.toFixed(4)} CAD. The retail set
-          launched on Nov 6, 2026, so many singles have only a handful of sales. Treat these as directional.
+    <svg className="pb-skyline" viewBox="0 0 600 160" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 160V96h34V70h22v26h18V40h30v56h16V82h26V54h12V30h24v24h10v42h28V64h20v32h18V48h34v48h14V20h26v76h22V60h18v36h30V76h24V44h28v52h20V66h26v94z" />
+      <path className="far" d="M0 160v-30h50v-22h40v22h60v-40h30v40h80v-28h50v28h70v-46h40v46h90v-20h50v20h40v30z" />
+    </svg>
+  );
+}
+
+function Marquee({ top, loading, onOpen, goAdd }: { top: Line | null; loading: boolean; onOpen: (s: string) => void; goAdd: () => void }) {
+  const [artErr, setArtErr] = useState(false);
+  if (loading) {
+    return (
+      <section className="pb-marquee is-loading" aria-busy="true" aria-label="Most valuable card, loading">
+        <span className="pb-ticket">Most valuable card</span>
+        <div className="pb-marquee-copy">
+          <div className="pb-skel" style={{ width: '60%', height: 52 }} />
+          <div className="pb-skel" style={{ width: '35%', height: 18, marginTop: 10 }} />
+        </div>
+        <Skyline />
+      </section>
+    );
+  }
+  if (!top) {
+    return (
+      <section className="pb-marquee is-empty" aria-label="Most valuable card">
+        <span className="pb-ticket">Most valuable card</span>
+        <div className="pb-marquee-copy">
+          <h2 className="pb-marquee-name">Nothing on the books</h2>
+          <p className="pb-marquee-sub">Add cards and your most valuable one headlines here.</p>
+          <button className="pb-btn on-accent" onClick={goAdd}>Add cards</button>
+        </div>
+        <Skyline />
+      </section>
+    );
+  }
+  const { card } = top;
+  return (
+    <section className="pb-marquee" aria-label="Most valuable card">
+      <span className="pb-ticket">Most valuable card</span>
+      <div className="pb-marquee-copy">
+        <h2 className="pb-marquee-name">{card.name}</h2>
+        {card.sub && <p className="pb-marquee-sub">{card.sub}</p>}
+        <p className="pb-marquee-price">
+          <span className="num">{cad(top.unit)}</span>
+          <span className="pb-marquee-basis">{top.basis ?? 'Unpriced'}</span>
+          <span className="sr-only"> per copy</span>
         </p>
       </div>
-      <div className="grid cols-4" style={{ marginBottom: 16 }}>
-        <Stat k="Total value" v={cad(total)} s={`${count} cards`} />
-        <Stat k="Average per card" v={cad(count ? total / count : 0)} tone="cyan" />
-        <Stat k="Top card" v={topUnit ? cad(topUnit.unit) : '—'} s={topUnit?.card.display} tone="red" />
-        <Stat k="Trade bait" v={cad(extrasValue)} s={`${extras.reduce((a, x) => a + x.n, 0)} copies beyond a 3-copy playset`} />
-      </div>
-      <div className="grid cols-3" style={{ marginBottom: 16 }}>
-        <div className="panel"><div className="panel-title">By rarity</div>{bar(byRarity)}</div>
-        <div className="panel"><div className="panel-title">By color</div>{bar(byColor, true)}</div>
-        <div className="panel">
-          <div className="panel-title">Price confidence</div>
-          {bar(byConf)}
-          <p className="tiny muted" style={{ marginBottom: 0 }}>
-            <b>Market</b>: recent TCGplayer sales. <b>Beta proxy</b>: the Retail printing has no sales yet, so the Beta printing's
-            market price stands in. <b>Low listing</b>: cheapest current listing, no sales.
-          </p>
-        </div>
-      </div>
-
-      <div className="panel">
-        <div className="panel-title">
-          Holdings
-          <span className="aside row" style={{ gap: 8 }}>
-            <select className="select" value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}>
-              <option value="total">Sort: total value</option>
-              <option value="unit">Sort: unit price</option>
-              <option value="name">Sort: name</option>
-            </select>
-            <button className="btn sm ghost" onClick={exportCsv}>Export CSV</button>
-          </span>
-        </div>
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th className="nosort" /><th className="nosort">Card</th><th className="nosort hide-sm">Printing</th>
-                <th className="nosort hide-sm">Rarity</th><th className="nosort num">Qty</th><th className="nosort num">Unit</th>
-                <th className="nosort num">Total</th><th className="nosort">Basis</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((l) => (
-                <tr key={l.e.printingId} onClick={() => onOpen(l.card.slug)}>
-                  <td><CardImg className="thumb" slug={l.card.slug} alt="" /></td>
-                  <td><div className="cname">{l.card.name}</div>{l.card.sub && <div className="csub">{l.card.sub}</div>}</td>
-                  <td className="hide-sm csub">{l.printing ? `${shortSet(l.printing.set)} #${l.printing.num}` : '—'}</td>
-                  <td className="hide-sm"><RarityBadge r={l.card.rarity} /></td>
-                  <td className="num">{l.e.qty}</td>
-                  <td className="num">{cad(l.unit)}</td>
-                  <td className="num" style={{ color: 'var(--y)' }}>{cad(l.total)}</td>
-                  <td onClick={(ev) => ev.stopPropagation()}>
-                    {l.conf && <span className={`badge ${l.conf.tone}`}>{l.conf.label}</span>}{' '}
-                    {l.url && <a className="tiny" href={l.url} target="_blank" rel="noreferrer">↗</a>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {extras.length > 0 && (
-        <div className="panel" style={{ marginTop: 16 }}>
-          <div className="panel-title">Trade binder <span className="aside">Copies beyond 3, the deck limit</span></div>
-          <div className="row">
-            {extras.map((x) => (
-              <span key={x.slug} className="badge warn" style={{ fontSize: 12, padding: '4px 8px' }}>
-                {BY_SLUG.get(x.slug)?.display} ×{x.n} · {cad(x.unit * x.n)}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+      <Skyline />
+      <button className="pb-marquee-card" onClick={() => onOpen(card.slug)} aria-label={`Open ${card.display}`}>
+        {artErr ? (
+          <span className="pb-marquee-noart">{card.name}</span>
+        ) : (
+          <img src={imageUrl(card.slug)} alt="" onError={() => setArtErr(true)} />
+        )}
+      </button>
     </section>
+  );
+}
+
+/* ---------- breakdown rail ---------- */
+function Breakdown({ title, groups, total, fill, children }: { title: string; groups: Group[]; total: number; fill: (k: string) => string; children?: ReactNode }) {
+  const max = Math.max(0.01, ...groups.map((g) => g.value));
+  return (
+    <section className="pb-breakdown" aria-label={title}>
+      <header>
+        <h3>{title}</h3>
+        <span className="pb-unit">CAD</span>
+      </header>
+      {groups.length === 0 && <p className="pb-dim">Nothing to break down yet.</p>}
+      <ul>
+        {groups.map((g) => (
+          <li key={g.key}>
+            <span className="pb-bk-label">
+              {g.key} <span className="pb-dim">×{g.count}</span>
+            </span>
+            <span className="pb-bar" role="img" aria-label={`${Math.round((g.value / (total || 1)) * 100)}% of value`}>
+              <span style={{ width: `${(g.value / max) * 100}%`, background: fill(g.key) } as CSSProperties} />
+            </span>
+            <span className="pb-bk-value num">{cad(g.value)}</span>
+          </li>
+        ))}
+      </ul>
+      {children}
+    </section>
+  );
+}
+
+/* ---------- page ---------- */
+export function PriceBook({ onOpen, goAdd }: { onOpen: (slug: string) => void; goAdd: () => void }) {
+  const { entries, syncing } = useStore();
+  const [sortBy, setSortBy] = useState<SortKey>('total');
+  const pb = useMemo(() => buildPriceBook(entries), [entries]);
+  const sorted = useMemo(() => sortLines(pb.lines, sortBy), [pb.lines, sortBy]);
+  const loading = syncing && entries.length === 0;
+
+  const exportCsv = () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([toCsv(sorted)], { type: 'text/csv' }));
+    a.download = `cyberpunk-tcg-pricebook-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const updated = new Date(PRICES.updatedAt).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' });
+
+  return (
+    <div className="pb">
+      <div className="pb-hero">
+        <div className="pb-masthead">
+          <p className="pb-eyebrow"><span className="pb-eyebrow-mark" aria-hidden="true" />The Afterlife / Night Market</p>
+          <h1 className="pb-title">Price <br />Book<span className="pb-bang">!</span></h1>
+          <p className="pb-subline">Near Mint prices <span aria-hidden="true">◆</span> CAD</p>
+        </div>
+        <Marquee top={pb.top} loading={loading} onOpen={onOpen} goAdd={goAdd} />
+      </div>
+
+      <dl className="pb-strip">
+        <div>
+          <dt>Total value<span>{pb.count} cards</span></dt>
+          <dd className="num">{cad(pb.total)}</dd>
+        </div>
+        <div>
+          <dt>Average / card<span>Near Mint</span></dt>
+          <dd className="num">{cad(pb.average)}</dd>
+        </div>
+        <div>
+          <dt>Trade bait<span>{pb.extrasCopies} extra {pb.extrasCopies === 1 ? 'copy' : 'copies'}</span></dt>
+          <dd className="num">{cad(pb.extrasValue)}</dd>
+        </div>
+      </dl>
+
+      <div className="pb-body">
+        <section className="pb-holdings" aria-labelledby="pb-holdings-title">
+          <header className="pb-holdings-head">
+            <h2 id="pb-holdings-title">Holdings <span className="pb-count">{pb.count} cards</span></h2>
+            <div className="pb-controls">
+              <label className="sr-only" htmlFor="pb-sort">Sort holdings</label>
+              <select id="pb-sort" className="pb-select" value={sortBy} onChange={(e) => setSortBy(e.target.value as SortKey)}>
+                <option value="total">Sort: total value</option>
+                <option value="unit">Sort: unit price</option>
+                <option value="qty">Sort: quantity</option>
+                <option value="name">Sort: name</option>
+              </select>
+              <button className="pb-btn" onClick={exportCsv} disabled={!pb.lines.length}>
+                <span aria-hidden="true">↓</span> Export CSV
+              </button>
+            </div>
+          </header>
+
+          {loading ? (
+            <div className="pb-rows" aria-busy="true">
+              {[0, 1, 2, 3, 4].map((i) => <div key={i} className="pb-skel pb-skel-row" />)}
+            </div>
+          ) : pb.lines.length === 0 ? (
+            <div className="pb-empty">
+              <p>No cards priced yet. Add cards by search or photo and they'll show up here with live CAD values.</p>
+              <button className="pb-btn" onClick={goAdd}>Add cards</button>
+            </div>
+          ) : (
+            <div className="pb-rows" role="table" aria-label="Holdings" aria-rowcount={sorted.length + 1}>
+              <div className="pb-row pb-row-head" role="row">
+                <span role="columnheader">Card</span>
+                <span role="columnheader">Rarity</span>
+                <span role="columnheader" className="r">Qty</span>
+                <span role="columnheader" className="r">Unit</span>
+                <span role="columnheader" className="r">Total</span>
+                <span role="columnheader">Basis</span>
+              </div>
+              {sorted.map((l) => (
+                <div key={l.entry.printingId} className="pb-row" role="row" onClick={() => onOpen(l.card.slug)}>
+                  <span role="cell" className="pb-id">
+                    <Thumb slug={l.card.slug} className="pb-thumb" />
+                    <span className="pb-id-text">
+                      <button className="pb-name" onClick={(e) => { e.stopPropagation(); onOpen(l.card.slug); }}>{l.card.name}</button>
+                      {l.card.sub && <span className="pb-sub">{l.card.sub}</span>}
+                      <span className="pb-print">{l.printing ? `${shortSet(l.printing.set)} #${l.printing.num}` : 'Unknown printing'}</span>
+                      <span className="pb-meta-compact">
+                        <span className={`pb-rarity r-${rarityClass(l.rarity)}`}>{l.rarity}</span> · {cad(l.unit)} each
+                      </span>
+                    </span>
+                  </span>
+                  <span role="cell" className="pb-c-rarity"><span className={`pb-rarity r-${rarityClass(l.rarity)}`}>{l.rarity}</span></span>
+                  <span role="cell" className="pb-c-qty num r"><span className="pb-x" aria-hidden="true">×</span>{l.entry.qty}</span>
+                  <span role="cell" className="pb-c-unit num r">{cad(l.unit)}</span>
+                  <span role="cell" className="pb-c-total num r">{cad(l.total)}</span>
+                  <span role="cell" className="pb-c-basis" onClick={(e) => e.stopPropagation()}>
+                    {l.url ? (
+                      <a href={l.url} target="_blank" rel="noreferrer" title="View on TCGplayer"><BasisTag basis={l.basis} /></a>
+                    ) : (
+                      <BasisTag basis={l.basis} />
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {pb.extras.length > 0 && (
+            <footer className="pb-trade">
+              <h3>Trade binder <span className="pb-dim">copies beyond the 3-per-deck limit</span></h3>
+              <ul>
+                {pb.extras.map((x) => (
+                  <li key={x.slug}>
+                    <button onClick={() => onOpen(x.slug)}>{x.card.display}</button> ×{x.copies} <span className="num">{cad(x.unit * x.copies)}</span>
+                  </li>
+                ))}
+              </ul>
+            </footer>
+          )}
+        </section>
+
+        <aside className="pb-rail" aria-label="Value breakdown">
+          <Breakdown
+            title="Price confidence"
+            groups={pb.byConfidence}
+            total={pb.total}
+            fill={(k) => `var(--color-basis-${BASIS_CLASS[k] ?? 'low'})`}
+          >
+            <details className="pb-disclosure">
+              <summary>What these labels mean</summary>
+              <dl>
+                <dt><span className="pb-tag basis-market">Market</span></dt>
+                <dd>Recent TCGplayer sales for this exact printing.</dd>
+                <dt><span className="pb-tag basis-proxy">Beta proxy</span></dt>
+                <dd>The Retail printing hasn't sold yet (Retail launched Nov 6, 2026), so the identical Beta printing's market price stands in.</dd>
+                <dt><span className="pb-tag basis-low">Low listing</span></dt>
+                <dd>No sales anywhere, so the cheapest current listing is used. It never outranks a known market price for the same card.</dd>
+              </dl>
+            </details>
+          </Breakdown>
+          <Breakdown title="By color" groups={pb.byColor} total={pb.total} fill={(k) => COLOR_VAR[k] ?? 'var(--color-text-muted)'} />
+          <Breakdown title="By rarity" groups={pb.byRarity} total={pb.total} fill={() => 'var(--color-accent)'} />
+          <p className="pb-source">
+            Source: {PRICES.source}. 1 USD = {PRICES.fx.usdToCad.toFixed(4)} CAD. Updated {updated}.
+          </p>
+        </aside>
+      </div>
+    </div>
   );
 }

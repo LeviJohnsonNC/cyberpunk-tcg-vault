@@ -1,0 +1,92 @@
+# Design system: Afterlife
+
+The Vault's visual language. It's named for the Afterlife, the Night City merc bar: a night-market bulletin with gig-poster energy at the top of each screen and the clarity of a modern collection tracker in the working areas.
+
+**Reference implementation:** the Price Book (`src/views/PriceBook.tsx` + `src/views/pricebook.css`). When in doubt, match it.
+
+**Migration status:** the app header and Price Book use Afterlife. Collection, Deck Builder, Meta Intel and Add Cards still use the legacy 2077 yellow styling (via the alias tokens in `theme.css`). Migrate one view at a time by replacing legacy tokens and classes with the semantic ones below.
+
+## Core rules
+
+1. **One expressive focal point per screen.** Poster typography, clipped corners, halftone and angular accents go in a small number of high-impact places (a masthead, a marquee). Working surfaces such as tables, forms and rails stay quiet and legible.
+2. **Give type distinct jobs.** Condensed display type for mastheads and headline numbers. Readable sans for interface copy. Mono for short metadata and numeric alignment. Never set paragraphs in display or mono.
+3. **Make color carry meaning.** Pink signals emphasis and active state. Cream groups headline metrics. Price-basis and rarity colors always sit next to a text label, never color alone. Keep contrast and keyboard focus clear.
+4. **Protect the information hierarchy.** The page's main job must be easy to scan. Use shared tokens and components for new UI. Decoration must support the hierarchy, not compete with it.
+5. **Check the real states.** Before calling UI work done, review laptop (≈1280px) and phone (≈390px) widths, long names, missing card art, loading and empty states, and keyboard-only use.
+
+## Tokens
+
+All tokens live in **`src/theme.css`** (imported first by `src/styles.css`). Use semantic tokens in new code. The legacy aliases (`--y`, `--red`, `--panel`…) exist only so unmigrated views keep working.
+
+### Color
+
+| Token | Value | Job |
+| --- | --- | --- |
+| `--color-canvas` | `#17101B` | Page background |
+| `--color-canvas-deep` | `#110B14` | Header band, inset wells, inputs |
+| `--color-surface` | `#201625` | Panels (holdings, rail) |
+| `--color-surface-raised` | `#2A1C30` | Hover rows, skeletons |
+| `--color-divider` | `#4A3248` | Borders, rules, bar tracks |
+| `--color-text` | `#FFF0E6` | Primary text |
+| `--color-text-muted` | `#C9AABF` | Secondary text, column headers |
+| `--color-text-faint` | `#8E7488` | Tertiary metadata (printing IDs, units) |
+| `--color-accent` | `#FF8CBB` | Emphasis, active nav, position totals, focus ring |
+| `--color-accent-deep` | `#C4568A` | Marquee shading, strip shadow, rail border |
+| `--color-accent-ink` | `#1B0F1D` | Text on pink |
+| `--color-ticket` | `#F6DCA9` | Headline-metric tickets (valuation strip, "Most valuable" tag) |
+| `--color-ticket-ink` / `--color-ticket-muted` | `#24161F` / `#6E5545` | Text on cream |
+| `--color-basis-market` | `#A5F0C2` | Price basis: Market |
+| `--color-basis-proxy` | `#FBE1A0` | Price basis: Beta proxy |
+| `--color-basis-low` | `#FFA98F` | Price basis: Low listing |
+| `--color-rarity-epic` / `-rare` / `-top` | `#E5B2FF` / `#9FD8FF` / `#FBE1A0` | Rarity chips (Epic, Rare, Secret/Iconic/Nova) |
+| `--color-card-yellow` / `-blue` / `-red` / `-green` | | Card-colour bars and pips |
+
+Contrast: primary and muted text on canvas or surface clear WCAG AA. Accent pink on canvas clears AA for UI text. On the pink marquee, names use `--color-accent-ink` and copy over the skyline uses `--color-text`.
+
+### Type
+
+| Token | Family | Role |
+| --- | --- | --- |
+| `--font-display` | Barlow Condensed 600–800 (800 italic for mastheads) | Mastheads, section titles, headline numbers |
+| `--font-ui` | Inter 400–600 | All interface copy, card names, buttons |
+| `--font-mono` | IBM Plex Mono 400–500 | Eyebrows, column headers, printing IDs, prices (with `font-variant-numeric: tabular-nums`) |
+
+Fonts are self-hosted via `@fontsource` packages (imported in `theme.css`), so there are no third-party font requests.
+
+### Shape and space
+
+- `--cut-sm` (10px), `--cut-lg` (26px): clipped corners via `clip-path`. Use `--cut-lg` only on the focal element.
+- `--radius-sm` (3px): chips, inputs, buttons.
+- `--space-1`…`--space-6`: 4, 8, 12, 16, 24, 32px.
+- `--focus-ring`: two-tone ring (canvas gap + pink). Applied globally on `:focus-visible`. Don't remove it.
+
+## Component patterns (from the Price Book)
+
+| Pattern | Class | Notes |
+| --- | --- | --- |
+| **Masthead** | `.pb-masthead`, `.pb-eyebrow`, `.pb-title`, `.pb-subline` | Mono pink eyebrow with skewed mark; italic 800 condensed title, skewX(-4deg), pink punctuation; mono subline. One per screen. |
+| **Marquee** | `.pb-marquee` | Clipped corners, pink gradient, conic sunburst, halftone mask, SVG skyline, tilted card in a cream frame, cream ticket label. Fed by real data; has loading, empty and missing-art states. |
+| **Ticket** | `.pb-ticket` | Small cream label, mono caps, rotate(-2deg), hard ink shadow. |
+| **Metric strip** | `.pb-strip` (a `<dl>`) | Cream band, dashed dividers, label + context line on the left, display number on the right. Stacks vertically on phones. |
+| **Data table** | `.pb-rows` / `.pb-row` | CSS grid with explicit ARIA table roles. Identity cell = thumbnail + name + subtitle + printing ID. Numbers right-aligned, mono, tabular. Position totals in pink. |
+| **Tags** | `.pb-tag.basis-*`, `.pb-rarity.r-*` | Outlined mono chips; colour + text label together. |
+| **Breakdown rail** | `.pb-rail` / `.pb-breakdown` | Label ×count, bar, value. Dashed separators. Explanations in a `<details>` disclosure, not tooltips. |
+| **Buttons** | `.pb-btn`, `.pb-select` | Quiet outline; pink outline for actions; fills pink on hover. |
+| **App header** | `.appbar`, `.brand-badge`, `.navlink[aria-current]` | Plum-black band; skewed pink badge; active section gets a 3px pink underline. |
+
+## Responsive behaviour
+
+- **≥1100px:** masthead and marquee side by side; holdings about 70%, rail about 30% and sticky.
+- **<1100px:** marquee stacks under the masthead; rail stacks under holdings.
+- **<760px:** metric strip stacks. Table rows reflow into a two-column card: the identity on the left, and total / basis / quantity on the right. Rarity and unit price move into a compact metadata line under the name. Card identity, quantity, total and pricing basis are always visible, with no horizontal page scroll.
+- **<900px header:** brand and status on one row; nav becomes a horizontally scrollable row underneath.
+- Page height follows content (no fixed-height scroll panes on working surfaces).
+- Motion respects `prefers-reduced-motion`.
+
+## States checklist (every screen)
+
+- Loading (cloud sync in progress): skeleton rows, `aria-busy`
+- Empty: plain-language message plus the next action
+- Missing art: text fallback, never a broken image
+- Long names: wrap or line-clamp; never overflow the layout
+- Keyboard: every interactive element reachable, with a visible focus ring
