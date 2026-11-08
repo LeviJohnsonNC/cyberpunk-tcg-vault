@@ -1,9 +1,11 @@
-// "Built from your vault": deterministic auto-builder UI (Phase 2). No network calls.
+// "Built from your vault": deterministic auto-builder (instant, local) plus optional AI refinement (signed in).
 import { useMemo, useState } from 'react';
 import { BY_SLUG, COLORS, cad, type Color } from '../lib/data';
 import { autobuild, type Build, type Style } from '../lib/autobuild';
 import { newId, useStore } from '../lib/store';
+import { supabase } from '../lib/supabase';
 import { CardImg, Pip } from './bits';
+import { RefinePanel, refineKey, type RefineResult } from './RefinePanel';
 
 export const PENDING_DECK_KEY = 'cptv.pendingDeck';
 const STYLES: { id: Style; label: string }[] = [
@@ -17,7 +19,9 @@ function shortName(slug: string) {
 }
 
 export function VaultBuilds({ onOpen, openPending, goAdd }: { onOpen: (slug: string) => void; openPending: () => void; goAdd: () => void }) {
-  const { owned } = useStore();
+  const { owned, mode } = useStore();
+  const [refining, setRefining] = useState<Build | null>(null);
+  const canRefine = mode === 'cloud';
   const [colors, setColors] = useState<Color[]>([]);
   const [style, setStyle] = useState<Style>('balanced');
   const [must, setMust] = useState<string[]>([]);
@@ -32,14 +36,19 @@ export function VaultBuilds({ onOpen, openPending, goAdd }: { onOpen: (slug: str
   );
   const result = useMemo(() => autobuild(owned, { colors, style, mustInclude: must }), [owned, colors, style, must]);
 
-  const open = (b: Build) => {
+  const open = (b: { legends: string[]; cards: Record<string, number> }, ai?: RefineResult) => {
+    const notes = ai
+      ? ['Refined with AI from a Vault auto-build.', ai.summary, ...ai.plan.map((p, i) => `${i + 1}. ${p}`), ai.mulligan && `Mulligan: ${ai.mulligan}`]
+          .filter(Boolean)
+          .join('\n')
+      : 'Built by the Vault auto-builder from your collection.';
     const deck = {
       id: newId(),
-      name: `Vault: ${b.legends.map(shortName).join(' / ')}`.slice(0, 80),
+      name: `${ai ? 'AI' : 'Vault'}: ${b.legends.map(shortName).join(' / ')}`.slice(0, 80),
       legends: b.legends,
       cards: b.cards,
       sideboard: {},
-      notes: 'Built by the Vault auto-builder from your collection.',
+      notes,
       updatedAt: '',
     };
     try {
@@ -165,10 +174,33 @@ export function VaultBuilds({ onOpen, openPending, goAdd }: { onOpen: (slug: str
                 )}
                 <div className="row" style={{ marginTop: 'auto' }}>
                   <button className="btn sm" onClick={() => open(b)}>Open in builder</button>
+                  {canRefine ? (
+                    <button
+                      className="btn quiet sm"
+                      aria-pressed={refining === b}
+                      onClick={() => setRefining(b)}
+                      disabled={refining != null && refineKey(refining, style, must) === refineKey(b, style, must)}
+                    >
+                      Refine with AI
+                    </button>
+                  ) : supabase ? (
+                    <span className="vault-ai-hint">Sign in to refine with AI</span>
+                  ) : null}
                 </div>
               </article>
             ))}
           </div>
+          {refining && result.builds.includes(refining) && (
+            <RefinePanel
+              key={refineKey(refining, style, must)}
+              build={refining}
+              style={style}
+              must={must}
+              onOpen={onOpen}
+              onOpenDeck={(r) => open(r, r)}
+              onClose={() => setRefining(null)}
+            />
+          )}
         </>
       )}
     </section>
