@@ -106,6 +106,9 @@ export default function App() {
         <br />
         Prices: {PRICES.source}, converted at 1 USD = {PRICES.fx.usdToCad.toFixed(4)} CAD. Updated{' '}
         {new Date(PRICES.updatedAt).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' })}.
+        <br />
+        <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a> ·{' '}
+        <a href="https://github.com/LeviJohnsonNC/cyberpunk-tcg-vault" target="_blank" rel="noreferrer">GitHub</a>
       </footer>
     </div>
   );
