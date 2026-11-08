@@ -1,41 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BY_SLUG, CARDS, COLORS, RECOMMENDED, TYPES, cad, fitsRam, ramLimits, refPrice, searchCards, type Card } from '../lib/data';
+import { BY_SLUG, CARDS, COLORS, RECOMMENDED, TYPES, cad, fitsRam, refPrice, searchCards, type Card } from '../lib/data';
+import { deckFromRecommended, validate } from '../lib/decks';
 import { newId, useStore, type Deck } from '../lib/store';
 import { Bars, CardImg, Pip } from '../components/bits';
 import { Masthead } from '../components/ui';
 
 const blank = (): Deck => ({ id: newId(), name: 'New crew', legends: [], cards: {}, sideboard: {}, notes: '', updatedAt: '' });
 const sum = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a + b, 0);
-
-export function deckFromRecommended(id: string): Deck | null {
-  const r = RECOMMENDED.find((d) => d.id === id);
-  if (!r) return null;
-  return { id: newId(), name: r.name, legends: [...r.legends], cards: { ...r.cards }, sideboard: {}, notes: r.summary, updatedAt: '' };
-}
-
-export function validate(d: Deck) {
-  const lim = ramLimits(d.legends);
-  const n = sum(d.cards);
-  const side = sum(d.sideboard);
-  const issues: string[] = [];
-  const passes: string[] = [];
-  if (d.legends.length !== 3) issues.push(`Needs exactly 3 Legends (has ${d.legends.length})`);
-  else passes.push('3 unique Legends');
-  if (n < 40 || n > 50) issues.push(`Main deck must be 40 to 50 cards (has ${n})`);
-  else passes.push(`${n} card main deck`);
-  const over = Object.entries(d.cards).filter(([s, q]) => q + (d.sideboard[s] ?? 0) > 3);
-  if (over.length) issues.push(`Max 3 copies: ${over.map(([s]) => BY_SLUG.get(s)?.name).join(', ')}`);
-  else passes.push('Copy limits OK');
-  const ramBad = Object.keys({ ...d.cards, ...d.sideboard }).filter((s) => {
-    const c = BY_SLUG.get(s);
-    return c && !fitsRam(c, lim);
-  });
-  if (ramBad.length) issues.push(`Over RAM limit: ${ramBad.map((s) => BY_SLUG.get(s)?.name).join(', ')}`);
-  else passes.push('All cards fit RAM');
-  if (side !== 0 && side !== 7) issues.push(`Sideboard must be exactly 7 for Bo3 (has ${side})`);
-  else if (side === 7) passes.push('7 card sideboard (Bo3 ready)');
-  return { lim, n, side, issues, passes, legal: issues.length === 0 };
-}
 
 export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) => void; initialDeck?: string }) {
   const { decks, saveDeck, deleteDeck, owned, toast } = useStore();
@@ -204,7 +175,7 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
             </optgroup>
           )}
           <optgroup label="Recommended">
-            {RECOMMENDED.map((d) => <option key={d.id} value={d.id}>{d.name} ({d.tier === 'owned' ? 'budget' : 'upgraded'})</option>)}
+            {RECOMMENDED.map((d) => <option key={d.id} value={d.id}>{d.name} ({d.kind})</option>)}
           </optgroup>
         </select>
         <input className="input deck-name" aria-label="Deck name" value={deck.name} onChange={(e) => update((d) => ({ ...d, name: e.target.value.slice(0, 80) }))} />

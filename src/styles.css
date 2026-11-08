@@ -246,7 +246,7 @@ button.cname:hover { color: var(--color-accent); }
 .deck-card ol, .deck-card ul { margin: 0; padding-left: 18px; line-height: 1.5; }
 .deck-card p { margin: 0; line-height: 1.55; }
 .legend-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.legend-row button { padding: 0; border: 0; background: none; cursor: pointer; }
+.legend-row > button { padding: 0; border: 0; background: none; cursor: pointer; }
 .legend-row img, .legend-row .noart { width: 72px; aspect-ratio: 5 / 7; object-fit: cover; border: 1px solid var(--color-divider); border-radius: 3px; display: block; }
 .completion { display: grid; gap: 6px; margin-left: 8px; }
 .completion .track { width: 160px; height: 6px; }

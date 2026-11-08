@@ -55,7 +55,8 @@ interface PriceFile {
 export interface RecommendedDeck {
   id: string;
   name: string;
-  tier: 'owned' | 'upgrade';
+  kind: 'budget' | 'meta' | 'brew';
+  source: string;
   base?: string;
   colors: Color[];
   archetype: string;
