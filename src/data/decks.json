@@ -2,7 +2,6 @@
  {
   "id": "lowball-netrun",
   "name": "Lowball Netrun",
-  "tier": "owned",
   "colors": [
    "Blue"
   ],
@@ -36,8 +35,10 @@
    "tetratronic-rippler": 3,
    "dying-night-v-s-pistol": 2
   },
+  "kind": "budget",
+  "source": "Starter-friendly build. Matches the Blue minimize plan WeirdCo describes in its colour guide.",
   "confidence": "Medium",
-  "summary": "Your strongest build today with zero spend. Blue's identity is minimizing: Jackie drops your own Gigs to their min value to draw cards, which also keeps your Street Cred low so MT0D12 Flathead can't be blocked and Rogue's Eddie engine fires. Alt Cunningham turns every min Gig into a Program discount and replays your best Program from the trash.",
+  "summary": "A zero-to-low-cost mono Blue list built from The Heist starter plus common Blue booster cards. Blue's identity is minimizing: Jackie drops your own Gigs to their min value to draw cards, which also keeps your Street Cred low so MT0D12 Flathead can't be blocked and Rogue's Eddie engine fires. Alt Cunningham turns every min Gig into a Program discount and replays your best Program from the trash.",
   "plan": [
    "Turns 1-2: sell a Program or Gear every turn, spend Legends for Eddies and land Psycho Squad (4-cost 6-power is the best rate in your pool).",
    "Every Blue Unit or Gear you play triggers Jackie: drop a Gig to its min value and draw. Lower Gigs also mean lower Street Cred, which unlocks MT0D12.",
@@ -68,7 +69,6 @@
  {
   "id": "heist-reloaded",
   "name": "Heist Reloaded",
-  "tier": "owned",
   "colors": [
    "Blue",
    "Yellow"
@@ -100,8 +100,10 @@
    "reboot-optics": 2,
    "nocturne-op55-n1": 2
   },
+  "kind": "budget",
+  "source": "Upgrade path for The Heist starter deck.",
   "confidence": "Medium",
-  "summary": "The Heist starter's legend crew (V, Jackie, Viktor), rebuilt with the best Yellow bodies from your boosters. It trades the starter's 0-power filler for Rockn' Rockerboy, MaxTac and Heywood, and keeps the cheap Gear package that makes Viktor's Call a two-card tutor.",
+  "summary": "The natural next step if you own The Heist starter. Same Legend crew (V, Jackie, Viktor), with the starter's 0-power filler swapped for efficient Yellow bodies from boosters: Rockn' Rockerboy, MaxTac and Heywood. The cheap Gear package stays because it makes Viktor's Call a two-card tutor.",
   "plan": [
    "Spend early turns selling the cheap Gear package (Kiroshi, Mandibular, Zetatech) and deploying 4-drops.",
    "Call Viktor early: he finds 2 Gears costing 2 or less, which refuels both your sells and your board.",
@@ -132,7 +134,6 @@
  {
   "id": "lowball-netrun-plus",
   "name": "Lowball Netrun+",
-  "tier": "upgrade",
   "base": "lowball-netrun",
   "colors": [
    "Blue"
@@ -165,6 +166,8 @@
    "netwatch-netdriver": 1,
    "tetratronic-rippler": 2
   },
+  "kind": "meta",
+  "source": "Close to the community \"BBV/BBG\" builds (Alt + Jackie + Braindance) on ExBurst.",
   "confidence": "Medium-Low",
   "summary": "Lowball Netrun with Judy Álvarez: Braindance Maestro replacing V. Judy is the second most-picked Legend in the official deck builder. Every Braindance Program pumps a Unit, and her Spend digs for more Programs. Towerfall is the reset button: with your Street Cred lower than the Rival's (this deck's natural state), it shrinks AND bottom-decks their whole board.",
   "plan": [
@@ -179,11 +182,11 @@
     "why": "A one-sided sweeper whenever your Street Cred is lower. Biggest single upgrade."
    },
    {
-    "slug": "judy-alvarez-braindance-maestro",
+    "slug": "judy-a-lvarez-braindance-maestro",
     "why": "Card advantage plus combat pumps off Programs you already play."
    },
    {
-    "slug": "judy-alvarez-nothing-to-doubt",
+    "slug": "judy-a-lvarez-nothing-to-doubt",
     "why": "A card-advantage engine on a 6/6 body."
    }
   ],
@@ -192,7 +195,6 @@
  {
   "id": "chrome-syndicate",
   "name": "Chrome Syndicate",
-  "tier": "upgrade",
   "base": "heist-reloaded",
   "colors": [
    "Yellow",
@@ -226,6 +228,8 @@
    "safety-override": 1,
    "floor-it": 3
   },
+  "kind": "meta",
+  "source": "Modeled on WeirdCo's own Yellow/Blue \"Sasha's Promise\" Gear list.",
   "confidence": "Medium-Low",
   "summary": "Modeled on WeirdCo's own Yellow/Blue 'Sasha's Promise' Gear midrange. River Ward, the most-picked Legend in the official deck builder, plays a Gear costing 2 or less for free at Quick speed, so you can equip mid-combat. Yellow at RAM 4 unlocks Gorilla Arms, Adrenaline Converter, Alt: Mother of Daemons and The Relic.",
   "plan": [
@@ -258,7 +262,6 @@
  {
   "id": "ripperdoc-rampage",
   "name": "Ripperdoc Rampage",
-  "tier": "upgrade",
   "colors": [
    "Yellow"
   ],
@@ -288,6 +291,8 @@
    "cyberpsychosis": 2,
    "safety-override": 2
   },
+  "kind": "brew",
+  "source": "Original brew. Mono Yellow is the second most-built single-colour shell in the official deck builder.",
   "confidence": "Low-Medium",
   "summary": "Mono Yellow, the second most-built single-colour shell in the official deck builder. RAM 6 Yellow lets you run Adam Smasher: Metal Over Meat, which you already own, as a board wipe on a 15-power body (steals 2 Gigs). The rest is efficient big Units plus Gear that converts them into multi-Gig steals.",
   "plan": [
@@ -311,5 +316,411 @@
    }
   ],
   "weaknesses": "No Blue interaction (no Floor It or Reboot Optics), so you can't protect Units on the Rival's turn."
+ },
+ {
+  "id": "smasher-surge",
+  "name": "Smasher Surge",
+  "colors": [
+   "Red",
+   "Yellow"
+  ],
+  "archetype": "Red/Yellow big-body midrange",
+  "legends": [
+   "v-streetkid",
+   "adam-smasher-ender-of-legends",
+   "dum-dum-maelstrom-triggerman"
+  ],
+  "cards": {
+   "all-is-lost": 3,
+   "industrial-assembly": 2,
+   "mantis-blades": 3,
+   "satori-sword-of-saburo": 3,
+   "appetite-for-destruction": 2,
+   "bonnie-and-clyde": 3,
+   "6th-street-recruits": 3,
+   "meredith-stout-stone-cold-corpo": 2,
+   "screw-lovelorn-fool": 2,
+   "animals-wrecker": 2,
+   "carnage-at-the-colosseum": 3,
+   "yorinobu-arasaka-steel-dragon": 3,
+   "kiroshi-optics": 3,
+   "secondhand-bombus": 3,
+   "zetatech-faceplate": 2,
+   "augmented-negotiators": 3,
+   "viktor-vektor-you-might-feel-a-little-pinch": 1,
+   "jackie-welles-ride-or-die-choom": 2,
+   "trauma-team-operatives": 1
+  },
+  "kind": "meta",
+  "source": "Adapted from a community \"RRY\" list on ExBurst. Adam Smasher / Dum Dum / V: Streetkid is listed as Tier 1 on tcgcontender.com (Nov 2026).",
+  "confidence": "Medium",
+  "summary": "The closest thing to an early consensus top deck. Red at RAM 4 runs the biggest bodies in the set (Animals Wrecker at 10 power steals 2 Gigs, Yorinobu: Steel Dragon cheats in a free Unit), backed by efficient removal. Adam Smasher Goes Solo as a 9-power finisher that defeats a Unit on arrival, and V: Streetkid's Call recurs your best Braindance removal.",
+  "plan": [
+   "Early: Augmented Negotiators and Secondhand Bombus block while you sell cheap Gear and Programs.",
+   "Mid: land 6th Street Recruits and Screw, and clear blockers with Bonnie and Clyde or Carnage at the Colosseum.",
+   "Industrial Assembly pushes a Gig to 8+, which discounts Carnage and turns on Kerry-style draw.",
+   "Close: Yorinobu drops a free Unit, then Adam Smasher Goes Solo to wipe a blocker and swing for the win."
+  ],
+  "mulligan": "Keep 2+ sellables and a 3- or 4-drop. Removal plus a big Unit is a snap keep.",
+  "keyCards": [
+   {
+    "slug": "yorinobu-arasaka-steel-dragon",
+    "why": "A 9-power body that also plays a Unit for free."
+   },
+   {
+    "slug": "animals-wrecker",
+    "why": "10 power steals 2 Gigs per hit for 6 €$."
+   },
+   {
+    "slug": "carnage-at-the-colosseum",
+    "why": "Removal that gets cheaper with every 8+ Gig."
+   }
+  ],
+  "weaknesses": "Expensive to finish (Adam Smasher is the pricey Legend). Thin on Quick interaction, so it can lose races to tempo decks."
+ },
+ {
+  "id": "mosh-pit",
+  "name": "Mosh Pit",
+  "colors": [
+   "Yellow",
+   "Red"
+  ],
+  "archetype": "Yellow/Red Rockerboy aggro",
+  "legends": [
+   "rogue-amendiares-preem-solo",
+   "kerry-eurodyne-axe-attitude-audience",
+   "johnny-silverhand-rocking-renegade"
+  ],
+  "cards": {
+   "mantis-blades": 3,
+   "all-is-lost": 3,
+   "industrial-assembly": 2,
+   "satori-sword-of-saburo": 3,
+   "kerry-eurodyne-the-last-rockerboy": 3,
+   "meredith-stout-stone-cold-corpo": 2,
+   "johnny-silverhand-never-stop-fighting": 3,
+   "rockn-rockerboy": 3,
+   "mandibular-upgrade": 3,
+   "afterparty-at-lizzie-s": 2,
+   "sketchy-ripper": 2,
+   "safety-override": 2,
+   "dexter-deshawn-one-last-chance": 2,
+   "gorilla-arms": 3,
+   "bootleg-black-sapphire-show": 2,
+   "jackie-welles-ride-or-die-choom": 3,
+   "trauma-team-operatives": 2
+  },
+  "kind": "meta",
+  "source": "WeirdCo team concept (Kay's \"Mosh Pit!\"), adapted from a community \"Rockers - YYR\" list.",
+  "confidence": "Medium-Low",
+  "summary": "Rockers aggro. Johnny Silverhand: Rocking Renegade lets a ROCKER attack spent Units the turn it lands with +2 power, and Kerry Eurodyne: Axe, Attitude, Audience draws whenever you roll a min or max Gig. Yellow's Gear package (Gorilla Arms, Mandibular Upgrade) turns single steals into double steals.",
+  "plan": [
+   "Curve Kerry: The Last Rockerboy into Rockn' Rockerboy and Johnny: Never Stop Fighting.",
+   "Use Johnny's Legend ability to hit a spent Unit the turn a Rocker lands.",
+   "Gorilla Arms on a Rocker turns one steal into two. Close with Rogue Going Solo at 7 power."
+  ],
+  "mulligan": "Keep any hand with a Rocker and 2 sellables.",
+  "keyCards": [
+   {
+    "slug": "johnny-silverhand-never-stop-fighting",
+    "why": "Readies after winning a fight, and wins every fight against CORPO Units."
+   },
+   {
+    "slug": "kerry-eurodyne-the-last-rockerboy",
+    "why": "Draws 2 off an 8+ Gig on a cheap body."
+   },
+   {
+    "slug": "gorilla-arms",
+    "why": "Double steals."
+   }
+  ],
+  "weaknesses": "Johnny: Rocking Renegade is one of the most expensive Legends in the set. Little removal."
+ },
+ {
+  "id": "arasaka-nines",
+  "name": "Arasaka 9s",
+  "colors": [
+   "Red",
+   "Green"
+  ],
+  "archetype": "Red/Green Arasaka power",
+  "legends": [
+   "saburo-arasaka-stubborn-patriarch",
+   "adam-smasher-ender-of-legends",
+   "yorinobu-arasaka-embracing-destruction"
+  ],
+  "cards": {
+   "minotaur": 3,
+   "yorinobu-arasaka-steel-dragon": 3,
+   "arasaka-emergency-radioport": 3,
+   "satori-sword-of-saburo": 3,
+   "mantis-blades": 3,
+   "industrial-assembly": 3,
+   "field-operator": 3,
+   "corpo-security": 2,
+   "corporate-surveillance": 3,
+   "valentino-street-racer": 2,
+   "meredith-stout-stone-cold-corpo": 3,
+   "bonnie-and-clyde": 2,
+   "carnage-at-the-colosseum": 2,
+   "sandayu-oda-hanako-s-guardian": 2,
+   "emergency-atlus": 3
+  },
+  "kind": "meta",
+  "source": "WeirdCo team concept (Kawa's \"Arasaka 9s\"). Card choices are our build around it.",
+  "confidence": "Low-Medium",
+  "summary": "Saburo Arasaka gives ARASAKA Units +1 power while attacking, which pushes 9-power cards (Minotaur, Yorinobu: Steel Dragon, Adam Smasher) to exactly 10, the breakpoint for stealing 2 Gigs. Arasaka Emergency Radioport can Call Adam Smasher for free.",
+  "plan": [
+   "Hold the ground early with Corpo Security, Field Operator and Meredith Stout.",
+   "Corporate Surveillance spends a rival Unit so your attackers can fight it.",
+   "Land Minotaur and Yorinobu. Every attack with a 9 becomes a 2-Gig steal under Saburo."
+  ],
+  "mulligan": "Keep early blockers plus one 7-drop. These hands are slow, so value sellables highly.",
+  "keyCards": [
+   {
+    "slug": "minotaur",
+    "why": "9 power plus removal when you lead on Street Cred."
+   },
+   {
+    "slug": "saburo-arasaka-stubborn-patriarch",
+    "why": "The +1 that turns 9s into 2-Gig steals."
+   },
+   {
+    "slug": "arasaka-emergency-radioport",
+    "why": "Free Calls into Adam Smasher."
+   }
+  ],
+  "weaknesses": "Top-heavy (eight 7-drops). Only 19 sellables, so Eddies can run short."
+ },
+ {
+  "id": "triple-fixers",
+  "name": "Triple Fixers",
+  "colors": [
+   "Red",
+   "Yellow",
+   "Blue"
+  ],
+  "archetype": "Three-colour Fixer midrange",
+  "legends": [
+   "muamar-reyes-el-capita-n",
+   "wakako-okada-peace-and-harmony",
+   "dexter-deshawn-off-the-grid"
+  ],
+  "cards": {
+   "nocturne-op55-n1": 3,
+   "over-the-edge": 3,
+   "floor-it": 3,
+   "reboot-optics": 2,
+   "mantis-blades": 3,
+   "satori-sword-of-saburo": 2,
+   "industrial-assembly": 2,
+   "afterparty-at-lizzie-s": 2,
+   "psycho-squad": 3,
+   "rockn-rockerboy": 3,
+   "maxtac-suppression-team": 2,
+   "6th-street-recruits": 3,
+   "meredith-stout-stone-cold-corpo": 2,
+   "johnny-silverhand-never-stop-fighting": 2,
+   "screw-lovelorn-fool": 2,
+   "heywood-ripperdoc": 2,
+   "kerry-eurodyne-the-last-rockerboy": 1
+  },
+  "kind": "meta",
+  "source": "WeirdCo team concept (Bryan's \"Triple Fixers\"). Card choices are our build around it.",
+  "confidence": "Low-Medium",
+  "summary": "All three Legends are Fixers whose Call does something useful in combat (pump, removal, draw). Hold 1 Eddie on the Rival's turn and every attack into you is a gamble for them. The deck spends the rest of its Eddies on the most efficient RAM 1-2 bodies across three colours.",
+  "plan": [
+   "Deploy the best stats per Eddie each turn: Psycho Squad, 6th Street Recruits, Rockn' Rockerboy.",
+   "Leave 1 Eddie up and Call a Fixer during the Rival's attack to win the fight.",
+   "Nocturne draws 2 or delays an attacker. Over the Edge removes anything up to your d20's value."
+  ],
+  "mulligan": "Keep two Units costing 4 or 5 and 2 sellables.",
+  "keyCards": [
+   {
+    "slug": "nocturne-op55-n1",
+    "why": "Flexible, and only 1 €$ late in the game."
+   },
+   {
+    "slug": "over-the-edge",
+    "why": "Scaling removal tied to your d20."
+   },
+   {
+    "slug": "psycho-squad",
+    "why": "4 cost, 6 power."
+   }
+  ],
+  "weaknesses": "Three colours at RAM 2 each, so no high-RAM payoffs. Relies on reading the Rival's attacks."
+ },
+ {
+  "id": "streetkid-braindance",
+  "name": "Streetkid Braindance",
+  "colors": [
+   "Red",
+   "Green"
+  ],
+  "archetype": "Red/Green removal midrange",
+  "legends": [
+   "v-streetkid",
+   "dexter-deshawn-off-the-grid",
+   "padre-man-of-the-cross"
+  ],
+  "cards": {
+   "peace-offering": 2,
+   "field-operator": 3,
+   "valentino-street-racer": 2,
+   "memory-relapse": 3,
+   "pepe-najarro-working-doubles": 3,
+   "maelstrom-zealots": 2,
+   "nadia-fighting-through-grief": 3,
+   "industrial-assembly": 3,
+   "mantis-blades": 3,
+   "detonate": 2,
+   "satori-sword-of-saburo": 3,
+   "bonnie-and-clyde": 3,
+   "over-the-edge": 3,
+   "6th-street-recruits": 3,
+   "chrome-fang": 3,
+   "carnage-at-the-colosseum": 3,
+   "yorinobu-arasaka-steel-dragon": 3
+  },
+  "kind": "meta",
+  "source": "Adapted from community \"RRV/RRG\" lists on ExBurst.",
+  "confidence": "Medium-Low",
+  "summary": "Red/Green removal midrange. V: Streetkid's Call trashes 3 and returns a Braindance Program (Bonnie and Clyde, Carnage at the Colosseum, Industrial Assembly), so the deck rarely runs out of answers. Padre and Peace Offering set up value-pairs for Green payoffs.",
+  "plan": [
+   "Trade early with 6th Street Recruits and Chrome Fang while Memory Relapse locks down a threat.",
+   "Industrial Assembly fuels 8+ Gigs for cheaper Carnage.",
+   "Call V to rebuy removal. Finish with Yorinobu and Nadia."
+  ],
+  "mulligan": "Keep removal plus a 4-drop.",
+  "keyCards": [
+   {
+    "slug": "bonnie-and-clyde",
+    "why": "Cheap two-for-one removal when behind."
+   },
+   {
+    "slug": "v-streetkid",
+    "why": "Rebuys your Braindance removal."
+   },
+   {
+    "slug": "chrome-fang",
+    "why": "6 power that also protects high-value Gigs."
+   }
+  ],
+  "weaknesses": "47 cards dilutes the removal a little. Weak to wide boards."
+ },
+ {
+  "id": "nomad-convoy",
+  "name": "Nomad Convoy",
+  "colors": [
+   "Green",
+   "Yellow"
+  ],
+  "archetype": "Green/Yellow go-wide Nomads",
+  "legends": [
+   "river-ward-detective-on-the-hunt",
+   "padre-man-of-the-cross",
+   "panam-palmer-nomad-cavalry"
+  ],
+  "cards": {
+   "synapse-burnout": 3,
+   "tyger-s-whisper": 3,
+   "riot-shield": 3,
+   "valentino-street-racer": 3,
+   "riding-nomad": 3,
+   "we-gotta-live-together": 3,
+   "panam-palmer-strength-through-family": 3,
+   "zetatech-berserk": 3,
+   "nadia-fighting-through-grief": 2,
+   "don-t-fear-the-reaper": 2,
+   "maxtac-heavy": 1,
+   "saul-bright-stormrider": 3,
+   "kiroshi-optics": 2,
+   "mandibular-upgrade": 3,
+   "sketchy-ripper": 2,
+   "zetatech-faceplate": 3,
+   "augmented-negotiators": 3,
+   "cyberpsychosis": 2
+  },
+  "kind": "meta",
+  "source": "Adapted from a community \"Panam We Gotta Live Together\" list on ExBurst.",
+  "confidence": "Low-Medium",
+  "summary": "Go-wide Nomads. Saul Bright gives every other Unit +2 power while attacking and readies three of them each turn. We Gotta Live Together brings back two cheap Units when you're behind. Panam: Nomad Cavalry moves Gear and readies Units.",
+  "plan": [
+   "Go wide early with Tyger's Whisper (free Call), Valentino Street Racer and Augmented Negotiators.",
+   "Riding Nomad and Nadia attack the turn they land.",
+   "Saul Bright turns the board into a double-steal swarm. Reaper spends their whole board."
+  ],
+  "mulligan": "Keep a cheap Unit plus 2 sellables. Saul Bright is the dream top end.",
+  "keyCards": [
+   {
+    "slug": "saul-bright-stormrider",
+    "why": "+2 power team-wide and readies 3 Units."
+   },
+   {
+    "slug": "we-gotta-live-together",
+    "why": "Rebuilds your board when behind."
+   },
+   {
+    "slug": "riding-nomad",
+    "why": "Adrenaline pressure."
+   }
+  ],
+  "weaknesses": "Weak to sweepers (Towerfall). Several key Green cards need RAM 4."
+ },
+ {
+  "id": "ganger-surge",
+  "name": "Ganger Surge",
+  "colors": [
+   "Blue",
+   "Red"
+  ],
+  "archetype": "Blue/Red Ganger tempo",
+  "legends": [
+   "v-corporate-exile",
+   "royce-psycho-on-the-edge",
+   "evelyn-parker-beautiful-enigma"
+  ],
+  "cards": {
+   "floor-it": 3,
+   "reboot-optics": 3,
+   "dying-night-v-s-pistol": 3,
+   "mox-inciters": 3,
+   "chrome-reverie": 3,
+   "all-is-lost": 3,
+   "mantis-blades": 3,
+   "satori-sword-of-saburo": 3,
+   "la-llorona-ghost-of-the-past": 3,
+   "over-the-edge": 3,
+   "6th-street-recruits": 3,
+   "meredith-stout-stone-cold-corpo": 3,
+   "royce-don-t-call-me-simon": 2,
+   "screw-lovelorn-fool": 2
+  },
+  "kind": "meta",
+  "source": "Adapted from \"Ganger Surge Assault\", a featured community list on ExBurst.",
+  "confidence": "Medium-Low",
+  "summary": "Blue/Red Ganger tempo. Evelyn Parker: Beautiful Enigma readies an Eddie whenever a CORPO or GANGER Unit steals, and Royce: Psycho on the Edge Goes Solo with +2 power per Gear. Blue's Quick tricks (Floor It, Reboot Optics) protect cheap Red attackers.",
+  "plan": [
+   "Curve La Llorona and Meredith Stout into 6th Street Recruits and Screw.",
+   "Every Ganger steal readies an Eddie through Evelyn.",
+   "Equip Mantis Blades and Satori, then Royce Goes Solo as a huge threat."
+  ],
+  "mulligan": "Keep 2 Units and a Quick trick.",
+  "keyCards": [
+   {
+    "slug": "6th-street-recruits",
+    "why": "4 cost, 6 power Ganger."
+   },
+   {
+    "slug": "royce-psycho-on-the-edge",
+    "why": "Go Solo finisher that scales with Gear."
+   },
+   {
+    "slug": "reboot-optics",
+    "why": "Wins a fight you should lose."
+   }
+  ],
+  "weaknesses": "Low top end. Struggles once the Rival lands 8+ power Units."
  }
 ]
