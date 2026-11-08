@@ -36,7 +36,8 @@ To test photo scanning locally, use `vercel dev` with the server env vars below.
 1. Create a project at supabase.com.
 2. **SQL Editor → New query**: paste [`supabase/schema.sql`](supabase/schema.sql) and run it.
 3. **Authentication → URL Configuration**: set **Site URL** to your Vercel URL (e.g. `https://cyberpunk-tcg-vault.vercel.app`), and add the same URL under **Redirect URLs**.
-4. Copy the **publishable/anon key** into `.env.production` (`VITE_SUPABASE_ANON_KEY`). It's public by design. Keep the secret/service-role key out of git.
+4. *(Optional) Google sign-in:* create an OAuth client in Google Cloud (see "Google sign-in" below), then **Authentication → Sign In / Providers → Google**: enable it and paste the Client ID and Secret. The "Continue with Google" button appears automatically once the provider is on.
+5. Copy the **publishable/anon key** into `.env.production` (`VITE_SUPABASE_ANON_KEY`). It's public by design. Keep the secret/service-role key out of git.
 
 ### 2. Vercel
 1. **Add New → Project → Import** this GitHub repo. The framework preset (Vite) is detected from `vercel.json`.
@@ -54,6 +55,14 @@ To test photo scanning locally, use `vercel dev` with the server env vars below.
 
 ### 3. GitHub Actions
 `.github/workflows/sync-data.yml` refreshes cards, prices and the USD→CAD rate daily. Make sure **Settings → Actions → General → Workflow permissions** is set to **Read and write** so the bot can commit.
+
+## Google sign-in
+
+1. Google Cloud Console → **APIs & Services → OAuth consent screen**: set up an External app (name, support email). Scopes: `openid`, `email`, `profile` only. Then **Publish app**: these basic scopes need no Google review, and while the app is left in Testing, only listed test users can sign in.
+2. **Credentials → Create credentials → OAuth client ID → Web application**
+   - Authorized JavaScript origins: `https://cyberpunk-tcg-vault.vercel.app`
+   - Authorized redirect URIs: `https://<project-ref>.supabase.co/auth/v1/callback`
+3. Paste the Client ID and Client Secret into Supabase → Authentication → Providers → Google, and enable it.
 
 ## How pricing works
 

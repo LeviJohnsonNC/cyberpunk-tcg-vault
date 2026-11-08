@@ -179,6 +179,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .iconbtn:hover { border-color: var(--y); background: rgba(252, 238, 10, 0.1); }
 .iconbtn.minus { color: var(--red); }
 
+/* auth */
+.btn.google { background: #fff; color: #111; }
+.btn.google:hover { filter: none; background: var(--y); }
+.or-line { display: flex; align-items: center; gap: 10px; margin: 12px 0; font-family: var(--mono); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.15em; }
+.or-line::before, .or-line::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
 /* inputs */
 .input, .select {
   background: var(--bg2); border: 1px solid var(--line); padding: 9px 12px; outline: none; min-width: 0;
