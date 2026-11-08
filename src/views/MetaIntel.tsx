@@ -3,6 +3,7 @@ import { BY_SLUG, COLORS, RECOMMENDED, cad, type Color } from '../lib/data';
 import { useStore } from '../lib/store';
 import { CardImg, Pip } from '../components/bits';
 import { Masthead } from '../components/ui';
+import { VaultBuilds } from '../components/VaultBuilds';
 import { CLOSE_THRESHOLD, completion, deckFromRecommended, matchesFilter, validate, type BuildFilter } from '../lib/decks';
 
 const CARD_COLOR: Record<string, string> = {
@@ -50,7 +51,7 @@ const loadFilters = (): Filters => {
   }
 };
 
-export function MetaIntel({ onOpen, openInBuilder }: { onOpen: (slug: string) => void; openInBuilder: (id: string) => void }) {
+export function MetaIntel({ onOpen, openInBuilder, goAdd }: { onOpen: (slug: string) => void; openInBuilder: (id: string) => void; goAdd: () => void }) {
   const { owned, entries } = useStore();
   const [f, setF] = useState<Filters>(loadFilters);
   const set = (patch: Partial<Filters>) => {
@@ -142,8 +143,14 @@ export function MetaIntel({ onOpen, openInBuilder }: { onOpen: (slug: string) =>
       </div>
 
       <div className="subhead">
-        <h2>Decks</h2>
-        <p>Completion and cost to finish update live against your vault.</p>
+        <h2>Your decks</h2>
+        <p>Built from the cards you own right now.</p>
+      </div>
+      <VaultBuilds onOpen={onOpen} openPending={() => openInBuilder('__pending')} goAdd={goAdd} />
+
+      <div className="subhead">
+        <h2>Meta decks</h2>
+        <p>Curated lists. Completion and cost to finish update live against your vault.</p>
       </div>
       <div className="toolbar" role="group" aria-label="Deck filters">
         <span className="label">Show</span>
