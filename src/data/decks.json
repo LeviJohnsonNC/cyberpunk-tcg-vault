@@ -1,0 +1,315 @@
+[
+ {
+  "id": "lowball-netrun",
+  "name": "Lowball Netrun",
+  "tier": "owned",
+  "colors": [
+   "Blue"
+  ],
+  "archetype": "Mono Blue tempo-control",
+  "legends": [
+   "jackie-welles-pour-one-out-for-me",
+   "alt-cunningham-soulkiller-architect",
+   "v-corporate-exile"
+  ],
+  "cards": {
+   "psycho-squad": 3,
+   "mt0d12-flathead": 2,
+   "delamain-cab": 3,
+   "jacked-in-voodoo-boy": 2,
+   "evelyn-parker-scheming-siren": 2,
+   "mox-inciters": 2,
+   "hacked-corpo": 2,
+   "delamain-rideshare-ai": 1,
+   "rogue-amendiares-queen-of-the-afterlife": 1,
+   "placide-voodoo-sentinel": 1,
+   "maman-brigitte-spirit-of-death": 1,
+   "floor-it": 3,
+   "trust-no-one": 1,
+   "reboot-optics": 3,
+   "three-mouths-one-desire": 2,
+   "chrome-reverie": 1,
+   "nocturne-op55-n1": 2,
+   "pyramid-song": 1,
+   "unlikely-bond": 1,
+   "les-e-le-mens": 1,
+   "tetratronic-rippler": 3,
+   "dying-night-v-s-pistol": 2
+  },
+  "confidence": "Medium",
+  "summary": "Your strongest build today with zero spend. Blue's identity is minimizing: Jackie drops your own Gigs to their min value to draw cards, which also keeps your Street Cred low so MT0D12 Flathead can't be blocked and Rogue's Eddie engine fires. Alt Cunningham turns every min Gig into a Program discount and replays your best Program from the trash.",
+  "plan": [
+   "Turns 1-2: sell a Program or Gear every turn, spend Legends for Eddies and land Psycho Squad (4-cost 6-power is the best rate in your pool).",
+   "Every Blue Unit or Gear you play triggers Jackie: drop a Gig to its min value and draw. Lower Gigs also mean lower Street Cred, which unlocks MT0D12.",
+   "Use Floor It and Reboot Optics on the Rival's turn to win fights you should lose. Pyramid Song, Les Élémens and Unlikely Bond answer their biggest threat.",
+   "Late game: Nocturne lets V Go Solo for 3 €$ as an 8-power attacker. Placide at 10 power steals 2 Gigs per hit."
+  ],
+  "mulligan": "Keep any hand with 2+ sellable cards and a 4-drop. Ship hands with no Units costing 4 or less.",
+  "keyCards": [
+   {
+    "slug": "psycho-squad",
+    "why": "Best stats per Eddie you own. Your main attacker."
+   },
+   {
+    "slug": "mt0d12-flathead",
+    "why": "Unblockable 7-power when your Street Cred is lower, which this deck engineers on purpose."
+   },
+   {
+    "slug": "three-mouths-one-desire",
+    "why": "Card advantage that scales with min Gigs."
+   },
+   {
+    "slug": "placide-voodoo-sentinel",
+    "why": "10 power steals 2 Gigs, and bottom-decks a blocker on the way in."
+   }
+  ],
+  "weaknesses": "Thin on 3-drops, and the 0-power Units (Evelyn, Delamain AI) don't steal. Struggles against fast Red decks that go wide early."
+ },
+ {
+  "id": "heist-reloaded",
+  "name": "Heist Reloaded",
+  "tier": "owned",
+  "colors": [
+   "Blue",
+   "Yellow"
+  ],
+  "archetype": "Blue/Yellow gear midrange",
+  "legends": [
+   "v-corporate-exile",
+   "jackie-welles-pour-one-out-for-me",
+   "viktor-vektor-sit-down-and-relax"
+  ],
+  "cards": {
+   "psycho-squad": 3,
+   "rockn-rockerboy": 2,
+   "maxtac-suppression-team": 2,
+   "heywood-ripperdoc": 2,
+   "offduty-malfini": 2,
+   "viktor-vektor-you-might-feel-a-little-pinch": 2,
+   "dexter-deshawn-one-last-chance": 2,
+   "mt0d12-flathead": 2,
+   "jackie-welles-ride-or-die-choom": 1,
+   "kiroshi-optics": 3,
+   "zetatech-faceplate": 3,
+   "mandibular-upgrade": 2,
+   "tetratronic-rippler": 2,
+   "dying-night-v-s-pistol": 2,
+   "the-heist": 1,
+   "afterparty-at-lizzie-s": 2,
+   "floor-it": 3,
+   "reboot-optics": 2,
+   "nocturne-op55-n1": 2
+  },
+  "confidence": "Medium",
+  "summary": "The Heist starter's legend crew (V, Jackie, Viktor), rebuilt with the best Yellow bodies from your boosters. It trades the starter's 0-power filler for Rockn' Rockerboy, MaxTac and Heywood, and keeps the cheap Gear package that makes Viktor's Call a two-card tutor.",
+  "plan": [
+   "Spend early turns selling the cheap Gear package (Kiroshi, Mandibular, Zetatech) and deploying 4-drops.",
+   "Call Viktor early: he finds 2 Gears costing 2 or less, which refuels both your sells and your board.",
+   "Offduty Malfini spends a Rival Unit, so your attackers can fight it before it untaps. Use it to clear blockers.",
+   "Zetatech Faceplate keeps adjusting Gigs to different values for extra draws. Close with V Go Solo, Jackie: Ride or Die (+2 power per even Gig) and Heywood."
+  ],
+  "mulligan": "Keep 2+ sellables plus any Unit costing 4 or less. Viktor makes Gear-heavy hands fine.",
+  "keyCards": [
+   {
+    "slug": "rockn-rockerboy",
+    "why": "5 cost, 8 power, RAM 1. Raw efficiency."
+   },
+   {
+    "slug": "maxtac-suppression-team",
+    "why": "Shuts off Rival haste (Go Solo, Adrenaline) the turn those Units land."
+   },
+   {
+    "slug": "zetatech-faceplate",
+    "why": "Card flow plus Gig control on every spend."
+   },
+   {
+    "slug": "offduty-malfini",
+    "why": "Lets your Units attack a Rival Unit that would otherwise be untouchable."
+   }
+  ],
+  "weaknesses": "Yellow is capped at RAM 2, so Adrenaline Converter, Gorilla Arms and Alt: Mother of Daemons sit on the bench. Less removal than mono Blue."
+ },
+ {
+  "id": "lowball-netrun-plus",
+  "name": "Lowball Netrun+",
+  "tier": "upgrade",
+  "base": "lowball-netrun",
+  "colors": [
+   "Blue"
+  ],
+  "archetype": "Mono Blue Braindance control",
+  "legends": [
+   "jackie-welles-pour-one-out-for-me",
+   "alt-cunningham-soulkiller-architect",
+   "judy-a-lvarez-braindance-maestro"
+  ],
+  "cards": {
+   "psycho-squad": 3,
+   "mt0d12-flathead": 3,
+   "westbrook-netrunner": 2,
+   "rita-wheeler-no-stupid-questions": 1,
+   "evelyn-parker-scheming-siren": 2,
+   "mox-inciters": 1,
+   "lizzy-wizzy-delicate-weapon": 1,
+   "rogue-amendiares-queen-of-the-afterlife": 2,
+   "judy-a-lvarez-nothing-to-doubt": 1,
+   "placide-voodoo-sentinel": 2,
+   "floor-it": 3,
+   "trust-no-one": 3,
+   "reboot-optics": 2,
+   "three-mouths-one-desire": 3,
+   "chrome-reverie": 2,
+   "nocturne-op55-n1": 2,
+   "pyramid-song": 2,
+   "towerfall": 2,
+   "netwatch-netdriver": 1,
+   "tetratronic-rippler": 2
+  },
+  "confidence": "Medium-Low",
+  "summary": "Lowball Netrun with Judy Álvarez: Braindance Maestro replacing V. Judy is the second most-picked Legend in the official deck builder. Every Braindance Program pumps a Unit, and her Spend digs for more Programs. Towerfall is the reset button: with your Street Cred lower than the Rival's (this deck's natural state), it shrinks AND bottom-decks their whole board.",
+  "plan": [
+   "Same min-Gig engine, with denser Braindance: 3 Trust No One, 3 Three Mouths, 2 Chrome Reverie, 2 Pyramid Song, 2 Towerfall.",
+   "Westbrook Netrunner and Rita Wheeler add mid-curve bodies that protect Gigs and filter draws.",
+   "Judy: Nothing to Doubt and Lizzy Wizzy generate free plays. Alt replays Towerfall from the trash for a second sweep."
+  ],
+  "mulligan": "Keep 2+ sellables and a Unit costing 4 or less. Towerfall in the opener is a keep.",
+  "keyCards": [
+   {
+    "slug": "towerfall",
+    "why": "A one-sided sweeper whenever your Street Cred is lower. Biggest single upgrade."
+   },
+   {
+    "slug": "judy-alvarez-braindance-maestro",
+    "why": "Card advantage plus combat pumps off Programs you already play."
+   },
+   {
+    "slug": "judy-alvarez-nothing-to-doubt",
+    "why": "A card-advantage engine on a 6/6 body."
+   }
+  ],
+  "weaknesses": "The most expensive path (most of the cost is Towerfall and Judy: Nothing to Doubt). It loses V's Go Solo reach, so it closes games slower."
+ },
+ {
+  "id": "chrome-syndicate",
+  "name": "Chrome Syndicate",
+  "tier": "upgrade",
+  "base": "heist-reloaded",
+  "colors": [
+   "Yellow",
+   "Blue"
+  ],
+  "archetype": "Yellow/Blue gear midrange (Sasha's Promise style)",
+  "legends": [
+   "river-ward-detective-on-the-hunt",
+   "viktor-vektor-sit-down-and-relax",
+   "alt-cunningham-soulkiller-architect"
+  ],
+  "cards": {
+   "psycho-squad": 3,
+   "rockn-rockerboy": 2,
+   "maxtac-suppression-team": 2,
+   "viktor-vektor-drop-your-illusions": 2,
+   "viktor-vektor-you-might-feel-a-little-pinch": 2,
+   "alt-cunningham-mother-of-daemons": 2,
+   "offduty-malfini": 2,
+   "sketchy-ripper": 2,
+   "placide-voodoo-sentinel": 1,
+   "kiroshi-optics": 2,
+   "zetatech-faceplate": 3,
+   "gorilla-arms": 2,
+   "adrenaline-converter": 2,
+   "the-relic-experimental-biochip": 1,
+   "mandibular-upgrade": 1,
+   "tetratronic-rippler": 2,
+   "the-heist": 3,
+   "cyberpsychosis": 2,
+   "safety-override": 1,
+   "floor-it": 3
+  },
+  "confidence": "Medium-Low",
+  "summary": "Modeled on WeirdCo's own Yellow/Blue 'Sasha's Promise' Gear midrange. River Ward, the most-picked Legend in the official deck builder, plays a Gear costing 2 or less for free at Quick speed, so you can equip mid-combat. Yellow at RAM 4 unlocks Gorilla Arms, Adrenaline Converter, Alt: Mother of Daemons and The Relic.",
+  "plan": [
+   "Dig for Gear with The Heist, Sketchy Ripper and Viktor's Call. Viktor: Drop Your Illusions discounts your first Cyberware each turn by 3.",
+   "Alt: Mother of Daemons draws whenever an equipped Unit spends, and can cancel Gig steals.",
+   "Gorilla Arms turns one steal into two. Cyberpsychosis plus a double-equipped Unit swings fights by +6 or more.",
+   "The Relic on a big Unit brings back Placide or Alt from the trash when it dies."
+  ],
+  "mulligan": "Keep Gear plus a Unit to equip. River Ward makes cheap Gear hands strong.",
+  "keyCards": [
+   {
+    "slug": "river-ward-detective-on-the-hunt",
+    "why": "Free Gear at Quick speed. The top-picked Legend in the deck builder."
+   },
+   {
+    "slug": "gorilla-arms",
+    "why": "Steal 2 Gigs from one hit."
+   },
+   {
+    "slug": "viktor-vektor-drop-your-illusions",
+    "why": "Makes the Gear plan cheap."
+   },
+   {
+    "slug": "the-relic-experimental-biochip",
+    "why": "Recursion off your best Unit."
+   }
+  ],
+  "weaknesses": "Blue is capped at RAM 2. Gear-dependent, so it is vulnerable to Heywood-style Gear removal."
+ },
+ {
+  "id": "ripperdoc-rampage",
+  "name": "Ripperdoc Rampage",
+  "tier": "upgrade",
+  "colors": [
+   "Yellow"
+  ],
+  "archetype": "Mono Yellow big-body aggro",
+  "legends": [
+   "viktor-vektor-sit-down-and-relax",
+   "river-ward-detective-on-the-hunt",
+   "dum-dum-maelstrom-triggerman"
+  ],
+  "cards": {
+   "rockn-rockerboy": 3,
+   "maxtac-suppression-team": 3,
+   "heywood-ripperdoc": 2,
+   "jackie-welles-ride-or-die-choom": 2,
+   "viktor-vektor-drop-your-illusions": 2,
+   "viktor-vektor-you-might-feel-a-little-pinch": 2,
+   "offduty-malfini": 2,
+   "caliber-totentanz-s-top-dog": 2,
+   "maelstrom-goons": 1,
+   "adam-smasher-metal-over-meat": 1,
+   "kiroshi-optics": 3,
+   "zetatech-faceplate": 3,
+   "gorilla-arms": 3,
+   "adrenaline-converter": 2,
+   "mandibular-upgrade": 2,
+   "the-heist": 3,
+   "cyberpsychosis": 2,
+   "safety-override": 2
+  },
+  "confidence": "Low-Medium",
+  "summary": "Mono Yellow, the second most-built single-colour shell in the official deck builder. RAM 6 Yellow lets you run Adam Smasher: Metal Over Meat, which you already own, as a board wipe on a 15-power body (steals 2 Gigs). The rest is efficient big Units plus Gear that converts them into multi-Gig steals.",
+  "plan": [
+   "Curve out with Rockerboy, MaxTac and Heywood (8 power for 5-6 cost).",
+   "Equip Gorilla Arms or Adrenaline Converter, then use Dum Dum's Quick Spend to win fights by +1 power per Gear.",
+   "If behind on board, Adam Smasher wipes everything else and threatens 2 Gigs per swing."
+  ],
+  "mulligan": "Keep 2+ sellables and a 4- or 5-drop.",
+  "keyCards": [
+   {
+    "slug": "adam-smasher-metal-over-meat",
+    "why": "Board wipe plus a 15-power finisher. Already in your binder."
+   },
+   {
+    "slug": "gorilla-arms",
+    "why": "Doubles your steals."
+   },
+   {
+    "slug": "jackie-welles-ride-or-die-choom",
+    "why": "Grows by +2 per even Gig and draws when defeated."
+   }
+  ],
+  "weaknesses": "No Blue interaction (no Floor It or Reboot Optics), so you can't protect Units on the Rival's turn."
+ }
+]

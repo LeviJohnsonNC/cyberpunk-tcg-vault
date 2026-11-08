@@ -1,0 +1,399 @@
+import { useEffect, useMemo, useState } from 'react';
+import { BY_SLUG, CARDS, COLORS, RECOMMENDED, TYPES, cad, fitsRam, ramLimits, refPrice, searchCards, type Card } from '../lib/data';
+import { newId, useStore, type Deck } from '../lib/store';
+import { Bars, CardImg, Pip } from '../components/bits';
+
+const blank = (): Deck => ({ id: newId(), name: 'New crew', legends: [], cards: {}, sideboard: {}, notes: '', updatedAt: '' });
+const sum = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a + b, 0);
+
+export function deckFromRecommended(id: string): Deck | null {
+  const r = RECOMMENDED.find((d) => d.id === id);
+  if (!r) return null;
+  return { id: newId(), name: r.name, legends: [...r.legends], cards: { ...r.cards }, sideboard: {}, notes: r.summary, updatedAt: '' };
+}
+
+export function validate(d: Deck) {
+  const lim = ramLimits(d.legends);
+  const n = sum(d.cards);
+  const side = sum(d.sideboard);
+  const issues: string[] = [];
+  const passes: string[] = [];
+  if (d.legends.length !== 3) issues.push(`Needs exactly 3 Legends (has ${d.legends.length})`);
+  else passes.push('3 unique Legends');
+  if (n < 40 || n > 50) issues.push(`Main deck must be 40 to 50 cards (has ${n})`);
+  else passes.push(`${n} card main deck`);
+  const over = Object.entries(d.cards).filter(([s, q]) => q + (d.sideboard[s] ?? 0) > 3);
+  if (over.length) issues.push(`Max 3 copies: ${over.map(([s]) => BY_SLUG.get(s)?.name).join(', ')}`);
+  else passes.push('Copy limits OK');
+  const ramBad = Object.keys({ ...d.cards, ...d.sideboard }).filter((s) => {
+    const c = BY_SLUG.get(s);
+    return c && !fitsRam(c, lim);
+  });
+  if (ramBad.length) issues.push(`Over RAM limit: ${ramBad.map((s) => BY_SLUG.get(s)?.name).join(', ')}`);
+  else passes.push('All cards fit RAM');
+  if (side !== 0 && side !== 7) issues.push(`Sideboard must be exactly 7 for Bo3 (has ${side})`);
+  else if (side === 7) passes.push('7 card sideboard (Bo3 ready)');
+  return { lim, n, side, issues, passes, legal: issues.length === 0 };
+}
+
+export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) => void; initialDeck?: string }) {
+  const { decks, saveDeck, deleteDeck, owned, toast } = useStore();
+  const [deck, setDeck] = useState<Deck>(blank);
+  const [dirty, setDirty] = useState(false);
+  const [q, setQ] = useState('');
+  const [colors, setColors] = useState<string[]>([]);
+  const [type, setType] = useState('');
+  const [ownedOnly, setOwnedOnly] = useState(false);
+  const [legalOnly, setLegalOnly] = useState(true);
+  const [target, setTarget] = useState<'main' | 'side'>('main');
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState('');
+
+  useEffect(() => {
+    if (!initialDeck) return;
+    const mine = decks.find((d) => d.id === initialDeck);
+    const rec = mine ? null : deckFromRecommended(initialDeck);
+    const d = mine ?? rec;
+    if (d) {
+      setDeck(structuredClone(d));
+      setDirty(!!rec);
+    }
+    // only on navigation
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialDeck]);
+
+  const v = useMemo(() => validate(deck), [deck]);
+  const update = (fn: (d: Deck) => Deck) => {
+    setDeck((d) => fn(structuredClone(d)));
+    setDirty(true);
+  };
+
+  const pool = useMemo(() => {
+    let p: Card[] = searchCards(q);
+    if (colors.length) p = p.filter((c) => colors.includes(c.color));
+    if (type) p = p.filter((c) => c.type === type);
+    if (ownedOnly) p = p.filter((c) => owned.has(c.slug));
+    if (legalOnly && deck.legends.length) p = p.filter((c) => c.type === 'Legend' || fitsRam(c, v.lim));
+    return p.filter((c) => c.legal === 'legal' && c.text).sort((a, b) =>
+      (a.type === 'Legend' ? -1 : 0) - (b.type === 'Legend' ? -1 : 0) || (a.cost ?? 0) - (b.cost ?? 0) || a.display.localeCompare(b.display),
+    );
+  }, [q, colors, type, ownedOnly, legalOnly, deck.legends, v.lim, owned]);
+
+  const add = (c: Card) => {
+    if (c.type === 'Legend') {
+      if (deck.legends.includes(c.slug)) return toast('Legend already in crew', 'err');
+      if (deck.legends.length >= 3) return toast('Crew already has 3 Legends. Remove one first.', 'err');
+      return update((d) => ({ ...d, legends: [...d.legends, c.slug] }));
+    }
+    const zone = target === 'main' ? 'cards' : 'sideboard';
+    const total = (deck.cards[c.slug] ?? 0) + (deck.sideboard[c.slug] ?? 0);
+    if (total >= 3) return toast('Max 3 copies of a card', 'err');
+    update((d) => ({ ...d, [zone]: { ...d[zone], [c.slug]: (d[zone][c.slug] ?? 0) + 1 } }));
+  };
+  const remove = (slug: string, zone: 'cards' | 'sideboard') =>
+    update((d) => {
+      const z = { ...d[zone] };
+      z[slug] = (z[slug] ?? 0) - 1;
+      if (z[slug] <= 0) delete z[slug];
+      return { ...d, [zone]: z };
+    });
+
+  // stats
+  const mainCards = Object.entries(deck.cards).map(([s, n]) => ({ c: BY_SLUG.get(s)!, n })).filter((x) => x.c);
+  const curve = [0, 1, 2, 3, 4, 5, 6, 7].map((k) => ({
+    label: k === 7 ? '7+' : String(k),
+    value: mainCards.filter((x) => (k === 7 ? (x.c.cost ?? 0) >= 7 : (x.c.cost ?? 0) === k)).reduce((a, x) => a + x.n, 0),
+  }));
+  const typeCount = (t: string) => mainCards.filter((x) => x.c.type === t).reduce((a, x) => a + x.n, 0);
+  const sellable = mainCards.filter((x) => x.c.sellable).reduce((a, x) => a + x.n, 0);
+  const avgCost = v.n ? mainCards.reduce((a, x) => a + (x.c.cost ?? 0) * x.n, 0) / v.n : 0;
+
+  // ownership
+  const need: Record<string, number> = {};
+  for (const s of deck.legends) need[s] = (need[s] ?? 0) + 1;
+  for (const [s, n] of Object.entries(deck.cards)) need[s] = (need[s] ?? 0) + n;
+  for (const [s, n] of Object.entries(deck.sideboard)) need[s] = (need[s] ?? 0) + n;
+  const missing = Object.entries(need)
+    .map(([s, n]) => ({ slug: s, n: Math.max(0, n - (owned.get(s) ?? 0)) }))
+    .filter((x) => x.n > 0)
+    .map((x) => ({ ...x, c: BY_SLUG.get(x.slug)!, unit: refPrice(x.slug) }))
+    .sort((a, b) => b.unit * b.n - a.unit * a.n);
+  const missingCost = missing.reduce((a, x) => a + x.unit * x.n, 0);
+  const deckValue = Object.entries(need).reduce((a, [s, n]) => a + refPrice(s) * n, 0);
+
+  const deckText = () => {
+    const lines = [`// ${deck.name}`, '// Legends', ...deck.legends.map((s) => `1 ${BY_SLUG.get(s)?.display}`), '// Main'];
+    for (const x of mainCards.sort((a, b) => (a.c.cost ?? 0) - (b.c.cost ?? 0))) lines.push(`${x.n} ${x.c.display}`);
+    if (sum(deck.sideboard)) {
+      lines.push('// Sideboard');
+      for (const [s, n] of Object.entries(deck.sideboard)) lines.push(`${n} ${BY_SLUG.get(s)?.display}`);
+    }
+    return lines.join('\n');
+  };
+  const copy = async (text: string, what: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(`${what} copied`);
+    } catch {
+      toast('Clipboard blocked by browser', 'err');
+    }
+  };
+  const doImport = () => {
+    const d = blank();
+    let zone: 'cards' | 'sideboard' = 'cards';
+    const unknown: string[] = [];
+    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const idx = new Map<string, Card>();
+    for (const c of CARDS) { idx.set(norm(c.display), c); if (!idx.has(norm(c.name))) idx.set(norm(c.name), c); }
+    for (const raw of importText.split('\n')) {
+      const line = raw.trim();
+      if (!line) continue;
+      if (line.startsWith('//')) {
+        const name = line.slice(2).trim();
+        if (/sideboard/i.test(name)) zone = 'sideboard';
+        else if (/main/i.test(name)) zone = 'cards';
+        else if (!/legend/i.test(name) && d.name === 'New crew') d.name = name;
+        continue;
+      }
+      const m = line.match(/^(\d+)\s*x?\s+(.+)$/i);
+      const n = m ? parseInt(m[1], 10) : 1;
+      const nm = (m ? m[2] : line).replace(/\s*\(.*\)\s*$/, '');
+      const c = idx.get(norm(nm)) ?? idx.get(norm(nm.replace(' - ', ': ')));
+      if (!c) { unknown.push(nm); continue; }
+      if (c.type === 'Legend') { if (!d.legends.includes(c.slug)) d.legends.push(c.slug); }
+      else d[zone][c.slug] = (d[zone][c.slug] ?? 0) + n;
+    }
+    setDeck(d);
+    setDirty(true);
+    setShowImport(false);
+    toast(unknown.length ? `Imported, but couldn't match: ${unknown.slice(0, 4).join(', ')}` : 'Deck imported', unknown.length ? 'err' : 'ok');
+  };
+
+  const loadSel = (val: string) => {
+    if (!val) return;
+    if (dirty && !confirm('Discard unsaved changes?')) return;
+    if (val === '__new') { setDeck(blank()); setDirty(false); return; }
+    const mine = decks.find((d) => d.id === val);
+    if (mine) { setDeck(structuredClone(mine)); setDirty(false); return; }
+    const rec = deckFromRecommended(val);
+    if (rec) { setDeck(rec); setDirty(true); }
+  };
+
+  const legendCards = deck.legends.map((s) => BY_SLUG.get(s)!).filter(Boolean);
+  const groups: { t: string; items: { c: Card; n: number }[] }[] = TYPES.filter((t) => t !== 'Legend').map((t) => ({
+    t,
+    items: mainCards.filter((x) => x.c.type === t).sort((a, b) => (a.c.cost ?? 0) - (b.c.cost ?? 0) || a.c.display.localeCompare(b.c.display)),
+  }));
+  const short = (s: string, n: number) => Math.max(0, n - (owned.get(s) ?? 0));
+
+  return (
+    <section>
+      <div className="toolbar">
+        <select className="select" value="" onChange={(e) => loadSel(e.target.value)}>
+          <option value="">Load deck…</option>
+          <option value="__new">+ New empty deck</option>
+          {decks.length > 0 && (
+            <optgroup label="My decks">
+              {decks.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </optgroup>
+          )}
+          <optgroup label="Recommended">
+            {RECOMMENDED.map((d) => <option key={d.id} value={d.id}>{d.name} ({d.tier === 'owned' ? 'budget' : 'upgraded'})</option>)}
+          </optgroup>
+        </select>
+        <input className="input" style={{ flex: '1 1 220px', fontFamily: 'var(--head)', color: 'var(--y)' }} value={deck.name} onChange={(e) => update((d) => ({ ...d, name: e.target.value.slice(0, 80) }))} />
+        <button className="btn" onClick={() => { saveDeck(deck); setDirty(false); toast('Deck saved'); }}>{dirty ? 'Save*' : 'Save'}</button>
+        <button className="btn ghost" onClick={() => { const c = { ...structuredClone(deck), id: newId(), name: `${deck.name} (copy)` }; setDeck(c); saveDeck(c); setDirty(false); toast('Saved as copy'); }}>Save copy</button>
+        <button className="btn ghost" onClick={() => copy(deckText(), 'Decklist')}>Copy list</button>
+        <button className="btn ghost" onClick={() => setShowImport((s) => !s)}>Import</button>
+        {decks.some((d) => d.id === deck.id) && (
+          <button className="btn red sm" onClick={() => { if (confirm(`Delete "${deck.name}"?`)) { deleteDeck(deck.id); setDeck(blank()); setDirty(false); } }}>Delete</button>
+        )}
+      </div>
+
+      {showImport && (
+        <div className="panel hot" style={{ marginBottom: 14 }}>
+          <div className="panel-title">Paste a decklist</div>
+          <textarea className="input" style={{ width: '100%', minHeight: 140, fontFamily: 'var(--mono)' }} placeholder={'1 V: Corporate Exile\n3 Psycho Squad\n// Sideboard\n2 Floor It'} value={importText} onChange={(e) => setImportText(e.target.value)} />
+          <div className="row" style={{ marginTop: 8 }}><button className="btn" onClick={doImport}>Import list</button><span className="muted tiny">One card per line, "qty name". Lines starting with // set sections.</span></div>
+        </div>
+      )}
+
+      <div className="builder">
+        {/* POOL */}
+        <div className="panel">
+          <div className="panel-title">Card pool <span className="aside">{pool.length} cards · click to add</span></div>
+          <div className="toolbar">
+            <input className="input search grow" placeholder="Search cards…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <select className="select" value={type} onChange={(e) => setType(e.target.value)}>
+              <option value="">All types</option>
+              {TYPES.map((t) => <option key={t}>{t}</option>)}
+            </select>
+          </div>
+          <div className="toolbar">
+            <div className="chips">
+              {COLORS.map((c) => (
+                <button key={c} className={`chip c-${c} ${colors.includes(c) ? 'on' : ''}`} onClick={() => setColors((a) => (a.includes(c) ? a.filter((x) => x !== c) : [...a, c]))}>{c}</button>
+              ))}
+            </div>
+            <label className="toggle"><input type="checkbox" checked={ownedOnly} onChange={(e) => setOwnedOnly(e.target.checked)} />Owned only</label>
+            <label className="toggle"><input type="checkbox" checked={legalOnly} onChange={(e) => setLegalOnly(e.target.checked)} />Fits RAM</label>
+            <div className="chips">
+              <button className={`chip ${target === 'main' ? 'on' : ''}`} onClick={() => setTarget('main')}>Add to main</button>
+              <button className={`chip ${target === 'side' ? 'on' : ''}`} onClick={() => setTarget('side')}>Add to side</button>
+            </div>
+          </div>
+          <div className="pool">
+            {pool.map((c) => {
+              const inDeck = c.type === 'Legend' ? (deck.legends.includes(c.slug) ? 1 : 0) : (deck.cards[c.slug] ?? 0) + (deck.sideboard[c.slug] ?? 0);
+              const have = owned.get(c.slug) ?? 0;
+              const ramBad = deck.legends.length > 0 && !fitsRam(c, v.lim);
+              return (
+                <div key={c.slug} className={`pcard ${have === 0 ? 'dim' : ''}`} onClick={() => add(c)} onContextMenu={(e) => { e.preventDefault(); onOpen(c.slug); }} title={`${c.display}\nRight-click for details`}>
+                  <CardImg slug={c.slug} alt={c.display} />
+                  <span className="tag">own {have}</span>
+                  {inDeck > 0 && <span className="tag inDeck">{inDeck}</span>}
+                  {ramBad && <span className="tag bad">RAM {c.ram}</span>}
+                  <div className="name">{c.name}{c.sub ? <span className="muted">: {c.sub}</span> : null}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* DECK */}
+        <div style={{ display: 'grid', gap: 16 }}>
+          <div className="panel hot">
+            <div className="panel-title">Legend crew <span className="aside">RAM comes from Legends</span></div>
+            <div className="legend-slots">
+              {[0, 1, 2].map((i) => {
+                const c = legendCards[i];
+                return (
+                  <div key={i} className={`legend-slot ${c ? 'filled' : ''}`}>
+                    {c ? (
+                      <>
+                        <b style={{ cursor: 'pointer' }} onClick={() => onOpen(c.slug)}>{c.name}</b>
+                        <span className="csub">{c.sub}</span>
+                        <span className="row" style={{ gap: 6 }}>
+                          <Pip color={c.color} /> <span className="mono tiny">RAM {c.ram}</span>
+                          <span className="spacer" />
+                          <button className="iconbtn minus" onClick={() => update((d) => ({ ...d, legends: d.legends.filter((s) => s !== c.slug) }))}>×</button>
+                        </span>
+                      </>
+                    ) : (
+                      <span className="muted tiny">Empty slot. Click a Legend in the pool.</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="ramline" style={{ marginTop: 10 }}>
+              {COLORS.map((c) => (
+                <span key={c} className={`pip ${c}`} style={{ opacity: v.lim[c] ? 1 : 0.35 }}>{c} RAM {v.lim[c] ?? 0}</span>
+              ))}
+            </div>
+          </div>
+
+          <div className="panel">
+            <div className="panel-title">Main deck <span className="aside">{v.n} / 40-50</span></div>
+            {groups.map((g) =>
+              g.items.length ? (
+                <div key={g.t}>
+                  <div className="group-h">{g.t}s · {g.items.reduce((a, x) => a + x.n, 0)}</div>
+                  <div className="decklist">
+                    {g.items.map(({ c, n }) => {
+                      const s = short(c.slug, n + (deck.sideboard[c.slug] ?? 0));
+                      return (
+                        <div key={c.slug} className={`dl-row ${c.color} ${s ? 'missing' : ''}`}>
+                          <span className="cost">{c.cost ?? '—'}</span>
+                          <span style={{ cursor: 'pointer' }} onClick={() => onOpen(c.slug)}>
+                            {c.display} {s > 0 && <span className="short">need {s}</span>}
+                          </span>
+                          <span className="qty">
+                            <button className="iconbtn minus" onClick={() => remove(c.slug, 'cards')}>−</button>
+                            <b>{n}</b>
+                            <button className="iconbtn" onClick={() => add(c)}>+</button>
+                          </span>
+                          <span />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null,
+            )}
+            {v.n === 0 && <p className="muted">Click cards in the pool to add them, or load a recommended deck.</p>}
+            {sum(deck.sideboard) > 0 && (
+              <>
+                <div className="group-h">Sideboard · {sum(deck.sideboard)}</div>
+                <div className="decklist">
+                  {Object.entries(deck.sideboard).map(([s, n]) => {
+                    const c = BY_SLUG.get(s)!;
+                    return (
+                      <div key={s} className={`dl-row ${c.color}`}>
+                        <span className="cost">{c.cost ?? '—'}</span>
+                        <span>{c.display}</span>
+                        <span className="qty"><button className="iconbtn minus" onClick={() => remove(s, 'sideboard')}>−</button><b>{n}</b></span>
+                        <span />
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="panel">
+            <div className="panel-title">Diagnostics</div>
+            <ul className="checks">
+              {v.issues.map((i) => <li key={i} className="bad">{i}</li>)}
+              {v.passes.map((i) => <li key={i}>{i}</li>)}
+            </ul>
+            <div className="grid cols-2" style={{ marginTop: 12, gap: 8 }}>
+              <div className="mono tiny">UNITS <b style={{ color: 'var(--y)' }}>{typeCount('Unit')}</b> · GEAR <b style={{ color: 'var(--y)' }}>{typeCount('Gear')}</b> · PROGRAMS <b style={{ color: 'var(--y)' }}>{typeCount('Program')}</b></div>
+              <div className="mono tiny">SELLABLE <b style={{ color: sellable >= 18 ? 'var(--ok)' : 'var(--red)' }}>{sellable}</b> · AVG COST <b style={{ color: 'var(--y)' }}>{avgCost.toFixed(2)}</b></div>
+            </div>
+            {sellable < 18 && v.n > 0 && (
+              <p className="tiny" style={{ color: '#ffb3c1', marginBottom: 0 }}>
+                Low on sellable cards. Eddies only come from selling Gear or Programs (once per turn) and spending Legends. Most lists run 20 or more.
+              </p>
+            )}
+            <div className="group-h">Cost curve</div>
+            <Bars data={curve} />
+          </div>
+
+          <div className="panel red">
+            <div className="panel-title">
+              Acquisition <span className="aside">Deck value {cad(deckValue)}</span>
+            </div>
+            {missing.length === 0 ? (
+              <p style={{ margin: 0, color: 'var(--ok)' }}>You own every card in this deck. Sleeve up.</p>
+            ) : (
+              <>
+                <div className="row" style={{ marginBottom: 8 }}>
+                  <span>Missing <b>{missing.reduce((a, x) => a + x.n, 0)}</b> cards</span>
+                  <span className="spacer" />
+                  <b style={{ fontFamily: 'var(--head)', color: 'var(--red)', fontSize: 20 }}>{cad(missingCost)}</b>
+                </div>
+                <div className="decklist">
+                  {missing.map((x) => (
+                    <div key={x.slug} className={`dl-row ${x.c.color}`}>
+                      <span className="cost">{x.n}×</span>
+                      <span style={{ cursor: 'pointer' }} onClick={() => onOpen(x.slug)}>{x.c.display}</span>
+                      <span className="mono tiny">{cad(x.unit)}</span>
+                      <span className="mono tiny" style={{ color: 'var(--y)' }}>{cad(x.unit * x.n)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="row" style={{ marginTop: 10 }}>
+                  <button className="btn sm" onClick={() => copy(missing.map((x) => `${x.n} ${x.c.name}${x.c.sub ? ` - ${x.c.sub}` : ''}`).join('\n'), 'Shopping list')}>Copy shopping list</button>
+                  <a className="btn sm ghost" href="https://www.tcgplayer.com/massentry?productline=Cyberpunk%20TCG" target="_blank" rel="noreferrer">TCGplayer mass entry ↗</a>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

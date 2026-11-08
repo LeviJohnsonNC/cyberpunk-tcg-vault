@@ -1,0 +1,270 @@
+{
+ "app": "cyberpunk-tcg-vault",
+ "version": 1,
+ "label": "Levi's collection (Nov 8, 2026)",
+ "entries": [
+  {
+   "slug": "secondhand-bombus",
+   "printingId": "fcbb6d58-6666-4bd3-8ff0-64930fb0f422",
+   "qty": 3
+  },
+  {
+   "slug": "kiroshi-optics",
+   "printingId": "ec3368a9-79f1-4dfc-9cf7-1cb464ec1c88",
+   "qty": 5
+  },
+  {
+   "slug": "maxtac-suppression-team",
+   "printingId": "47f55164-e5da-494e-9d55-02bd0b7f97c1",
+   "qty": 2
+  },
+  {
+   "slug": "alt-cunningham-mother-of-daemons",
+   "printingId": "e782dd02-a136-4bf8-b04b-328c65b84f19",
+   "qty": 1,
+   "note": "Looked foil/textured in the photo. Confirm the finish."
+  },
+  {
+   "slug": "bootleg-black-sapphire-show",
+   "printingId": "decc76ed-f5ed-4f02-90d7-e01e2a3975e0",
+   "qty": 1,
+   "note": "Looked foil/textured in the photo. Confirm the finish."
+  },
+  {
+   "slug": "live-with-the-aftermath",
+   "printingId": "f931c82e-a382-4f60-808c-5910ac9850be",
+   "qty": 1
+  },
+  {
+   "slug": "viktor-vektor-you-might-feel-a-little-pinch",
+   "printingId": "4eca7fcd-85c1-43d0-8a07-4227312ab0db",
+   "qty": 2
+  },
+  {
+   "slug": "augmented-negotiators",
+   "printingId": "a195323a-e29e-4c05-8e6c-7f1638c8264c",
+   "qty": 1
+  },
+  {
+   "slug": "gorilla-arms",
+   "printingId": "e1959b9e-d32d-43be-94c3-a595809e0c28",
+   "qty": 1,
+   "note": "Looked foil/textured in the photo. Confirm the finish."
+  },
+  {
+   "slug": "jackie-welles-ride-or-die-choom",
+   "printingId": "12d44604-ad7b-4e82-b517-9edb0be44427",
+   "qty": 1,
+   "note": "Looked foil/textured in the photo. Confirm the finish."
+  },
+  {
+   "slug": "afterparty-at-lizzie-s",
+   "printingId": "d53925ee-df55-4b71-8ca0-13ec3ede2076",
+   "qty": 3
+  },
+  {
+   "slug": "heywood-ripperdoc",
+   "printingId": "2fc5ac93-dae5-4af5-a813-77abc0cc8dfd",
+   "qty": 2
+  },
+  {
+   "slug": "gilded-mato-n",
+   "printingId": "846b55b4-5e12-44b6-a204-53bd8c862888",
+   "qty": 2
+  },
+  {
+   "slug": "zetatech-faceplate",
+   "printingId": "79cdc9a5-d94d-4df4-9f88-aa02fb0357b3",
+   "qty": 5
+  },
+  {
+   "slug": "jacked-in-voodoo-boy",
+   "printingId": "8e2f2d0c-0e92-4744-a510-a9c7ac371d81",
+   "qty": 4,
+   "note": "Looked foil/textured in the photo. Confirm the finish."
+  },
+  {
+   "slug": "t-bug-amateur-philosopher",
+   "printingId": "e2e3d98d-0159-4a79-b543-e37264f23118",
+   "qty": 3
+  },
+  {
+   "slug": "adrenaline-converter",
+   "printingId": "535df2a9-d2af-463c-85dd-dafe67cab8fb",
+   "qty": 2
+  },
+  {
+   "slug": "delamain-cab",
+   "printingId": "5b9cdefa-29f4-4a3a-a426-eea46302ef60",
+   "qty": 3
+  },
+  {
+   "slug": "adam-smasher-metal-over-meat",
+   "printingId": "d23e322f-ad60-431d-b33e-1e8a813248ff",
+   "qty": 1
+  },
+  {
+   "slug": "delamain-rideshare-ai",
+   "printingId": "c7eba3a0-63cb-4311-988e-d487a7c0841a",
+   "qty": 1
+  },
+  {
+   "slug": "psycho-squad",
+   "printingId": "d7e0e2e5-6e22-4b45-9e91-50936773e2e1",
+   "qty": 4
+  },
+  {
+   "slug": "tetratronic-rippler",
+   "printingId": "576f82ff-3c4d-4637-aa91-2773de43bbc8",
+   "qty": 3
+  },
+  {
+   "slug": "alt-cunningham-soulkiller-architect",
+   "printingId": "cb23a651-dd1d-48f8-aca3-8d33fef79fdd",
+   "qty": 1,
+   "note": "Looked foil/textured in the photo. Confirm the finish."
+  },
+  {
+   "slug": "nocturne-op55-n1",
+   "printingId": "70c7f11e-e41d-44f2-b5cd-e8568915d6ac",
+   "qty": 2,
+   "note": "Looked foil/textured in the photo. Confirm the finish."
+  },
+  {
+   "slug": "unlikely-bond",
+   "printingId": "b21f86a3-cb77-44a3-bf94-4c5e068ac2c8",
+   "qty": 1
+  },
+  {
+   "slug": "reboot-optics",
+   "printingId": "fb096d3f-48eb-47c0-a065-81b39691e12f",
+   "qty": 3
+  },
+  {
+   "slug": "misty-olszewski-mender-of-broken-spirits",
+   "printingId": "17252514-02ba-4d0d-a9cc-3590cee528af",
+   "qty": 1
+  },
+  {
+   "slug": "chrome-reverie",
+   "printingId": "3f0319b8-e315-4e71-85b7-147a5b8ceba5",
+   "qty": 1
+  },
+  {
+   "slug": "les-e-le-mens",
+   "printingId": "14a0b813-d5e3-46e6-a001-aebbd3a95f11",
+   "qty": 1,
+   "note": "Looked foil/textured in the photo. Confirm the finish."
+  },
+  {
+   "slug": "mox-inciters",
+   "printingId": "354fd7d3-070d-4767-989c-5b3efbd9f30d",
+   "qty": 2
+  },
+  {
+   "slug": "offduty-malfini",
+   "printingId": "fbefb447-34a3-4d53-9b23-d1bf141f8eec",
+   "qty": 4
+  },
+  {
+   "slug": "v-corporate-exile",
+   "printingId": "4a5591f9-743e-4186-8deb-560971bb3f82",
+   "qty": 2
+  },
+  {
+   "slug": "trust-no-one",
+   "printingId": "70a2a18e-05c2-4a49-9236-e33b2c9819a5",
+   "qty": 1
+  },
+  {
+   "slug": "evelyn-parker-beautiful-enigma",
+   "printingId": "ba766c1d-d929-4a22-bc91-7400784536c8",
+   "qty": 1
+  },
+  {
+   "slug": "the-heist",
+   "printingId": "a1e2c25e-fb27-458f-984d-df422f879664",
+   "qty": 1
+  },
+  {
+   "slug": "mandibular-upgrade",
+   "printingId": "219b7a29-0f8b-4750-bc46-0f39eec6721b",
+   "qty": 4
+  },
+  {
+   "slug": "rockn-rockerboy",
+   "printingId": "07aaea5c-5aef-466e-956a-2e68930669c0",
+   "qty": 2
+  },
+  {
+   "slug": "safety-override",
+   "printingId": "5d987aa8-baed-45b2-986c-a21e04a53331",
+   "qty": 1
+  },
+  {
+   "slug": "dying-night-v-s-pistol",
+   "printingId": "2b1b6268-193f-4b9e-a63c-0cbc200d6db7",
+   "qty": 2
+  },
+  {
+   "slug": "floor-it",
+   "printingId": "91f9d30c-f74d-4be4-8505-52f05d309c92",
+   "qty": 3
+  },
+  {
+   "slug": "mt0d12-flathead",
+   "printingId": "5f0d9dac-2547-4ecb-896e-0c603968422a",
+   "qty": 2
+  },
+  {
+   "slug": "evelyn-parker-scheming-siren",
+   "printingId": "7d174619-2183-4058-a89a-082c6b7b5a5c",
+   "qty": 3
+  },
+  {
+   "slug": "jackie-welles-pour-one-out-for-me",
+   "printingId": "a33d3324-fe48-4a9f-80a8-8545a0a4727f",
+   "qty": 1
+  },
+  {
+   "slug": "viktor-vektor-sit-down-and-relax",
+   "printingId": "7d539173-4022-402e-a9f4-100338935fd2",
+   "qty": 1
+  },
+  {
+   "slug": "placide-voodoo-sentinel",
+   "printingId": "81c55c1f-362e-4ffd-8f9b-4162b298dbd5",
+   "qty": 1
+  },
+  {
+   "slug": "rogue-amendiares-queen-of-the-afterlife",
+   "printingId": "3193a6bd-3e99-4501-9c5c-8d5ea32c779c",
+   "qty": 1
+  },
+  {
+   "slug": "pyramid-song",
+   "printingId": "3b1d0570-bb8e-4ea5-9ec7-c698d9c9f94d",
+   "qty": 1
+  },
+  {
+   "slug": "hacked-corpo",
+   "printingId": "7dc71978-0995-4b93-9ba3-83d1118c3c4b",
+   "qty": 2
+  },
+  {
+   "slug": "maman-brigitte-spirit-of-death",
+   "printingId": "8a7131eb-e1dd-46d6-84f6-2de315aee975",
+   "qty": 1
+  },
+  {
+   "slug": "three-mouths-one-desire",
+   "printingId": "573a88e9-ac01-4402-8e3d-2420dc4ca949",
+   "qty": 2
+  },
+  {
+   "slug": "dexter-deshawn-one-last-chance",
+   "printingId": "e2f38541-ecc9-41dc-ae15-164171391bff",
+   "qty": 2
+  }
+ ]
+}
