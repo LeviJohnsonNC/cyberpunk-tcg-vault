@@ -1,0 +1,1002 @@
+{
+ "_about": "Hand-curated card ratings for the Vault's auto-builder. power: 1-10 (9-10 staple, 7-8 strong, 5-6 playable, 3-4 filler). roles drive deck composition. Grounded in usage across 26 decklists (Nov 2026) plus stat efficiency. Edit freely; run npm test.",
+ "cards": {
+  "don-t-fear-the-reaper": {
+   "power": 7,
+   "roles": [
+    "removal",
+    "sweeper"
+   ]
+  },
+  "6th-street-recruits": {
+   "power": 8,
+   "roles": [
+    "body"
+   ]
+  },
+  "adam-smasher-ender-of-legends": {
+   "power": 9,
+   "roles": [
+    "legend",
+    "finisher",
+    "removal"
+   ]
+  },
+  "adam-smasher-metal-over-meat": {
+   "power": 7,
+   "roles": [
+    "finisher",
+    "sweeper"
+   ]
+  },
+  "adrenaline-converter": {
+   "power": 6,
+   "roles": [
+    "gear"
+   ]
+  },
+  "afterparty-at-lizzie-s": {
+   "power": 7,
+   "roles": [
+    "gigs",
+    "draw"
+   ]
+  },
+  "all-is-lost": {
+   "power": 7,
+   "roles": [
+    "draw"
+   ]
+  },
+  "alt-cunningham-mother-of-daemons": {
+   "power": 7,
+   "roles": [
+    "finisher",
+    "draw"
+   ]
+  },
+  "alt-cunningham-soulkiller-architect": {
+   "power": 9,
+   "roles": [
+    "legend",
+    "draw",
+    "recursion"
+   ]
+  },
+  "animals-wrecker": {
+   "power": 7,
+   "roles": [
+    "finisher"
+   ]
+  },
+  "appetite-for-destruction": {
+   "power": 4,
+   "roles": [
+    "tempo"
+   ]
+  },
+  "arasaka-emergency-radioport": {
+   "power": 5,
+   "roles": [
+    "gear"
+   ]
+  },
+  "augmented-negotiators": {
+   "power": 7,
+   "roles": [
+    "early",
+    "blocker"
+   ]
+  },
+  "bonnie-and-clyde": {
+   "power": 8,
+   "roles": [
+    "removal"
+   ]
+  },
+  "bootleg-black-sapphire-show": {
+   "power": 6,
+   "roles": [
+    "draw",
+    "eddie"
+   ]
+  },
+  "caliber-totentanz-s-top-dog": {
+   "power": 6,
+   "roles": [
+    "body",
+    "removal"
+   ]
+  },
+  "carnage-at-the-colosseum": {
+   "power": 8,
+   "roles": [
+    "removal"
+   ]
+  },
+  "chrome-fang": {
+   "power": 6,
+   "roles": [
+    "body"
+   ]
+  },
+  "chrome-reverie": {
+   "power": 7,
+   "roles": [
+    "tempo"
+   ]
+  },
+  "corpo-security": {
+   "power": 4,
+   "roles": [
+    "early",
+    "blocker"
+   ]
+  },
+  "corporate-surveillance": {
+   "power": 6,
+   "roles": [
+    "tempo"
+   ]
+  },
+  "cyberpsychosis": {
+   "power": 5,
+   "roles": [
+    "quick"
+   ]
+  },
+  "deadman-transmitter": {
+   "power": 4,
+   "roles": [
+    "gear"
+   ]
+  },
+  "delamain-cab": {
+   "power": 4,
+   "roles": [
+    "body"
+   ]
+  },
+  "delamain-rideshare-ai": {
+   "power": 5,
+   "roles": [
+    "draw"
+   ]
+  },
+  "detonate": {
+   "power": 6,
+   "roles": [
+    "quick",
+    "removal"
+   ]
+  },
+  "dexter-deshawn-off-the-grid": {
+   "power": 7,
+   "roles": [
+    "legend",
+    "quick",
+    "draw"
+   ]
+  },
+  "dexter-deshawn-one-last-chance": {
+   "power": 6,
+   "roles": [
+    "early",
+    "gigs"
+   ]
+  },
+  "dum-dum-maelstrom-triggerman": {
+   "power": 8,
+   "roles": [
+    "legend",
+    "quick",
+    "draw"
+   ]
+  },
+  "dying-night-v-s-pistol": {
+   "power": 6,
+   "roles": [
+    "gear",
+    "gigs"
+   ]
+  },
+  "el-sombrero-n-la-venganza-lenta": {
+   "power": 5,
+   "roles": [
+    "finisher"
+   ]
+  },
+  "emergency-atlus": {
+   "power": 5,
+   "roles": [
+    "early",
+    "body"
+   ]
+  },
+  "evelyn-parker-beautiful-enigma": {
+   "power": 6,
+   "roles": [
+    "legend",
+    "eddie"
+   ]
+  },
+  "evelyn-parker-scheming-siren": {
+   "power": 4,
+   "roles": [
+    "early",
+    "draw"
+   ]
+  },
+  "field-operator": {
+   "power": 5,
+   "roles": [
+    "early",
+    "draw"
+   ]
+  },
+  "floor-it": {
+   "power": 8,
+   "roles": [
+    "quick",
+    "draw"
+   ]
+  },
+  "fool-on-the-hill": {
+   "power": 4,
+   "roles": [
+    "draw"
+   ]
+  },
+  "gilded-mato-n": {
+   "power": 5,
+   "roles": [
+    "removal"
+   ]
+  },
+  "gorilla-arms": {
+   "power": 7,
+   "roles": [
+    "gear"
+   ]
+  },
+  "goro-takemura-hands-unclean": {
+   "power": 6,
+   "roles": [
+    "legend",
+    "finisher"
+   ]
+  },
+  "goro-takemura-losing-his-way": {
+   "power": 6,
+   "roles": [
+    "body"
+   ]
+  },
+  "goro-takemura-vengeful-bodyguard": {
+   "power": 6,
+   "roles": [
+    "legend",
+    "quick"
+   ]
+  },
+  "gunpoint-diplomacy": {
+   "power": 4,
+   "roles": [
+    "tempo"
+   ]
+  },
+  "hacked-corpo": {
+   "power": 4,
+   "roles": [
+    "body",
+    "draw"
+   ]
+  },
+  "hanako-arasaka-daughter-of-the-emperor": {
+   "power": 8,
+   "roles": [
+    "legend",
+    "draw",
+    "gigs"
+   ]
+  },
+  "hanako-arasaka-in-a-gilded-cage": {
+   "power": 5,
+   "roles": [
+    "draw"
+   ]
+  },
+  "heywood-ripperdoc": {
+   "power": 7,
+   "roles": [
+    "finisher"
+   ]
+  },
+  "industrial-assembly": {
+   "power": 7,
+   "roles": [
+    "gigs",
+    "draw"
+   ]
+  },
+  "jacked-in-voodoo-boy": {
+   "power": 4,
+   "roles": [
+    "early"
+   ]
+  },
+  "jackie-welles-mama-s-favorite": {
+   "power": 6,
+   "roles": [
+    "legend",
+    "finisher"
+   ]
+  },
+  "jackie-welles-pour-one-out-for-me": {
+   "power": 8,
+   "roles": [
+    "legend",
+    "draw"
+   ]
+  },
+  "jackie-welles-ride-or-die-choom": {
+   "power": 8,
+   "roles": [
+    "finisher"
+   ]
+  },
+  "japantown-jonin": {
+   "power": 3,
+   "roles": [
+    "early"
+   ]
+  },
+  "johnny-silverhand-never-stop-fighting": {
+   "power": 8,
+   "roles": [
+    "finisher"
+   ]
+  },
+  "johnny-silverhand-rocking-renegade": {
+   "power": 7,
+   "roles": [
+    "legend"
+   ]
+  },
+  "judy-a-lvarez-braindance-maestro": {
+   "power": 8,
+   "roles": [
+    "legend",
+    "draw"
+   ]
+  },
+  "judy-a-lvarez-nothing-to-doubt": {
+   "power": 7,
+   "roles": [
+    "draw",
+    "finisher"
+   ]
+  },
+  "kerry-eurodyne-axe-attitude-audience": {
+   "power": 6,
+   "roles": [
+    "legend",
+    "draw"
+   ]
+  },
+  "kerry-eurodyne-the-last-rockerboy": {
+   "power": 7,
+   "roles": [
+    "body",
+    "draw"
+   ]
+  },
+  "kiroshi-optics": {
+   "power": 5,
+   "roles": [
+    "gear"
+   ]
+  },
+  "la-llorona-ghost-of-the-past": {
+   "power": 6,
+   "roles": [
+    "early",
+    "blocker",
+    "gigs"
+   ]
+  },
+  "les-e-le-mens": {
+   "power": 6,
+   "roles": [
+    "removal"
+   ]
+  },
+  "live-with-the-aftermath": {
+   "power": 5,
+   "roles": [
+    "removal"
+   ]
+  },
+  "lizzy-wizzy-delicate-weapon": {
+   "power": 7,
+   "roles": [
+    "blocker",
+    "recursion"
+   ]
+  },
+  "lucyna-kushinada-fresh-beginnings": {
+   "power": 6,
+   "roles": [
+    "legend",
+    "draw"
+   ]
+  },
+  "mt0d12-flathead": {
+   "power": 7,
+   "roles": [
+    "body",
+    "finisher"
+   ]
+  },
+  "maelstrom-goons": {
+   "power": 5,
+   "roles": [
+    "early"
+   ]
+  },
+  "maelstrom-zealots": {
+   "power": 5,
+   "roles": [
+    "removal"
+   ]
+  },
+  "maman-brigitte-spirit-of-death": {
+   "power": 6,
+   "roles": [
+    "removal"
+   ]
+  },
+  "mandibular-upgrade": {
+   "power": 7,
+   "roles": [
+    "gear",
+    "blocker"
+   ]
+  },
+  "mantis-blades": {
+   "power": 8,
+   "roles": [
+    "gear"
+   ]
+  },
+  "maxtac-av": {
+   "power": 7,
+   "roles": [
+    "body",
+    "gigs"
+   ]
+  },
+  "maxtac-heavy": {
+   "power": 6,
+   "roles": [
+    "finisher"
+   ]
+  },
+  "maxtac-squadron": {
+   "power": 5,
+   "roles": [
+    "early",
+    "body"
+   ]
+  },
+  "maxtac-suppression-team": {
+   "power": 7,
+   "roles": [
+    "body"
+   ]
+  },
+  "memory-relapse": {
+   "power": 7,
+   "roles": [
+    "tempo",
+    "draw"
+   ]
+  },
+  "meredith-stout-stone-cold-corpo": {
+   "power": 8,
+   "roles": [
+    "body",
+    "blocker"
+   ]
+  },
+  "minotaur": {
+   "power": 7,
+   "roles": [
+    "finisher",
+    "removal"
+   ]
+  },
+  "misty-olszewski-mender-of-broken-spirits": {
+   "power": 3,
+   "roles": [
+    "draw"
+   ]
+  },
+  "modded-kusanagi": {
+   "power": 5,
+   "roles": [
+    "finisher"
+   ]
+  },
+  "modded-muramasa": {
+   "power": 4,
+   "roles": [
+    "body"
+   ]
+  },
+  "mox-inciters": {
+   "power": 6,
+   "roles": [
+    "early",
+    "blocker"
+   ]
+  },
+  "muamar-reyes-el-capita-n": {
+   "power": 7,
+   "roles": [
+    "legend",
+    "quick",
+    "draw"
+   ]
+  },
+  "nadia-fighting-through-grief": {
+   "power": 8,
+   "roles": [
+    "finisher"
+   ]
+  },
+  "netwatch-netdriver": {
+   "power": 6,
+   "roles": [
+    "gear",
+    "draw"
+   ]
+  },
+  "nocturne-op55-n1": {
+   "power": 7,
+   "roles": [
+    "draw",
+    "tempo"
+   ]
+  },
+  "octant": {
+   "power": 5,
+   "roles": [
+    "finisher"
+   ]
+  },
+  "offduty-malfini": {
+   "power": 6,
+   "roles": [
+    "body",
+    "tempo"
+   ]
+  },
+  "over-the-edge": {
+   "power": 7,
+   "roles": [
+    "removal"
+   ]
+  },
+  "overwatch-panam-s-gift": {
+   "power": 6,
+   "roles": [
+    "gear",
+    "removal"
+   ]
+  },
+  "pacifica-netrunner": {
+   "power": 3,
+   "roles": [
+    "tempo"
+   ]
+  },
+  "padre-man-of-the-cross": {
+   "power": 7,
+   "roles": [
+    "legend",
+    "tempo",
+    "draw"
+   ]
+  },
+  "panam-palmer-nomad-cavalry": {
+   "power": 6,
+   "roles": [
+    "legend"
+   ]
+  },
+  "panam-palmer-strength-through-family": {
+   "power": 7,
+   "roles": [
+    "finisher",
+    "draw"
+   ]
+  },
+  "peace-offering": {
+   "power": 6,
+   "roles": [
+    "gigs",
+    "draw"
+   ]
+  },
+  "pepe-najarro-working-doubles": {
+   "power": 7,
+   "roles": [
+    "body"
+   ]
+  },
+  "placide-voodoo-sentinel": {
+   "power": 8,
+   "roles": [
+    "finisher",
+    "removal"
+   ]
+  },
+  "psycho-squad": {
+   "power": 8,
+   "roles": [
+    "body"
+   ]
+  },
+  "pyramid-song": {
+   "power": 7,
+   "roles": [
+    "removal"
+   ]
+  },
+  "reboot-optics": {
+   "power": 7,
+   "roles": [
+    "quick"
+   ]
+  },
+  "riding-nomad": {
+   "power": 5,
+   "roles": [
+    "body"
+   ]
+  },
+  "riot-shield": {
+   "power": 6,
+   "roles": [
+    "gear",
+    "blocker"
+   ]
+  },
+  "rita-wheeler-no-stupid-questions": {
+   "power": 6,
+   "roles": [
+    "body",
+    "blocker",
+    "draw"
+   ]
+  },
+  "river-ward-detective-on-the-hunt": {
+   "power": 9,
+   "roles": [
+    "legend",
+    "quick"
+   ]
+  },
+  "rockn-rockerboy": {
+   "power": 8,
+   "roles": [
+    "body"
+   ]
+  },
+  "rogue-amendiares-preem-solo": {
+   "power": 7,
+   "roles": [
+    "legend",
+    "finisher"
+   ]
+  },
+  "rogue-amendiares-queen-of-the-afterlife": {
+   "power": 6,
+   "roles": [
+    "body",
+    "eddie",
+    "quick"
+   ]
+  },
+  "royce-don-t-call-me-simon": {
+   "power": 6,
+   "roles": [
+    "removal"
+   ]
+  },
+  "royce-psycho-on-the-edge": {
+   "power": 6,
+   "roles": [
+    "legend",
+    "finisher"
+   ]
+  },
+  "ruthless-lowlife": {
+   "power": 4,
+   "roles": [
+    "early"
+   ]
+  },
+  "saburo-arasaka-stubborn-patriarch": {
+   "power": 7,
+   "roles": [
+    "legend"
+   ]
+  },
+  "safety-override": {
+   "power": 6,
+   "roles": [
+    "quick",
+    "removal"
+   ]
+  },
+  "sandayu-oda-hanako-s-guardian": {
+   "power": 7,
+   "roles": [
+    "finisher",
+    "tempo"
+   ]
+  },
+  "sandevistan": {
+   "power": 5,
+   "roles": [
+    "gear"
+   ]
+  },
+  "sasha-yakovleva-won-t-let-you-down": {
+   "power": 7,
+   "roles": [
+    "legend",
+    "finisher"
+   ]
+  },
+  "satori-sword-of-saburo": {
+   "power": 8,
+   "roles": [
+    "gear",
+    "draw"
+   ]
+  },
+  "saul-bright-stormrider": {
+   "power": 9,
+   "roles": [
+    "finisher"
+   ]
+  },
+  "screw-lovelorn-fool": {
+   "power": 7,
+   "roles": [
+    "body",
+    "recursion"
+   ]
+  },
+  "secondhand-bombus": {
+   "power": 6,
+   "roles": [
+    "early",
+    "blocker"
+   ]
+  },
+  "shattered-memories": {
+   "power": 5,
+   "roles": [
+    "draw"
+   ]
+  },
+  "sketchy-ripper": {
+   "power": 5,
+   "roles": [
+    "early",
+    "draw"
+   ]
+  },
+  "swordwise-huscle": {
+   "power": 4,
+   "roles": [
+    "early"
+   ]
+  },
+  "synapse-burnout": {
+   "power": 5,
+   "roles": [
+    "quick"
+   ]
+  },
+  "t-bug-amateur-philosopher": {
+   "power": 4,
+   "roles": [
+    "body"
+   ]
+  },
+  "take-control": {
+   "power": 6,
+   "roles": [
+    "quick"
+   ]
+  },
+  "tetratronic-rippler": {
+   "power": 5,
+   "roles": [
+    "gear",
+    "draw"
+   ]
+  },
+  "the-heist": {
+   "power": 7,
+   "roles": [
+    "draw"
+   ]
+  },
+  "the-relic-experimental-biochip": {
+   "power": 5,
+   "roles": [
+    "gear",
+    "recursion"
+   ]
+  },
+  "three-mouths-one-desire": {
+   "power": 7,
+   "roles": [
+    "draw"
+   ]
+  },
+  "towerfall": {
+   "power": 9,
+   "roles": [
+    "removal",
+    "sweeper"
+   ]
+  },
+  "trauma-team-operatives": {
+   "power": 6,
+   "roles": [
+    "finisher"
+   ]
+  },
+  "trust-no-one": {
+   "power": 6,
+   "roles": [
+    "gigs",
+    "draw"
+   ]
+  },
+  "tyger-s-whisper": {
+   "power": 5,
+   "roles": [
+    "early"
+   ]
+  },
+  "unlikely-bond": {
+   "power": 4,
+   "roles": [
+    "removal"
+   ]
+  },
+  "v-corporate-exile": {
+   "power": 7,
+   "roles": [
+    "legend",
+    "finisher"
+   ]
+  },
+  "v-roamer-of-the-badlands": {
+   "power": 6,
+   "roles": [
+    "body",
+    "gigs"
+   ]
+  },
+  "v-streetkid": {
+   "power": 8,
+   "roles": [
+    "legend",
+    "finisher",
+    "recursion"
+   ]
+  },
+  "valentino-guerrera": {
+   "power": 5,
+   "roles": [
+    "early"
+   ]
+  },
+  "valentino-street-racer": {
+   "power": 6,
+   "roles": [
+    "early",
+    "tempo"
+   ]
+  },
+  "viktor-vektor-drop-your-illusions": {
+   "power": 6,
+   "roles": [
+    "body",
+    "eddie"
+   ]
+  },
+  "viktor-vektor-sit-down-and-relax": {
+   "power": 7,
+   "roles": [
+    "legend",
+    "draw"
+   ]
+  },
+  "viktor-vektor-you-might-feel-a-little-pinch": {
+   "power": 6,
+   "roles": [
+    "early",
+    "recursion"
+   ]
+  },
+  "wakako-okada-peace-and-harmony": {
+   "power": 7,
+   "roles": [
+    "legend",
+    "quick",
+    "draw"
+   ]
+  },
+  "we-gotta-live-together": {
+   "power": 6,
+   "roles": [
+    "recursion"
+   ]
+  },
+  "westbrook-netrunner": {
+   "power": 5,
+   "roles": [
+    "body"
+   ]
+  },
+  "wild-in-the-streets": {
+   "power": 5,
+   "roles": [
+    "removal"
+   ]
+  },
+  "wraith-marauders": {
+   "power": 5,
+   "roles": [
+    "body"
+   ]
+  },
+  "yorinobu-arasaka-embracing-destruction": {
+   "power": 5,
+   "roles": [
+    "legend",
+    "draw"
+   ]
+  },
+  "yorinobu-arasaka-steel-dragon": {
+   "power": 9,
+   "roles": [
+    "finisher"
+   ]
+  },
+  "zetatech-berserk": {
+   "power": 5,
+   "roles": [
+    "gear"
+   ]
+  },
+  "zetatech-faceplate": {
+   "power": 8,
+   "roles": [
+    "gear",
+    "draw",
+    "gigs"
+   ]
+  }
+ }
+}

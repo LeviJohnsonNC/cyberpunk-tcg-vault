@@ -86,7 +86,7 @@ export default function App() {
         {route.tab === 'collection' && <Collection onOpen={setOpenCard} goAdd={() => go('add')} />}
         {route.tab === 'prices' && <PriceBook onOpen={setOpenCard} goAdd={() => go('add')} />}
         {route.tab === 'builder' && <DeckBuilder onOpen={setOpenCard} initialDeck={route.deck} />}
-        {route.tab === 'meta' && <MetaIntel onOpen={setOpenCard} openInBuilder={(id) => go('builder', id)} />}
+        {route.tab === 'meta' && <MetaIntel onOpen={setOpenCard} openInBuilder={(id) => go('builder', id)} goAdd={() => go('add')} />}
         {route.tab === 'add' && <AddCards onOpen={setOpenCard} />}
       </main>
 

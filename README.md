@@ -5,7 +5,7 @@ A Night City-styled collection tracker, CAD price book and deck builder for the 
 - **Collection:** the full card database (152 cards, every printing) with search, sort and filters (colour, type, rarity, cost, sell tag) and one-click quantity edits.
 - **Price book:** TCGplayer market prices converted to CAD, with value by rarity and colour, a price-confidence flag on every card, trade-binder extras and CSV export.
 - **Deck builder:** pick a three-Legend crew and see per-colour RAM limits enforced live. It checks 40-50 card decks, the 3-copy cap and the 7-card sideboard, and shows the cost curve, sellable count, which cards you own versus need, and the CAD cost to finish the deck.
-- **Meta intel:** a rules primer, early deck-builder popularity data, and five Yellow/Blue decks scored against *your* collection.
+- **Meta intel:** a rules primer, early popularity data, 12 curated decks across all four colours with a "decks I can build" filter (all / 80%+ owned / fully owned), and **Built from your vault**: an instant, deterministic auto-builder that tries every Legend crew you own and returns the best three legal decks, with optional steering (colours, style, must-include cards) and priced upgrade suggestions.
 - **Add cards:** type to search, or upload photos. A vision model proposes matches and you confirm before anything is saved.
 - **Accounts:** email magic-link login through Supabase, with per-user collections and decks protected by row-level security. Without Supabase configured, the app runs in local mode (browser storage).
 
@@ -86,7 +86,9 @@ CLAUDE.md                agent instructions
 api/scan.ts              photo-scan function (auth, rate limit, OpenRouter, fuzzy match)
 api/_cards.ts            generated card-name list for the scanner
 scripts/sync-data.mjs    card DB + TCGplayer + FX sync
-scripts/decks_src.py     source + legality checks for the recommended decks
+scripts/decks_src.py     recommended deck lists + legality checks (writes src/data/decks.json)
+scripts/deck_notes.json  recommended deck write-ups and sources
+src/curated/             hand-curated card ratings for the auto-builder
 src/data/*.json          generated card, price and deck data
 src/lib/                 data helpers, Supabase client, store (local and cloud)
 src/views/               Collection, PriceBook, DeckBuilder, MetaIntel, AddCards

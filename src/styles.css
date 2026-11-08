@@ -257,6 +257,17 @@ button.cname:hover { color: var(--color-accent); }
 .weak { color: var(--color-text-muted); }
 .weak b { color: var(--color-danger); }
 
+/* ---------- vault builds ---------- */
+.vault-builds { margin-bottom: var(--space-2); }
+.vault-build { display: flex; flex-direction: column; gap: var(--space-2); background: var(--color-canvas-deep); border: 1px solid var(--color-divider); padding: var(--space-4); min-width: 0; }
+.vault-build:first-child { border-color: var(--color-accent-deep); }
+.vault-build .legend-row img, .vault-build .legend-row .noart { width: 60px; }
+.vault-build-title { margin: 0; font: 800 22px/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.01em; overflow-wrap: anywhere; }
+.vault-upgrades { font-size: 13px; color: var(--color-text-muted); }
+.vault-upgrades summary { cursor: pointer; }
+.vault-upgrades summary:hover { color: var(--color-text); }
+.vault-upgrades ul { margin: 6px 0 0; padding-left: 18px; line-height: 1.6; }
+
 /* ---------- add cards ---------- */
 .dropzone { border: 2px dashed var(--color-accent-deep); padding: 30px; text-align: center; cursor: pointer; background: var(--color-canvas-deep); transition: background 0.1s, border-color 0.1s; display: block; width: 100%; color: inherit; }
 .dropzone:hover, .dropzone.over { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 7%, var(--color-canvas-deep)); }
