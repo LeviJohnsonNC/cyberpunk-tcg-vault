@@ -5,7 +5,7 @@ A Night City-styled collection tracker, CAD price book and deck builder for the 
 - **Collection:** the full card database (152 cards, every printing) with search, sort and filters (colour, type, rarity, cost, sell tag) and one-click quantity edits.
 - **Price book:** TCGplayer market prices converted to CAD, with value by rarity and colour, a price-confidence flag on every card, trade-binder extras and CSV export.
 - **Deck builder:** pick a three-Legend crew and see per-colour RAM limits enforced live. It checks 40-50 card decks, the 3-copy cap and the 7-card sideboard, and shows the cost curve, sellable count, which cards you own versus need, and the CAD cost to finish the deck.
-- **Meta intel:** a rules primer, early deck-builder popularity data, and five Yellow/Blue decks scored against *your* collection.
+- **Meta intel:** a rules primer, early popularity data, 12 curated decks across all four colours with a "decks I can build" filter (all / 80%+ owned / fully owned), and **Built from your vault**: an instant, deterministic auto-builder that tries every Legend crew you own and returns the best three legal decks, with optional steering (colours, style, must-include cards) and priced upgrade suggestions. Signed-in users can **Refine with AI**: a language model tunes one build against your full pool and explains the game plan, mulligan and swaps. The model only proposes; the server repairs and re-validates its list, so the result is always legal and built from cards you own. Prices always come from our data, never the model.
 - **Add cards:** type to search, or upload photos. A vision model proposes matches and you confirm before anything is saved.
 - **Accounts:** email magic-link login through Supabase, with per-user collections and decks protected by row-level security. Without Supabase configured, the app runs in local mode (browser storage).
 
@@ -34,7 +34,7 @@ To test photo scanning locally, use `vercel dev` with the server env vars below.
 
 ### 1. Supabase
 1. Create a project at supabase.com.
-2. **SQL Editor → New query**: paste [`supabase/schema.sql`](supabase/schema.sql) and run it.
+2. **SQL Editor → New query**: paste [`supabase/schema.sql`](supabase/schema.sql) and run it. Existing projects upgrade by running the files in [`supabase/migrations/`](supabase/migrations) in order (`002_ai_usage.sql` adds the AI refinement counter).
 3. **Authentication → URL Configuration**: set **Site URL** to your Vercel URL (e.g. `https://cyberpunk-tcg-vault.vercel.app`), and add the same URL under **Redirect URLs**.
 4. *(Optional) Google sign-in:* create an OAuth client in Google Cloud (see "Google sign-in" below), then **Authentication → Sign In / Providers → Google**: enable it and paste the Client ID and Secret. The "Continue with Google" button appears automatically once the provider is on.
 5. Copy the **publishable/anon key** into `.env.production` (`VITE_SUPABASE_ANON_KEY`). It's public by design. Keep the secret/service-role key out of git.
@@ -50,6 +50,9 @@ To test photo scanning locally, use `vercel dev` with the server env vars below.
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase secret key | Verifies logins and counts scans. Server-only. |
 | `OPENROUTER_MODEL` | `google/gemini-2.5-flash` | Optional. Any OpenRouter vision model. |
 | `SCAN_DAILY_LIMIT` | `25` | Optional. Scans per user per day. |
+| `DECK_MODEL` | `anthropic/claude-sonnet-5.5` | Optional. OpenRouter model for AI deck refinement. |
+| `DECK_DAILY_LIMIT` | `3` | Optional. AI refinements per user per day (about $0.02 each on the default model). |
+| `UNLIMITED_EMAILS` | `you@example.com` | Optional. Comma-separated accounts that skip the AI limit. Keep it out of git. |
 
 3. Deploy. Pushes to `main` redeploy automatically, including the daily data-sync commits.
 
@@ -77,6 +80,7 @@ To test photo scanning locally, use `vercel dev` with the server env vars below.
 - `collection_items`: one row per user × printing (`card_slug`, `printing_id`, `qty`, `note`)
 - `decks`: legends (`text[]`), cards and sideboard (`jsonb` slug → qty), and `is_public`
 - `scan_usage`: per-user daily scan counter, written only by the server function
+- `ai_usage`: per-user, per-feature daily AI counter (`bump_ai_usage`), written only by the server function
 
 ## Project layout
 
@@ -84,12 +88,18 @@ To test photo scanning locally, use `vercel dev` with the server env vars below.
 docs/design-system.md    Afterlife design language (read before UI changes)
 CLAUDE.md                agent instructions
 api/scan.ts              photo-scan function (auth, rate limit, OpenRouter, fuzzy match)
+api/refine-deck.ts       AI deck refinement (auth, limit, OpenRouter, repair + validate)
+api/_deckrules.ts        server copy of the deck rules and the repair step
 api/_cards.ts            generated card-name list for the scanner
+api/_carddata.ts         generated card stats and text for the server (scripts/gen-api-data.mjs)
 scripts/sync-data.mjs    card DB + TCGplayer + FX sync
-scripts/decks_src.py     source + legality checks for the recommended decks
+scripts/decks_src.py     recommended deck lists + legality checks (writes src/data/decks.json)
+scripts/deck_notes.json  recommended deck write-ups and sources
+src/curated/             hand-curated card ratings for the auto-builder
 src/data/*.json          generated card, price and deck data
 src/lib/                 data helpers, Supabase client, store (local and cloud)
 src/views/               Collection, PriceBook, DeckBuilder, MetaIntel, AddCards
-supabase/schema.sql      tables, RLS policies, scan counter
+supabase/schema.sql      tables, RLS policies, scan and AI counters
+supabase/migrations/     upgrades for existing projects
 public/imports/          sample collection (one-click import)
 ```

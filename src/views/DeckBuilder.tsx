@@ -4,6 +4,7 @@ import { deckFromRecommended, validate } from '../lib/decks';
 import { newId, useStore, type Deck } from '../lib/store';
 import { Bars, CardImg, Pip } from '../components/bits';
 import { Masthead } from '../components/ui';
+import { PENDING_DECK_KEY } from '../components/VaultBuilds';
 
 const blank = (): Deck => ({ id: newId(), name: 'New crew', legends: [], cards: {}, sideboard: {}, notes: '', updatedAt: '' });
 const sum = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a + b, 0);
@@ -23,6 +24,19 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
 
   useEffect(() => {
     if (!initialDeck) return;
+    if (initialDeck === '__pending') {
+      try {
+        const raw = sessionStorage.getItem(PENDING_DECK_KEY);
+        if (raw) {
+          setDeck(JSON.parse(raw) as Deck);
+          setDirty(true);
+          sessionStorage.removeItem(PENDING_DECK_KEY);
+        }
+      } catch {
+        /* ignore malformed handoff */
+      }
+      return;
+    }
     const mine = decks.find((d) => d.id === initialDeck);
     const rec = mine ? null : deckFromRecommended(initialDeck);
     const d = mine ?? rec;
