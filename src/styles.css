@@ -188,7 +188,7 @@ button.cname:hover { color: var(--color-accent); }
 .drawer-preview, .drawer-summary { display: grid; align-content: start; gap: var(--space-3); min-width: 0; }
 .drawer-heading { padding-inline-end: var(--space-6); }
 .drawer-preview-select { display: grid; gap: var(--space-1); min-width: 0; }
-.drawer-preview-select select { width: 100%; font-size: 13px; }
+.drawer-preview-select .select { width: 100%; font-size: 13px; }
 .drawer-printing-art { margin: 0; }
 .drawer-printing-art .card-art { display: block; object-fit: contain; transform: none; box-shadow: 3px 4px 0 var(--color-accent-deep); }
 .drawer-printing-art figcaption { margin-top: var(--space-2); }
@@ -569,10 +569,12 @@ img.card-art { background: var(--color-canvas-deep) url('/img/card-back.webp') c
 
 /* ---------- explicit printings ---------- */
 .select.unspecified { border-color: color-mix(in srgb, var(--color-basis-proxy) 60%, transparent); color: var(--color-basis-proxy); }
+.add-printing-select { padding: 4px 6px; font-size: 12px; }
+.scan-card-select { width: 100%; padding: 4px 6px; }
 .scan-bulk { flex-wrap: wrap; gap: 6px 8px; margin-bottom: 8px; }
 @media (max-width: 760px) {
   .scan-row { grid-template-columns: 22px 40px minmax(0, 1fr); }
-  .scan-row > select.select, .scan-row > .input, .scan-row > .btn { grid-column: 3; }
+  .scan-row > .select, .scan-row > .input, .scan-row > .btn { grid-column: 3; }
 }
 .qty-pick { font: 600 11px/1 var(--font-mono); text-transform: uppercase; letter-spacing: 0.05em; padding: 5px 8px; }
 .unspec-banner .row { flex-wrap: wrap; gap: 6px 10px; }

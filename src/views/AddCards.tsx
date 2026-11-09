@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { VaultSelect } from '../components/VaultSelect';
 import { BY_SLUG, CARDS, defaultPrinting, editionPrinting, isUnspecified, printingLabel, searchCards, unspecifiedId, valueHolding } from '../lib/data';
 import { money } from '../lib/currency';
 import { useStore, type Entry } from '../lib/store';
@@ -175,9 +176,9 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
                     <div className="cname">{c.display}</div>
                     <div className="row tiny" style={{ gap: 8 }}>
                       <Pip color={c.color} /> <span className="muted">{c.type}</span>
-                      <select className="select" style={{ padding: '3px 6px', fontSize: 12 }} value={pid} onChange={(e) => setPrintFor((m) => ({ ...m, [c.slug]: e.target.value }))}>
-                        {c.printings.map((p) => <option key={p.id} value={p.id}>{printingLabel(p.id)}</option>)}
-                      </select>
+                      <VaultSelect aria-label={`Printing for ${c.display}`} className="add-printing-select" value={pid}
+                        onValueChange={(value) => setPrintFor((m) => ({ ...m, [c.slug]: value }))}
+                        options={c.printings.map((p) => ({ value: p.id, label: printingLabel(p.id) }))} />
                       <span className="mono" title={pr ? `${pr.basis}${pr.sourcePrintingId !== pid ? `, from ${printingLabel(pr.sourcePrintingId, false)}` : ''}` : 'No quote for this printing'}>{pr ? money(pr.cad) : 'Unpriced'}</span>
                       <span className="muted">own {ownedQty(pid)}</span>
                     </div>
@@ -239,24 +240,24 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
                       <input type="checkbox" checked={s.on} onChange={(e) => editScan(s.key, { on: e.target.checked })} style={{ accentColor: 'var(--color-accent)' }} aria-label="Include this match" />
                       <CardImg className="thumb" slug={s.slug} alt="" />
                       <div>
-                        <select className="select" style={{ width: '100%', padding: '4px 6px' }} aria-label="Card" value={s.slug} onChange={(e) => editScan(s.key, { slug: e.target.value, printingId: unspecifiedId(e.target.value) })}>
-                          {sortedCards.map((x) => <option key={x.slug} value={x.slug}>{x.display}</option>)}
-                        </select>
+                        <VaultSelect className="scan-card-select" aria-label="Card" value={s.slug}
+                          onValueChange={(value) => editScan(s.key, { slug: value, printingId: unspecifiedId(value) })}
+                          options={sortedCards.map((x) => ({ value: x.slug, label: x.display }))} />
                         <div className="tiny muted">
                           {s.read && <>read "{s.read}" · </>}
                           <span className={s.confidence < 0.6 ? 'danger-text' : undefined}>{Math.round(s.confidence * 100)}% sure</span>
                         </div>
                       </div>
-                      <select
-                        className={`select ${isUnspecified(s.printingId) ? 'unspecified' : ''}`}
-                        style={{ padding: '4px 6px', fontSize: 12 }}
+                      <VaultSelect
+                        className={`add-printing-select${isUnspecified(s.printingId) ? ' unspecified' : ''}`}
                         aria-label="Printing"
                         value={s.printingId}
-                        onChange={(e) => editScan(s.key, { printingId: e.target.value })}
-                      >
-                        <option value={unspecifiedId(s.slug)}>Printing unspecified</option>
-                        {c.printings.map((p) => <option key={p.id} value={p.id}>{printingLabel(p.id)}</option>)}
-                      </select>
+                        onValueChange={(value) => editScan(s.key, { printingId: value })}
+                        options={[
+                          { value: unspecifiedId(s.slug), label: 'Printing unspecified' },
+                          ...c.printings.map((p) => ({ value: p.id, label: printingLabel(p.id) })),
+                        ]}
+                      />
                       <input className="input" type="number" min={0} max={99} aria-label="Quantity" style={{ padding: '6px', width: '100%' }} value={s.qty} onChange={(e) => editScan(s.key, { qty: Math.max(0, +e.target.value || 0) })} />
                       <button className="btn quiet sm" onClick={() => splitScan(s.key)} disabled={s.qty < 2} title="Split off one copy to give it a different printing">Split</button>
                     </div>
