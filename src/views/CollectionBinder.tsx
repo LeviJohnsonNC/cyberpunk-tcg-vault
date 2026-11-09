@@ -53,10 +53,12 @@ function PocketValue({ item }: { item: CollectionCard }) {
   if (value.unpriced === qty) return <span>Unpriced</span>;
   return (
     <>
-      {exact && <span><b>{money(exact.cad)}</b> each</span>}
+      <span className="binder-price-line">
+        {exact && <span><b>{money(exact.cad)}</b> each</span>}
+        {(!exact || qty > 1) && <span className="binder-total"><b>{money(value.knownCad)}</b> {value.unpriced ? 'priced' : 'total'}</span>}
+      </span>
       {exact?.basis === 'Beta proxy' && <span className="binder-proxy">Beta proxy</span>}
       {exact?.basis === 'Low listing' && <span>Low listing</span>}
-      {(!exact || qty > 1) && <span className="binder-total"><b>{money(value.knownCad)}</b> {value.unpriced ? 'priced' : 'total'}</span>}
       {value.unpriced > 0 && <span>+{value.unpriced} unpriced</span>}
     </>
   );
