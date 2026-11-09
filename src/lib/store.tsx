@@ -41,11 +41,26 @@ interface StoreValue {
   pushLocalToCloud: () => Promise<void>;
   toasts: Toast[];
   toast: (msg: string, tone?: 'ok' | 'err') => void;
+  /** Demo mode: a sample collection held in memory. Nothing is saved; exit restores the real vault. */
+  demo: boolean;
+  startDemo: () => Promise<void>;
+  exitDemo: () => void;
 }
 
 const Ctx = createContext<StoreValue | null>(null);
 const LS_COL = 'cptv.collection.v1';
 const LS_DECKS = 'cptv.decks.v1';
+const SS_DEMO = 'cptv.demo.v1';
+const DEMO_URL = '/imports/levi-collection.json';
+
+const readDemo = (): Entry[] | null => {
+  try {
+    const v = sessionStorage.getItem(SS_DEMO);
+    return v ? (JSON.parse(v) as Entry[]) : null;
+  } catch {
+    return null;
+  }
+};
 
 const readLS = <T,>(k: string, d: T): T => {
   try {
@@ -82,7 +97,10 @@ function mergeEntries(base: Entry[], items: Entry[], mode: 'add' | 'replace'): E
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(!supabase);
-  const [entries, setEntries] = useState<Entry[]>(() => readLS(LS_COL, [] as Entry[]));
+  const [realEntries, setEntries] = useState<Entry[]>(() => readLS(LS_COL, [] as Entry[]));
+  const [demoEntries, setDemoEntries] = useState<Entry[] | null>(readDemo);
+  const demo = demoEntries !== null;
+  const entries = demoEntries ?? realEntries;
   const [decks, setDecks] = useState<Deck[]>(() => readLS(LS_DECKS, [] as Deck[]));
   const [localPending, setLocalPending] = useState(0);
   const [syncing, setSyncing] = useState(false);
@@ -152,8 +170,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // persist local mode
   useEffect(() => {
-    if (mode === 'local') writeLS(LS_COL, entries);
-  }, [entries, mode]);
+    if (mode === 'local') writeLS(LS_COL, realEntries);
+  }, [realEntries, mode]);
+  useEffect(() => {
+    try {
+      if (demoEntries) sessionStorage.setItem(SS_DEMO, JSON.stringify(demoEntries));
+      else sessionStorage.removeItem(SS_DEMO);
+    } catch {
+      /* storage blocked: demo lasts until reload */
+    }
+  }, [demoEntries]);
   useEffect(() => {
     if (mode === 'local') writeLS(LS_DECKS, decks);
   }, [decks, mode]);
@@ -184,6 +210,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const q = Math.max(0, Math.min(999, Math.round(qty)));
     const ex = entries.find((e) => e.printingId === printingId);
     const changed: Entry = { slug, printingId, qty: q, note: note === undefined ? ex?.note ?? null : note };
+    if (demo) {
+      setDemoEntries((prev) => [...(prev ?? []).filter((e) => e.printingId !== printingId), ...(q > 0 ? [changed] : [])]);
+      return;
+    }
     setEntries((prev) => {
       const rest = prev.filter((e) => e.printingId !== printingId);
       return q > 0 ? [...rest, changed] : rest;
@@ -193,6 +223,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const addMany = async (items: Entry[], m: 'add' | 'replace' = 'add') => {
     const next = mergeEntries(m === 'replace' ? [] : entries, items, 'add');
+    if (demo) {
+      setDemoEntries(next);
+      return;
+    }
     if (mode === 'cloud' && supabase && session) {
       if (m === 'replace') await supabase.from('collection_items').delete().eq('user_id', session.user.id);
       await upsertCloud(next);
@@ -201,6 +235,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const clearCollection = async () => {
+    if (demo) {
+      setDemoEntries([]);
+      return;
+    }
     if (mode === 'cloud' && supabase && session) {
       const { error } = await supabase.from('collection_items').delete().eq('user_id', session.user.id);
       if (error) return toast(error.message, 'err');
@@ -232,10 +270,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (mode === 'cloud' && supabase) await supabase.from('decks').delete().eq('id', id);
   };
 
+  const startDemo = async () => {
+    try {
+      const r = await fetch(DEMO_URL);
+      const data = (await r.json()) as { entries: Entry[] };
+      setDemoEntries(mergeEntries([], data.entries, 'add'));
+    } catch {
+      toast('Could not load the demo collection. Try again.', 'err');
+    }
+  };
+  const exitDemo = () => setDemoEntries(null);
+
   const pushLocalToCloud = async () => {
     const local = readLS(LS_COL, [] as Entry[]);
     const localDecks = readLS(LS_DECKS, [] as Deck[]);
-    await addMany(local, 'add');
+    const merged = mergeEntries(realEntries, local, 'add');
+    if (supabase && session) await upsertCloud(merged);
+    setEntries(merged);
     for (const d of localDecks) await saveDeck(d);
     setLocalPending(0);
     toast(`Synced ${local.length} entries and ${localDecks.length} decks to your account`);
@@ -248,6 +299,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value: StoreValue = {
     ready, syncing, mode, session, entries, owned, setQty, addMany, clearCollection,
     decks, saveDeck, deleteDeck, signOut, localPending, pushLocalToCloud, toasts, toast,
+    demo, startDemo, exitDemo,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

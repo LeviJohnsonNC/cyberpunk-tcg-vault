@@ -6,20 +6,15 @@
 // Header: Authorization: Bearer <supabase access token>
 // Env: OPENROUTER_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
 //      DECK_MODEL (default anthropic/claude-sonnet-5.5), DECK_DAILY_LIMIT (default 3),
-//      UNLIMITED_EMAILS (comma-separated; bypasses the daily limit)
+//      UNLIMITED_EMAILS (comma-separated; bypasses the daily limits), REFINE_GLOBAL_DAILY_LIMIT (default 40)
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { CARD, fits, ramLimits, repair, resolveName, validateDeck } from './_deckrules.js';
+import { GLOBAL_CAP_MESSAGE, isUnlimited, takeGlobal } from './_aiguard.js';
 
 const MODEL = process.env.DECK_MODEL || 'anthropic/claude-sonnet-5.5';
 const LIMIT = Number(process.env.DECK_DAILY_LIMIT || 3);
 const SB_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const UNLIMITED = new Set(
-  (process.env.UNLIMITED_EMAILS || '')
-    .split(',')
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean),
-);
 const STYLES = new Set(['balanced', 'aggro', 'control']);
 
 async function authUser(token: string | undefined): Promise<{ id: string; email: string } | null> {
@@ -188,7 +183,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || undefined;
   const user = await authUser(token);
   if (!user) return res.status(401).json({ error: 'Sign in to refine decks with AI.' });
-  const unlimited = UNLIMITED.has(user.email);
+  const unlimited = isUnlimited(user.email);
   let remaining: number | null = null;
   if (!unlimited) {
     let used: number;
@@ -199,6 +194,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     if (used > LIMIT) return res.status(429).json({ error: `You've used today's ${LIMIT} AI refinements. They reset at midnight UTC.` });
     remaining = LIMIT - used;
+    if (!(await takeGlobal('deck_refine', SB_URL, SB_KEY))) return res.status(429).json({ error: GLOBAL_CAP_MESSAGE, code: 'global' });
   }
 
   // ---- model ----

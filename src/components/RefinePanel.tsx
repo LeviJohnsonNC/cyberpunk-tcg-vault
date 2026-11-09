@@ -1,7 +1,8 @@
 // "Refine with AI" (Phase 3): sends one auto-built deck to /api/refine-deck.
 // The model only proposes; the server repairs and validates, so anything shown here is legal and owned.
 import { useEffect, useRef, useState } from 'react';
-import { BY_SLUG, cad, refPrice } from '../lib/data';
+import { BY_SLUG, refPrice } from '../lib/data';
+import { money } from '../lib/currency';
 import type { Build, Style } from '../lib/autobuild';
 import { useStore } from '../lib/store';
 
@@ -165,12 +166,12 @@ export function RefinePanel({
             )}
             {r.buy.length > 0 && (
               <>
-                <div className="label">Worth buying <span className="num">{cad(buyTotal)}</span></div>
+                <div className="label">Worth buying <span className="num">{money(buyTotal)}</span></div>
                 <ul className="refine-swaps">
                   {r.buy.map((b) => (
                     <li key={b.slug}>
                       <div>
-                        <a href="#" onClick={(e) => { e.preventDefault(); onOpen(b.slug); }}>{name(b.slug)}</a> <span className="num">{cad(refPrice(b.slug))}</span>
+                        <a href="#" onClick={(e) => { e.preventDefault(); onOpen(b.slug); }}>{name(b.slug)}</a> <span className="num">{money(refPrice(b.slug))}</span>
                       </div>
                       {b.why && <div className="tiny muted">{b.why}</div>}
                     </li>

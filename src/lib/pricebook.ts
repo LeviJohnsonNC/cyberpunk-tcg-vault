@@ -117,8 +117,9 @@ export function sortLines(lines: Line[], key: SortKey): Line[] {
   return [...lines].sort(cmp[key]);
 }
 
-export function toCsv(lines: Line[]): string {
-  const rows = [['Card', 'Set', 'Number', 'Rarity', 'Qty', 'Unit CAD', 'Total CAD', 'Price basis']];
+/** CSV of the lines. Amounts are internal CAD; pass toCur/label to export in another display currency. */
+export function toCsv(lines: Line[], toCur: (cadAmount: number) => number = (n) => n, label = 'CAD'): string {
+  const rows = [['Card', 'Set', 'Number', 'Rarity', 'Qty', `Unit ${label}`, `Total ${label}`, 'Price basis']];
   for (const l of lines)
     rows.push([
       l.card.display,
@@ -126,8 +127,8 @@ export function toCsv(lines: Line[]): string {
       l.printing?.num ?? '',
       l.rarity,
       String(l.entry.qty),
-      l.unit.toFixed(2),
-      l.total.toFixed(2),
+      toCur(l.unit).toFixed(2),
+      toCur(l.total).toFixed(2),
       l.basis ?? '',
     ]);
   return rows.map((r) => r.map((x) => `"${x.replace(/"/g, '""')}"`).join(',')).join('\n');

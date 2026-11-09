@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BY_SLUG, CARDS, COLORS, RECOMMENDED, TYPES, cad, fitsRam, refPrice, searchCards, type Card } from '../lib/data';
+import { BY_SLUG, CARDS, COLORS, RECOMMENDED, TYPES, fitsRam, refPrice, searchCards, type Card } from '../lib/data';
+import { money } from '../lib/currency';
 import { deckFromRecommended, validate } from '../lib/decks';
 import { newId, useStore, type Deck } from '../lib/store';
 import { Bars, CardImg, Pip } from '../components/bits';
@@ -355,7 +356,7 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
 
           <div className="panel red">
             <div className="panel-title">
-              Acquisition <span className="aside">Deck value {cad(deckValue)}</span>
+              Acquisition <span className="aside">Deck value {money(deckValue)}</span>
             </div>
             {missing.length === 0 ? (
               <p style={{ margin: 0, color: 'var(--color-success)' }}>You own every card in this deck. Sleeve up.</p>
@@ -364,15 +365,15 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
                 <div className="row" style={{ marginBottom: 8 }}>
                   <span>Missing <b>{missing.reduce((a, x) => a + x.n, 0)}</b> cards</span>
                   <span className="spacer" />
-                  <b className="price-line"><span className="big">{cad(missingCost)}</span></b>
+                  <b className="price-line"><span className="big">{money(missingCost)}</span></b>
                 </div>
                 <div className="decklist">
                   {missing.map((x) => (
                     <div key={x.slug} className={`dl-row ${x.c.color}`}>
                       <span className="cost">{x.n}×</span>
                       <button className="link" onClick={() => onOpen(x.slug)}>{x.c.display}</button>
-                      <span className="mono tiny">{cad(x.unit)}</span>
-                      <span className="mono tiny accent">{cad(x.unit * x.n)}</span>
+                      <span className="mono tiny">{money(x.unit)}</span>
+                      <span className="mono tiny accent">{money(x.unit * x.n)}</span>
                     </div>
                   ))}
                 </div>
