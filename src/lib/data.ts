@@ -1,6 +1,7 @@
 import cardsJson from '../data/cards.json';
 import pricesJson from '../data/prices.json';
 import decksJson from '../data/decks.json';
+import { NETDECK_CARDS } from './printingArt';
 
 export type Color = 'Red' | 'Yellow' | 'Green' | 'Blue' | 'Colorless';
 export type CardType = 'Unit' | 'Gear' | 'Program' | 'Legend';
@@ -105,7 +106,7 @@ export function defaultPrinting(card: Card): Printing {
 }
 
 export function imageUrl(slug: string): string {
-  return `https://api.netdeck.gg/api/cards/cyberpunk/${slug}/image`;
+  return `${NETDECK_CARDS}/${slug}/image`;
 }
 
 // ---------- pricing ----------
