@@ -1,8 +1,9 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { BASIS_CLASS, BY_SLUG, acquireQuote, defaultPrinting, editionPrinting, printingLabel, valueHolding, type Card } from '../lib/data';
+import { BY_SLUG, acquireQuote, defaultPrinting, editionPrinting, printingLabel, valueHolding, type Card, type Valuation } from '../lib/data';
 import { estimateText, money } from '../lib/currency';
 import { useStore, type Entry } from '../lib/store';
-import { CardImg, Pip, RarityBadge, Rules } from './bits';
+import { Pip, RarityBadge, Rules } from './bits';
+import { PrintingArt } from './PrintingArt';
 
 /** Move some or all copies of an unverified holding to a real printing, in one save. */
 function MoveCopies({ card, entry }: { card: Card; entry: Entry }) {
@@ -34,16 +35,36 @@ function MoveCopies({ card, entry }: { card: Card; entry: Entry }) {
   );
 }
 
-export function CardDrawer({ slug, onClose }: { slug: string; onClose: () => void }) {
-  const card = BY_SLUG.get(slug);
+function PrintingValue({ value }: { value: Valuation | null }) {
+  if (!value) return <span className="muted">Unpriced</span>;
+  const proxy = value.basis === 'Beta proxy';
+  const price = money(value.cad);
+  return (
+    <span className="drawer-value">
+      {value.url ? <a href={value.url} target="_blank" rel="noreferrer" aria-label={`${price} on TCGplayer${proxy ? ' (Beta reference)' : ''}`}>{price}</a> : <span>{price}</span>}
+      {proxy && <span className="pb-tag basis-proxy" title={`Priced from ${printingLabel(value.sourcePrintingId, false)}`}>Beta proxy</span>}
+      {value.basis === 'Low listing' && <span className="tiny muted">Low listing</span>}
+    </span>
+  );
+}
+
+function CardDetails({ card, onClose }: { card: Card; onClose: () => void }) {
+  const { slug } = card;
   const { entries, setQty } = useStore();
+  const [printingId, setPrintingId] = useState(() => defaultPrinting(card).id);
+  const preview = useRef<HTMLSelectElement>(null);
+  const drawer = useRef<HTMLDialogElement>(null);
   useEffect(() => {
-    const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', k);
-    return () => window.removeEventListener('keydown', k);
-  }, [onClose]);
-  if (!card) return null;
-  const base = defaultPrinting(card);
+    const dialog = drawer.current;
+    dialog?.showModal();
+    return () => dialog?.close();
+  }, []);
+  const close = () => {
+    drawer.current?.close();
+    onClose();
+  };
+  const printing = card.printings.find((p) => p.id === printingId) ?? defaultPrinting(card);
+  const value = valueHolding(printing.id);
   const qtyOf = (pid: string) => entries.find((e) => e.printingId === pid)?.qty ?? 0;
   const notes = new Map(entries.filter((e) => e.slug === slug && e.note).map((e) => [e.printingId, e.note]));
   const buy = acquireQuote(slug);
@@ -59,20 +80,36 @@ export function CardDrawer({ slug, onClose }: { slug: string; onClose: () => voi
   const ownedAll = owned + loose.reduce((a, e) => a + e.qty, 0);
 
   return (
-    <div className="overlay" onClick={onClose}>
-      <aside className="drawer" onClick={(e) => e.stopPropagation()}>
-        <button className="iconbtn close" onClick={onClose} aria-label="Close">×</button>
+    <dialog
+      ref={drawer}
+      className="drawer"
+      aria-labelledby="card-drawer-title"
+      onCancel={(e) => { e.preventDefault(); close(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && e.clientX < e.currentTarget.getBoundingClientRect().left) close();
+      }}
+    >
+        <button className="iconbtn close" onClick={close} aria-label="Close">×</button>
         <div className="card-detail">
-          <div>
-            <CardImg className="card-art" slug={slug} alt={card.display} />
+          <div className="drawer-preview">
+            <label className="drawer-preview-select">
+              <span className="label">Viewing printing</span>
+              <select ref={preview} className="select" value={printing.id} onChange={(e) => setPrintingId(e.target.value)}>
+                {card.printings.map((p) => <option key={p.id} value={p.id}>{printingLabel(p.id, false)}</option>)}
+              </select>
+            </label>
+            <PrintingArt slug={slug} printingId={printing.id} alt={`${card.display}, ${printingLabel(printing.id)}`} />
           </div>
-          <div style={{ display: 'grid', gap: 14, alignContent: 'start' }}>
-            <div>
-              <div className="label accent">{card.type} · #{base?.num}</div>
-              <h2 className="drawer-title">
-                {card.name}
-              </h2>
+          <div className="drawer-summary">
+            <div className="drawer-heading">
+              <div className="label accent">{card.type} · #{printing.num}</div>
+              <h2 className="drawer-title" id="card-drawer-title">{card.name}</h2>
               {card.sub && <div className="drawer-sub">{card.sub}</div>}
+            </div>
+            <div className="drawer-selected-price" aria-live="polite">
+              <span className="label">Value per copy</span>
+              <PrintingValue value={value} />
+              <span className="tiny muted">{qtyOf(printing.id)} owned in this printing</span>
             </div>
             <dl className="kv">
               <dt>Color</dt><dd><Pip color={card.color} /></dd>
@@ -80,24 +117,25 @@ export function CardDrawer({ slug, onClose }: { slug: string; onClose: () => voi
               <dt>{card.type === 'Gear' ? 'Bonus' : 'Power'}</dt><dd>{card.power != null ? (card.type === 'Gear' ? `+${card.power}` : card.power) : '—'}</dd>
               <dt>RAM</dt><dd>{card.ram ?? '—'}</dd>
               <dt>Traits</dt><dd>{card.traits.join(' · ') || '—'}</dd>
-              <dt>Rarity</dt><dd><RarityBadge r={card.rarity} /></dd>
-              <dt>Sellable</dt><dd>{card.sellable ? <span className="badge sell">Sell tag</span> : <span className="muted">No</span>}</dd>
-              <dt>Artist</dt><dd>{card.artist ?? '—'}</dd>
+              <dt>Set</dt><dd>{printing.set}</dd>
+              <dt>Rarity</dt><dd><RarityBadge r={printing.rarity} /></dd>
+              <dt>Sellable</dt><dd>{card.sellable ? 'Yes' : 'No'}</dd>
+              <dt>Artist</dt><dd>{printing.artist ?? '—'}</dd>
             </dl>
             <div className="rules"><Rules text={card.text} /></div>
             <div className="drawer-prices">
               {mine.copies > 0 && (
                 <div className="row">
-                  <span className="label">Your {mine.copies === 1 ? 'copy' : `${mine.copies} copies`}</span>
+                  <span className="label">Your {mine.copies === 1 ? 'copy' : `${mine.copies} copies`} across all printings</span>
                   <b className="price-line"><span className="big">{mine.unpriced === mine.copies ? 'Unpriced' : estimateText(mine).replace(/ unpriced cop(y|ies)$/, ' unpriced')}</span></b>
                 </div>
               )}
               <div className="row">
-                <span className="label">Buy a copy</span>
+                <span className="label">Cheapest printing to buy</span>
                 {buy ? (
                   <>
                     <b className="price-line"><span className="big">{money(buy.cad)}</span></b>
-                    <span className={`pb-tag basis-${BASIS_CLASS[buy.basis]}`}>{buy.basis}</span>
+                    {buy.basis === 'Low listing' && <span className="tiny muted">Low listing</span>}
                     <span className="tiny muted">{printingLabel(buy.printingId, false)}</span>
                     {buy.url && <a href={buy.url} target="_blank" rel="noreferrer" className="tiny">TCGplayer ↗</a>}
                   </>
@@ -146,27 +184,19 @@ export function CardDrawer({ slug, onClose }: { slug: string; onClose: () => voi
                 const v = valueHolding(p.id);
                 const q = qtyOf(p.id);
                 return (
-                  <tr key={p.id} style={{ cursor: 'default' }}>
+                  <tr key={p.id} className={p.id === printing.id ? 'drawer-printing selected' : 'drawer-printing'}>
                     <td className="mono tiny">
-                      {p.set} #{p.num}
+                      <button
+                        className="drawer-printing-choice"
+                        aria-pressed={p.id === printing.id}
+                        onClick={() => { setPrintingId(p.id); preview.current?.focus(); }}
+                      >
+                        {p.set} #{p.num}
+                      </button>
                       {notes.get(p.id) && <div className="drawer-note"><b>Note</b> · {notes.get(p.id)}</div>}
                     </td>
                     <td className="hide-sm"><RarityBadge r={p.rarity} /></td>
-                    <td className="num">
-                      {v ? (
-                        <span className="drawer-value">
-                          {v.url ? <a href={v.url} target="_blank" rel="noreferrer">{money(v.cad)}</a> : money(v.cad)}
-                          <span
-                            className={`pb-tag basis-${BASIS_CLASS[v.basis]}`}
-                            title={v.sourcePrintingId !== p.id ? `Priced from ${printingLabel(v.sourcePrintingId, false)}` : undefined}
-                          >
-                            {v.basis}
-                          </span>
-                        </span>
-                      ) : (
-                        <span className="muted">Unpriced</span>
-                      )}
-                    </td>
+                    <td className="num"><PrintingValue value={v} /></td>
                     <td>
                       <span className="qty">
                         <button className="iconbtn minus" onClick={() => setQty(slug, p.id, q - 1)} disabled={q === 0} aria-label={`Remove a ${printingLabel(p.id, false)} copy`}>−</button>
@@ -180,7 +210,11 @@ export function CardDrawer({ slug, onClose }: { slug: string; onClose: () => voi
             </tbody>
           </table>
         </div>
-      </aside>
-    </div>
+    </dialog>
   );
+}
+
+export function CardDrawer({ slug, onClose }: { slug: string; onClose: () => void }) {
+  const card = BY_SLUG.get(slug);
+  return card && <CardDetails key={slug} card={card} onClose={onClose} />;
 }
