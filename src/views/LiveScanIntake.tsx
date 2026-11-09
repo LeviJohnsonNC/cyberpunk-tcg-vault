@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CardImg } from '../components/bits';
 import { IntakeIcon } from '../components/IntakeIcon';
 import { VaultSelect } from '../components/VaultSelect';
-import { BY_SLUG, printingLabel, unspecifiedId } from '../lib/data';
+import { BY_SLUG, editionPrinting, printingLabel, unspecifiedId } from '../lib/data';
 import { createScanGate, scanCrop, scanFrameChanged } from '../lib/liveScan';
 import { useStore } from '../lib/store';
 import { cloudEnabled } from '../lib/supabase';
@@ -230,7 +230,8 @@ function LiveCamera({ token, restart }: { token?: string; restart: () => void })
         const match = data.matches?.[0];
         if (data.matches?.length === 1 && match.qty === 1 && match.confidence >= 0.65 && BY_SLUG.has(match.slug)
           && !data.unidentified && !data.unmatched?.length) {
-          setStep({ kind: 'review', slug: match.slug, printingId: unspecifiedId(match.slug) });
+          const printingId = editionPrinting(match.slug, 'Retail')?.id ?? unspecifiedId(match.slug);
+          setStep({ kind: 'review', slug: match.slug, printingId });
         } else {
           setStep({ kind: 'no-match', image });
         }
@@ -302,7 +303,7 @@ function LiveCamera({ token, restart }: { token?: string; restart: () => void })
         <summary>View captured frame</summary>
         <img src={step.image} alt="Card frame sent for recognition" />
       </details>}
-      <p className="live-scan-note tiny muted">Choose the printing if you know it. You can also set it later in your collection.</p>
+      <p className="live-scan-note tiny muted">Standard Retail is preselected when available. Check the printing before adding.</p>
     </>
   );
 }
