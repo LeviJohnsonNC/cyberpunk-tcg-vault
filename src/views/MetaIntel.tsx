@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { BY_SLUG, COLORS, RECOMMENDED, cad, type Color } from '../lib/data';
+import { BY_SLUG, COLORS, RECOMMENDED, type Color } from '../lib/data';
+import { money } from '../lib/currency';
 import { useStore } from '../lib/store';
 import { CardImg, Pip } from '../components/bits';
 import { Masthead } from '../components/ui';
@@ -186,7 +187,7 @@ export function MetaIntel({ onOpen, openInBuilder, goAdd }: { onOpen: (slug: str
           <p style={{ margin: '0 0 8px' }}>
             {entries.length === 0
               ? 'Your vault is empty, so nothing matches yet. Add cards, or show all decks to browse.'
-              : `No deck matches those filters yet. Closest: ${closest.d.name} at ${closest.c.pct}% owned, ${cad(closest.c.cost)} to finish.`}
+              : `No deck matches those filters yet. Closest: ${closest.d.name} at ${closest.c.pct}% owned, ${money(closest.c.cost)} to finish.`}
           </p>
           <button className="btn quiet sm" onClick={() => set({ build: 'all', colors: [] })}>Show all decks</button>
         </div>
@@ -217,7 +218,7 @@ export function MetaIntel({ onOpen, openInBuilder, goAdd }: { onOpen: (slug: str
                     <div className="track" role="img" aria-label={`${c.pct}% owned`}>
                       <div className={c.have === c.total ? 'done' : ''} style={{ width: `${c.pct}%` }} />
                     </div>
-                    <div className="stat-line">To finish <b className={c.cost ? '' : 'good'}>{c.cost ? cad(c.cost) : 'nothing'}</b></div>
+                    <div className="stat-line">To finish <b className={c.cost ? '' : 'good'}>{c.cost ? money(c.cost) : 'nothing'}</b></div>
                     <button className="btn sm" onClick={() => openInBuilder(d.id)}>Open in builder</button>
                   </div>
                 </div>

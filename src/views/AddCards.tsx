@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
-import { BY_SLUG, CARDS, cad, defaultPrinting, priceFor, searchCards, shortSet } from '../lib/data';
+import { BY_SLUG, CARDS, defaultPrinting, priceFor, searchCards, shortSet } from '../lib/data';
+import { money } from '../lib/currency';
 import { useStore, type Entry } from '../lib/store';
 import { cloudEnabled } from '../lib/supabase';
 import { CardImg, Pip } from '../components/bits';
@@ -151,7 +152,7 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
                       <select className="select" style={{ padding: '3px 6px', fontSize: 12 }} value={pid} onChange={(e) => setPrintFor((m) => ({ ...m, [c.slug]: e.target.value }))}>
                         {c.printings.map((p) => <option key={p.id} value={p.id}>{shortSet(p.set)} #{p.num}</option>)}
                       </select>
-                      <span className="mono">{pr ? cad(pr.cad) : ''}</span>
+                      <span className="mono">{pr ? money(pr.cad) : ''}</span>
                       <span className="muted">own {ownedQty(pid)}</span>
                     </div>
                   </div>

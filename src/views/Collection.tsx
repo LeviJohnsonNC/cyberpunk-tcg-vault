@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { CARDS, COLORS, TYPES, cad, defaultPrinting, priceFor, rarityRank, searchCards, type Card } from '../lib/data';
+import { CARDS, COLORS, TYPES, defaultPrinting, priceFor, rarityRank, searchCards, type Card } from '../lib/data';
+import { getCurrency, money } from '../lib/currency';
 import { useStore, type Entry } from '../lib/store';
 import { CardImg, Pip, RarityBadge } from '../components/bits';
 import { Masthead, MetricStrip } from '../components/ui';
@@ -15,7 +16,7 @@ export function valueOf(entries: Entry[]) {
 }
 
 export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; goAdd: () => void }) {
-  const { entries, owned, setQty } = useStore();
+  const { entries, owned, setQty, startDemo } = useStore();
   const [q, setQ] = useState('');
   const [scope, setScope] = useState<'mine' | 'all'>(entries.length ? 'mine' : 'all');
   const [colors, setColors] = useState<string[]>([]);
@@ -101,7 +102,7 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
       <MetricStrip
         items={[
           { label: 'Cards owned', context: `${owned.size} unique`, value: total },
-          { label: 'Collection value', context: 'TCGplayer market, CAD', value: cad(totalValue) },
+          { label: 'Collection value', context: `TCGplayer market, ${getCurrency()}`, value: money(totalValue) },
           { label: 'Legends', context: 'unique owned', value: CARDS.filter((c) => c.type === 'Legend' && owned.has(c.slug)).length },
           { label: 'Set completion', context: 'unique cards', value: `${Math.round((owned.size / CARDS.length) * 100)}%` },
         ]}
@@ -110,9 +111,10 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
       {entries.length === 0 && (
         <div className="callout y" style={{ marginBottom: 16 }}>
           <div className="row">
-            <span>Your vault is empty. Add cards by search, by photo, or import a collection file.</span>
+            <span>Your vault is empty. Add cards by search or photo, or look around with a sample collection first.</span>
             <span className="spacer" />
             <button className="btn sm" onClick={goAdd}>Add cards</button>
+            <button className="btn ghost sm" onClick={startDemo}>Try the demo</button>
           </div>
         </div>
       )}
@@ -192,8 +194,8 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
                       <button className="iconbtn" onClick={() => bump(c, es, 1)}>+</button>
                     </span>
                   </td>
-                  <td className="num hide-sm">{unit ? cad(unit) : '—'}</td>
-                  <td className={`num ${value ? 'accent' : ''}`}>{value ? cad(value) : '—'}</td>
+                  <td className="num hide-sm">{unit ? money(unit) : '—'}</td>
+                  <td className={`num ${value ? 'accent' : ''}`}>{value ? money(value) : '—'}</td>
                 </tr>
               ))}
             </tbody>

@@ -359,3 +359,25 @@ hr.cut { border: 0; border-top: 1px dashed var(--color-divider); margin: var(--s
 @media (max-width: 760px) {
   .refine-body { grid-template-columns: 1fr; }
 }
+
+/* ---------- currency toggle, demo, feedback, how it works ---------- */
+.seg { display: inline-flex; border: 1px solid var(--color-divider); border-radius: var(--radius-sm); overflow: hidden; }
+.seg button { background: transparent; border: 0; padding: 5px 8px; font: 600 11px/1 var(--font-mono); letter-spacing: 0.06em; color: var(--color-text-muted); cursor: pointer; }
+.seg button[aria-pressed='true'] { background: var(--color-accent); color: var(--color-accent-ink); }
+.seg button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.navlink.feedback { margin-left: auto; color: var(--color-text-muted); }
+.demo-banner { margin-bottom: var(--space-4); }
+.demo-banner .row { gap: var(--space-2) var(--space-3); flex-wrap: wrap; }
+.feedback-dialog { width: min(520px, calc(100vw - 24px)); }
+.feedback-form { display: grid; gap: var(--space-3); }
+.feedback-form p { margin: 0; }
+.field { display: grid; gap: 6px; }
+.field textarea { resize: vertical; min-height: 110px; font: 400 15px/1.5 var(--font-ui); }
+.how-grid { margin-top: var(--space-5); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+.how-grid .panel p { margin: 0 0 var(--space-3); font-size: 15px; line-height: 1.55; color: var(--color-text-muted); }
+.how-grid .panel p b { color: var(--color-text); }
+.how-grid .panel.hot { grid-row: span 2; }
+@media (max-width: 760px) {
+  .how-grid { grid-template-columns: 1fr; }
+  .how-grid .panel.hot { grid-row: auto; }
+}

@@ -1,7 +1,9 @@
 // Vercel serverless function: POST /api/scan
 // Body: { image: "data:image/jpeg;base64,..." }  Header: Authorization: Bearer <supabase access token>
-// Env: OPENROUTER_API_KEY (required), OPENROUTER_MODEL, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SCAN_DAILY_LIMIT
+// Env: OPENROUTER_API_KEY (required), OPENROUTER_MODEL, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SCAN_DAILY_LIMIT,
+//      SCAN_GLOBAL_DAILY_LIMIT (default 300), UNLIMITED_EMAILS
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { GLOBAL_CAP_MESSAGE, isUnlimited, takeGlobal } from './_aiguard.js';
 import { CARD_NAMES } from './_cards.js';
 
 const MODEL = process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash';
@@ -45,12 +47,12 @@ export function match(name: string): { slug: string; score: number } | null {
   return best && best.score >= 0.72 ? best : null;
 }
 
-async function authUser(token: string | undefined): Promise<string | null> {
+async function authUser(token: string | undefined): Promise<{ id: string; email: string } | null> {
   if (!SB_URL || !SB_KEY || !token) return null;
   const r = await fetch(`${SB_URL}/auth/v1/user`, { headers: { apikey: SB_KEY, authorization: `Bearer ${token}` } });
   if (!r.ok) return null;
-  const u = (await r.json()) as { id?: string };
-  return u.id ?? null;
+  const u = (await r.json()) as { id?: string; email?: string };
+  return u.id ? { id: u.id, email: (u.email || '').toLowerCase() } : null;
 }
 
 async function bumpUsage(userId: string): Promise<number> {
@@ -83,11 +85,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let remaining: number | undefined;
   if (SB_URL && SB_KEY) {
     const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || undefined;
-    const userId = await authUser(token);
-    if (!userId) return res.status(401).json({ error: 'Sign in to use photo scanning.' });
-    const used = await bumpUsage(userId);
-    if (used > LIMIT) return res.status(429).json({ error: `Daily scan limit reached (${LIMIT}). Try again tomorrow.` });
-    remaining = LIMIT - used;
+    const user = await authUser(token);
+    if (!user) return res.status(401).json({ error: 'Sign in to use photo scanning.' });
+    if (!isUnlimited(user.email)) {
+      const used = await bumpUsage(user.id);
+      if (used > LIMIT) return res.status(429).json({ error: `Daily scan limit reached (${LIMIT}). Try again tomorrow.` });
+      remaining = LIMIT - used;
+      if (!(await takeGlobal('scan', SB_URL, SB_KEY))) return res.status(429).json({ error: GLOBAL_CAP_MESSAGE, code: 'global' });
+    }
   } else {
     const ip = String(req.headers['x-forwarded-for'] || 'anon').split(',')[0];
     const day = new Date().toISOString().slice(0, 10);

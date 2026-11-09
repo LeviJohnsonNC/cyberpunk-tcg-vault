@@ -1,6 +1,7 @@
 // "Built from your vault": deterministic auto-builder (instant, local) plus optional AI refinement (signed in).
 import { useMemo, useState } from 'react';
-import { BY_SLUG, COLORS, cad, type Color } from '../lib/data';
+import { BY_SLUG, COLORS, type Color } from '../lib/data';
+import { money } from '../lib/currency';
 import { autobuild, type Build, type Style } from '../lib/autobuild';
 import { newId, useStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
@@ -19,9 +20,9 @@ function shortName(slug: string) {
 }
 
 export function VaultBuilds({ onOpen, openPending, goAdd }: { onOpen: (slug: string) => void; openPending: () => void; goAdd: () => void }) {
-  const { owned, mode } = useStore();
+  const { owned, mode, demo, startDemo } = useStore();
   const [refining, setRefining] = useState<Build | null>(null);
-  const canRefine = mode === 'cloud';
+  const canRefine = mode === 'cloud' && !demo;
   const [colors, setColors] = useState<Color[]>([]);
   const [style, setStyle] = useState<Style>('balanced');
   const [must, setMust] = useState<string[]>([]);
@@ -111,13 +112,14 @@ export function VaultBuilds({ onOpen, openPending, goAdd }: { onOpen: (slug: str
               {result.suggestions.map((s, i) => (
                 <span key={s.slug}>
                   {i > 0 && ', '}
-                  <a href="#" onClick={(e) => { e.preventDefault(); onOpen(s.slug); }}>{BY_SLUG.get(s.slug)?.display}</a> ({cad(s.unit)})
+                  <a href="#" onClick={(e) => { e.preventDefault(); onOpen(s.slug); }}>{BY_SLUG.get(s.slug)?.display}</a> ({money(s.unit)})
                 </span>
               ))}
             </p>
           )}
           <div className="row">
             <button className="btn quiet sm" onClick={goAdd}>Add cards</button>
+            {owned.size === 0 && !demo && <button className="btn ghost sm" onClick={startDemo}>Try the demo</button>}
             {(colors.length > 0 || must.length > 0) && (
               <button className="btn quiet sm" onClick={() => { setColors([]); setMust([]); }}>Clear options</button>
             )}
@@ -127,7 +129,7 @@ export function VaultBuilds({ onOpen, openPending, goAdd }: { onOpen: (slug: str
         <>
           <p className="tiny muted" style={{ marginTop: 0 }}>
             Tried {result.considered} Legend {result.considered === 1 ? 'crew' : 'crews'} from your collection and kept the best {result.builds.length}. Scores come from
-            curated card ratings plus Legend synergy. They&apos;re a strong starting point, not a solved list.
+            curated card ratings plus Legend synergy. They&apos;re a strong starting point, not a solved list. <a href="#/about">How this works</a>
           </p>
           <div className="grid cols-3">
             {result.builds.map((b, i) => (
@@ -161,12 +163,12 @@ export function VaultBuilds({ onOpen, openPending, goAdd }: { onOpen: (slug: str
                 {b.notes.length > 0 && <div className="tiny weak">{b.notes.join(' ')}</div>}
                 {b.upgrades.length > 0 && (
                   <details className="vault-upgrades">
-                    <summary>Upgrades to buy ({cad(b.upgrades.reduce((a, u) => a + u.unit * u.add, 0))})</summary>
+                    <summary>Upgrades to buy ({money(b.upgrades.reduce((a, u) => a + u.unit * u.add, 0))})</summary>
                     <ul>
                       {b.upgrades.map((u) => (
                         <li key={u.slug + (u.replaces ?? '')}>
                           +{u.add} <a href="#" onClick={(e) => { e.preventDefault(); onOpen(u.slug); }}>{shortName(u.slug)}</a>
-                          {u.replaces && <span className="muted"> for {shortName(u.replaces)}</span>} <span className="num">{cad(u.unit * u.add)}</span>
+                          {u.replaces && <span className="muted"> for {shortName(u.replaces)}</span>} <span className="num">{money(u.unit * u.add)}</span>
                         </li>
                       ))}
                     </ul>
@@ -183,6 +185,8 @@ export function VaultBuilds({ onOpen, openPending, goAdd }: { onOpen: (slug: str
                     >
                       Refine with AI
                     </button>
+                  ) : demo ? (
+                    <span className="vault-ai-hint">AI refine works on your own cards</span>
                   ) : supabase ? (
                     <span className="vault-ai-hint">Sign in to refine with AI</span>
                   ) : null}

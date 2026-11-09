@@ -129,8 +129,6 @@ export function priceConfidence(point: PricePoint): { label: string; tone: 'ok' 
   return { label: 'Low listing', tone: 'low' };
 }
 
-export const cad = (n: number) =>
-  n.toLocaleString('en-CA', { style: 'currency', currency: 'CAD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function shortSet(s: string): string {
   return s

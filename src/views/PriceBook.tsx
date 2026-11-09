@@ -1,7 +1,8 @@
 // Price Book: reference implementation of the Afterlife design language.
 // See docs/design-system.md. Uses only semantic tokens (src/theme.css) and pricebook.css.
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
-import { PRICES, cad, imageUrl, shortSet } from '../lib/data';
+import { PRICES, imageUrl, shortSet } from '../lib/data';
+import { getCurrency, money, toDisplay } from '../lib/currency';
 import { buildPriceBook, sortLines, toCsv, type Basis, type Group, type Line, type SortKey } from '../lib/pricebook';
 import { useStore } from '../lib/store';
 import { Masthead, MetricStrip } from '../components/ui';
@@ -76,7 +77,7 @@ function Marquee({ top, loading, onOpen, goAdd }: { top: Line | null; loading: b
         <h2 className="pb-marquee-name">{card.name}</h2>
         {card.sub && <p className="pb-marquee-sub">{card.sub}</p>}
         <p className="pb-marquee-price">
-          <span className="num">{cad(top.unit)}</span>
+          <span className="num">{money(top.unit)}</span>
           <span className="pb-marquee-basis">{top.basis ?? 'Unpriced'}</span>
           <span className="sr-only"> per copy</span>
         </p>
@@ -100,7 +101,7 @@ function Breakdown({ title, groups, total, fill, children }: { title: string; gr
     <section className="pb-breakdown" aria-label={title}>
       <header>
         <h3>{title}</h3>
-        <span className="pb-unit">CAD</span>
+        <span className="pb-unit">{getCurrency()}</span>
       </header>
       {groups.length === 0 && <p className="pb-dim">Nothing to break down yet.</p>}
       <ul>
@@ -112,7 +113,7 @@ function Breakdown({ title, groups, total, fill, children }: { title: string; gr
             <span className="pb-bar" role="img" aria-label={`${Math.round((g.value / (total || 1)) * 100)}% of value`}>
               <span style={{ width: `${(g.value / max) * 100}%`, background: fill(g.key) } as CSSProperties} />
             </span>
-            <span className="pb-bk-value num">{cad(g.value)}</span>
+            <span className="pb-bk-value num">{money(g.value)}</span>
           </li>
         ))}
       </ul>
@@ -131,7 +132,7 @@ export function PriceBook({ onOpen, goAdd }: { onOpen: (slug: string) => void; g
 
   const exportCsv = () => {
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([toCsv(sorted)], { type: 'text/csv' }));
+    a.href = URL.createObjectURL(new Blob([toCsv(sorted, (n) => toDisplay(n), getCurrency())], { type: 'text/csv' }));
     a.download = `cyberpunk-tcg-pricebook-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(a.href);
@@ -146,16 +147,16 @@ export function PriceBook({ onOpen, goAdd }: { onOpen: (slug: string) => void; g
           size="hero"
           eyebrow="The Afterlife / Night Market"
           title={<>Price <br />Book</>}
-          sub={<>Near Mint prices <span className="sep" aria-hidden="true">◆</span> CAD</>}
+          sub={<>Near Mint prices <span className="sep" aria-hidden="true">◆</span> {getCurrency()}</>}
         />
         <Marquee top={pb.top} loading={loading} onOpen={onOpen} goAdd={goAdd} />
       </div>
 
       <MetricStrip
         items={[
-          { label: 'Total value', context: `${pb.count} cards`, value: cad(pb.total) },
-          { label: 'Average / card', context: 'Near Mint', value: cad(pb.average) },
-          { label: 'Trade bait', context: `${pb.extrasCopies} extra ${pb.extrasCopies === 1 ? 'copy' : 'copies'}`, value: cad(pb.extrasValue) },
+          { label: 'Total value', context: `${pb.count} cards`, value: money(pb.total) },
+          { label: 'Average / card', context: 'Near Mint', value: money(pb.average) },
+          { label: 'Trade bait', context: `${pb.extrasCopies} extra ${pb.extrasCopies === 1 ? 'copy' : 'copies'}`, value: money(pb.extrasValue) },
         ]}
       />
 
@@ -183,7 +184,7 @@ export function PriceBook({ onOpen, goAdd }: { onOpen: (slug: string) => void; g
             </div>
           ) : pb.lines.length === 0 ? (
             <div className="pb-empty">
-              <p>No cards priced yet. Add cards by search or photo and they'll show up here with live CAD values.</p>
+              <p>No cards priced yet. Add cards by search or photo and they'll show up here with live prices.</p>
               <button className="pb-btn" onClick={goAdd}>Add cards</button>
             </div>
           ) : (
@@ -205,14 +206,14 @@ export function PriceBook({ onOpen, goAdd }: { onOpen: (slug: string) => void; g
                       {l.card.sub && <span className="pb-sub">{l.card.sub}</span>}
                       <span className="pb-print">{l.printing ? `${shortSet(l.printing.set)} #${l.printing.num}` : 'Unknown printing'}</span>
                       <span className="pb-meta-compact">
-                        <span className={`pb-rarity r-${rarityClass(l.rarity)}`}>{l.rarity}</span> · {cad(l.unit)} each
+                        <span className={`pb-rarity r-${rarityClass(l.rarity)}`}>{l.rarity}</span> · {money(l.unit)} each
                       </span>
                     </span>
                   </span>
                   <span role="cell" className="pb-c-rarity"><span className={`pb-rarity r-${rarityClass(l.rarity)}`}>{l.rarity}</span></span>
                   <span role="cell" className="pb-c-qty num r"><span className="pb-x" aria-hidden="true">×</span>{l.entry.qty}</span>
-                  <span role="cell" className="pb-c-unit num r">{cad(l.unit)}</span>
-                  <span role="cell" className="pb-c-total num r">{cad(l.total)}</span>
+                  <span role="cell" className="pb-c-unit num r">{money(l.unit)}</span>
+                  <span role="cell" className="pb-c-total num r">{money(l.total)}</span>
                   <span role="cell" className="pb-c-basis" onClick={(e) => e.stopPropagation()}>
                     {l.url ? (
                       <a href={l.url} target="_blank" rel="noreferrer" title="View on TCGplayer"><BasisTag basis={l.basis} /></a>
@@ -231,7 +232,7 @@ export function PriceBook({ onOpen, goAdd }: { onOpen: (slug: string) => void; g
               <ul>
                 {pb.extras.map((x) => (
                   <li key={x.slug}>
-                    <button onClick={() => onOpen(x.slug)}>{x.card.display}</button> ×{x.copies} <span className="num">{cad(x.unit * x.copies)}</span>
+                    <button onClick={() => onOpen(x.slug)}>{x.card.display}</button> ×{x.copies} <span className="num">{money(x.unit * x.copies)}</span>
                   </li>
                 ))}
               </ul>
@@ -261,7 +262,7 @@ export function PriceBook({ onOpen, goAdd }: { onOpen: (slug: string) => void; g
           <Breakdown title="By color" groups={pb.byColor} total={pb.total} fill={(k) => COLOR_VAR[k] ?? 'var(--color-text-muted)'} />
           <Breakdown title="By rarity" groups={pb.byRarity} total={pb.total} fill={() => 'var(--color-accent)'} />
           <p className="pb-source">
-            Source: {PRICES.source}. 1 USD = {PRICES.fx.usdToCad.toFixed(4)} CAD. Updated {updated}.
+            Source: {PRICES.source}, in USD. CAD uses 1 USD = {PRICES.fx.usdToCad.toFixed(4)} CAD. Updated {updated}.
           </p>
         </aside>
       </div>

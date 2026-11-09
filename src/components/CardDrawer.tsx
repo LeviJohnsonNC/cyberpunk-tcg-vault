@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { BY_SLUG, PRICES, cad, defaultPrinting, priceConfidence, priceFor, shortSet } from '../lib/data';
+import { BY_SLUG, PRICES, defaultPrinting, priceConfidence, priceFor, shortSet } from '../lib/data';
+import { money } from '../lib/currency';
 import { useStore } from '../lib/store';
 import { CardImg, Pip, RarityBadge, Rules } from './bits';
 
@@ -48,7 +49,7 @@ export function CardDrawer({ slug, onClose }: { slug: string; onClose: () => voi
             {ref && (
               <div className="row">
                 <span className="label">Ref price</span>
-                <b className="price-line"><span className="big">{cad(ref.usd * PRICES.fx.usdToCad)}</span></b>
+                <b className="price-line"><span className="big">{money(ref.usd * PRICES.fx.usdToCad)}</span></b>
                 <span className={`badge ${priceConfidence(ref).tone}`}>{priceConfidence(ref).label}</span>
                 <a href={ref.url} target="_blank" rel="noreferrer" className="tiny">TCGplayer ↗</a>
               </div>
@@ -78,7 +79,7 @@ export function CardDrawer({ slug, onClose }: { slug: string; onClose: () => voi
                     <td><RarityBadge r={p.rarity} /></td>
                     <td className="num">
                       {pr ? (
-                        <a href={pr.point.url} target="_blank" rel="noreferrer">{cad(pr.cad)}</a>
+                        <a href={pr.point.url} target="_blank" rel="noreferrer">{money(pr.cad)}</a>
                       ) : (
                         <span className="muted">n/a</span>
                       )}
