@@ -20,10 +20,29 @@ export async function fetchPrintingArt(slug: string, signal: AbortSignal): Promi
 }
 
 const cache = new Map<string, { images: Map<string, string>; checkedAt: number }>();
-const pending = new Map<string, Promise<Map<string, string>>>();
-const queued: Array<() => void> = [];
-const maxRequests = 4;
+type Lookup = { promise: Promise<Map<string, string>>; start: () => void; priority: boolean };
+const pending = new Map<string, Lookup>();
+const queued: Lookup[] = [];
+const maxRequests = 6;
+const maxPrefetchRequests = 4;
 let active = 0;
+
+function startQueuedLookups() {
+  while (queued.length && active < maxRequests) {
+    const priority = queued.findIndex((lookup) => lookup.priority);
+    if (priority === -1 && active >= maxPrefetchRequests) return;
+    const [lookup] = queued.splice(Math.max(0, priority), 1);
+    lookup.start();
+  }
+}
+
+/** A pocket that becomes visible can move ahead of the remaining lookahead work. */
+export function prioritizePrintingArt(slug: string) {
+  const lookup = pending.get(slug);
+  if (!lookup || lookup.priority) return;
+  lookup.priority = true;
+  startQueuedLookups();
+}
 
 /** Share lookups across pockets and the drawer, including while a lookup is still in flight. */
 export async function getPrintingArt(slug: string, printingId: string, prioritize = false): Promise<string | null> {
@@ -33,8 +52,9 @@ export async function getPrintingArt(slug: string, printingId: string, prioritiz
 
   let lookup = pending.get(slug);
   if (!lookup) {
-    lookup = new Promise((resolve, reject) => {
-      const start = () => {
+    let start!: () => void;
+    const promise = new Promise<Map<string, string>>((resolve, reject) => {
+      start = () => {
         active += 1;
         void fetchPrintingArt(slug, AbortSignal.timeout(8000)).then((images) => {
           cache.set(slug, { images, checkedAt: Date.now() });
@@ -42,14 +62,16 @@ export async function getPrintingArt(slug: string, printingId: string, prioritiz
         }, reject).finally(() => {
           pending.delete(slug);
           active -= 1;
-          queued.shift()?.();
+          startQueuedLookups();
         });
       };
-      if (active < maxRequests) start();
-      else if (prioritize) queued.unshift(start);
-      else queued.push(start);
     });
+    lookup = { promise, start, priority: prioritize };
     pending.set(slug, lookup);
+    queued.push(lookup);
+    startQueuedLookups();
+  } else if (prioritize) {
+    prioritizePrintingArt(slug);
   }
-  return (await lookup).get(printingId) ?? null;
+  return (await lookup.promise).get(printingId) ?? null;
 }
