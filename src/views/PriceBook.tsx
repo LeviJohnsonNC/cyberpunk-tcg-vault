@@ -20,6 +20,12 @@ const COLOR_VAR: Record<string, string> = {
 const rarityClass = (r: string) =>
   r === 'Epic' ? 'epic' : r === 'Rare' ? 'rare' : /Secret|Iconic|Nova/.test(r) ? 'top' : 'base';
 type OpenHolding = (slug: string, printingId?: string, identify?: boolean, opener?: HTMLElement) => void;
+const holdingSorts: { value: SortKey; label: string }[] = [
+  { value: 'total', label: 'Total value' },
+  { value: 'unit', label: 'Unit price' },
+  { value: 'qty', label: 'Quantity' },
+  { value: 'name', label: 'Name' },
+];
 
 function BasisTag({ basis, from }: { basis: Basis | null; from?: string | null }) {
   if (!basis) return <span className="pb-tag" title="No quote for this exact printing">Unpriced</span>;
@@ -181,12 +187,8 @@ export function PriceBook({ mobile, onOpen, goAdd }: { mobile: boolean; onOpen: 
             <h2 id="pb-holdings-title" tabIndex={-1}>Holdings {collectionReady && <span className="pb-count">{pb.count} {pb.count === 1 ? 'card' : 'cards'}</span>}</h2>
             <div className="pb-controls">
               <label className="sr-only" htmlFor="pb-sort">Sort holdings</label>
-              <VaultSelect id="pb-sort" className="pb-select" value={sortBy} onValueChange={(value) => setSortBy(value as SortKey)} options={[
-                { value: 'total', label: 'Sort: total value' },
-                { value: 'unit', label: 'Sort: unit price' },
-                { value: 'qty', label: 'Sort: quantity' },
-                { value: 'name', label: 'Sort: name' },
-              ]} />
+              <VaultSelect id="pb-sort" className="pb-select" value={sortBy} onValueChange={(value) => setSortBy(value as SortKey)}
+                options={mobile ? holdingSorts : holdingSorts.map(({ value, label }) => ({ value, label: `Sort: ${label.toLowerCase()}` }))} />
               <button className="pb-btn" onClick={exportCsv} disabled={!collectionReady || !pb.lines.length}>
                 <span aria-hidden="true">↓</span> Export CSV
               </button>

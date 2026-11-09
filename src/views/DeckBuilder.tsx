@@ -207,7 +207,7 @@ function DeckWorkbench({ owner, onOpen, initialDeck, onConsumeDeck, mobile }: Bu
     switchMobile('pool', false);
     requestAnimationFrame(() => {
       const input = search.current;
-      if (!input) return;
+      if (!input?.getClientRects().length) return;
       input.focus({ preventScroll: true });
       if (splitWorkbench()) revealBelowBars(input);
     });
@@ -220,7 +220,7 @@ function DeckWorkbench({ owner, onOpen, initialDeck, onConsumeDeck, mobile }: Bu
     if (!fromStatus && !splitWorkbench()) return;
     requestAnimationFrame(() => {
       const title = document.getElementById(next === 'list' ? 'workbench-crew-title' : `workbench-${next}-title`);
-      if (!title) return;
+      if (!title?.getClientRects().length) return;
       if (fromStatus) title.focus({ preventScroll: true });
       if (splitWorkbench()) revealBelowBars(title, true);
       else if (fromStatus) title.scrollIntoView({ block: 'nearest' });

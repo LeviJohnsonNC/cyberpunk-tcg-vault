@@ -193,7 +193,7 @@
   .pb-holdings-head { gap: var(--space-2); padding: var(--space-3) var(--space-4); }
   .pb-holdings-head h2 { font-size: 29px; }
   .pb-controls { margin-left: 0; width: 100%; }
-  .pb-select { flex: 1; min-width: 0; }
+  .pb-select { flex: 1; min-width: 0; padding-inline: var(--space-2); }
   .pb-select, .pb-btn { min-height: 44px; }
   .pb-row-head { display: none; }
   .pb-row {
@@ -201,6 +201,7 @@
     gap: 2px var(--space-2); min-height: 88px; padding: var(--space-2) var(--space-3);
   }
   .pb-id { grid-area: id; gap: var(--space-2); }
+  .pb-id .pb-thumb { transform: none; box-shadow: none; }
   .pb-c-rarity, .pb-c-unit { display: none; }
   .pb-meta-compact { display: block; }
   .pb-c-total { grid-area: total; }
@@ -210,4 +211,7 @@
   .pb-c-qty { grid-area: qty; font-size: 13px; color: var(--color-text-muted); }
   .pb-x { display: inline; margin-right: 1px; }
   .pb-breakdown li { grid-template-columns: minmax(0, 1fr) 56px 70px; }
+}
+@media (max-width: 360px) {
+  .pb-select { font-size: 13px !important; }
 }
