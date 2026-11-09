@@ -7,6 +7,8 @@ import { Bars, CardImg, Pip } from '../components/bits';
 import { Masthead } from '../components/ui';
 import { PENDING_DECK_KEY, openPlanner } from '../lib/handoff';
 import { ShareDialog } from '../components/ShareDialog';
+import { HandTester, type TestDeck } from '../components/HandTester';
+import { deckStats } from '../lib/handtest';
 
 const blank = (): Deck => ({ id: newId(), name: 'New crew', legends: [], cards: {}, sideboard: {}, notes: '', updatedAt: '' });
 const sum = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a + b, 0);
@@ -24,6 +26,7 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
+  const [testing, setTesting] = useState<TestDeck[] | null>(null);
   const saved = decks.some((d) => d.id === deck.id);
 
   useEffect(() => {
@@ -90,13 +93,8 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
 
   // stats
   const mainCards = Object.entries(deck.cards).map(([s, n]) => ({ c: BY_SLUG.get(s)!, n })).filter((x) => x.c);
-  const curve = [0, 1, 2, 3, 4, 5, 6, 7].map((k) => ({
-    label: k === 7 ? '7+' : String(k),
-    value: mainCards.filter((x) => (k === 7 ? (x.c.cost ?? 0) >= 7 : (x.c.cost ?? 0) === k)).reduce((a, x) => a + x.n, 0),
-  }));
-  const typeCount = (t: string) => mainCards.filter((x) => x.c.type === t).reduce((a, x) => a + x.n, 0);
-  const sellable = mainCards.filter((x) => x.c.sellable).reduce((a, x) => a + x.n, 0);
-  const avgCost = v.n ? mainCards.reduce((a, x) => a + (x.c.cost ?? 0) * x.n, 0) / v.n : 0;
+  const stats = deckStats(deck.cards); // shared with the hand tester
+  const { curve, sellable, avgCost } = stats;
 
   // ownership
   const need: Record<string, number> = {};
@@ -208,11 +206,14 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
         </button>
         <button className="btn quiet" onClick={() => copy(deckText(), 'Decklist')}>Copy list</button>
         <button className="btn quiet" aria-haspopup="dialog" onClick={() => setShareOpen(true)}>Share deck</button>
+        <button className="btn quiet" aria-haspopup="dialog" onClick={() => setTesting([{ label: 'This deck', ...structuredClone({ name: deck.name, legends: deck.legends, cards: deck.cards, sideboard: deck.sideboard }) }])}>Test hand</button>
         <button className="btn quiet" aria-expanded={showImport} onClick={() => setShowImport((s) => !s)}>Import</button>
         {saved && (
           <button className="btn danger-ghost sm" onClick={async () => { if (confirm(`Delete "${deck.name}"? If it has a share link, that link stops working.`) && (await deleteDeck(deck.id))) { setDeck(blank()); setDirty(false); } }}>Delete</button>
         )}
       </div>
+
+      {testing && <HandTester decks={testing} onClose={() => setTesting(null)} />}
 
       <ShareDialog
         open={shareOpen}
@@ -367,7 +368,7 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
               {v.passes.map((i) => <li key={i}>{i}</li>)}
             </ul>
             <div className="grid cols-2" style={{ marginTop: 12, gap: 8 }}>
-              <div className="stat-line">Units <b>{typeCount('Unit')}</b> · Gear <b>{typeCount('Gear')}</b> · Programs <b>{typeCount('Program')}</b></div>
+              <div className="stat-line">Units <b>{stats.units}</b> · Gear <b>{stats.gear}</b> · Programs <b>{stats.programs}</b></div>
               <div className="stat-line">Sellable <b className={sellable >= 18 ? 'good' : 'bad'}>{sellable}</b> · Avg cost <b>{avgCost.toFixed(2)}</b></div>
             </div>
             {sellable < 18 && v.n > 0 && (

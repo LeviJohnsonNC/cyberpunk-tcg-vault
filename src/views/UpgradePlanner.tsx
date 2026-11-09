@@ -1,6 +1,7 @@
 // Budget Upgrade Planner: starting deck + budget -> up to three legal upgrade options.
 // Read-only: never writes the collection or the source deck. Works signed out and in demo mode.
 import { useDeferredValue, useMemo, useState } from 'react';
+import { HandTester, type TestDeck } from '../components/HandTester';
 import { Masthead } from '../components/ui';
 import { CardImg } from '../components/bits';
 import { BASIS_CLASS, BY_SLUG, printingLabel } from '../lib/data';
@@ -120,7 +121,7 @@ function ChangeRow({ c, kind, onOpen, cost }: { c: Change; kind: 'add' | 'cut'; 
   );
 }
 
-function OptionCard({ o, budget, onOpen, onUse }: { o: PlanOption; budget: number; onOpen: (s: string) => void; onUse: () => void }) {
+function OptionCard({ o, budget, onOpen, onUse, onCompare }: { o: PlanOption; budget: number; onOpen: (s: string) => void; onUse: () => void; onCompare: () => void }) {
   const total = Object.values(o.cards).reduce((a, b) => a + b, 0);
   return (
     <article className="panel up-option" aria-label={o.lenses.map((l) => LENS_LABEL[l]).join(' and ')}>
@@ -150,6 +151,7 @@ function OptionCard({ o, budget, onOpen, onUse }: { o: PlanOption; budget: numbe
       <CopiesToBuy cost={o.cost} />
       <div className="row up-actions">
         <button className="btn" onClick={onUse}>Open upgraded copy</button>
+        <button className="btn quiet" aria-haspopup="dialog" onClick={onCompare}>Compare hands</button>
         <details className="up-preview">
           <summary>Preview full list ({total})</summary>
           <ul>
@@ -172,6 +174,7 @@ export function UpgradePlanner({ onOpen }: { onOpen: (slug: string) => void }) {
   const [preset, setPreset] = useState<Preset>(() => (handed?.budget != null && (PRESETS as readonly number[]).includes(handed.budget) ? (handed.budget as Preset) : 0));
   const [custom, setCustom] = useState('15');
   const [locks, setLocks] = useState<Set<string>>(new Set());
+  const [comparing, setComparing] = useState<TestDeck[] | null>(null);
   const currency = getCurrency(); // App re-renders on toggle; the preset amount stays, eligibility recalculates
   const customNum = Math.max(0, Math.min(9999, Number(custom) || 0));
   const budget = preset === 'custom' ? customNum : preset;
@@ -206,6 +209,16 @@ export function UpgradePlanner({ onOpen }: { onOpen: (slug: string) => void }) {
       notes: `Upgraded from ${source.name} with the planner (${o.lenses.map((l) => LENS_LABEL[l]).join(', ')}, ${currency} ${budget} budget).\nChanges: ${changes}.`,
       updatedAt: '',
     });
+  };
+
+  // Snapshots, so changing the budget or locks underneath can't change an open comparison.
+  const compareOption = (o: PlanOption) => {
+    if (!source) return;
+    const base = source.name.replace(/ \(starter\)$/, '');
+    setComparing([
+      { label: 'Starting deck', name: base, legends: [...source.legends], cards: { ...source.cards } },
+      { label: 'Upgrade', name: `${base} (upgraded)`, legends: [...source.legends], cards: { ...o.cards } },
+    ]);
   };
 
   if (!source)
@@ -301,9 +314,10 @@ export function UpgradePlanner({ onOpen }: { onOpen: (slug: string) => void }) {
 
       <div className={`up-options ${stale ? 'is-stale' : ''}`} aria-busy={stale} aria-live="polite">
         {plan?.options.map((o) => (
-          <OptionCard key={o.lenses.join()} o={o} budget={budget} onOpen={onOpen} onUse={() => openOption(o)} />
+          <OptionCard key={o.lenses.join()} o={o} budget={budget} onOpen={onOpen} onUse={() => openOption(o)} onCompare={() => compareOption(o)} />
         ))}
       </div>
+      {comparing && <HandTester decks={comparing} onClose={() => setComparing(null)} />}
     </div>
   );
 }

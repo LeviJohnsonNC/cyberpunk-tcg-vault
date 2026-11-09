@@ -598,3 +598,66 @@ tr.unspec-row td { background: color-mix(in srgb, var(--color-basis-proxy) 6%, t
 .shared-deck .al-strip dd { white-space: normal; font-size: clamp(24px, 2.2vw, 34px); }
 /* Long deck names wrap; keep the skewed title's overhang inside the viewport. */
 .shared-deck .al-title { max-width: calc(100% - 8px); }
+
+/* ---------- test hand / compare hands ---------- */
+.al-dialog.ht-dialog { width: min(1180px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: hidden auto; }
+.ht-body { padding: var(--space-5); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
+.ht-head { display: flex; gap: var(--space-3); align-items: flex-start; justify-content: space-between; }
+.ht-head h2 { font: 800 28px/1.05 var(--font-display); text-transform: uppercase; margin: 4px 0 6px; overflow-wrap: anywhere; }
+.ht-head p { margin: 0; max-width: 70ch; }
+.ht-tabs { display: none; }
+.ht-cols { display: grid; gap: var(--space-4); }
+.ht-cols.two { grid-template-columns: 1fr 1fr; }
+.ht-col { border: 1px solid var(--color-divider); background: var(--color-canvas-deep); padding: var(--space-3); display: grid; gap: var(--space-2); align-content: start; min-width: 0; }
+.ht-col-head { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+.ht-col-head .label { color: var(--color-accent); font-weight: 600; }
+.ht-legends { margin: 0; }
+.ht-state { display: flex; gap: var(--space-2); align-items: baseline; flex-wrap: wrap; }
+.ht-hand { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: var(--space-2); }
+.ht-cols.two .ht-hand { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); }
+.ht-card { position: relative; display: grid; gap: 4px; width: 100%; padding: 0; border: 0; background: none; color: var(--color-text); text-align: left; cursor: zoom-in; font: inherit; }
+.ht-card img { width: 100%; aspect-ratio: 5 / 7; object-fit: cover; display: block; border: 1px solid var(--color-divider); border-radius: 6px; transform: none; box-shadow: none; }
+.ht-card:hover img, .ht-card:focus-visible img { border-color: var(--color-accent); }
+.ht-card:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.ht-name { font-size: 12px; line-height: 1.25; overflow-wrap: anywhere; }
+.ht-drawn { position: absolute; top: 4px; left: 4px; font: 600 10px/1.4 var(--font-mono); text-transform: uppercase; background: var(--color-ticket); color: var(--color-canvas); padding: 0 4px; }
+.ht-controls { gap: var(--space-2); }
+.ht-both { justify-content: center; }
+.ht-section { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+.ht-section .group-h { margin: 0; }
+.ht-shape { display: grid; gap: var(--space-4); }
+.ht-shape.two { grid-template-columns: 1fr 1fr; }
+.ht-shape-col { min-width: 0; }
+.ht-pick { display: flex; gap: var(--space-2); align-items: center; }
+.ht-pick .select { flex: 0 1 360px; min-width: 0; }
+.ht-odds-table { width: 100%; max-width: 640px; }
+.ht-odds-table .num { text-align: right; font-family: var(--font-mono); }
+.ht-odds-table th[scope='row'] { text-align: left; }
+.ht-diff th, .ht-diff td { border-top: 2px solid var(--color-divider); }
+.ht-inspect { position: fixed; inset: 0; z-index: 5; background: rgba(10, 6, 12, 0.86); display: grid; place-items: center; padding: var(--space-4); }
+.ht-inspect-card { display: grid; grid-template-columns: minmax(160px, 260px) minmax(0, 360px); gap: var(--space-4); background: var(--color-surface); border: 1px solid var(--color-divider); border-top: 3px solid var(--color-accent); padding: var(--space-4); max-height: 100%; overflow: auto; }
+.ht-inspect-card img { width: 100%; aspect-ratio: 5 / 7; object-fit: cover; border-radius: 8px; transform: none; box-shadow: none; border: 1px solid var(--color-divider); }
+.ht-inspect-card h3 { margin: 0 0 6px; font: 700 20px/1.2 var(--font-ui); }
+.ht-text { white-space: pre-line; line-height: 1.5; }
+@media (max-width: 760px) {
+  .al-dialog.ht-dialog { width: 100vw; max-width: 100vw; max-height: 100dvh; height: 100dvh; margin: 0; clip-path: none; }
+  .ht-body { padding: var(--space-3); gap: var(--space-3); }
+  .ht-head h2 { font-size: 22px; }
+  .ht-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--color-divider); position: sticky; top: calc(-1 * var(--space-3)); background: var(--color-surface); z-index: 1; }
+  .ht-tabs button { flex: 1; padding: 10px 6px; border: 0; border-bottom: 3px solid transparent; background: none; color: var(--color-text-muted); font: 600 13px/1 var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; }
+  .ht-tabs button.on { color: var(--color-text); border-bottom-color: var(--color-accent); }
+  .ht-tabs button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+  .ht-cols.two { grid-template-columns: 1fr; }
+  .ht-cols.two .ht-col:not(.active) { display: none; }
+  .ht-hand, .ht-cols.two .ht-hand { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ht-controls .btn { flex: 1 1 auto; }
+  .ht-pick { flex-direction: column; align-items: stretch; }
+  .ht-pick .select { flex: none; width: 100%; }
+  table.data.ht-odds-table th, table.data.ht-odds-table td { padding: 8px 4px; font-size: 12px; letter-spacing: 0.02em; }
+  .ht-inspect-card { grid-template-columns: 1fr; max-width: 360px; }
+  .ht-inspect-card img { max-width: 200px; }
+}
+.ht-shape-col .bars { min-width: 0; }
+.ht-shape-col .bar { min-width: 0; }
+table.data.ht-odds-table th { white-space: normal; line-height: 1.25; }
+table.data.ht-odds-table tbody tr:hover { background: none; cursor: default; }
