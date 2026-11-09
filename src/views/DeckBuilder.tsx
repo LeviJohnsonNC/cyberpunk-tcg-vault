@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { RECOMMENDED, type Card } from '../lib/data';
-import { addDeckCard, formatDeckText, newDeck, readDeckDraft, readDeckText, rememberDeckDraft, totalCopies, type DeckDraft, type DeckZone } from '../lib/deckDraft';
+import { addDeckCard, formatDeckText, formatMeleeDeck, newDeck, readDeckDraft, readDeckText, rememberDeckDraft, totalCopies, type DeckDraft, type DeckZone } from '../lib/deckDraft';
 import { deckFromRecommended, deckNeed, purchaseEstimate, validate } from '../lib/decks';
 import { newId, useStore, type Deck } from '../lib/store';
 import { ConfirmDialog, Masthead, ViewTabs } from '../components/ui';
@@ -282,6 +282,7 @@ function DeckWorkbench({ owner, onOpen, initialDeck }: { owner: string; onOpen: 
               <button type="button" disabled={saving || deleting} onClick={() => fromMenu(() => replace({ deck: newDeck(), dirty: false }))}>New empty deck</button>
               <button type="button" disabled={saving || deleting} onClick={() => fromMenu(() => { void save(true); })}>Save copy</button>
               <button type="button" onClick={() => fromMenu(() => { void copy(formatDeckText(deck), 'Decklist'); })}>Copy list</button>
+              <button type="button" disabled={empty} onClick={() => fromMenu(() => { void copy(formatMeleeDeck(deck), 'Melee list'); })}>Copy Melee list</button>
               <button type="button" disabled={saving || deleting} onClick={() => fromMenu(() => { setImportError(''); importDialog.current?.showModal(); })}>Import list</button>
               <button type="button" disabled={deck.legends.length !== 3} onClick={() => fromMenu(() => openPlanner({
                 name: deck.name || 'Untitled deck', kind: saved ? 'saved' : 'current', legends: deck.legends, cards: deck.cards,
@@ -348,7 +349,7 @@ function DeckWorkbench({ owner, onOpen, initialDeck }: { owner: string; onOpen: 
         <div className="al-dialog-body">
           <h2 id="workbench-import-title">Import a decklist</h2>
           <div className="al-dialog-content">
-            <p>Paste one card per line using a quantity and the full name. Use // Sideboard for sideboard cards.</p>
+            <p>Paste an official Text List or Melee export. For your own list, use a quantity and the full card name on each line, with // Sideboard before any sideboard cards.</p>
             <textarea className="input mono" aria-label="Decklist to import" placeholder={'1 V: Corporate Exile\n3 Psycho Squad\n// Sideboard\n2 Floor It'}
               value={importText} onChange={(event) => { setImportText(event.target.value); setImportError(''); }} />
             {importError && <p className="danger-text" role="alert">{importError}</p>}

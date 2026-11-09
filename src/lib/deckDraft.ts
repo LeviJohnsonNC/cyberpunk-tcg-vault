@@ -9,6 +9,7 @@ export const totalCopies = (cards: Record<string, number>) => Object.values(card
 export const newDeck = (): Deck => ({ id: newId(), name: 'New crew', legends: [], cards: {}, sideboard: {}, notes: '', updatedAt: '' });
 
 export function addDeckCard(deck: Deck, card: Card, zone: DeckZone): { deck: Deck; destination: DeckZone | 'crew' } | { error: string } {
+  if (card.legal !== 'legal') return { error: `${card.display} is not eligible for play` };
   if (card.type === 'Legend') {
     if (deck.legends.includes(card.slug)) return { error: 'Legend already in crew' };
     if (deck.legends.length >= 3) return { error: 'Crew already has 3 Legends. Remove one first.' };
@@ -43,7 +44,7 @@ export function rememberDeckDraft(owner: string, draft: DeckDraft) {
   }
 }
 
-const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+const normalize = (s: string) => s.normalize('NFKD').toLowerCase().replace(/[^a-z0-9]/g, '');
 const cardNames = new Map<string, Card>();
 for (const card of CARDS) {
   cardNames.set(normalize(card.display), card);
@@ -53,21 +54,30 @@ for (const card of CARDS) {
 export function readDeckText(text: string) {
   const deck = newDeck();
   let zone: DeckZone = 'cards';
+  let started = false;
+  let title: string | undefined;
   const unknown: string[] = [];
   for (const raw of text.split('\n')) {
     const line = raw.trim();
     if (!line) continue;
-    if (line.startsWith('//')) {
-      const label = line.slice(2).trim();
-      if (/^sideboard(?:\s*[:(·]|\s+\d|$)/i.test(label)) zone = 'sideboard';
-      else if (/^main(?: deck)?(?:\s*[:(·]|\s+\d|$)/i.test(label)) zone = 'cards';
-      else if (!/^legends?(?:\s*[:(·]|\s+\d|$)/i.test(label) && deck.name === 'New crew' && label) deck.name = label.slice(0, 80);
+    // NetDeck Text List uses a # title and commented type headings; Melee uses bare headings.
+    const comment = line.startsWith('//');
+    const label = comment ? line.slice(2).trim() : line;
+    const section = label.match(/^(sideboard|main\s*deck|main|legends?|units?|gears?|programs?)(?:\s*(?:[:(·].*|\d+))?$/i)?.[1];
+    if (section) {
+      zone = section.toLowerCase() === 'sideboard' ? 'sideboard' : 'cards';
+      started = true;
       continue;
     }
+    if (line.startsWith('#') || comment) {
+      if (!started && !title) title = (comment ? label : line.slice(1).trim()) || undefined;
+      continue;
+    }
+    started = true;
     const match = line.match(/^(\d+)\s*x?\s+(.+)$/i);
     const qty = match ? Number(match[1]) : 1;
-    const name = (match?.[2] ?? line).replace(/\s*\(.*\)\s*$/, '');
-    const card = cardNames.get(normalize(name));
+    const name = match?.[2] ?? line;
+    const card = cardNames.get(normalize(name)) ?? cardNames.get(normalize(name.replace(/\s*\([^()]*\)\s*$/, '')));
     if (!card || !Number.isSafeInteger(qty) || qty < 1) { unknown.push(line); continue; }
     if (card.type === 'Legend') {
       if (!deck.legends.includes(card.slug)) deck.legends.push(card.slug);
@@ -75,16 +85,30 @@ export function readDeckText(text: string) {
       deck[zone][card.slug] = (deck[zone][card.slug] ?? 0) + qty;
     }
   }
+  if (title) deck.name = title.slice(0, 80);
   return { deck, unknown };
 }
 
 export function formatDeckText(deck: Deck) {
-  const lines = [`// ${deck.name}`, '// Legends', ...deck.legends.map((slug) => `1 ${BY_SLUG.get(slug)?.display ?? slug}`), '// Main'];
+  const lines = [`# ${deck.name}`, '// Legends', ...deck.legends.map((slug) => `1 ${BY_SLUG.get(slug)?.display ?? slug}`), '// Main'];
   const main = Object.entries(deck.cards).sort(([a], [b]) => (BY_SLUG.get(a)?.cost ?? 0) - (BY_SLUG.get(b)?.cost ?? 0));
   for (const [slug, qty] of main) lines.push(`${qty} ${BY_SLUG.get(slug)?.display ?? slug}`);
   if (totalCopies(deck.sideboard)) {
     lines.push('// Sideboard');
     for (const [slug, qty] of Object.entries(deck.sideboard)) lines.push(`${qty} ${BY_SLUG.get(slug)?.display ?? slug}`);
+  }
+  return lines.join('\n');
+}
+
+export function formatMeleeDeck(deck: Deck) {
+  const line = (slug: string, qty: number) => {
+    const card = BY_SLUG.get(slug);
+    return `${qty} ${card?.sub ? `${card.name} | ${card.sub}` : card?.name ?? slug}`;
+  };
+  const lines = ['MainDeck', ...Object.entries(deck.cards).map(([slug, qty]) => line(slug, qty)),
+    '', 'Legends', ...deck.legends.map((slug) => line(slug, 1))];
+  if (totalCopies(deck.sideboard)) {
+    lines.push('', 'Sideboard', ...Object.entries(deck.sideboard).map(([slug, qty]) => line(slug, qty)));
   }
   return lines.join('\n');
 }

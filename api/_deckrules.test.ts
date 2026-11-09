@@ -25,6 +25,13 @@ describe('server rules agree with client rules', () => {
     expect(validateDeck(['v-corporate-exile'], bad).length).toBeGreaterThan(0);
     expect(validate({ legends: ['v-corporate-exile'], cards: bad, sideboard: {} }).legal).toBe(false);
   });
+
+  it('on a deck with a promo Legend that is ineligible for play', () => {
+    const deck = RECOMMENDED.find((d) => d.id === 'lowball-netrun')!;
+    const legends = deck.legends.map((slug) => slug === 'jackie-welles-pour-one-out-for-me' ? 'rebecca-having-a-moment' : slug);
+    expect(validateDeck(legends, deck.cards)).toEqual(['legends']);
+    expect(validate({ legends, cards: deck.cards, sideboard: {} }).legal).toBe(false);
+  });
 });
 
 describe('resolveName', () => {

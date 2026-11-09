@@ -29,6 +29,11 @@ export function validate(d: Pick<Deck, 'legends' | 'cards' | 'sideboard'>) {
   if (n < MAIN_MIN || n > MAIN_MAX) issues.push(`Main deck must be ${MAIN_MIN} to ${MAIN_MAX} cards (has ${n})`);
   else passes.push(`${n} card main deck`);
   const slugs = Object.keys({ ...d.cards, ...d.sideboard });
+  const ineligible = [...new Set([...d.legends, ...slugs])].filter((slug) => {
+    const card = BY_SLUG.get(slug);
+    return card && card.legal !== 'legal';
+  });
+  if (ineligible.length) issues.push(`Not eligible for play: ${ineligible.map((slug) => BY_SLUG.get(slug)!.display).join(', ')}`);
   const overCopies = slugs.filter((s) => (d.cards[s] ?? 0) + (d.sideboard[s] ?? 0) > COPY_MAX);
   if (overCopies.length) issues.push(`Max ${COPY_MAX} copies: ${overCopies.map((s) => BY_SLUG.get(s)?.name ?? s).join(', ')}`);
   else passes.push('Copy limits OK');
@@ -42,7 +47,7 @@ export function validate(d: Pick<Deck, 'legends' | 'cards' | 'sideboard'>) {
   else passes.push('All cards fit RAM');
   if (side !== 0 && side !== SIDEBOARD_SIZE) issues.push(`Sideboard must be exactly ${SIDEBOARD_SIZE} for Bo3 (has ${side})`);
   else if (side === SIDEBOARD_SIZE) passes.push(`${SIDEBOARD_SIZE}-card sideboard`);
-  return { lim, n, side, issues, passes, overCopies, ramBad, legal: issues.length === 0 };
+  return { lim, n, side, issues, passes, overCopies, ramBad, ineligible, legal: issues.length === 0 };
 }
 
 export interface PurchaseLine {

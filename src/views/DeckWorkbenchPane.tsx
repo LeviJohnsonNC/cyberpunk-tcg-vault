@@ -32,12 +32,14 @@ export function DeckWorkbenchList({ deck, checks, missing, onChooseLegend, onLoa
     const count = (deck.cards[slug] ?? 0) + (deck.sideboard[slug] ?? 0);
     const section = zone === 'cards' ? 'Main' : 'Sideboard';
     const badRam = card && checks.ramBad.includes(slug);
+    const ineligible = checks.ineligible.includes(slug);
     const missingCopies = missingBySlug.get(slug);
     return (
-      <li key={slug} className="workbench-list-row" data-issue={!card || badRam || checks.overCopies.includes(slug)}>
+      <li key={slug} className="workbench-list-row" data-issue={!card || ineligible || badRam || checks.overCopies.includes(slug)}>
         <span className="workbench-list-cost">{card?.cost ?? '—'}</span>
         <div className="workbench-list-name">
           {card ? <button type="button" className="link" onClick={() => onOpen(slug)}>{card.display}</button> : <span>{slug}</span>}
+          {ineligible && <small className="danger-text">Not eligible for play</small>}
           {badRam && <small className="danger-text">Needs {card.color} RAM {card.ram} · {checks.lim[card.color] ?? 0} available</small>}
           {checks.overCopies.includes(slug) && <small className="danger-text">{count} copies across the list · limit {COPY_MAX}</small>}
           {!card && <small className="danger-text">Card data unavailable</small>}
@@ -46,7 +48,7 @@ export function DeckWorkbenchList({ deck, checks, missing, onChooseLegend, onLoa
         <span className="workbench-qty">
           <button type="button" className="iconbtn minus" aria-label={`Remove ${card?.display ?? slug} from ${section}`} onClick={() => onRemove(slug, zone)}>−</button>
           <b>{qty}</b>
-          <button type="button" className="iconbtn" disabled={!card || count >= COPY_MAX}
+          <button type="button" className="iconbtn" disabled={!card || ineligible || count >= COPY_MAX}
             aria-label={`Add ${card?.display ?? slug} to ${section} from list`} onClick={() => { if (card) onAdd(card, zone); }}>+</button>
         </span>
       </li>
@@ -68,7 +70,8 @@ export function DeckWorkbenchList({ deck, checks, missing, onChooseLegend, onLoa
               <div className="workbench-crew-slot" key={index}>
                 {card && <button type="button" className="workbench-crew-art" aria-label={`Details for ${card.display}`} onClick={() => onOpen(slug)}><CardImg slug={slug} alt="" priority /></button>}
                 <div className="workbench-crew-name"><b>{card?.name ?? slug}</b>{card?.sub && <small>{card.sub}</small>}
-                  {card && <small className="workbench-crew-ram"><Pip color={card.color} bare /> {card.color} RAM {card.ram ?? 0}</small>}
+                  {checks.ineligible.includes(slug) ? <small className="danger-text">Not eligible for play</small>
+                    : card && <small className="workbench-crew-ram"><Pip color={card.color} bare /> {card.color} RAM {card.ram ?? 0}</small>}
                 </div>
                 <button type="button" className="iconbtn minus" aria-label={`Remove ${card?.display ?? slug} from crew`} onClick={() => onRemoveLegend(index)}>×</button>
               </div>
