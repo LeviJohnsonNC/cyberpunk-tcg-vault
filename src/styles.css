@@ -294,13 +294,10 @@ button.cname:hover { color: var(--color-accent); }
 .dropzone:hover, .dropzone.over { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 7%, var(--color-canvas-deep)); }
 .dropzone .big { font: 800 26px/1 var(--font-display); text-transform: uppercase; color: var(--color-text); }
 .result-list { display: grid; gap: 6px; }
-.result { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 6px 8px; background: var(--color-canvas-deep); border: 1px solid var(--color-divider); }
-.result:hover { border-color: var(--color-accent-deep); }
 .scan-row { display: grid; grid-template-columns: 22px 40px minmax(0, 1fr) 170px 64px auto; gap: 10px; align-items: center; padding: 6px 8px; background: var(--color-canvas-deep); border: 1px solid var(--color-divider); }
 .loader { display: inline-block; width: 120px; height: 4px; background: var(--color-divider); position: relative; overflow: hidden; }
 .loader::after { content: ''; position: absolute; inset: 0; width: 40%; background: var(--color-accent); animation: load 0.9s linear infinite; }
 @keyframes load { from { left: -40%; } to { left: 100%; } }
-.danger-zone { border-top: 1px dashed var(--color-divider); margin-top: var(--space-4); padding-top: var(--space-4); }
 
 /* ---------- auth popover ---------- */
 .popover { position: absolute; right: 0; top: 42px; width: 320px; z-index: 60; background: var(--color-surface); border: 1px solid var(--color-divider); border-top: 3px solid var(--color-accent); padding: var(--space-4); text-transform: none; letter-spacing: 0; font: 400 14px/1.5 var(--font-ui); color: var(--color-text); }
@@ -452,7 +449,8 @@ img.card-art { background: var(--color-canvas-deep) url('/img/card-back.webp') c
 /* ---------- starter intake ---------- */
 .starters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4); }
 .starter-btn { display: flex; align-items: center; gap: var(--space-3); min-width: 0; padding: var(--space-3); text-align: left; background: var(--color-surface); border: 1px solid var(--color-divider); border-left: 3px solid var(--color-accent); color: inherit; cursor: pointer; }
-.starter-btn:hover { border-color: var(--color-accent); background: var(--color-surface-raised); }
+.starter-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.starter-btn:hover:not(:disabled) { border-color: var(--color-accent); background: var(--color-surface-raised); }
 .starter-btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
 .starter-legends { display: flex; flex: none; }
 .starter-legends img { width: 30px; aspect-ratio: 5 / 7; object-fit: cover; border: 1px solid var(--color-divider); border-radius: 2px; }
@@ -461,7 +459,6 @@ img.card-art { background: var(--color-canvas-deep) url('/img/card-back.webp') c
 .starter-name { font: 800 italic 20px/1 var(--font-display); text-transform: uppercase; color: var(--color-text); overflow-wrap: anywhere; }
 .starter-meta { display: flex; align-items: center; gap: 4px; font: 500 11px/1 var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); }
 .starters.compact { margin-bottom: 0; }
-.starter-panel { margin-bottom: var(--space-4); }
 .empty-hero-or { font-size: 14px !important; margin-bottom: var(--space-3) !important; }
 .edition-pick { border: 0; margin: var(--space-3) 0 0; padding: 0; display: grid; gap: 8px; }
 .edition-pick legend { margin-bottom: 6px; }

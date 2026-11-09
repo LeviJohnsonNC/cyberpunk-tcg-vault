@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import { BY_SLUG, normalizePrinting } from './data';
+import { BY_SLUG, MAX_PRINTING_COPIES, normalizePrinting } from './data';
 
 export interface Entry {
   slug: string;
@@ -99,7 +99,7 @@ export function mergeEntries(base: Entry[], items: Entry[], mode: 'add' | 'repla
   for (const raw of items) {
     if (!BY_SLUG.has(raw.slug) || !(raw.qty > 0)) continue;
     // Unknown or mismatched printing ids (old exports, typos) keep their copies as "unspecified".
-    const it = { ...raw, qty: Math.min(999, Math.round(raw.qty)), printingId: normalizePrinting(raw.slug, raw.printingId) };
+    const it = { ...raw, qty: Math.min(MAX_PRINTING_COPIES, Math.round(raw.qty)), printingId: normalizePrinting(raw.slug, raw.printingId) };
     const cur = map.get(it.printingId);
     if (cur && mode === 'add') {
       cur.qty += it.qty;
@@ -282,7 +282,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const setQty = async (slug: string, printingId: string, qty: number, note?: string | null) => {
     if (!collectionReady) return false;
-    const q = Math.max(0, Math.min(999, Math.round(qty)));
+    const q = Math.max(0, Math.min(MAX_PRINTING_COPIES, Math.round(qty)));
     const ex = entries.find((e) => e.printingId === printingId);
     const changed: Entry = { slug, printingId, qty: q, note: note === undefined ? ex?.note ?? null : note };
     const apply = (prev: Entry[]) => {
@@ -294,7 +294,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return true;
     }
     if (mode === 'cloud') return saveCloudCollection(printingId, () => upsertCloud([changed]), () => setEntries(apply));
-    setEntries(apply);
+    const next = apply(entries);
+    if (!writeLS(LS_COL, next)) {
+      toast('Could not save: this browser’s storage is full or blocked.', 'err');
+      return false;
+    }
+    setEntries(next);
     return true;
   };
 
