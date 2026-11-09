@@ -185,6 +185,7 @@ export function printingLabel(printingId: string, withRarity = true): string {
 // A holding is keyed by printing id. When the printing isn't known (a scan can read the name but
 // not Retail vs Beta), it's stored under a stable per-card id so different cards never collide.
 // Unspecified copies count toward playable ownership but have no holding value.
+export const MAX_PRINTING_COPIES = 999;
 export const UNSPECIFIED = 'unspecified:';
 export const unspecifiedId = (slug: string) => `${UNSPECIFIED}${slug}`;
 export const isUnspecified = (printingId: string) => printingId.startsWith(UNSPECIFIED);

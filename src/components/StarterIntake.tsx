@@ -12,7 +12,7 @@ export interface StarterAdded {
   edition: StarterEdition;
 }
 
-export function StarterIntake({ onAdded, compact = false }: { onAdded: (a: StarterAdded) => void; compact?: boolean }) {
+export function StarterIntake({ onAdded, compact = false, disabled = false }: { onAdded: (a: StarterAdded) => void; compact?: boolean; disabled?: boolean }) {
   const { entries, addMany, demo, exitDemo } = useStore();
   const [pending, setPending] = useState<StarterDeck | null>(null);
   const [edition, setEdition] = useState<StarterEdition>('retail');
@@ -22,7 +22,7 @@ export function StarterIntake({ onAdded, compact = false }: { onAdded: (a: Start
   const dup = pending ? looksAlreadyLogged(entries, pending, edition) : false;
 
   const confirm = async () => {
-    if (!pending || lock.current) return;
+    if (!pending || disabled || lock.current) return;
     lock.current = true;
     setBusy(true);
     const ok = await addMany(starterEntries(pending, edition), 'add');
@@ -44,7 +44,7 @@ export function StarterIntake({ onAdded, compact = false }: { onAdded: (a: Start
   return (
     <div className={`starters ${compact ? 'compact' : ''}`} role="group" aria-label="Log a starter deck">
       {STARTERS.map((s) => (
-        <button key={s.key} className="starter-btn" onClick={() => { setEdition('retail'); setPending(s); }}>
+        <button key={s.key} className="starter-btn" disabled={disabled} onClick={() => { setEdition('retail'); setPending(s); }}>
           <span className="starter-legends" aria-hidden="true">
             {s.legends.map((l) => <CardImg key={l} slug={l} alt="" />)}
           </span>
