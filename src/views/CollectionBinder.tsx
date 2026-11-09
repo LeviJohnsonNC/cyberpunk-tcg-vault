@@ -4,7 +4,7 @@ import { money } from '../lib/currency';
 import { printingLabel } from '../lib/data';
 import { useStore } from '../lib/store';
 
-export type OpenCollectionCard = (slug: string, printingId?: string, identify?: boolean) => void;
+export type OpenCollectionCard = (slug: string, printingId?: string, identify?: boolean, opener?: HTMLElement) => void;
 
 export function CollectionQuantity({ item, onOpen, pocket = false }: {
   item: CollectionCard;
@@ -33,7 +33,7 @@ export function CollectionQuantity({ item, onOpen, pocket = false }: {
   return (
     <div className="collection-qty-control">
       {pocket ? <span className="binder-owned">Owned <b>{qty}</b></span> : <span className="qty"><b>{qty}</b></span>}
-      <button className="btn quiet qty-pick" onClick={() => onOpen(card.slug, cover?.printingId, identify)} aria-label={`${identify ? 'Identify printing' : 'View printings'} of ${card.display}`}>
+      <button className="btn quiet qty-pick" onClick={(e) => onOpen(card.slug, cover?.printingId, identify, e.currentTarget)} aria-label={`${identify ? 'Identify printing' : 'View printings'} of ${card.display}`}>
         {identify ? 'Identify printing' : pocket ? 'View printings' : `${entries.length} printings`}
       </button>
     </div>
@@ -74,7 +74,7 @@ export function CollectionBinder({ items, onOpen }: { items: CollectionCard[]; o
           <li className="binder-pocket" key={card.slug}>
             <button
               className="binder-open"
-              onClick={() => onOpen(card.slug, cover?.printingId ?? catalog.id, !cover && unknownCopies > 0)}
+              onClick={(e) => onOpen(card.slug, cover?.printingId ?? catalog.id, !cover && unknownCopies > 0, e.currentTarget)}
               aria-label={`Open ${card.display}${coverLabel ? `, ${coverLabel}` : ''}`}
             >
               <PrintingArt slug={card.slug} printingId={cover?.printingId ?? catalog.id} alt="" pocket />

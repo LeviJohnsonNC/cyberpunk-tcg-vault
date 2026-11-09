@@ -182,22 +182,31 @@ button.cname:hover { color: var(--color-accent); }
 .drawer .close { position: absolute; top: 14px; right: 14px; }
 .drawer-title { margin: 4px 0 0; font: 800 40px/0.92 var(--font-display); text-transform: uppercase; color: var(--color-text); }
 .drawer-sub { font-size: 17px; color: var(--color-text-muted); margin-top: 4px; }
-.card-detail { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: var(--space-5); }
-.drawer-preview, .drawer-summary { display: grid; align-content: start; gap: var(--space-3); min-width: 0; }
-.drawer-heading { padding-inline-end: var(--space-6); }
+.card-detail {
+  display: grid; grid-template: "art heading" auto "art printing" auto "art summary" 1fr / 250px minmax(0, 1fr);
+  gap: var(--space-3) var(--space-5);
+}
+.drawer-printing-controls, .drawer-summary { display: grid; align-content: start; gap: var(--space-3); min-width: 0; }
+.drawer-heading { grid-area: heading; padding-inline-end: 48px; min-width: 0; overflow-wrap: anywhere; }
+.drawer-printing-controls { grid-area: printing; }
+.drawer-art { grid-area: art; min-width: 0; }
+.drawer-summary { grid-area: summary; }
 .drawer-preview-select { display: grid; gap: var(--space-1); min-width: 0; }
 .drawer-preview-select .select { width: 100%; font-size: 13px; }
 .drawer-printing-art { margin: 0; }
 .drawer-printing-art .card-art { display: block; object-fit: contain; transform: none; box-shadow: 3px 4px 0 var(--color-accent-deep); }
 .drawer-printing-art figcaption { margin-top: var(--space-2); }
 .drawer-printing-art figcaption:empty { margin-top: 0; }
-.drawer-selected-price {
-  display: grid; justify-items: start; gap: var(--space-1); padding: var(--space-3); background: var(--color-canvas-deep);
+.drawer-selected-holding {
+  display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3); padding: var(--space-2) var(--space-3); background: var(--color-canvas-deep);
   border: 1px solid var(--color-divider); border-inline-start: 2px solid var(--color-ticket);
 }
+.drawer-selected-price, .drawer-selected-quantity { display: grid; align-content: start; justify-items: start; gap: var(--space-1); }
 .drawer-selected-price .drawer-value { justify-content: flex-start; flex-flow: row wrap; gap: var(--space-2); font: 800 30px/1 var(--font-display); color: var(--color-ticket); }
 .drawer-selected-price .drawer-value a { color: inherit; }
 .drawer-selected-price .drawer-value .muted { font-family: var(--font-ui); }
+.drawer-selected-price > .muted { font-size: 14px; }
 .card-art { width: 100%; aspect-ratio: 5 / 7; object-fit: cover; border: 4px solid var(--color-text); border-radius: 12px; background: var(--color-canvas); transform: rotate(-2deg); box-shadow: 8px 10px 0 var(--color-accent-deep); }
 .rules { background: var(--color-canvas-deep); border-left: 3px solid var(--color-accent); padding: 12px 14px; line-height: 1.55; white-space: pre-wrap; }
 .kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 15px; margin: 0; }
@@ -324,10 +333,15 @@ hr.cut { border: 0; border-top: 1px dashed var(--color-divider); margin: var(--s
   .app { padding: 0 12px 60px; }
   .panel { padding: var(--space-4); }
   .cols-2, .cols-4 { grid-template-columns: 1fr; }
-  .card-detail { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
-  .drawer-preview-select { margin-inline-end: var(--space-6); }
-  .drawer-heading { padding-inline-end: 0; }
-  .drawer-printing-art .card-art { max-width: 190px; }
+  .card-detail { grid-template: "heading" "printing" "art" "summary" / minmax(0, 1fr); gap: var(--space-4); }
+  .drawer-close {
+    position: sticky; z-index: 2; top: max(var(--space-2), env(safe-area-inset-top)); height: 0;
+    display: flex; justify-content: flex-end; pointer-events: none;
+  }
+  .drawer .drawer-close .close { position: static; width: 44px; height: 44px; background: var(--color-surface); pointer-events: auto; }
+  .drawer .drawer-selected-quantity .iconbtn { width: 44px; height: 44px; }
+  .drawer-preview-select .select { min-height: 44px; }
+  .drawer-art { width: min(100%, 290px); justify-self: center; }
   .hide-sm { display: none !important; }
   table.data td, table.data th { padding: 8px 5px; }
   table.data .thumb { width: 30px; height: 42px; }
@@ -336,7 +350,7 @@ hr.cut { border: 0; border-top: 1px dashed var(--color-divider); margin: var(--s
   .scan-row { grid-template-columns: 22px 40px minmax(0, 1fr); }
   .scan-row > :nth-child(n + 4) { grid-column: 3; }
   .legend-slots { grid-template-columns: 1fr; }
-  .drawer { padding: var(--space-4); }
+  .drawer { padding: max(var(--space-4), env(safe-area-inset-top)) var(--space-4) max(var(--space-4), env(safe-area-inset-bottom)); }
   .drawer-title { font-size: 32px; }
   .popover { position: fixed; left: 12px; right: 12px; top: 64px; width: auto; }
 }
@@ -563,7 +577,7 @@ tr.unspec-row td { background: color-mix(in srgb, var(--color-basis-proxy) 6%, t
   .drawer .unspec-label { font-size: 13px; }
 }
 @media (max-width: 400px) {
-  .drawer { padding: var(--space-3); }
+  .drawer { padding: max(var(--space-3), env(safe-area-inset-top)) var(--space-3) max(var(--space-3), env(safe-area-inset-bottom)); }
   .drawer table.data td, .drawer table.data th { padding: 7px 3px; font-size: 12px; }
   .drawer .qty { gap: 4px; }
   .drawer .qty .iconbtn { width: 26px; height: 26px; }

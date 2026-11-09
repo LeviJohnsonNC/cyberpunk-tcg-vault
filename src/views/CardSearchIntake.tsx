@@ -1,6 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type RefObject } from 'react';
 import { CardImg, Pip } from '../components/bits';
-import { IntakeIcon } from '../components/IntakeIcon';
 import { PrintingArt } from '../components/PrintingArt';
 import { VaultSelect } from '../components/VaultSelect';
 import { money } from '../lib/currency';
@@ -8,7 +7,10 @@ import { BY_SLUG, isUnspecified, MAX_PRINTING_COPIES, printingLabel, unspecified
 import { searchIntake } from '../lib/intake';
 import { useStore } from '../lib/store';
 
-export function CardSearchIntake({ onOpen }: { onOpen: (slug: string, printingId?: string, identify?: boolean) => void }) {
+export function CardSearchIntake({ onOpen, queryInput }: {
+  onOpen: (slug: string, printingId?: string, identify?: boolean) => void;
+  queryInput: RefObject<HTMLInputElement | null>;
+}) {
   const { collectionReady, entries, quantityPending, setQty } = useStore();
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState(true);
@@ -19,7 +21,6 @@ export function CardSearchIntake({ onOpen }: { onOpen: (slug: string, printingId
   const [message, setMessage] = useState('');
   const [saveFailed, setSaveFailed] = useState(false);
   const locked = useRef(false);
-  const queryInput = useRef<HTMLInputElement>(null);
   const selectedHeading = useRef<HTMLHeadingElement>(null);
   const matches = useMemo(() => searchIntake(query), [query]);
   const results = matches.slice(0, 30);
@@ -59,12 +60,11 @@ export function CardSearchIntake({ onOpen }: { onOpen: (slug: string, printingId
 
   return (
     <section className="panel intake-panel intake-search">
-      <h2 className="intake-heading">Find a card</h2>
-      <label className="sr-only" htmlFor="intake-query">Search cards</label>
+      <label className="intake-search-label" htmlFor="intake-query">Search by name or number</label>
       <input ref={queryInput} id="intake-query" className="input search intake-query" role="combobox"
         aria-autocomplete="list" aria-expanded={showResults} aria-controls="intake-matches" aria-describedby="intake-search-help"
         aria-activedescendant={showResults && highlight >= 0 ? `intake-option-${highlight}` : undefined}
-        placeholder="Card name or collector number…" autoComplete="off" value={query}
+        placeholder="e.g. Jackie Welles or #042" autoComplete="off" value={query}
         onFocus={() => setExpanded(true)}
         onChange={(event) => {
           setQuery(event.target.value); setHighlight(-1); setExpanded(true);
@@ -142,7 +142,6 @@ export function CardSearchIntake({ onOpen }: { onOpen: (slug: string, printingId
         )}
       </div>
 
-      {!query.trim() && !card && <div className="intake-search-empty"><IntakeIcon name="search" /><p>Try <b>Jackie Welles</b> or <b>#042</b> from your card.</p></div>}
       {!!query.trim() && !results.length && <p className="intake-search-empty" role="status">No cards match “{query.trim()}”. Try a shorter name or the number printed on the card.</p>}
     </section>
   );

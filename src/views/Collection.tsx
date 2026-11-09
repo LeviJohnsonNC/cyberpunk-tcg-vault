@@ -97,12 +97,11 @@ function CollectionList({ items, sort, setSort, onOpen }: {
         <tbody>
           {items.map((item) => {
             const { card, qty, value, quote } = item;
-            const open = () => onOpen(card.slug);
             return (
-              <tr key={card.slug} className={qty ? undefined : 'unowned'} onClick={open}>
+              <tr key={card.slug} className={qty ? undefined : 'unowned'} onClick={(e) => onOpen(card.slug, undefined, undefined, e.currentTarget.querySelector('button.cname') ?? undefined)}>
                 <td className="collection-art-cell"><CardImg className="thumb collection-thumb" slug={card.slug} alt="" /></td>
                 <td>
-                  <button className="cname" onClick={(e) => { e.stopPropagation(); open(); }}>{card.name}</button>
+                  <button className="cname" onClick={(e) => { e.stopPropagation(); onOpen(card.slug, undefined, undefined, e.currentTarget); }}>{card.name}</button>
                   {card.sub && <div className="csub">{card.sub}</div>}
                 </td>
                 <td className="hide-sm"><Pip color={card.color} /></td>
@@ -127,7 +126,7 @@ function CollectionList({ items, sort, setSort, onOpen }: {
   );
 }
 
-export function Collection({ onOpen, goAdd }: { onOpen: OpenCollectionCard; goAdd: () => void }) {
+export function Collection({ onOpen, goAdd, mobile }: { onOpen: OpenCollectionCard; goAdd: () => void; mobile: boolean }) {
   const { entries, owned, startDemo, collectionReady, collectionError, retryCollection } = useStore();
   const [justAdded, setJustAdded] = useState<StarterAdded | null>(null);
   const [view, setView] = useState<CollectionView>(savedView);
@@ -140,8 +139,10 @@ export function Collection({ onOpen, goAdd }: { onOpen: OpenCollectionCard; goAd
   const [sellOnly, setSellOnly] = useState(false);
   const [sort, setSort] = useState<CollectionOrder>({ key: 'name', direction: 1 });
   const sheet = useRef<HTMLDialogElement>(null);
+  const heading = useRef<HTMLDivElement>(null);
   const activeFilters = colors.length + types.length + Number(!!rarity) + Number(!!cost) + Number(sellOnly);
   const ready = collectionReady && !collectionError;
+  const emptyVault = ready && scope === 'mine' && entries.length === 0;
 
   const byCard = useMemo(() => {
     const bySlug = new Map<string, Entry[]>();
@@ -182,6 +183,55 @@ export function Collection({ onOpen, goAdd }: { onOpen: OpenCollectionCard; goAd
     setView(next);
     try { localStorage.setItem(viewKey, next); } catch { /* Storage can be disabled. */ }
   };
+  const browseCatalog = () => {
+    setQ('');
+    clearFilters();
+    setScope('all');
+    if (mobile) heading.current?.focus();
+  };
+  const welcome = emptyVault && (
+    <section className="empty-hero collection-empty-vault" aria-labelledby="empty-hero-title">
+      <img src="/img/empty-vault.webp" alt="" width={960} height={720} />
+      <div className="empty-hero-text">
+        <h2 id="empty-hero-title">Start your Vault</h2>
+        <p>Log a card or add a starter deck to begin your collection.</p>
+        <button className="btn collection-first-add" onClick={goAdd}>Add a card</button>
+        <h3 className="collection-start-label">Log a starter deck</h3>
+        <StarterIntake onAdded={(added) => { setJustAdded(added); setScope('mine'); }} />
+        <div className="row collection-explore">
+          <button className="btn ghost" onClick={startDemo}>Explore the sample Vault</button>
+          <button className="linklike collection-browse-link" onClick={browseCatalog}>Browse the full catalog</button>
+        </div>
+      </div>
+    </section>
+  );
+  const masthead = <Masthead eyebrow="The Afterlife / Inventory" title="Collection"
+    sub={mobile ? undefined : ready ? <>{owned.size} unique <span className="sep" aria-hidden="true">◆</span> {CARDS.length} in the catalog</> : 'Your card vault'} />;
+  const collectionStatus = collectionError
+    ? <div className="collection-empty" role="alert"><p>Couldn’t load your collection.</p><button className="btn quiet sm" onClick={retryCollection}>Try again</button></div>
+    : <div className="collection-empty" role="status">Loading your collection…</div>;
+
+  if (mobile && (!ready || emptyVault)) {
+    return (
+      <section className="collection-page">
+        <div className="collection-heading" ref={heading} tabIndex={-1}>{masthead}</div>
+        {ready ? welcome : collectionStatus}
+      </section>
+    );
+  }
+
+  const highlights = [
+    { label: 'Cards owned', context: ready ? `${owned.size} unique` : undefined, value: ready ? totals.copies : '—' },
+    {
+      label: 'Estimated value',
+      context: ready ? `${getCurrency()}${totals.unpriced ? ` · ${totals.unpriced} unpriced` : ''}` : undefined,
+      value: ready ? totals.copies > 0 && totals.unpriced === totals.copies ? 'Unpriced' : money(totals.knownCad) : '—',
+    },
+  ];
+  const collectionStats = [
+    { label: 'Legends', context: ready ? 'unique owned' : undefined, value: ready ? CARDS.filter((card) => card.type === 'Legend' && owned.has(card.slug)).length : '—' },
+    { label: 'Catalog completion', context: ready ? `${owned.size} / ${CARDS.length} cards` : undefined, value: ready ? `${Math.round(owned.size / CARDS.length * 100)}%` : '—' },
+  ];
 
   const filters = (
     <div className="collection-filters">
@@ -217,8 +267,8 @@ export function Collection({ onOpen, goAdd }: { onOpen: OpenCollectionCard; goAd
 
   return (
     <section className="collection-page">
-      <div className="collection-heading">
-        <Masthead eyebrow="The Afterlife / Inventory" title="Collection" sub={ready ? <>{owned.size} unique <span className="sep" aria-hidden="true">◆</span> {CARDS.length} in the catalog</> : 'Your card vault'} />
+      <div className="collection-heading" ref={heading} tabIndex={-1}>
+        {masthead}
         <div className="collection-overview">
           <div className="collection-actions">
             <button className="btn quiet sm collection-export" disabled={!ready || !entries.length} onClick={() => downloadCollection(entries)}>Export</button>
@@ -230,23 +280,20 @@ export function Collection({ onOpen, goAdd }: { onOpen: OpenCollectionCard; goAd
               </div>
             </details>
           </div>
-          <MetricStrip items={[
-            { label: 'Cards owned', context: ready ? `${owned.size} unique` : undefined, value: ready ? totals.copies : '—' },
-            {
-              label: 'Estimated value',
-              context: ready ? `${getCurrency()}${totals.unpriced ? ` · ${totals.unpriced} unpriced` : ''}` : undefined,
-              value: ready ? totals.copies > 0 && totals.unpriced === totals.copies ? 'Unpriced' : money(totals.knownCad) : '—',
-            },
-            { label: 'Legends', context: ready ? 'unique owned' : undefined, value: ready ? CARDS.filter((card) => card.type === 'Legend' && owned.has(card.slug)).length : '—' },
-            { label: 'Catalog completion', context: ready ? `${owned.size} / ${CARDS.length} cards` : undefined, value: ready ? `${Math.round(owned.size / CARDS.length * 100)}%` : '—' },
-          ]} />
+          <MetricStrip items={mobile ? highlights : [...highlights, ...collectionStats]} />
+          {mobile && <details className="collection-summary">
+            <summary>Collection summary</summary>
+            <dl>
+              {collectionStats.map(({ label, value, context }) => <div key={label}><dt>{label}</dt><dd><strong>{value}</strong> {context}</dd></div>)}
+            </dl>
+          </details>}
         </div>
       </div>
 
       <div className="collection-searchbar">
         <div className="chips" role="group" aria-label="Scope">
           <button className="chip" aria-pressed={scope === 'mine'} onClick={() => setScope('mine')}>My cards</button>
-          <button className="chip" aria-pressed={scope === 'all'} onClick={() => setScope('all')}>Full database</button>
+          <button className="chip" aria-pressed={scope === 'all'} onClick={() => setScope('all')}>{mobile ? 'Catalog' : 'Full database'}</button>
         </div>
         <input className="input search" type="search" aria-label="Search cards" placeholder="Search name, traits, or rules text" value={q} onChange={(e) => setQ(e.target.value)} />
         <div className="collection-toolbar-actions">
@@ -266,7 +313,7 @@ export function Collection({ onOpen, goAdd }: { onOpen: OpenCollectionCard; goAd
           <summary>{unspecCopies} {unspecCopies === 1 ? 'copy needs' : 'copies need'} a printing identified</summary>
           <div className="unspec-list">
             {unspec.slice(0, 12).map((entry) => (
-              <button key={entry.printingId} className="chip" onClick={() => onOpen(entry.slug, undefined, true)}>{BY_SLUG.get(entry.slug)?.display} ×{entry.qty}</button>
+              <button key={entry.printingId} className="chip" onClick={(e) => onOpen(entry.slug, undefined, true, e.currentTarget)}>{BY_SLUG.get(entry.slug)?.display} ×{entry.qty}</button>
             ))}
             {unspec.length > 12 && <span className="tiny muted">and {unspec.length - 12} more</span>}
           </div>
@@ -300,25 +347,10 @@ export function Collection({ onOpen, goAdd }: { onOpen: OpenCollectionCard; goAd
               }} />
             </label>
           </header>
-          {collectionError ? (
-            <div className="collection-empty" role="alert"><p>Couldn’t load your collection.</p><button className="btn quiet sm" onClick={retryCollection}>Try again</button></div>
-          ) : !ready ? (
-            <div className="collection-empty" role="status">Loading your collection…</div>
-          ) : scope === 'mine' && !entries.length ? (
-            <section className="empty-hero collection-empty-vault" aria-labelledby="empty-hero-title">
-              <img src="/img/empty-vault.webp" alt="" width={960} height={720} />
-              <div className="empty-hero-text">
-                <h3 id="empty-hero-title">Start your vault</h3>
-                <p>Pick a starter, log cards one at a time, or look around with a sample collection.</p>
-                <h4 className="collection-start-label">Log a starter deck</h4>
-                <StarterIntake onAdded={(added) => { setJustAdded(added); setScope('mine'); }} />
-                <div className="row">
-                  <button className="btn quiet" onClick={goAdd}>Add individual cards</button>
-                  <button className="btn ghost" onClick={startDemo}>Explore the sample vault</button>
-                </div>
-                <button className="linklike collection-browse-link" onClick={() => setScope('all')}>Browse full database</button>
-              </div>
-            </section>
+          {!ready ? (
+            collectionStatus
+          ) : emptyVault ? (
+            welcome
           ) : !rows.length ? (
             <div className="collection-empty"><p>No matching cards.</p><button className="btn quiet sm" onClick={() => { setQ(''); clearFilters(); }}>Clear search and filters</button></div>
           ) : view === 'binder' ? (
