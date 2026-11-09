@@ -135,7 +135,7 @@ export function SharedDeck({ token, onOpen, goAdd }: { token?: string; onOpen: (
           <p className="muted" style={{ margin: 0 }}>Loading your collection…</p>
         ) : (
           <>
-            {demo && <p className="share-note">Demo mode is on, so this compares the deck with sample cards, not yours.</p>}
+            {demo && <p className="share-note">This deck is being compared with the sample collection.</p>}
             {ownedTotal === 0 && !demo && (
               <p className="share-note">
                 Your Vault is empty, so everything below counts as missing.{' '}

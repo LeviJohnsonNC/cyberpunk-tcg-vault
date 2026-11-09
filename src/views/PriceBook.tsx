@@ -2,11 +2,12 @@
 // See docs/design-system.md. Uses only semantic tokens (src/theme.css) and pricebook.css.
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { VaultSelect } from '../components/VaultSelect';
-import { BASIS_CLASS, PRICES, imageUrl, printingLabel } from '../lib/data';
+import { BASIS_CLASS, PRICES, printingLabel } from '../lib/data';
 import { getCurrency, money, moneyOr, toDisplay } from '../lib/currency';
 import { buildPriceBook, sortLines, toCsv, type Basis, type Group, type Line, type SortKey } from '../lib/pricebook';
 import { useStore } from '../lib/store';
-import { CARD_BACK } from '../components/bits';
+import { CardImg } from '../components/bits';
+import { PrintingArt } from '../components/PrintingArt';
 import { Masthead, MetricStrip } from '../components/ui';
 import './pricebook.css';
 
@@ -28,11 +29,6 @@ function BasisTag({ basis, from }: { basis: Basis | null; from?: string | null }
   );
 }
 
-function Thumb({ slug, className }: { slug: string; className: string }) {
-  const [err, setErr] = useState(false);
-  return <img className={`${className} card-art`} src={err ? CARD_BACK : imageUrl(slug)} alt="" loading="lazy" onError={() => setErr(true)} />;
-}
-
 /* ---------- marquee ---------- */
 function Skyline() {
   return (
@@ -43,8 +39,7 @@ function Skyline() {
   );
 }
 
-function Marquee({ top, loading, onOpen, goAdd }: { top: Line | null; loading: boolean; onOpen: (s: string) => void; goAdd: () => void }) {
-  const [artErr, setArtErr] = useState(false);
+function Marquee({ top, loading, onOpen, goAdd }: { top: Line | null; loading: boolean; onOpen: (slug: string, printingId?: string) => void; goAdd: () => void }) {
   if (loading) {
     return (
       <section className="pb-marquee is-loading" aria-busy="true" aria-label="Most valuable card, loading">
@@ -84,8 +79,8 @@ function Marquee({ top, loading, onOpen, goAdd }: { top: Line | null; loading: b
         </p>
       </div>
       <Skyline />
-      <button className="pb-marquee-card" onClick={() => onOpen(card.slug)} aria-label={`Open ${card.display}`}>
-        <img className="card-art" src={artErr ? CARD_BACK : imageUrl(card.slug)} alt="" onError={() => setArtErr(true)} />
+      <button className="pb-marquee-card" onClick={() => onOpen(card.slug, top.printing?.id)} aria-label={`Open ${card.display}`}>
+        {top.printing ? <PrintingArt slug={card.slug} printingId={top.printing.id} alt="" pocket /> : <CardImg slug={card.slug} alt="" priority />}
       </button>
     </section>
   );
@@ -123,7 +118,7 @@ function Breakdown({ title, groups, total, fill, children }: { title: string; gr
 }
 
 /* ---------- page ---------- */
-export function PriceBook({ onOpen, goAdd }: { onOpen: (slug: string) => void; goAdd: () => void }) {
+export function PriceBook({ onOpen, goAdd }: { onOpen: (slug: string, printingId?: string) => void; goAdd: () => void }) {
   const { entries, syncing } = useStore();
   const [sortBy, setSortBy] = useState<SortKey>('total');
   const pb = useMemo(() => buildPriceBook(entries), [entries]);
@@ -204,7 +199,7 @@ export function PriceBook({ onOpen, goAdd }: { onOpen: (slug: string) => void; g
               {sorted.map((l) => (
                 <div key={l.entry.printingId} className="pb-row" role="row" onClick={() => onOpen(l.card.slug)}>
                   <span role="cell" className="pb-id">
-                    <Thumb slug={l.card.slug} className="pb-thumb" />
+                    <CardImg slug={l.card.slug} className="pb-thumb" alt="" />
                     <span className="pb-id-text">
                       <button className="pb-name" onClick={(e) => { e.stopPropagation(); onOpen(l.card.slug); }}>{l.card.name}</button>
                       {l.card.sub && <span className="pb-sub">{l.card.sub}</span>}

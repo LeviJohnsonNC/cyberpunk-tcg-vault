@@ -66,7 +66,7 @@ export function DeckWorkbenchList({ deck, checks, missing, onChooseLegend, onLoa
             const card = slug ? BY_SLUG.get(slug) : undefined;
             return slug ? (
               <div className="workbench-crew-slot" key={index}>
-                {card && <button type="button" className="workbench-crew-art" aria-label={`Details for ${card.display}`} onClick={() => onOpen(slug)}><CardImg slug={slug} alt="" /></button>}
+                {card && <button type="button" className="workbench-crew-art" aria-label={`Details for ${card.display}`} onClick={() => onOpen(slug)}><CardImg slug={slug} alt="" priority /></button>}
                 <div className="workbench-crew-name"><b>{card?.name ?? slug}</b>{card?.sub && <small>{card.sub}</small>}
                   {card && <small className="workbench-crew-ram"><Pip color={card.color} bare /> {card.color} RAM {card.ram ?? 0}</small>}
                 </div>

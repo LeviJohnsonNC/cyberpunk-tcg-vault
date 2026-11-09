@@ -115,7 +115,7 @@ export function VaultBuilds({ onOpen, goAdd }: { onOpen: (slug: string) => void;
           <p>Log cards or a starter deck to see what you can build. Explore a sample vault with the demo.</p>
           <div className="row">
             <button className="btn" onClick={goAdd}>Add cards</button>
-            {!demo && <button className="btn ghost" onClick={startDemo}>Try the demo</button>}
+            {!demo && <button className="btn ghost" onClick={startDemo}>Explore the sample vault</button>}
           </div>
         </div>
       ) : (
@@ -203,7 +203,7 @@ export function VaultBuilds({ onOpen, goAdd }: { onOpen: (slug: string) => void;
                   </div>
                   <div className="meta-feature-art" aria-label="Legend cards">
                     {featured.legends.map((slug) => <button key={slug} type="button" aria-label={`Open ${BY_SLUG.get(slug)?.display}`}
-                      title={BY_SLUG.get(slug)?.display} onClick={() => onOpen(slug)}><CardImg slug={slug} alt="" /></button>)}
+                      title={BY_SLUG.get(slug)?.display} onClick={() => onOpen(slug)}><CardImg slug={slug} alt="" priority /></button>)}
                   </div>
                   <div className="meta-feature-action">
                     <button className="btn meta-open-draft" type="button" onClick={() => open(featured)}>

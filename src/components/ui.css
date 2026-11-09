@@ -68,3 +68,24 @@
   .al-title { font-size: clamp(44px, 13vw, 64px); }
   .al-masthead-aside { margin-left: 0; width: 100%; }
 }
+
+/* Shared page tabs and pane switches */
+.al-view-tabs { display: flex; gap: var(--space-2); }
+.al-view-tabs > button {
+  display: flex; align-items: center; justify-content: center; gap: var(--space-2); min-width: 0; min-height: 44px;
+  padding: var(--space-2) var(--space-4); color: var(--color-text); background: var(--color-surface);
+  border: 1px solid var(--color-divider); border-radius: var(--radius-sm);
+  font: 600 14px/1.2 var(--font-ui); text-align: center; cursor: pointer;
+}
+.al-view-tabs > button:hover { border-color: var(--color-accent); }
+.al-view-tabs > button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; box-shadow: none; z-index: 1; }
+.al-view-tabs > button[aria-selected='true'], .al-view-tabs > button[aria-pressed='true'] {
+  background: var(--color-accent); border-color: var(--color-accent); color: var(--color-accent-ink);
+}
+.al-action-feedback { font: 500 12px/1.4 var(--font-mono); color: var(--color-text-muted); }
+.al-action-feedback[data-tone='success'] { color: var(--color-success); }
+.al-action-feedback[data-tone='error'] { color: var(--color-danger); }
+@media (max-width: 760px) {
+  .al-view-tabs { gap: var(--space-1); }
+  .al-view-tabs > button { padding-inline: var(--space-2); font-size: 13px; }
+}

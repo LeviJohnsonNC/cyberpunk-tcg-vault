@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { enabledProviders, supabase } from '../lib/supabase';
 import { useStore } from '../lib/store';
 
@@ -9,16 +9,48 @@ export function AuthBox() {
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [google, setGoogle] = useState(false);
+  const account = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     enabledProviders().then((p) => setGoogle(!!p.google));
   }, []);
 
+  useEffect(() => {
+    if (!open) return;
+    const dismiss = (event: PointerEvent) => {
+      if (event.target instanceof Node && !account.current?.contains(event.target)) setOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setOpen(false);
+        trigger.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', dismiss);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('pointerdown', dismiss);
+      document.removeEventListener('keydown', escape);
+    };
+  }, [open]);
+
   if (session) {
     return (
-      <span className="row" style={{ gap: 8 }}>
-        <span className="hide-sm">{session.user.email}</span>
-        <button className="btn ghost sm signout" onClick={signOut}>Sign out</button>
-      </span>
+      <div className="vault-account" ref={account}>
+        <button type="button" className="btn quiet account-button" aria-label="Account" aria-expanded={open} aria-controls="vault-account-panel"
+          ref={trigger} onClick={() => setOpen((shown) => !shown)}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+            <circle cx="12" cy="8" r="3.5" /><path d="M4.5 21v-2.5a5 5 0 0 1 5-5h5a5 5 0 0 1 5 5V21z" />
+          </svg>
+          <span>Account</span>
+        </button>
+        {open && <div className="popover account-panel" id="vault-account-panel" role="group" aria-label="Your account">
+          <h3>Your account</h3>
+          <p>{session.user.email}</p>
+          <button type="button" className="btn ghost sm" onClick={() => { setOpen(false); void signOut(); }}>Sign out</button>
+        </div>}
+      </div>
     );
   }
 
@@ -48,10 +80,10 @@ export function AuthBox() {
   };
 
   return (
-    <span style={{ position: 'relative' }}>
-      <button className="btn signin" aria-expanded={open} onClick={() => setOpen((o) => !o)}>Sign in</button>
+    <div className="vault-account" ref={account}>
+      <button type="button" className="btn signin" ref={trigger} aria-expanded={open} aria-controls="vault-signin-panel" onClick={() => setOpen((o) => !o)}>Sign in</button>
       {open && (
-        <div className="popover" role="dialog" aria-label="Sign in">
+        <div className="popover" id="vault-signin-panel" role="group" aria-label="Sign in">
           <h3>Jack in</h3>
           {sent ? (
             <p style={{ margin: 0 }}>Check <b>{email}</b> for a sign-in link. You can close this.</p>
@@ -91,6 +123,6 @@ export function AuthBox() {
           )}
         </div>
       )}
-    </span>
+    </div>
   );
 }

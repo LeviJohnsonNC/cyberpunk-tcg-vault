@@ -73,7 +73,7 @@ export function VaultFileIntake() {
           event.target.value = '';
           if (file && !locked.current) void load(file);
         }} />
-        {done && <p className="callout intake-import-done" role="status">{done} <a href="#/collection">Open Collection</a></p>}
+        {done && <p className="callout intake-import-done al-action-feedback" data-tone="success" role="status">{done} <a href="#/collection">Open Collection</a></p>}
         {error && <p className="callout y" role="alert">{error}</p>}
         {reading && <p className="muted" role="status">Reading file…</p>}
         {draft && preview ? (
@@ -122,7 +122,7 @@ export function VaultFileIntake() {
             <p className="intake-description">Choose a Vault JSON backup to preview the copies it will add to your collection.</p>
             <button type="button" className="btn" disabled={reading} onClick={() => fileInput.current?.click()}><IntakeIcon name="import" /> Choose Vault file</button>
             <p className="intake-import-help">Looking for your backup? Use Export in <a href="#/collection">Collection</a>.</p>
-            {!demo && <p className="intake-import-help"><button type="button" className="linklike" onClick={() => void startDemo()}>Try the sample vault</button> to explore with a separate demo collection.</p>}
+            {!demo && <p className="intake-import-help"><button type="button" className="linklike" onClick={() => void startDemo()}>Explore the sample vault</button> to browse a collection separate from yours.</p>}
           </>
         )}
       </section>

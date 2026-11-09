@@ -9,7 +9,7 @@ export function HowItWorks({ openFeedback }: { openFeedback: () => void }) {
         <section className="panel">
           <div className="panel-title">Your collection</div>
           <p>Add cards by searching, or snap a photo and a vision model suggests matches you confirm. Without an account, everything stays in this browser. Sign in to sync across devices.</p>
-          <p>Not ready to add cards? Try the demo collection from the Collection tab. Nothing in demo mode is saved.</p>
+          <p>Not ready to add cards? Explore the sample vault from Collection. Edits to sample cards stay separate from your collection.</p>
         </section>
         <section className="panel">
           <div className="panel-title">Prices</div>

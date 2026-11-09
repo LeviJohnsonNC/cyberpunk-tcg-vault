@@ -189,3 +189,13 @@
   .collection-list .cname, .collection-list .csub { overflow-wrap: anywhere; }
   .collection-list .num .csub { white-space: normal; }
 }
+
+/* Empty vault entry points */
+.collection-start-label {
+  margin: 0 0 var(--space-2); color: var(--color-ticket); font: 600 12px/1.2 var(--font-mono); text-transform: uppercase;
+}
+.collection-empty-vault .starters { margin-bottom: 0; }
+.collection-browse-link { margin-top: var(--space-3); font-size: 13px; }
+@media (max-width: 760px) {
+  .collection-empty-vault > img { order: 1; max-width: 230px; }
+}

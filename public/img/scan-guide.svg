@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 300">
+  <defs>
+    <pattern id="dots" width="6" height="6" patternUnits="userSpaceOnUse">
+      <circle cx="1.5" cy="1.5" r="1" fill="#ff8cbb" opacity=".28"/>
+    </pattern>
+    <linearGradient id="desk" x2="1" y2="1">
+      <stop stop-color="#2a1c30"/>
+      <stop offset="1" stop-color="#17101b"/>
+    </linearGradient>
+    <symbol id="card" viewBox="0 0 44 58">
+      <rect x="3" y="4" width="40" height="53" rx="3" fill="#110b14"/>
+      <rect x="1" y="1" width="40" height="53" rx="3" fill="#211627" stroke="#f6dca9" stroke-width="1.1"/>
+      <path d="M5 6h32v27H5z" fill="currentColor" opacity=".19"/>
+      <path d="m7 28 7-8 6 4 6-11 9 8v9H7z" fill="currentColor" opacity=".9"/>
+      <circle cx="14" cy="14" r="3" fill="#f6dca9" opacity=".8"/>
+      <path d="M6 37h21m-21 5h29m-29 4h17" stroke="#f6dca9" stroke-width="1.35" stroke-linecap="round"/>
+      <path d="M32 49h5v-5" fill="none" stroke="currentColor" stroke-width="1.25"/>
+    </symbol>
+  </defs>
+  <rect x="1" y="1" width="458" height="298" rx="10" fill="url(#desk)" stroke="#4a3248" stroke-width="2"/>
+  <path d="M2 70 150 2h308v36L2 246z" fill="url(#dots)"/>
+  <path d="M2 267 458 66v52L52 298H11a9 9 0 0 1-9-9z" fill="url(#dots)" opacity=".55"/>
+  <rect x="55" y="25" width="350" height="250" rx="8" fill="#110b14" fill-opacity=".56" stroke="#c4568a" stroke-opacity=".7" stroke-dasharray="4 7"/>
+  <g stroke="#ff8cbb" stroke-width="3" stroke-linecap="square" fill="none">
+    <path d="M57 52V27h25m296 0h25v25M57 248v25h25m296 0h25v-25"/>
+    <path d="M23 150h15m384 0h15" opacity=".6"/>
+  </g>
+  <g>
+    <use href="#card" x="102" y="49" width="44" height="58" color="#ff8cbb"/>
+    <use href="#card" x="173" y="49" width="44" height="58" color="#f6dca9"/>
+    <use href="#card" x="244" y="49" width="44" height="58" color="#ff8cbb"/>
+    <use href="#card" x="315" y="49" width="44" height="58" color="#f6dca9"/>
+    <use href="#card" x="102" y="121" width="44" height="58" color="#f6dca9"/>
+    <use href="#card" x="173" y="121" width="44" height="58" color="#ff8cbb"/>
+    <use href="#card" x="244" y="121" width="44" height="58" color="#f6dca9"/>
+    <use href="#card" x="315" y="121" width="44" height="58" color="#ff8cbb"/>
+    <use href="#card" x="102" y="193" width="44" height="58" color="#ff8cbb"/>
+    <use href="#card" x="173" y="193" width="44" height="58" color="#f6dca9"/>
+    <use href="#card" x="244" y="193" width="44" height="58" color="#ff8cbb"/>
+    <use href="#card" x="315" y="193" width="44" height="58" color="#f6dca9"/>
+  </g>
+  <g fill="#f6dca9">
+    <circle cx="225" cy="15" r="1.5"/><circle cx="230" cy="15" r="1.5"/><circle cx="235" cy="15" r="1.5"/>
+    <circle cx="225" cy="285" r="1.5"/><circle cx="230" cy="285" r="1.5"/><circle cx="235" cy="285" r="1.5"/>
+  </g>
+</svg>
