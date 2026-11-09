@@ -3,5 +3,5 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "functions": { "api/scan.ts": { "maxDuration": 60 } }
+  "functions": { "api/scan.ts": { "maxDuration": 60 }, "api/refine-deck.ts": { "maxDuration": 120 } }
 }
