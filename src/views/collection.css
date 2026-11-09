@@ -139,4 +139,13 @@
     width: 32px;
     height: 45px;
   }
+
+  .collection-panel .cname,
+  .collection-panel .csub {
+    overflow-wrap: anywhere;
+  }
+
+  .collection-panel .num .csub {
+    white-space: normal;
+  }
 }
