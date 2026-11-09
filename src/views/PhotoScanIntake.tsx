@@ -107,22 +107,18 @@ export function PhotoScanIntake() {
 
   return (
     <section className="panel intake-panel">
-      <h2 className="intake-heading">Scan card photos</h2>
+      <h2 className="intake-heading">Upload photos</h2>
       <p className="intake-description">Upload photos of your cards, then review the suggested matches before saving.</p>
       <div className={`intake-scan-setup${scan.length === 0 ? ' with-guide' : ''}`}>
         <div className="intake-scan-action">
-          {cloudEnabled && !session ? (
-            <p className="callout y">Sign in using the top navigation to scan photos.</p>
-          ) : (
-            <button type="button" className={`dropzone${over ? ' over' : ''}`} disabled={!!scanning || committing}
-              onClick={() => fileRef.current?.click()}
-              onDragOver={(event) => { event.preventDefault(); if (!scanning) setOver(true); }}
-              onDragLeave={() => setOver(false)}
-              onDrop={(event) => { event.preventDefault(); setOver(false); if (!scanning) void runScan(event.dataTransfer.files); }}>
-              <span className="big">Drop photos or tap to upload</span>
-              <span className="intake-scan-tip">Try 20 to 30 cards per photo.</span>
-            </button>
-          )}
+          <button type="button" className={`dropzone${over ? ' over' : ''}`} disabled={!!scanning || committing || (cloudEnabled && !session)}
+            onClick={() => fileRef.current?.click()}
+            onDragOver={(event) => { event.preventDefault(); if (!scanning) setOver(true); }}
+            onDragLeave={() => setOver(false)}
+            onDrop={(event) => { event.preventDefault(); setOver(false); if (!scanning) void runScan(event.dataTransfer.files); }}>
+            <span className="big">Choose photos</span>
+            <span className="intake-scan-tip">Try 20 to 30 cards per photo.</span>
+          </button>
           <p className="al-action-feedback intake-scan-feedback" data-tone="success" role="status">
             {addedCopies > 0 ? `Added ${addedCopies} ${addedCopies === 1 ? 'card' : 'cards'} to your vault` : ''}
           </p>

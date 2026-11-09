@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { enabledProviders, supabase } from '../lib/supabase';
 import { useStore } from '../lib/store';
 
-export function AuthBox({ inline = false }: { inline?: boolean }) {
+export function AuthBox({ inline = false, triggerRef }: { inline?: boolean; triggerRef?: RefObject<HTMLButtonElement | null> }) {
   const { session, signOut, toast } = useStore();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
@@ -10,7 +10,8 @@ export function AuthBox({ inline = false }: { inline?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [google, setGoogle] = useState(false);
   const account = useRef<HTMLDivElement>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
+  const ownTrigger = useRef<HTMLButtonElement>(null);
+  const trigger = triggerRef ?? ownTrigger;
   useEffect(() => {
     enabledProviders().then((p) => setGoogle(!!p.google));
   }, []);
@@ -33,7 +34,7 @@ export function AuthBox({ inline = false }: { inline?: boolean }) {
       document.removeEventListener('pointerdown', dismiss);
       document.removeEventListener('keydown', escape);
     };
-  }, [open]);
+  }, [open, trigger]);
 
   if (session) {
     if (inline) return <div className="vault-menu-account">

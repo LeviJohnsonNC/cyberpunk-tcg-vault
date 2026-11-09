@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { BY_SLUG, acquireQuote, defaultPrinting, editionPrinting, printingLabel, valueHolding, type Card, type Valuation } from '../lib/data';
+import { BY_SLUG, MAX_PRINTING_COPIES, acquireQuote, defaultPrinting, editionPrinting, printingLabel, valueHolding, type Card, type Valuation } from '../lib/data';
 import { estimateText, money } from '../lib/currency';
 import { collectionValue } from '../lib/collection';
 import { useStore, type Entry } from '../lib/store';
@@ -75,6 +75,19 @@ function CardDetails({ card, onClose, initialPrinting, identify }: { card: Card;
   const mine = collectionValue(holdings);
   // Holdings without a verified printing (scanned "Printing unspecified", or an id the catalog no longer has).
   const loose = holdings.filter((e) => !card.printings.some((p) => p.id === e.printingId));
+  const quantity = (pid: string, label: string, announce = false) => {
+    const qty = qtyOf(pid);
+    const pending = quantityPending(pid);
+    return (
+      <span className="qty" aria-busy={pending}>
+        <button className="iconbtn minus" disabled={!collectionReady || pending || qty === 0}
+          onClick={() => setQty(slug, pid, qty - 1)} aria-label={`Remove a ${label} copy`}>−</button>
+        <b aria-live={announce ? 'polite' : undefined}>{collectionReady ? qty : '—'}</b>
+        <button className="iconbtn" disabled={!collectionReady || pending || qty >= MAX_PRINTING_COPIES}
+          onClick={() => setQty(slug, pid, qty + 1)} aria-label={`Add a ${label} copy`}>+</button>
+      </span>
+    );
+  };
 
   return (
     <dialog
@@ -86,27 +99,34 @@ function CardDetails({ card, onClose, initialPrinting, identify }: { card: Card;
         if (e.target === e.currentTarget && e.clientX < e.currentTarget.getBoundingClientRect().left) close();
       }}
     >
-        <button className="iconbtn close" onClick={close} aria-label="Close">×</button>
+        <div className="drawer-close"><button className="iconbtn close" onClick={close} aria-label="Close">×</button></div>
         <div className="card-detail">
-          <div className="drawer-preview">
+          <div className="drawer-heading">
+            <div className="label accent">{card.type} · #{printing.num}</div>
+            <h2 className="drawer-title" id="card-drawer-title">{card.name}</h2>
+            {card.sub && <div className="drawer-sub">{card.sub}</div>}
+          </div>
+          <section className="drawer-printing-controls" aria-label="Selected printing">
             <label className="drawer-preview-select">
               <span className="label">Viewing printing</span>
               <VaultSelect aria-label="Viewing printing" ref={preview} value={printing.id} onValueChange={setPrintingId}
                 options={card.printings.map((p) => ({ value: p.id, label: printingLabel(p.id, false) }))} />
             </label>
+            <div className="drawer-selected-holding">
+              <div className="drawer-selected-price" aria-live="polite">
+                <span className="label">Value per copy</span>
+                <PrintingValue value={value} />
+              </div>
+              <div className="drawer-selected-quantity" role="group" aria-label="Copies owned of selected printing">
+                <span className="label">Copies owned</span>
+                {quantity(printing.id, printingLabel(printing.id, false), true)}
+              </div>
+            </div>
+          </section>
+          <div className="drawer-art">
             <PrintingArt slug={slug} printingId={printing.id} alt={`${card.display}, ${printingLabel(printing.id)}`} />
           </div>
           <div className="drawer-summary">
-            <div className="drawer-heading">
-              <div className="label accent">{card.type} · #{printing.num}</div>
-              <h2 className="drawer-title" id="card-drawer-title">{card.name}</h2>
-              {card.sub && <div className="drawer-sub">{card.sub}</div>}
-            </div>
-            <div className="drawer-selected-price" aria-live="polite">
-              <span className="label">Value per copy</span>
-              <PrintingValue value={value} />
-              <span className="tiny muted">{qtyOf(printing.id)} owned in this printing</span>
-            </div>
             <dl className="kv">
               <dt>Color</dt><dd><Pip color={card.color} /></dd>
               <dt>Cost</dt><dd>{card.cost ?? '—'} {card.cost != null && '€$'}</dd>
@@ -161,13 +181,7 @@ function CardDetails({ card, onClose, initialPrinting, identify }: { card: Card;
                       <b>Printing unspecified</b> <span className="muted tiny">counts for decks, unpriced</span>
                       {e.note && <div className="drawer-note"><b>Note</b> · {e.note}</div>}
                     </td>
-                    <td>
-                      <span className="qty">
-                        <button className="iconbtn minus" disabled={!collectionReady || quantityPending(e.printingId)} onClick={() => setQty(slug, e.printingId, e.qty - 1)} aria-label="Remove an unspecified copy">−</button>
-                        <b>{e.qty}</b>
-                        <button className="iconbtn" disabled={!collectionReady || quantityPending(e.printingId) || e.qty >= 999} onClick={() => setQty(slug, e.printingId, e.qty + 1)} aria-label="Add an unspecified copy">+</button>
-                      </span>
-                    </td>
+                    <td>{quantity(e.printingId, 'printing unspecified')}</td>
                   </tr>
                   <tr className="unspec-row" style={{ cursor: 'default' }}>
                     <td colSpan={4} style={{ paddingTop: 0 }}>
@@ -178,7 +192,6 @@ function CardDetails({ card, onClose, initialPrinting, identify }: { card: Card;
               ))}
               {card.printings.map((p) => {
                 const v = valueHolding(p.id);
-                const q = qtyOf(p.id);
                 return (
                   <tr key={p.id} className={p.id === printing.id ? 'drawer-printing selected' : 'drawer-printing'}>
                     <td className="mono tiny">
@@ -193,13 +206,7 @@ function CardDetails({ card, onClose, initialPrinting, identify }: { card: Card;
                     </td>
                     <td className="hide-sm"><RarityBadge r={p.rarity} /></td>
                     <td className="num"><PrintingValue value={v} /></td>
-                    <td>
-                      <span className="qty">
-                        <button className="iconbtn minus" onClick={() => setQty(slug, p.id, q - 1)} disabled={!collectionReady || quantityPending(p.id) || q === 0} aria-label={`Remove a ${printingLabel(p.id, false)} copy`}>−</button>
-                        <b>{q}</b>
-                        <button className="iconbtn" disabled={!collectionReady || quantityPending(p.id) || q >= 999} onClick={() => setQty(slug, p.id, q + 1)} aria-label={`Add a ${printingLabel(p.id, false)} copy`}>+</button>
-                      </span>
-                    </td>
+                    <td>{quantity(p.id, printingLabel(p.id, false))}</td>
                   </tr>
                 );
               })}

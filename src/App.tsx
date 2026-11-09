@@ -26,10 +26,12 @@ export default function App() {
   const scope = demo ? SAMPLE_DRAFT_OWNER : store.session?.user.id ?? 'local';
   const nav = useRef<HTMLElement>(null);
   const menu = useRef<HTMLDialogElement>(null);
+  const menuAccount = useRef<HTMLHeadingElement>(null);
+  const authTrigger = useRef<HTMLButtonElement>(null);
   const [musicContainer, setMusicContainer] = useState<HTMLDivElement | null>(null);
   const sampleEntered = useRef(false);
-  const [openCard, setOpenCard] = useState<{ slug: string; printingId?: string; identify?: boolean } | null>(null);
-  const showCard = (slug: string, printingId?: string, identify?: boolean) => setOpenCard({ slug, printingId, identify });
+  const [openCard, setOpenCard] = useState<{ slug: string; printingId?: string; identify?: boolean; opener?: HTMLElement } | null>(null);
+  const showCard = (slug: string, printingId?: string, identify?: boolean, opener?: HTMLElement) => setOpenCard({ slug, printingId, identify, opener });
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const closeOverlays = useCallback(() => {
     document.querySelectorAll<HTMLDialogElement>('#root dialog[open]').forEach((dialog) => dialog.close());
@@ -37,6 +39,16 @@ export default function App() {
     setFeedbackOpen(false);
   }, []);
   const { route, visited, mobile, consumeDeck } = useVaultNavigation(scope, closeOverlays);
+  const requestSignIn = () => {
+    if (mobile) {
+      menu.current?.showModal();
+      menuAccount.current?.focus();
+    } else {
+      const trigger = authTrigger.current;
+      trigger?.focus({ preventScroll: true });
+      if (trigger?.getAttribute('aria-expanded') === 'false') trigger.click();
+    }
+  };
   // Prices are formatted from a module-level setting; this state re-renders the app when it changes.
   const [currency, setCur] = useState<Currency>(getCurrency);
   const chooseCurrency = (c: Currency) => {
@@ -104,7 +116,7 @@ export default function App() {
               {vaultCount && <span className="vault-count">{vaultCount}</span>}
             </span>
             {currencyToggle}
-            {cloudEnabled && <AuthBox />}
+            {cloudEnabled && <AuthBox triggerRef={authTrigger} />}
           </div></>}
           {mobile && <div className="vault-mobile-tools">
             {store.demo && <div className="vault-mobile-sample">
@@ -127,7 +139,7 @@ export default function App() {
           </div>
           <p className="vault-menu-status"><span className="vault-sync-dot" data-state={sync} aria-hidden="true" />{vaultLabel}{vaultCount && ` · ${vaultCount}`}</p>
           {cloudEnabled && <section className="vault-menu-account-section" aria-labelledby="vault-menu-account">
-            <h3 id="vault-menu-account">{store.session ? 'Account' : 'Sign in'}</h3>
+            <h3 id="vault-menu-account" ref={menuAccount} tabIndex={-1}>{store.session ? 'Account' : 'Sign in'}</h3>
             <AuthBox inline />
           </section>}
           <section className="vault-menu-setting" aria-labelledby="vault-menu-currency">
@@ -166,17 +178,22 @@ export default function App() {
       )}
 
       <main key={scope}>
-        {showSection('collection') && <Activity mode={route.tab === 'collection' ? 'visible' : 'hidden'}><Collection onOpen={showCard} goAdd={() => go('add')} /></Activity>}
+        {showSection('collection') && <Activity mode={route.tab === 'collection' ? 'visible' : 'hidden'}><Collection mobile={mobile} onOpen={showCard} goAdd={() => go('add')} /></Activity>}
         {showSection('prices') && <Activity mode={route.tab === 'prices' ? 'visible' : 'hidden'}><PriceBook onOpen={showCard} goAdd={() => go('add')} /></Activity>}
         {showSection('builder') && <Activity mode={route.tab === 'builder' ? 'visible' : 'hidden'}><DeckBuilder onOpen={showCard} initialDeck={route.tab === 'builder' ? route.deck : undefined} onConsumeDeck={consumeDeck} /></Activity>}
         {showSection('meta') && <Activity mode={route.tab === 'meta' ? 'visible' : 'hidden'}><MetaIntel onOpen={showCard} openInBuilder={(id) => go('builder', id)} goAdd={() => go('add')} /></Activity>}
-        {route.tab === 'add' && <AddCards onOpen={showCard} />}
+        {route.tab === 'add' && <AddCards onOpen={showCard} onSignIn={requestSignIn} />}
         {route.tab === 'about' && <HowItWorks openFeedback={() => setFeedbackOpen(true)} />}
         {route.tab === 'upgrade' && <UpgradePlanner onOpen={showCard} />}
         {route.tab === 'shared' && <SharedDeck token={route.deck} onOpen={showCard} goAdd={() => go('add')} />}
       </main>
 
-      {openCard && <CardDrawer {...openCard} onClose={() => setOpenCard(null)} />}
+      {openCard && <CardDrawer {...openCard} onClose={() => {
+        const opener = openCard.opener?.isConnected ? openCard.opener
+          : openCard.opener ? document.querySelector<HTMLElement>('.collection-heading') : null;
+        opener?.focus({ preventScroll: true });
+        setOpenCard(null);
+      }} />}
       <MusicPlayer controlsContainer={mobile ? musicContainer : undefined} />
       <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} page={route.tab} />
 
