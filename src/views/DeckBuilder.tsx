@@ -6,6 +6,7 @@ import { newId, useStore, type Deck } from '../lib/store';
 import { Bars, CardImg, Pip } from '../components/bits';
 import { Masthead } from '../components/ui';
 import { PENDING_DECK_KEY, openPlanner } from '../lib/handoff';
+import { ShareDialog } from '../components/ShareDialog';
 
 const blank = (): Deck => ({ id: newId(), name: 'New crew', legends: [], cards: {}, sideboard: {}, notes: '', updatedAt: '' });
 const sum = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a + b, 0);
@@ -22,6 +23,8 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
   const [target, setTarget] = useState<'main' | 'side'>('main');
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState('');
+  const [shareOpen, setShareOpen] = useState(false);
+  const saved = decks.some((d) => d.id === deck.id);
 
   useEffect(() => {
     if (!initialDeck) return;
@@ -193,8 +196,8 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
           </optgroup>
         </select>
         <input className="input deck-name" aria-label="Deck name" value={deck.name} onChange={(e) => update((d) => ({ ...d, name: e.target.value.slice(0, 80) }))} />
-        <button className="btn" onClick={() => { saveDeck(deck); setDirty(false); toast('Deck saved'); }}>{dirty ? 'Save*' : 'Save'}</button>
-        <button className="btn quiet" onClick={() => { const c = { ...structuredClone(deck), id: newId(), name: `${deck.name} (copy)` }; setDeck(c); saveDeck(c); setDirty(false); toast('Saved as copy'); }}>Save copy</button>
+        <button className="btn" onClick={async () => { if (await saveDeck(deck)) { setDirty(false); toast('Deck saved'); } }}>{dirty ? 'Save*' : 'Save'}</button>
+        <button className="btn quiet" onClick={async () => { const c = { ...structuredClone(deck), id: newId(), name: `${deck.name} (copy)`.slice(0, 80) }; if (await saveDeck(c)) { setDeck(c); setDirty(false); toast('Saved as copy'); } }}>Save copy</button>
         <button
           className="btn ghost"
           disabled={deck.legends.length !== 3}
@@ -204,11 +207,26 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
           Upgrade this deck
         </button>
         <button className="btn quiet" onClick={() => copy(deckText(), 'Decklist')}>Copy list</button>
+        <button className="btn quiet" aria-haspopup="dialog" onClick={() => setShareOpen(true)}>Share deck</button>
         <button className="btn quiet" aria-expanded={showImport} onClick={() => setShowImport((s) => !s)}>Import</button>
-        {decks.some((d) => d.id === deck.id) && (
-          <button className="btn danger-ghost sm" onClick={() => { if (confirm(`Delete "${deck.name}"?`)) { deleteDeck(deck.id); setDeck(blank()); setDirty(false); } }}>Delete</button>
+        {saved && (
+          <button className="btn danger-ghost sm" onClick={async () => { if (confirm(`Delete "${deck.name}"? If it has a share link, that link stops working.`) && (await deleteDeck(deck.id))) { setDeck(blank()); setDirty(false); } }}>Delete</button>
         )}
       </div>
+
+      <ShareDialog
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        deck={deck}
+        saved={saved}
+        dirty={dirty}
+        save={async () => {
+          const ok = await saveDeck(deck);
+          if (ok) setDirty(false);
+          return ok;
+        }}
+        copyList={() => copy(deckText(), 'Decklist')}
+      />
 
       {showImport && (
         <div className="panel hot" style={{ marginBottom: 14 }}>

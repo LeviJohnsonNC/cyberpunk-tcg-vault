@@ -17,7 +17,6 @@ export interface Deck {
   cards: Record<string, number>;
   sideboard: Record<string, number>;
   notes?: string;
-  isPublic?: boolean;
   updatedAt: string;
 }
 
@@ -39,9 +38,13 @@ interface StoreValue {
    * All-or-nothing: resolves false and changes nothing on failure. Safe to retry.
    */
   movePrinting: (slug: string, from: string, to: string, qty: number) => Promise<boolean>;
+  /** False until the signed-in user's cloud data has loaded (always true in local mode). */
+  collectionReady: boolean;
   decks: Deck[];
-  saveDeck: (d: Deck) => Promise<void>;
-  deleteDeck: (id: string) => Promise<void>;
+  /** Resolves true once the deck is stored (cloud: confirmed by the server). */
+  saveDeck: (d: Deck) => Promise<boolean>;
+  /** Resolves true once deleted. Deleting a deck also removes its share link. */
+  deleteDeck: (id: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   localPending: number; // local entries not yet synced after sign-in
   pushLocalToCloud: () => Promise<void>;
@@ -113,6 +116,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [decks, setDecks] = useState<Deck[]>(() => readLS(LS_DECKS, [] as Deck[]));
   const [localPending, setLocalPending] = useState(0);
   const [syncing, setSyncing] = useState(false);
+  const [loadedFor, setLoadedFor] = useState<string | null>(null); // user id whose cloud data is loaded
   const [toasts, setToasts] = useState<Toast[]>([]);
   const tid = useRef(0);
   const mode: 'local' | 'cloud' = supabase && session ? 'cloud' : 'local';
@@ -141,6 +145,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setEntries(readLS(LS_COL, [] as Entry[]));
       setDecks(readLS(LS_DECKS, [] as Deck[]));
       setLocalPending(0);
+      setLoadedFor(null);
       return;
     }
     let cancelled = false;
@@ -148,7 +153,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     (async () => {
       const [col, dk] = await Promise.all([
         supabase.from('collection_items').select('card_slug, printing_id, qty, note'),
-        supabase.from('decks').select('*').order('updated_at', { ascending: false }),
+        // Owner-scoped and explicit: only this user's decks, only the fields the app uses.
+        supabase.from('decks').select('id, name, legends, cards, sideboard, notes, updated_at').eq('user_id', session.user.id).order('updated_at', { ascending: false }),
       ]);
       if (cancelled) return;
       setSyncing(false);
@@ -167,12 +173,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           cards: r.cards ?? {},
           sideboard: r.sideboard ?? {},
           notes: r.notes ?? '',
-          isPublic: r.is_public,
           updatedAt: r.updated_at,
         })),
       );
       const local = readLS(LS_COL, [] as Entry[]);
       setLocalPending(col.data.length === 0 ? local.length : 0);
+      setLoadedFor(session.user.id);
     })();
     return () => {
       cancelled = true;
@@ -274,9 +280,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setEntries([]);
   };
 
-  const saveDeck = async (d: Deck) => {
+  const saveDeck = async (d: Deck): Promise<boolean> => {
     const deck = { ...d, updatedAt: new Date().toISOString() };
-    setDecks((prev) => [deck, ...prev.filter((x) => x.id !== d.id)]);
     if (mode === 'cloud' && supabase && session) {
       const { error } = await supabase.from('decks').upsert({
         id: deck.id,
@@ -286,16 +291,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         cards: deck.cards,
         sideboard: deck.sideboard,
         notes: deck.notes ?? '',
-        is_public: !!deck.isPublic,
         updated_at: deck.updatedAt,
       });
-      if (error) toast(`Deck save failed: ${error.message}`, 'err');
+      if (error) {
+        toast(`Deck save failed: ${error.message}`, 'err');
+        return false;
+      }
     }
+    setDecks((prev) => [deck, ...prev.filter((x) => x.id !== d.id)]);
+    return true;
   };
 
-  const deleteDeck = async (id: string) => {
+  const deleteDeck = async (id: string): Promise<boolean> => {
+    if (mode === 'cloud' && supabase && session) {
+      const { error } = await supabase.from('decks').delete().eq('id', id);
+      if (error) {
+        toast(`Deck delete failed: ${error.message}`, 'err');
+        return false;
+      }
+    }
     setDecks((prev) => prev.filter((d) => d.id !== id));
-    if (mode === 'cloud' && supabase) await supabase.from('decks').delete().eq('id', id);
+    return true;
   };
 
   const reloadCloud = async () => {
@@ -361,7 +377,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const value: StoreValue = {
-    ready, syncing, mode, session, entries, owned, setQty, addMany, clearCollection,
+    ready, syncing, mode, collectionReady: ready && (mode === 'local' || loadedFor === session?.user.id), session, entries, owned, setQty, addMany, clearCollection,
     decks, saveDeck, deleteDeck, signOut, localPending, pushLocalToCloud, toasts, toast,
     demo, startDemo, exitDemo, movePrinting,
   };

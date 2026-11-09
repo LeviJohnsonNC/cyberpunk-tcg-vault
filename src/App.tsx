@@ -11,6 +11,7 @@ import { MetaIntel } from './views/MetaIntel';
 import { AddCards } from './views/AddCards';
 import { HowItWorks } from './views/HowItWorks';
 import { UpgradePlanner } from './views/UpgradePlanner';
+import { SharedDeck } from './views/SharedDeck';
 import { FeedbackDialog } from './components/Feedback';
 import { MusicPlayer } from './components/MusicPlayer';
 import { CURRENCIES, getCurrency, setCurrency, type Currency } from './lib/currency';
@@ -22,11 +23,11 @@ const TABS = [
   { id: 'meta', label: 'Meta Intel' },
   { id: 'add', label: 'Add Cards' },
 ] as const;
-type TabId = (typeof TABS)[number]['id'] | 'about' | 'upgrade';
+type TabId = (typeof TABS)[number]['id'] | 'about' | 'upgrade' | 'shared';
 
 const readHash = (): { tab: TabId; deck?: string } => {
   const [t, q] = window.location.hash.replace(/^#\/?/, '').split('?');
-  const tab = (t === 'about' || t === 'upgrade' ? t : TABS.find((x) => x.id === t)?.id ?? 'collection') as TabId;
+  const tab = (t === 'about' || t === 'upgrade' || t === 'shared' ? t : TABS.find((x) => x.id === t)?.id ?? 'collection') as TabId;
   const deck = new URLSearchParams(q || '').get('deck') ?? undefined;
   return { tab, deck };
 };
@@ -120,6 +121,7 @@ export default function App() {
         {route.tab === 'add' && <AddCards onOpen={setOpenCard} />}
         {route.tab === 'about' && <HowItWorks openFeedback={() => setFeedbackOpen(true)} />}
         {route.tab === 'upgrade' && <UpgradePlanner onOpen={setOpenCard} />}
+        {route.tab === 'shared' && <SharedDeck token={route.deck} onOpen={setOpenCard} goAdd={() => go('add')} />}
       </main>
 
       {openCard && <CardDrawer slug={openCard} onClose={() => setOpenCard(null)} />}

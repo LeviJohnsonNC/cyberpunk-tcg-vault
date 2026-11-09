@@ -39,7 +39,7 @@ To test photo scanning locally, use `vercel dev` with the server env vars below.
 
 ### 1. Supabase
 1. Create a project at supabase.com.
-2. **SQL Editor → New query**: paste [`supabase/schema.sql`](supabase/schema.sql) and run it. Existing projects upgrade by running the files in [`supabase/migrations/`](supabase/migrations) in order (`002_ai_usage.sql` adds the AI refinement counter; `003_global_caps_feedback.sql` adds site-wide AI caps and the feedback table; `004_move_copies.sql` adds the atomic `move_copies` function used to assign a printing to copies. Until 004 runs, moving copies in cloud mode shows a "needs migration 004" message and changes nothing).
+2. **SQL Editor → New query**: paste [`supabase/schema.sql`](supabase/schema.sql) and run it. Existing projects upgrade by running the files in [`supabase/migrations/`](supabase/migrations) in order (`002_ai_usage.sql` adds the AI refinement counter; `003_global_caps_feedback.sql` adds site-wide AI caps and the feedback table; `004_move_copies.sql` adds the atomic `move_copies` function used to assign a printing to copies. Until 004 runs, moving copies in cloud mode shows a "needs migration 004" message and changes nothing; `005_deck_shares.sql` adds unlisted deck share links and removes the unused public-deck read policy).
 3. **Authentication → URL Configuration**: set **Site URL** to your Vercel URL (e.g. `https://cyberpunk-tcg-vault.vercel.app`), and add the same URL under **Redirect URLs**.
 4. *(Optional) Google sign-in:* create an OAuth client in Google Cloud (see "Google sign-in" below), then **Authentication → Sign In / Providers → Google**: enable it and paste the Client ID and Secret. The "Continue with Google" button appears automatically once the provider is on.
 5. Copy the **publishable/anon key** into `.env.production` (`VITE_SUPABASE_ANON_KEY`). It's public by design. Keep the secret/service-role key out of git.
@@ -53,6 +53,7 @@ To test photo scanning locally, use `vercel dev` with the server env vars below.
 | `OPENROUTER_API_KEY` | `sk-or-…` | Required for photo scan. Server-only. |
 | `SUPABASE_URL` | `https://<ref>.supabase.co` | |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase secret key | Verifies logins and counts scans. Server-only. |
+| `SUPABASE_ANON_KEY` | Supabase publishable key | Optional. Used by the `/d/<token>` link preview, which only calls `get_shared_deck`. Falls back to the service key. |
 | `OPENROUTER_MODEL` | `google/gemini-2.5-flash` | Optional. Any OpenRouter vision model. |
 | `SCAN_DAILY_LIMIT` | `25` | Optional. Scans per user per day. |
 | `DECK_MODEL` | `anthropic/claude-sonnet-5.5` | Optional. OpenRouter model for AI deck refinement. |
@@ -94,7 +95,8 @@ Feed rules (`scripts/price-build.mjs`): a printing is matched to a TCGplayer row
 ## Data model
 
 - `collection_items`: one row per user × printing (`card_slug`, `printing_id`, `qty`, `note`)
-- `decks`: legends (`text[]`), cards and sideboard (`jsonb` slug → qty), and `is_public`
+- `decks`: legends (`text[]`), cards and sideboard (`jsonb` slug → qty). Owner-only; `is_public` is unused.
+- `deck_shares`: one frozen snapshot per saved deck behind a random token. Written only by `publish_deck_share`; read publicly only through `get_shared_deck(token)` (name, Legends, main deck, sideboard, date). Owners can read and revoke their own; deleting the deck deletes the share.
 - `scan_usage`: per-user daily scan counter, written only by the server function
 - `ai_usage`: per-user, per-feature daily AI counter (`bump_ai_usage`), written only by the server function
 - `ai_global_usage`: site-wide daily AI counter per feature (`bump_ai_global`), server only
