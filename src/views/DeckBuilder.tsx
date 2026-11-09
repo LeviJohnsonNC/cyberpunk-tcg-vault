@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { RECOMMENDED, type Card } from '../lib/data';
-import { addDeckCard, formatDeckText, formatMeleeDeck, newDeck, readDeckDraft, readDeckText, rememberDeckDraft, totalCopies, type DeckDraft, type DeckZone } from '../lib/deckDraft';
+import { addDeckCard, formatDeckText, formatMeleeDeck, newDeck, readDeckDraft, readDeckText, rememberDeckDraft, SAMPLE_DRAFT_OWNER, totalCopies, type DeckDraft, type DeckZone } from '../lib/deckDraft';
 import { deckFromRecommended, deckNeed, purchaseEstimate, validate } from '../lib/decks';
 import { newId, useStore, type Deck } from '../lib/store';
 import { ConfirmDialog, Masthead, ViewTabs } from '../components/ui';
@@ -16,18 +16,20 @@ type Pane = 'list' | 'checks' | 'missing';
 type Replacement = { next: DeckDraft; imported?: string[] };
 const initialView = (deck: Deck): MobileView => deck.legends.length || totalCopies(deck.cards) || totalCopies(deck.sideboard) ? 'deck' : 'pool';
 
-export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) => void; initialDeck?: string }) {
-  const { ready, session } = useStore();
-  const owner = session?.user.id ?? 'local';
+type BuilderProps = { onOpen: (slug: string) => void; initialDeck?: string; onConsumeDeck: () => void };
+
+export function DeckBuilder({ onOpen, initialDeck, onConsumeDeck }: BuilderProps) {
+  const { ready, session, demo } = useStore();
+  const owner = demo ? SAMPLE_DRAFT_OWNER : session?.user.id ?? 'local';
   if (!ready) return <section>
     <Masthead eyebrow="The Afterlife / Crew Builder" title="Deck Builder" />
     <p className="callout section-gap" role="status">Opening your workbench…</p>
   </section>;
-  return <DeckWorkbench key={owner} owner={owner} onOpen={onOpen} initialDeck={initialDeck} />;
+  return <DeckWorkbench key={owner} owner={owner} onOpen={onOpen} initialDeck={initialDeck} onConsumeDeck={onConsumeDeck} />;
 }
 
-function DeckWorkbench({ owner, onOpen, initialDeck }: { owner: string; onOpen: (slug: string) => void; initialDeck?: string }) {
-  const { decks, saveDeck, deleteDeck, owned, toast, collectionReady, collectionError, retryCollection } = useStore();
+function DeckWorkbench({ owner, onOpen, initialDeck, onConsumeDeck }: BuilderProps & { owner: string }) {
+  const { decks, saveDeck, deleteDeck, owned, toast, collectionReady, collectionError, retryCollection, demo } = useStore();
   const [draft, setDraft] = useState<DeckDraft>(() => readDeckDraft(owner) ?? { deck: newDeck(), dirty: false });
   const { deck, dirty } = draft;
   const [zone, setZone] = useState<DeckZone>('cards');
@@ -112,7 +114,7 @@ function DeckWorkbench({ owner, onOpen, initialDeck }: { owner: string; onOpen: 
       if (!incoming && !collectionReady) return;
     }
     handledRoute.current = initialDeck;
-    window.history.replaceState(window.history.state, '', '#/builder');
+    onConsumeDeck();
     if (!incoming) return;
     const next = { deck: structuredClone(incoming), dirty: nextDirty };
     if (dirty) setReplacement({ next });
@@ -121,8 +123,11 @@ function DeckWorkbench({ owner, onOpen, initialDeck }: { owner: string; onOpen: 
       setPickingLegend(!next.deck.legends.length);
       setMobileView(initialView(next.deck));
       setPane('list');
+      scroll.current = { pool: 0, deck: 0 };
+      if (deckPane.current) deckPane.current.scrollTop = 0;
+      if (window.matchMedia('(max-width: 760px)').matches) window.scrollTo(0, 0);
     }
-  }, [initialDeck, decks, collectionReady, dirty]);
+  }, [initialDeck, decks, collectionReady, dirty, onConsumeDeck]);
 
   function announce(message: string) {
     setFeedback(message);
@@ -195,6 +200,7 @@ function DeckWorkbench({ owner, onOpen, initialDeck }: { owner: string; onOpen: 
     setMobileView(initialView(change.next.deck));
     scroll.current = { pool: 0, deck: 0 };
     if (deckPane.current) deckPane.current.scrollTop = 0;
+    if (window.matchMedia('(max-width: 760px)').matches) window.scrollTo(0, 0);
     if (change.imported) toast(change.imported.length
       ? `Imported. Skipped ${change.imported.length}: ${change.imported.slice(0, 4).join(', ')}` : 'Deck imported', change.imported.length ? 'err' : 'ok');
     setReplacement(undefined);
@@ -275,7 +281,7 @@ function DeckWorkbench({ owner, onOpen, initialDeck }: { owner: string; onOpen: 
           <button type="button" className="btn quiet" disabled={saving || deleting} aria-haspopup="dialog" onClick={openLoad}>Load deck</button>
           <button type="button" className="btn" disabled={saving || deleting} onClick={() => void save()}>Save deck</button>
           <button type="button" className="btn quiet" aria-haspopup="dialog" onClick={() => setTesting([{ label: 'This deck', ...structuredClone(deck) }])}>Test hand</button>
-          {!empty && <button type="button" className="btn quiet" disabled={saving || deleting} aria-haspopup="dialog" onClick={() => setShareOpen(true)}>Share</button>}
+          {!demo && !empty && <button type="button" className="btn quiet" disabled={saving || deleting} aria-haspopup="dialog" onClick={() => setShareOpen(true)}>Share</button>}
           <details className="workbench-more" ref={actions}>
             <summary className="btn quiet">More</summary>
             <div className="workbench-menu">
@@ -287,7 +293,7 @@ function DeckWorkbench({ owner, onOpen, initialDeck }: { owner: string; onOpen: 
               <button type="button" disabled={deck.legends.length !== 3} onClick={() => fromMenu(() => openPlanner({
                 name: deck.name || 'Untitled deck', kind: saved ? 'saved' : 'current', legends: deck.legends, cards: deck.cards,
               }))}>Upgrade this deck</button>
-              {empty && <button type="button" onClick={() => fromMenu(() => setShareOpen(true))}>Share deck</button>}
+              {!demo && empty && <button type="button" onClick={() => fromMenu(() => setShareOpen(true))}>Share deck</button>}
               {saved && <button type="button" className="danger-text" disabled={saving || deleting} onClick={() => fromMenu(() => setDeleteConfirm(true))}>Delete saved deck</button>}
             </div>
           </details>

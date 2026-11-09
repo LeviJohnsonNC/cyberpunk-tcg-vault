@@ -97,7 +97,8 @@ Fonts are self-hosted via `@fontsource` packages (imported in `theme.css`), so t
 - **≥1100px:** masthead and marquee side by side; holdings about 70%, rail about 30% and sticky.
 - **<1100px:** marquee stacks under the masthead; rail stacks under holdings.
 - **<760px:** metric strip stacks. Table rows reflow into a two-column card: the identity on the left, and total / basis / quantity on the right. Rarity and unit price move into a compact metadata line under the name. Card identity, quantity, total and pricing basis are always visible, with no horizontal page scroll.
-- **≤1100px header:** brand and status on one row; nav becomes a horizontally scrollable row underneath and brings the active section into view.
+- **761–1100px header:** brand and status on one row. The navigation rail below brings the active section into view.
+- **≤760px shell:** compact Vault header with a menu for account, currency, music and feedback. Vault, Prices, Add, Decks and Intel stay in a labeled bottom bar. The shell reserves space for the bottom safe area and yields the bar when a text field or modal has focus.
 - **Collection:** Binder uses five columns at wide desktop widths, four on laptops and two on phones. Filters move from a rail to a dialog sheet below 1120px. In the phone List, secondary columns hide so art, name, owned and value fit.
 - **Deck Builder:** the status strip stays visible while browsing. On laptops the deck pane sits beside the pool and can scroll independently when the list is long. At 1000px and below, Find cards and Deck switch between the two panes of the same draft.
 - Page height follows content. The laptop Deck Builder keeps its sticky deck pane within the available viewport.

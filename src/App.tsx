@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Activity, useCallback, useEffect, useRef, useState } from 'react';
 import { useStore } from './lib/store';
 import { cloudEnabled } from './lib/supabase';
 import { PRICES } from './lib/data';
@@ -14,31 +14,29 @@ import { UpgradePlanner } from './views/UpgradePlanner';
 import { SharedDeck } from './views/SharedDeck';
 import { FeedbackDialog } from './components/Feedback';
 import { MusicPlayer } from './components/MusicPlayer';
+import { MobileVaultNav } from './components/MobileVaultNav';
 import { CURRENCIES, getCurrency, setCurrency, type Currency } from './lib/currency';
-
-const TABS = [
-  { id: 'collection', label: 'Collection' },
-  { id: 'prices', label: 'Price Book' },
-  { id: 'builder', label: 'Deck Builder' },
-  { id: 'meta', label: 'Meta Intel' },
-  { id: 'add', label: 'Add Cards' },
-] as const;
-type TabId = (typeof TABS)[number]['id'] | 'about' | 'upgrade' | 'shared';
-
-const readHash = (): { tab: TabId; deck?: string } => {
-  const [t, q] = window.location.hash.replace(/^#\/?/, '').split('?');
-  const tab = (t === 'about' || t === 'upgrade' || t === 'shared' ? t : TABS.find((x) => x.id === t)?.id ?? 'collection') as TabId;
-  const deck = new URLSearchParams(q || '').get('deck') ?? undefined;
-  return { tab, deck };
-};
+import { clearSampleDraft, SAMPLE_DRAFT_OWNER } from './lib/deckDraft';
+import { TABS, useVaultNavigation, type TabId } from './lib/vaultNavigation';
+import './mobile-shell.css';
 
 export default function App() {
   const store = useStore();
-  const [route, setRoute] = useState(readHash);
+  const { demo, toast } = store;
+  const scope = demo ? SAMPLE_DRAFT_OWNER : store.session?.user.id ?? 'local';
   const nav = useRef<HTMLElement>(null);
+  const menu = useRef<HTMLDialogElement>(null);
+  const [musicContainer, setMusicContainer] = useState<HTMLDivElement | null>(null);
+  const sampleEntered = useRef(false);
   const [openCard, setOpenCard] = useState<{ slug: string; printingId?: string; identify?: boolean } | null>(null);
   const showCard = (slug: string, printingId?: string, identify?: boolean) => setOpenCard({ slug, printingId, identify });
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const closeOverlays = useCallback(() => {
+    document.querySelectorAll<HTMLDialogElement>('#root dialog[open]').forEach((dialog) => dialog.close());
+    setOpenCard(null);
+    setFeedbackOpen(false);
+  }, []);
+  const { route, visited, mobile, consumeDeck } = useVaultNavigation(scope, closeOverlays);
   // Prices are formatted from a module-level setting; this state re-renders the app when it changes.
   const [currency, setCur] = useState<Currency>(getCurrency);
   const chooseCurrency = (c: Currency) => {
@@ -47,10 +45,10 @@ export default function App() {
   };
 
   useEffect(() => {
-    const on = () => setRoute(readHash());
-    window.addEventListener('hashchange', on);
-    return () => window.removeEventListener('hashchange', on);
-  }, []);
+    if (demo && !sampleEntered.current && mobile) toast('Sample Vault. Changes here are separate from your own Vault.');
+    if (!demo) clearSampleDraft();
+    sampleEntered.current = demo;
+  }, [mobile, demo, toast]);
 
   useEffect(() => {
     const rail = nav.current;
@@ -67,7 +65,7 @@ export default function App() {
     const observer = new ResizeObserver(showActive);
     observer.observe(rail);
     return () => observer.disconnect();
-  }, [route.tab]);
+  }, [route.tab, mobile]);
 
   const go = (tab: TabId, deck?: string) => {
     window.location.hash = `/${tab}${deck ? `?deck=${encodeURIComponent(deck)}` : ''}`;
@@ -78,6 +76,10 @@ export default function App() {
     : store.mode === 'cloud' ? 'synced' : 'local';
   const vaultLabel = { sample: 'Sample vault', error: 'Sync unavailable', loading: store.ready ? 'Syncing…' : 'Connecting…', synced: 'Synced', local: 'Local vault' }[sync];
   const vaultCount = store.collectionReady ? `${total} ${total === 1 ? 'card' : 'cards'}` : '';
+  const currencyToggle = <span className="seg" role="group" aria-label="Price currency">
+    {CURRENCIES.map((c) => <button key={c} aria-pressed={currency === c} onClick={() => chooseCurrency(c)}>{c}</button>)}
+  </span>;
+  const showSection = (tab: TabId) => route.tab === tab || (mobile && visited.has(tab));
 
   return (
     <>
@@ -87,7 +89,7 @@ export default function App() {
             <span className="brand-badge" aria-hidden="true"><span>€$</span></span>
             <span className="brand-name"><span>Cyberpunk TCG</span>Vault</span>
           </a>
-          <nav className="navlinks" aria-label="Sections" ref={nav}>
+          {!mobile && <><nav className="navlinks" aria-label="Sections" ref={nav}>
             {TABS.map((t) => (
               <button key={t.id} className="navlink" aria-current={route.tab === t.id ? 'page' : undefined} onClick={() => go(t.id)}>
                 {t.label}
@@ -101,22 +103,49 @@ export default function App() {
               <span role="status">{vaultLabel}</span>
               {vaultCount && <span className="vault-count">{vaultCount}</span>}
             </span>
-            <span className="seg" role="group" aria-label="Price currency">
-              {CURRENCIES.map((c) => (
-                <button key={c} aria-pressed={currency === c} onClick={() => chooseCurrency(c)}>{c}</button>
-              ))}
-            </span>
+            {currencyToggle}
             {cloudEnabled && <AuthBox />}
-          </div>
+          </div></>}
+          {mobile && <div className="vault-mobile-tools">
+            {store.demo && <div className="vault-mobile-sample">
+              <span>Sample Vault</span>
+              <button type="button" aria-label="Exit sample vault" onClick={store.exitDemo}>Exit</button>
+            </div>}
+            {!store.demo && (sync === 'error' || sync === 'loading') && <span className="vault-mobile-sync" role="status" data-state={sync}>{vaultLabel}</span>}
+            <button type="button" className="btn quiet vault-menu-trigger" aria-haspopup="dialog" onClick={() => menu.current?.showModal()}>
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" /></svg>
+              Menu
+            </button>
+          </div>}
         </div>
       </header>
+      {mobile && <dialog ref={menu} className="al-dialog vault-mobile-menu" aria-labelledby="vault-mobile-menu-title">
+        <div className="al-dialog-body">
+          <div className="vault-mobile-menu-header">
+            <h2 id="vault-mobile-menu-title">Vault menu</h2>
+            <form method="dialog"><button className="btn quiet" type="submit">Close</button></form>
+          </div>
+          <p className="vault-menu-status"><span className="vault-sync-dot" data-state={sync} aria-hidden="true" />{vaultLabel}{vaultCount && ` · ${vaultCount}`}</p>
+          {cloudEnabled && <section className="vault-menu-account-section" aria-labelledby="vault-menu-account">
+            <h3 id="vault-menu-account">{store.session ? 'Account' : 'Sign in'}</h3>
+            <AuthBox inline />
+          </section>}
+          <section className="vault-menu-setting" aria-labelledby="vault-menu-currency">
+            <h3 id="vault-menu-currency">Currency</h3>{currencyToggle}
+          </section>
+          <section className="vault-menu-setting vault-menu-sound" aria-labelledby="vault-menu-music">
+            <h3 id="vault-menu-music">Music</h3><div ref={setMusicContainer} />
+          </section>
+          <button type="button" className="btn quiet vault-menu-feedback" onClick={() => { menu.current?.close(); setFeedbackOpen(true); }}>Send feedback</button>
+        </div>
+      </dialog>}
 
     <div className="app page">
-      {store.demo && (
+      {store.demo && !mobile && (
         <div className="callout demo-banner" role="status">
           <div className="row">
             <span>
-              <b>Sample vault.</b> You’re exploring {total} sample cards. Card edits here stay separate from your collection.
+              <b>Sample vault.</b> You’re exploring {total} sample cards. Changes here stay separate from your Vault.
             </span>
             <span className="spacer" />
             <button className="btn sm" onClick={() => { store.exitDemo(); go('add'); }}>Start my own vault</button>
@@ -136,11 +165,11 @@ export default function App() {
         </div>
       )}
 
-      <main>
-        {route.tab === 'collection' && <Collection onOpen={showCard} goAdd={() => go('add')} />}
-        {route.tab === 'prices' && <PriceBook onOpen={showCard} goAdd={() => go('add')} />}
-        {route.tab === 'builder' && <DeckBuilder onOpen={showCard} initialDeck={route.deck} />}
-        {route.tab === 'meta' && <MetaIntel onOpen={showCard} openInBuilder={(id) => go('builder', id)} goAdd={() => go('add')} />}
+      <main key={scope}>
+        {showSection('collection') && <Activity mode={route.tab === 'collection' ? 'visible' : 'hidden'}><Collection onOpen={showCard} goAdd={() => go('add')} /></Activity>}
+        {showSection('prices') && <Activity mode={route.tab === 'prices' ? 'visible' : 'hidden'}><PriceBook onOpen={showCard} goAdd={() => go('add')} /></Activity>}
+        {showSection('builder') && <Activity mode={route.tab === 'builder' ? 'visible' : 'hidden'}><DeckBuilder onOpen={showCard} initialDeck={route.tab === 'builder' ? route.deck : undefined} onConsumeDeck={consumeDeck} /></Activity>}
+        {showSection('meta') && <Activity mode={route.tab === 'meta' ? 'visible' : 'hidden'}><MetaIntel onOpen={showCard} openInBuilder={(id) => go('builder', id)} goAdd={() => go('add')} /></Activity>}
         {route.tab === 'add' && <AddCards onOpen={showCard} />}
         {route.tab === 'about' && <HowItWorks openFeedback={() => setFeedbackOpen(true)} />}
         {route.tab === 'upgrade' && <UpgradePlanner onOpen={showCard} />}
@@ -148,10 +177,10 @@ export default function App() {
       </main>
 
       {openCard && <CardDrawer {...openCard} onClose={() => setOpenCard(null)} />}
-      <MusicPlayer />
+      <MusicPlayer controlsContainer={mobile ? musicContainer : undefined} />
       <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} page={route.tab} />
 
-      <div className="toasts">
+      <div className="toasts" aria-live="polite">
         {store.toasts.map((t) => (
           <div key={t.id} className={`toast ${t.tone === 'err' ? 'err' : ''}`}>{t.msg}</div>
         ))}
@@ -170,6 +199,7 @@ export default function App() {
         <a href="https://github.com/LeviJohnsonNC/cyberpunk-tcg-vault" target="_blank" rel="noreferrer">GitHub</a>
       </footer>
     </div>
+    {mobile && <MobileVaultNav tab={route.tab} />}
     </>
   );
 }
