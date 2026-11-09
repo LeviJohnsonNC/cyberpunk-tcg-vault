@@ -5,6 +5,7 @@ import { PRICES, imageUrl, shortSet } from '../lib/data';
 import { getCurrency, money, toDisplay } from '../lib/currency';
 import { buildPriceBook, sortLines, toCsv, type Basis, type Group, type Line, type SortKey } from '../lib/pricebook';
 import { useStore } from '../lib/store';
+import { CARD_BACK } from '../components/bits';
 import { Masthead, MetricStrip } from '../components/ui';
 import './pricebook.css';
 
@@ -25,11 +26,7 @@ function BasisTag({ basis }: { basis: Basis | null }) {
 
 function Thumb({ slug, className }: { slug: string; className: string }) {
   const [err, setErr] = useState(false);
-  return err ? (
-    <span className={`${className} pb-noart`} aria-hidden="true">No art</span>
-  ) : (
-    <img className={className} src={imageUrl(slug)} alt="" loading="lazy" onError={() => setErr(true)} />
-  );
+  return <img className={`${className} card-art`} src={err ? CARD_BACK : imageUrl(slug)} alt="" loading="lazy" onError={() => setErr(true)} />;
 }
 
 /* ---------- marquee ---------- */
@@ -84,11 +81,7 @@ function Marquee({ top, loading, onOpen, goAdd }: { top: Line | null; loading: b
       </div>
       <Skyline />
       <button className="pb-marquee-card" onClick={() => onOpen(card.slug)} aria-label={`Open ${card.display}`}>
-        {artErr ? (
-          <span className="pb-marquee-noart">{card.name}</span>
-        ) : (
-          <img src={imageUrl(card.slug)} alt="" onError={() => setArtErr(true)} />
-        )}
+        <img className="card-art" src={artErr ? CARD_BACK : imageUrl(card.slug)} alt="" onError={() => setArtErr(true)} />
       </button>
     </section>
   );

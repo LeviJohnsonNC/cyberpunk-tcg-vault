@@ -109,14 +109,17 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
       />
 
       {entries.length === 0 && (
-        <div className="callout y" style={{ marginBottom: 16 }}>
-          <div className="row">
-            <span>Your vault is empty. Add cards by search or photo, or look around with a sample collection first.</span>
-            <span className="spacer" />
-            <button className="btn sm" onClick={goAdd}>Add cards</button>
-            <button className="btn ghost sm" onClick={startDemo}>Try the demo</button>
+        <section className="empty-hero" aria-labelledby="empty-hero-title">
+          <img src="/img/empty-vault.webp" alt="" width={960} height={720} />
+          <div className="empty-hero-text">
+            <h2 id="empty-hero-title">Your case is empty</h2>
+            <p>Add cards by search or photo to see what your collection is worth and which decks you can build. Or look around with a sample collection first.</p>
+            <div className="row">
+              <button className="btn" onClick={goAdd}>Add cards</button>
+              <button className="btn ghost" onClick={startDemo}>Try the demo</button>
+            </div>
           </div>
-        </div>
+        </section>
       )}
 
       <div className="panel">
