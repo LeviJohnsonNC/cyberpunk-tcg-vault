@@ -7,6 +7,7 @@ import { newId, useStore } from '../lib/store';
 import { openInBuilder } from '../lib/handoff';
 import { compareDeck, copyForBuilder, loadShared, shareStatus, type LoadResult } from '../lib/share';
 import { CardImg } from '../components/bits';
+import { HandTester } from '../components/HandTester';
 import { Masthead, MetricStrip } from '../components/ui';
 
 const sum = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a + b, 0);
@@ -14,6 +15,7 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 
 export function SharedDeck({ token, onOpen, goAdd }: { token?: string; onOpen: (slug: string) => void; goAdd: () => void }) {
   const { owned, collectionReady, demo, mode, toast } = useStore();
+  const [testing, setTesting] = useState(false);
   const [loaded, setLoaded] = useState<{ token?: string; res: LoadResult } | null>(null);
   const res = loaded && loaded.token === token ? loaded.res : null; // a new token shows loading
 
@@ -224,8 +226,11 @@ export function SharedDeck({ token, onOpen, goAdd }: { token?: string; onOpen: (
         </details>
       )}
 
+      {testing && <HandTester decks={[{ label: 'Shared deck', name: deck.name, legends: deck.legends, cards: deck.cards, sideboard: deck.sideboard }]} onClose={() => setTesting(false)} />}
+
       <div className="row section-gap">
         <button className="btn ghost" onClick={copy}>Open a copy in Deck Builder</button>
+        <button className="btn ghost" aria-haspopup="dialog" onClick={() => setTesting(true)}>Test hand</button>
         <span className="tiny muted">The copy is yours and private. Nothing is saved until you choose to.</span>
       </div>
     </section>
