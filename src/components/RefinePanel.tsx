@@ -1,8 +1,8 @@
 // "Refine with AI" (Phase 3): sends one auto-built deck to /api/refine-deck.
 // The model only proposes; the server repairs and validates, so anything shown here is legal and owned.
 import { useEffect, useRef, useState } from 'react';
-import { BY_SLUG, refPrice } from '../lib/data';
-import { money } from '../lib/currency';
+import { BY_SLUG, acquireQuote } from '../lib/data';
+import { estimateText, moneyOr } from '../lib/currency';
 import type { Build, Style } from '../lib/autobuild';
 import { useStore } from '../lib/store';
 
@@ -105,7 +105,13 @@ export function RefinePanel({
   }, [key, state.status]);
 
   const r = state.result;
-  const buyTotal = r ? r.buy.reduce((a, b) => a + refPrice(b.slug), 0) : 0;
+  const buyEst = r
+    ? {
+        knownCad: r.buy.reduce((a, b) => a + (acquireQuote(b.slug)?.cad ?? 0), 0),
+        unpriced: r.buy.filter((b) => !acquireQuote(b.slug)).length,
+        copies: r.buy.length,
+      }
+    : { knownCad: 0, unpriced: 0, copies: 0 };
   const changed = r
     ? Object.keys({ ...r.cards, ...build.cards }).reduce((a, s) => a + Math.abs((r.cards[s] ?? 0) - (build.cards[s] ?? 0)), 0) / 2
     : 0;
@@ -166,12 +172,12 @@ export function RefinePanel({
             )}
             {r.buy.length > 0 && (
               <>
-                <div className="label">Worth buying <span className="num">{money(buyTotal)}</span></div>
+                <div className="label">Worth buying <span className="num">{estimateText(buyEst)}</span></div>
                 <ul className="refine-swaps">
                   {r.buy.map((b) => (
                     <li key={b.slug}>
                       <div>
-                        <a href="#" onClick={(e) => { e.preventDefault(); onOpen(b.slug); }}>{name(b.slug)}</a> <span className="num">{money(refPrice(b.slug))}</span>
+                        <a href="#" onClick={(e) => { e.preventDefault(); onOpen(b.slug); }}>{name(b.slug)}</a> <span className="num">{moneyOr(acquireQuote(b.slug)?.cad)}</span>
                       </div>
                       {b.why && <div className="tiny muted">{b.why}</div>}
                     </li>

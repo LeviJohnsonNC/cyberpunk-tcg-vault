@@ -35,21 +35,22 @@ export interface Card {
   printings: Printing[];
 }
 
-export interface PricePoint {
-  usd: number;
-  src: string;
-  finish: string;
-  url: string;
-  printingId?: string;
-  set?: string;
+/** Exact TCGplayer quotes for one printing (USD). Mid price is deliberately not used. */
+export interface PrintingQuote {
+  market: number | null;
+  low: number | null;
+  finish: string | null;
+  url: string | null;
 }
 
 interface PriceFile {
+  version: number;
   updatedAt: string;
   source: string;
   fx: { usdToCad: number; asOf: string };
-  ref: Record<string, PricePoint>;
-  printings: Record<string, PricePoint>;
+  printings: Record<string, PrintingQuote>;
+  /** Verified equivalent Retail printing id -> its Beta twin (same card, rarity and collector number). */
+  pairs: Record<string, string>;
 }
 
 export interface RecommendedDeck {
@@ -107,28 +108,79 @@ export function imageUrl(slug: string): string {
   return `https://api.netdeck.gg/api/cards/cyberpunk/${slug}/image`;
 }
 
-/** Unit price in CAD for a specific printing, falling back to the card's reference price. */
-export function priceFor(slug: string, printingId?: string): { cad: number; point: PricePoint } | null {
-  const pp = printingId ? PRICES.printings[printingId] : undefined;
-  const ref = PRICES.ref[slug];
-  // A printing with no sales (just a listing) is capped by the card's reference market price,
-  // so a single optimistic listing on a two-day-old product doesn't inflate the vault.
-  const point = pp && (pp.src === 'market' || !ref || pp.usd <= ref.usd) ? pp : ref ?? pp;
-  if (!point) return null;
-  return { cad: point.usd * FX, point };
+// ---------- pricing ----------
+// Two different questions, answered separately:
+// - valueHolding(printingId): what is this copy I own worth? Exact market, then a Beta proxy for a
+//   verified Retail/Beta pair, then the exact lowest listing. Otherwise unknown (null). A printing
+//   never borrows another printing's price except through a verified pair.
+// - acquireQuote(slug): what would one playable copy cost to buy? The cheapest direct quote on a
+//   named printing (market first, then lowest listing). Proxies never count here.
+// All amounts are internal CAD; format them with money() from ./currency.
+
+export type HoldingBasis = 'Market' | 'Beta proxy' | 'Low listing';
+export type QuoteBasis = 'Market' | 'Low listing';
+
+export interface Valuation {
+  cad: number;
+  basis: HoldingBasis;
+  /** The printing whose quote this is: the holding itself, or its Beta twin for a proxy. */
+  sourcePrintingId: string;
+  url: string | null;
 }
 
-export function refPrice(slug: string): number {
-  const p = PRICES.ref[slug];
-  return p ? p.usd * FX : 0;
+export interface AcquireQuote {
+  cad: number;
+  basis: QuoteBasis;
+  printingId: string;
+  url: string | null;
 }
 
-export function priceConfidence(point: PricePoint): { label: string; tone: 'ok' | 'warn' | 'low' } {
-  if (point.src === 'beta-proxy' || point.set?.includes('Beta')) return { label: 'Beta proxy', tone: 'warn' };
-  if (point.src === 'market') return { label: 'Market', tone: 'ok' };
-  return { label: 'Low listing', tone: 'low' };
+const toCad = (usd: number) => usd * FX;
+
+export function valueHolding(printingId: string): Valuation | null {
+  const own = PRICES.printings[printingId];
+  if (own?.market != null) return { cad: toCad(own.market), basis: 'Market', sourcePrintingId: printingId, url: own.url };
+  const twinId = PRICES.pairs[printingId];
+  const twin = twinId ? PRICES.printings[twinId] : undefined;
+  // Thin market: an unsold Retail printing with only an optimistic listing is valued at its
+  // verified Beta twin's market price when that's lower (or when there's no listing at all).
+  if (twin?.market != null && (own?.low == null || twin.market < own.low))
+    return { cad: toCad(twin.market), basis: 'Beta proxy', sourcePrintingId: twinId, url: twin.url };
+  if (own?.low != null) return { cad: toCad(own.low), basis: 'Low listing', sourcePrintingId: printingId, url: own.url };
+  return null;
 }
 
+const acquireCache = new Map<string, AcquireQuote | null>();
+export function acquireQuote(slug: string): AcquireQuote | null {
+  if (acquireCache.has(slug)) return acquireCache.get(slug)!;
+  const card = BY_SLUG.get(slug);
+  let best: AcquireQuote | null = null;
+  for (const basis of ['Market', 'Low listing'] as const) {
+    for (const p of card?.printings ?? []) {
+      const q = PRICES.printings[p.id];
+      const usd = basis === 'Market' ? q?.market : q?.low;
+      if (usd == null) continue;
+      if (!best || toCad(usd) < best.cad) best = { cad: toCad(usd), basis, printingId: p.id, url: q!.url };
+    }
+    if (best) break; // a market quote beats any listing
+  }
+  acquireCache.set(slug, best);
+  return best;
+}
+
+/** Test hook: quotes are memoised per card. */
+export const _clearQuoteCache = () => acquireCache.clear();
+
+/** Consistent printing label used everywhere: "WNC Retail #001 · Epic". */
+export function printingLabel(printingId: string, withRarity = true): string {
+  const hit = PRINTING_INDEX.get(printingId);
+  if (!hit) return 'Printing unspecified';
+  const { printing } = hit;
+  const set = shortSet(printing.set).replace(' · ', ' ');
+  return `${set} #${printing.num}${withRarity ? ` · ${printing.rarity}` : ''}`;
+}
+
+export const BASIS_CLASS: Record<HoldingBasis, string> = { Market: 'market', 'Beta proxy': 'proxy', 'Low listing': 'low' };
 
 export function shortSet(s: string): string {
   return s

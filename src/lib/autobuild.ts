@@ -1,7 +1,7 @@
 // Deterministic "build from my vault" engine. Pure, no network, no randomness.
 // Ratings + roles: src/curated/card-ratings.json. Rules: src/lib/decks.ts.
 import ratingsJson from '../curated/card-ratings.json';
-import { BY_SLUG, CARDS, fitsRam, ramLimits, refPrice, type Card, type Color } from './data';
+import { BY_SLUG, CARDS, acquireQuote, fitsRam, ramLimits, type AcquireQuote, type Card, type Color } from './data';
 import { COPY_MAX, MAIN_MIN, validate } from './decks';
 
 export type Role =
@@ -25,7 +25,7 @@ export interface Upgrade {
   add: number;
   replaces: string | null;
   gain: number; // score improvement estimate
-  unit: number; // CAD per copy
+  quote: AcquireQuote | null; // per copy; null = unpriced
 }
 
 export interface Build {
@@ -41,7 +41,7 @@ export interface Build {
 
 export type BuildResult =
   | { ok: true; builds: Build[]; considered: number }
-  | { ok: false; reason: 'need-legends'; message: string; suggestions: { slug: string; unit: number }[] }
+  | { ok: false; reason: 'need-legends'; message: string; suggestions: { slug: string; quote: AcquireQuote | null }[] }
   | { ok: false; reason: 'not-enough-cards'; message: string; bestShortfall: number };
 
 const TARGET = { sellableMin: 20, unitsMin: 16, unitsMax: 22, earlyMin: 6, topEndMax: 9, removalWant: 4 };
@@ -235,7 +235,7 @@ function upgradesFor(build: { legends: string[]; cards: Record<string, number> }
     const victim = weakest.find((w) => w.score < cand.score - 1 && w.slug !== cand.c.slug);
     if (!victim) break;
     const add = Math.min(cand.room, victim.n, 2);
-    out.push({ slug: cand.c.slug, add, replaces: victim.slug, gain: Math.round((cand.score - victim.score) * add * 10) / 10, unit: refPrice(cand.c.slug) });
+    out.push({ slug: cand.c.slug, add, replaces: victim.slug, gain: Math.round((cand.score - victim.score) * add * 10) / 10, quote: acquireQuote(cand.c.slug) });
     victim.n -= add;
     if (victim.n <= 0) weakest.splice(weakest.indexOf(victim), 1);
   }
@@ -254,10 +254,12 @@ export function autobuild(owned: Map<string, number>, opts: BuildOptions = {}): 
   );
   if (ownedLegends.length < 3) {
     const suggestions = CARDS.filter((c) => c.type === 'Legend' && c.ram != null && (owned.get(c.slug) ?? 0) === 0 && (!allowed || allowed.has(c.color)))
-      .map((c) => ({ slug: c.slug, unit: refPrice(c.slug), v: rating(c.slug).power / Math.max(0.5, refPrice(c.slug)) }))
+      .map((c) => ({ slug: c.slug, quote: acquireQuote(c.slug) }))
+      // best power per dollar among priced Legends; unpriced ones can't be ranked on value, so they go last
+      .map((x) => ({ ...x, v: x.quote ? rating(x.slug).power / Math.max(0.5, x.quote.cad) : -1 }))
       .sort((a, b) => b.v - a.v)
       .slice(0, 5)
-      .map(({ slug, unit }) => ({ slug, unit }));
+      .map(({ slug, quote }) => ({ slug, quote }));
     return {
       ok: false,
       reason: 'need-legends',

@@ -13,7 +13,7 @@ export function HowItWorks({ openFeedback }: { openFeedback: () => void }) {
         </section>
         <section className="panel">
           <div className="panel-title">Prices</div>
-          <p>Near Mint prices come from TCGplayer, refreshed daily via {PRICES.source.includes('tcgcsv') ? 'tcgcsv.com' : 'a public mirror'}. Each card shows its basis: a real market price, a Beta printing standing in for an unsold Retail one, or the lowest current listing. Switch USD or CAD in the header.</p>
+          <p>Near Mint prices come from TCGplayer, refreshed daily via {PRICES.source.includes('tcgcsv') ? 'tcgcsv.com' : 'a public mirror'}. Each copy shows its basis: its own market price, its verified Beta twin's price when a new Retail printing hasn't sold yet, or its lowest listing. Printings without a quote, like many promos, show as Unpriced instead of borrowing a price. Costs to buy always quote a specific printing. Switch USD or CAD in the header.</p>
         </section>
         <section className="panel">
           <div className="panel-title">Deck building</div>

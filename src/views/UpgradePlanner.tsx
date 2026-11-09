@@ -3,8 +3,8 @@
 import { useDeferredValue, useMemo, useState } from 'react';
 import { Masthead } from '../components/ui';
 import { CardImg } from '../components/bits';
-import { BY_SLUG } from '../lib/data';
-import { getCurrency, money } from '../lib/currency';
+import { BASIS_CLASS, BY_SLUG, printingLabel } from '../lib/data';
+import { estimateText, getCurrency, money } from '../lib/currency';
 import { newId, useStore } from '../lib/store';
 import { STARTERS } from '../lib/starters';
 import { openInBuilder, readUpgradeSource, type UpgradeSource } from '../lib/handoff';
@@ -12,7 +12,6 @@ import { LENS_LABEL, planUpgrades, type Change, type FinishCost, type PlanOption
 
 const PRESETS = [0, 10, 25] as const;
 type Preset = (typeof PRESETS)[number] | 'custom';
-const BASIS_CLASS: Record<string, string> = { Market: 'market', 'Beta proxy': 'proxy', 'Low listing': 'low' };
 const name = (slug: string) => BY_SLUG.get(slug)?.name ?? slug;
 const sub = (slug: string) => {
   const c = BY_SLUG.get(slug);
@@ -48,15 +47,45 @@ function StatusBadge({ status, budget, cost }: { status: BudgetStatus; budget: n
 }
 
 function CostLine({ cost, label }: { cost: FinishCost; label: string }) {
-  const copies = cost.lines.reduce((a, l) => a + l.buy, 0);
   return (
     <p className="up-cost">
       <span className="label">{label}</span>{' '}
-      <b className="num">{money(cost.knownCad)}</b> <span className="muted">{getCurrency()}</span>
-      {copies > 0 && <span className="muted"> · {copies} {copies === 1 ? 'copy' : 'copies'} to buy</span>}
-      {cost.unpriced > 0 && <span className="weak"> · plus {cost.unpriced} unpriced</span>}
-      <span className="up-fine">Card prices before tax and shipping.</span>
+      <b className={`num ${cost.unpriced ? 'weak' : ''}`}>{estimateText(cost)}</b>
+      {cost.copies > 0 && <span className="muted"> · {cost.copies} {cost.copies === 1 ? 'copy' : 'copies'} to buy</span>}
+      <span className="up-fine">Legends + main deck. Card prices before tax and shipping.</span>
     </p>
+  );
+}
+
+/** Every copy that must be bought, including copies the starting list was already missing. */
+function CopiesToBuy({ cost }: { cost: FinishCost }) {
+  if (!cost.copies) return null;
+  return (
+    <details className="up-buy">
+      <summary>
+        Copies to buy ({cost.copies}){cost.unpriced > 0 && <span className="weak"> · {cost.unpriced} unpriced</span>}
+      </summary>
+      <ul>
+        {cost.lines.map((l) => (
+          <li key={l.slug}>
+            <span className="num up-buy-qty">{l.buy}×</span>
+            <span className="up-buy-name">
+              <b>{name(l.slug)}</b>
+              <span className="muted">{l.quote ? printingLabel(l.quote.printingId, false) : 'No printing has a quote'}</span>
+            </span>
+            {l.quote ? (
+              <span className="up-buy-price">
+                <span className={`pb-tag basis-${BASIS_CLASS[l.quote.basis]}`}>{l.quote.basis}</span>
+                <span className="num">{money(l.quote.cad)}</span>
+                {l.quote.url && <a href={l.quote.url} target="_blank" rel="noreferrer" aria-label={`${name(l.slug)} on TCGplayer`}>↗</a>}
+              </span>
+            ) : (
+              <span className="up-buy-price"><span className="pb-tag">Unpriced</span></span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 
@@ -79,9 +108,9 @@ function ChangeRow({ c, kind, onOpen, cost }: { c: Change; kind: 'add' | 'cut'; 
           {c.ownedAdded > 0 && <span className="up-chip own">Own {c.ownedAdded}</span>}
           {c.buyAdded > 0 && <span className="up-chip buy">Buy {c.buyAdded}</span>}
           {c.buyAdded > 0 && line?.quote && (
-            <span className="up-price">
+            <span className="up-price" title={`Quoted on ${printingLabel(line.quote.printingId, false)}`}>
               <span className="num">{money(line.quote.cad)}</span> ea{' '}
-              <span className={`pb-tag basis-${BASIS_CLASS[line.quote.basis] ?? 'low'}`}>{line.quote.basis}</span>
+              <span className={`pb-tag basis-${BASIS_CLASS[line.quote.basis]}`}>{line.quote.basis}</span>
             </span>
           )}
           {c.buyAdded > 0 && line && !line.quote && <span className="pb-tag">Unpriced</span>}
@@ -118,6 +147,7 @@ function OptionCard({ o, budget, onOpen, onUse }: { o: PlanOption; budget: numbe
         </section>
       </div>
       <CostLine cost={o.cost} label="Cost to finish this deck" />
+      <CopiesToBuy cost={o.cost} />
       <div className="row up-actions">
         <button className="btn" onClick={onUse}>Open upgraded copy</button>
         <details className="up-preview">
@@ -241,6 +271,7 @@ export function UpgradePlanner({ onOpen }: { onOpen: (slug: string) => void }) {
           </div>
           {!plan.base.legal && <p className="tiny weak" style={{ margin: '6px 0 0' }}>{plan.base.issues.join(' · ')}</p>}
           <CostLine cost={plan.base.cost} label="Cost to finish as listed" />
+          <CopiesToBuy cost={plan.base.cost} />
           <details className="up-locks">
             <summary>Lock cards {locks.size > 0 ? `(${locks.size} locked)` : '(keep a card at its current count)'}</summary>
             <div className="up-lock-grid">

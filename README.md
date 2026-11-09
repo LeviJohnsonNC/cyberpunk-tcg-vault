@@ -77,11 +77,19 @@ To test photo scanning locally, use `vercel dev` with the server env vars below.
 
 ## How pricing works
 
-- Each printing is matched to its TCGplayer product by set and collector number.
-- **Market**: TCGplayer's market price (recent sales).
-- **Beta proxy**: the Retail printing has no sales yet (Retail launched Nov 6, 2026), so the identical Beta printing's market price stands in.
-- **Low listing**: no sales anywhere, so the cheapest current listing is used. A listing never outranks a known market price for the same card.
-- USD is converted to CAD with the daily rate from open.er-api.com.
+Two separate questions, two functions in `src/lib/data.ts`:
+
+**What is a copy I own worth?** (`valueHolding`, used by Collection, the card drawer and the Price Book)
+- **Market**: TCGplayer's market price for that exact printing.
+- **Beta proxy**: a Retail printing with only a higher listing (or none) is valued at its verified Beta twin's market price. Twins are the same card, rarity and collector number in the paired set (e.g. The Heist Retail #011 and Beta #β011), derived by the generator. The UI names the source printing.
+- **Low listing**: no market price for that printing, so its own cheapest listing.
+- **Unpriced**: none of the above. Promos, event and Nova Rare printings never borrow another printing's price. Totals show the priced subtotal plus the number of unpriced copies.
+
+**What would one playable copy cost to buy?** (`acquireQuote`, used by the Deck Builder, Meta Intel, auto-build suggestions, Refine and the Upgrade Planner)
+- The cheapest direct quote on a named printing: any market price beats any listing. The estimate names the printing, its basis and the TCGplayer link. Valuation proxies never count.
+- Partial estimates read like "$12.40 USD + 2 unpriced copies". "Nothing to buy" only means zero missing copies, and incomplete estimates never rank as cheapest to finish.
+
+Feed rules (`scripts/price-build.mjs`): a printing is matched to a TCGplayer row by set and collector number. If two different rows (e.g. Normal and Foil) share that key, the catalog has no finish data to choose with, so the printing stays unpriced and the sync logs it. Mid price is not used. USD is converted to CAD with the daily rate from open.er-api.com.
 
 ## Data model
 

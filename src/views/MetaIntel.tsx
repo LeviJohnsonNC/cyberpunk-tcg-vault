@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { BY_SLUG, COLORS, RECOMMENDED, type Color } from '../lib/data';
-import { money } from '../lib/currency';
+import { estimateText } from '../lib/currency';
 import { useStore } from '../lib/store';
 import { CardImg, Pip } from '../components/bits';
 import { Masthead } from '../components/ui';
 import { VaultBuilds } from '../components/VaultBuilds';
-import { CLOSE_THRESHOLD, completion, deckFromRecommended, matchesFilter, validate, type BuildFilter } from '../lib/decks';
+import { CLOSE_THRESHOLD, completion, deckFromRecommended, matchesFilter, validate, type BuildFilter, costRank } from '../lib/decks';
 
 const CARD_COLOR: Record<string, string> = {
   Yellow: 'var(--color-card-yellow)',
@@ -75,8 +75,8 @@ export function MetaIntel({ onOpen, openInBuilder, goAdd }: { onOpen: (slug: str
       f.sort === 'name'
         ? a.d.name.localeCompare(b.d.name)
         : f.sort === 'cost'
-          ? a.c.cost - b.c.cost || b.c.pct - a.c.pct
-          : b.c.pct - a.c.pct || a.c.cost - b.c.cost,
+          ? costRank(a.c.estimate) - costRank(b.c.estimate) || b.c.pct - a.c.pct
+          : b.c.pct - a.c.pct || costRank(a.c.estimate) - costRank(b.c.estimate),
     );
   const closest = [...scored].sort((a, b) => b.c.pct - a.c.pct)[0];
   const buildLabel: Record<BuildFilter, string> = { all: 'All decks', close: `${CLOSE_THRESHOLD}%+ owned`, owned: 'Fully owned' };
@@ -187,7 +187,7 @@ export function MetaIntel({ onOpen, openInBuilder, goAdd }: { onOpen: (slug: str
           <p style={{ margin: '0 0 8px' }}>
             {entries.length === 0
               ? 'Your vault is empty, so nothing matches yet. Add cards, or show all decks to browse.'
-              : `No deck matches those filters yet. Closest: ${closest.d.name} at ${closest.c.pct}% owned, ${money(closest.c.cost)} to finish.`}
+              : `No deck matches those filters yet. Closest: ${closest.d.name} at ${closest.c.pct}% owned, ${estimateText(closest.c.estimate)} to finish.`}
           </p>
           <button className="btn quiet sm" onClick={() => set({ build: 'all', colors: [] })}>Show all decks</button>
         </div>
@@ -218,7 +218,7 @@ export function MetaIntel({ onOpen, openInBuilder, goAdd }: { onOpen: (slug: str
                     <div className="track" role="img" aria-label={`${c.pct}% owned`}>
                       <div className={c.have === c.total ? 'done' : ''} style={{ width: `${c.pct}%` }} />
                     </div>
-                    <div className="stat-line">To finish <b className={c.cost ? '' : 'good'}>{c.cost ? money(c.cost) : 'nothing'}</b></div>
+                    <div className="stat-line">To finish <b className={c.estimate.copies ? (c.estimate.unpriced ? 'weak' : '') : 'good'}>{estimateText(c.estimate)}</b></div>
                     <button className="btn sm" onClick={() => openInBuilder(d.id)}>Open in builder</button>
                   </div>
                 </div>

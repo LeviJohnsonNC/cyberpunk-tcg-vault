@@ -10,55 +10,24 @@
 //   starting list was already missing. At a $0 budget every copy must already be owned.
 // - A purchase without a price quote is never added by the search; if the starting list already
 //   needs one, the option reports it and is never confirmed as within budget.
-import { BY_SLUG, CARDS, PRICES, fitsRam, priceConfidence, ramLimits, type Card } from './data';
+import { BY_SLUG, CARDS, acquireQuote, fitsRam, ramLimits, type AcquireQuote, type Card } from './data';
 import { cardScore, compositionPenalty, rating, scoreDeck, synergy, type Style } from './autobuild';
-import { COPY_MAX, MAIN_MAX, MAIN_MIN, validate } from './decks';
+import { COPY_MAX, MAIN_MAX, MAIN_MIN, deckNeed, purchaseEstimate, validate, type PurchaseEstimate } from './decks';
 import { money, toDisplay, type Currency } from './currency';
 
 export type Lens = 'strongest' | 'fewest' | 'value';
 export const LENS_LABEL: Record<Lens, string> = { strongest: 'Strongest', fewest: 'Fewest changes', value: 'Best value' };
 
-export interface Quote {
-  cad: number; // unit price, internal CAD
-  basis: string; // Market / Beta proxy / Low listing
-}
+/** The planner prices purchases with the app-wide acquisition estimator, so search, budget
+ * eligibility and the displayed cost always use the same quote (and the same printing). */
+export type Quote = AcquireQuote;
+export const quoteFor = (slug: string): Quote | null => acquireQuote(slug);
 
-/** Reference quote for a card, with its price basis. null when no price is known. */
-export function quoteFor(slug: string): Quote | null {
-  const p = PRICES.ref[slug];
-  if (!p || !(p.usd > 0)) return null;
-  return { cad: p.usd * PRICES.fx.usdToCad, basis: priceConfidence(p).label };
-}
+export type FinishCost = PurchaseEstimate;
 
-export interface PurchaseLine {
-  slug: string;
-  buy: number; // copies to buy
-  quote: Quote | null;
-}
-
-export interface FinishCost {
-  knownCad: number; // sum of priced purchases
-  unpriced: number; // copies needed that have no quote
-  lines: PurchaseLine[];
-}
-
-/** What it costs to finish a deck (Legends + main) from a collection. */
+/** What it costs to finish a deck (Legends + main) from a collection. Same requirement as Meta Intel and the Deck Builder. */
 export function finishCost(legends: string[], cards: Record<string, number>, owned: Map<string, number>): FinishCost {
-  const need: Record<string, number> = { ...cards };
-  for (const l of legends) need[l] = (need[l] ?? 0) + 1;
-  const lines: PurchaseLine[] = [];
-  let knownCad = 0;
-  let unpriced = 0;
-  for (const [slug, n] of Object.entries(need)) {
-    const buy = n - Math.min(n, owned.get(slug) ?? 0);
-    if (buy <= 0) continue;
-    const quote = quoteFor(slug);
-    if (quote) knownCad += quote.cad * buy;
-    else unpriced += buy;
-    lines.push({ slug, buy, quote });
-  }
-  lines.sort((a, b) => (b.quote?.cad ?? 0) * b.buy - (a.quote?.cad ?? 0) * a.buy);
-  return { knownCad, unpriced, lines };
+  return purchaseEstimate(deckNeed({ legends, cards }), owned);
 }
 
 export type BudgetStatus = 'within' | 'over' | 'unknown';

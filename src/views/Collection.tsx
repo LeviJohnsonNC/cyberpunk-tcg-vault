@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { StarterAddedBanner, StarterIntake, type StarterAdded } from '../components/StarterIntake';
-import { CARDS, COLORS, TYPES, defaultPrinting, priceFor, rarityRank, searchCards, type Card } from '../lib/data';
-import { getCurrency, money } from '../lib/currency';
+import { CARDS, COLORS, TYPES, acquireQuote, defaultPrinting, rarityRank, searchCards, valueHolding, type Card } from '../lib/data';
+import { getCurrency, money, moneyOr } from '../lib/currency';
 import { useStore, type Entry } from '../lib/store';
 import { CardImg, Pip, RarityBadge } from '../components/bits';
 import { Masthead, MetricStrip } from '../components/ui';
@@ -10,10 +10,18 @@ import { downloadCollection } from '../lib/exportCollection';
 
 type SortKey = 'name' | 'color' | 'type' | 'cost' | 'power' | 'ram' | 'rarity' | 'qty' | 'unit' | 'value';
 
+/** Holdings value: priced copies summed, unpriced copies counted (never valued at zero or borrowed). */
 export function valueOf(entries: Entry[]) {
-  let v = 0;
-  for (const e of entries) v += (priceFor(e.slug, e.printingId)?.cad ?? 0) * e.qty;
-  return v;
+  let knownCad = 0;
+  let unpriced = 0;
+  let copies = 0;
+  for (const e of entries) {
+    const v = valueHolding(e.printingId);
+    if (v) knownCad += v.cad * e.qty;
+    else unpriced += e.qty;
+    copies += e.qty;
+  }
+  return { knownCad, unpriced, copies };
 }
 
 export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; goAdd: () => void }) {
@@ -45,8 +53,8 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
     const data = pool.map((c) => {
       const es = byCard.get(c.slug) ?? [];
       const qty = owned.get(c.slug) ?? 0;
-      const unit = priceFor(c.slug, es[0]?.printingId ?? defaultPrinting(c)?.id)?.cad ?? 0;
-      const value = es.length ? valueOf(es) : 0;
+      const unit = acquireQuote(c.slug)?.cad ?? null; // what one playable copy costs to buy
+      const value = valueOf(es);
       return { c, qty, unit, value, es };
     });
     const get = (r: (typeof data)[number]): string | number => {
@@ -59,8 +67,8 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
         case 'ram': return r.c.ram ?? -1;
         case 'rarity': return rarityRank(r.c.rarity);
         case 'qty': return r.qty;
-        case 'unit': return r.unit;
-        case 'value': return scope === 'mine' ? r.value : r.unit;
+        case 'unit': return r.unit ?? -1;
+        case 'value': return scope === 'mine' ? r.value.knownCad - (r.value.copies && r.value.unpriced === r.value.copies ? 1 : 0) : r.unit ?? -1;
       }
     };
     data.sort((a, b) => {
@@ -104,7 +112,11 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
       <MetricStrip
         items={[
           { label: 'Cards owned', context: `${owned.size} unique`, value: total },
-          { label: 'Collection value', context: `TCGplayer market, ${getCurrency()}`, value: money(totalValue) },
+          {
+            label: 'Collection value',
+            context: totalValue.unpriced ? `${getCurrency()} · ${totalValue.unpriced} unpriced` : `TCGplayer market, ${getCurrency()}`,
+            value: money(totalValue.knownCad),
+          },
           { label: 'Legends', context: 'unique owned', value: CARDS.filter((c) => c.type === 'Legend' && owned.has(c.slug)).length },
           { label: 'Set completion', context: 'unique cards', value: `${Math.round((owned.size / CARDS.length) * 100)}%` },
         ]}
@@ -173,7 +185,7 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
                 {th('rarity', 'Rarity', 'hide-sm')}
                 <th className="hide-sm">Traits</th>
                 {th('qty', 'Owned')}
-                {th('unit', 'Unit', 'num hide-sm')}
+                {th('unit', 'Buy 1', 'num hide-sm')}
                 {th('value', 'Value', 'num')}
               </tr>
             </thead>
@@ -202,8 +214,11 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
                       <button className="iconbtn" onClick={() => bump(c, es, 1)}>+</button>
                     </span>
                   </td>
-                  <td className="num hide-sm">{unit ? money(unit) : '—'}</td>
-                  <td className={`num ${value ? 'accent' : ''}`}>{value ? money(value) : '—'}</td>
+                  <td className={`num hide-sm ${unit == null ? 'muted' : ''}`}>{moneyOr(unit)}</td>
+                  <td className={`num ${value.knownCad ? 'accent' : 'muted'}`}>
+                    {!value.copies ? '' : value.unpriced === value.copies ? 'Unpriced' : money(value.knownCad)}
+                    {value.unpriced > 0 && value.unpriced < value.copies && <div className="csub">+{value.unpriced} unpriced</div>}
+                  </td>
                 </tr>
               ))}
             </tbody>

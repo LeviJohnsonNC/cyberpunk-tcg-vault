@@ -48,7 +48,7 @@ describe('autobuild with the sample collection', () => {
     for (const u of res[0].upgrades) {
       expect(BY_SLUG.has(u.slug)).toBe(true);
       expect(u.gain).toBeGreaterThan(0);
-      expect(u.unit).toBeGreaterThanOrEqual(0);
+      if (u.quote) expect(u.quote.cad).toBeGreaterThan(0); // null means unpriced, never a fake $0
     }
   });
 });

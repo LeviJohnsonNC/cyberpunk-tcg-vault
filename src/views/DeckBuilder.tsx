@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BY_SLUG, CARDS, COLORS, RECOMMENDED, TYPES, fitsRam, refPrice, searchCards, type Card } from '../lib/data';
-import { money } from '../lib/currency';
-import { deckFromRecommended, validate } from '../lib/decks';
+import { BY_SLUG, CARDS, COLORS, RECOMMENDED, TYPES, fitsRam, printingLabel, searchCards, type Card } from '../lib/data';
+import { money, estimateText, moneyOr } from '../lib/currency';
+import { deckFromRecommended, validate, deckNeed, purchaseEstimate } from '../lib/decks';
 import { newId, useStore, type Deck } from '../lib/store';
 import { Bars, CardImg, Pip } from '../components/bits';
 import { Masthead } from '../components/ui';
@@ -100,13 +100,12 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
   for (const s of deck.legends) need[s] = (need[s] ?? 0) + 1;
   for (const [s, n] of Object.entries(deck.cards)) need[s] = (need[s] ?? 0) + n;
   for (const [s, n] of Object.entries(deck.sideboard)) need[s] = (need[s] ?? 0) + n;
-  const missing = Object.entries(need)
-    .map(([s, n]) => ({ slug: s, n: Math.max(0, n - (owned.get(s) ?? 0)) }))
-    .filter((x) => x.n > 0)
-    .map((x) => ({ ...x, c: BY_SLUG.get(x.slug)!, unit: refPrice(x.slug) }))
-    .sort((a, b) => b.unit * b.n - a.unit * a.n);
-  const missingCost = missing.reduce((a, x) => a + x.unit * x.n, 0);
-  const deckValue = Object.entries(need).reduce((a, [s, n]) => a + refPrice(s) * n, 0);
+  // Same estimator as Meta Intel and the planner. The sideboard is included here; the
+  // "Legends + main deck" line matches what the planner and Meta Intel price.
+  const toBuy = purchaseEstimate(need, owned);
+  const mainOnly = purchaseEstimate(deckNeed(deck), owned);
+  const fromScratch = purchaseEstimate(need, new Map());
+  const missing = toBuy.lines.map((l) => ({ ...l, c: BY_SLUG.get(l.slug)! }));
 
   const deckText = () => {
     const lines = [`// ${deck.name}`, '// Legends', ...deck.legends.map((s) => `1 ${BY_SLUG.get(s)?.display}`), '// Main'];
@@ -364,29 +363,32 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
 
           <div className="panel red">
             <div className="panel-title">
-              Acquisition <span className="aside">Deck value {money(deckValue)}</span>
+              Acquisition <span className="aside">Whole list from scratch: {estimateText(fromScratch)}</span>
             </div>
             {missing.length === 0 ? (
               <p style={{ margin: 0, color: 'var(--color-success)' }}>You own every card in this deck. Sleeve up.</p>
             ) : (
               <>
                 <div className="row" style={{ marginBottom: 8 }}>
-                  <span>Missing <b>{missing.reduce((a, x) => a + x.n, 0)}</b> cards</span>
+                  <span>Missing <b>{toBuy.copies}</b> {toBuy.copies === 1 ? 'card' : 'cards'}</span>
                   <span className="spacer" />
-                  <b className="price-line"><span className="big">{money(missingCost)}</span></b>
+                  <b className="price-line"><span className="big">{estimateText(toBuy)}</span></b>
                 </div>
+                {Object.keys(deck.sideboard).length > 0 && (
+                  <p className="tiny muted" style={{ margin: '0 0 8px' }}>Legends + main deck only: {estimateText(mainOnly)}. The total above includes the sideboard.</p>
+                )}
                 <div className="decklist">
                   {missing.map((x) => (
-                    <div key={x.slug} className={`dl-row ${x.c.color}`}>
-                      <span className="cost">{x.n}×</span>
+                    <div key={x.slug} className={`dl-row ${x.c.color}`} title={x.quote ? `Quoted on ${printingLabel(x.quote.printingId, false)} (${x.quote.basis})` : 'No printing has a quote yet'}>
+                      <span className="cost">{x.buy}×</span>
                       <button className="link" onClick={() => onOpen(x.slug)}>{x.c.display}</button>
-                      <span className="mono tiny">{money(x.unit)}</span>
-                      <span className="mono tiny accent">{money(x.unit * x.n)}</span>
+                      <span className="mono tiny">{moneyOr(x.quote?.cad)}</span>
+                      <span className={`mono tiny ${x.quote ? 'accent' : 'muted'}`}>{x.quote ? money(x.quote.cad * x.buy) : 'Unpriced'}</span>
                     </div>
                   ))}
                 </div>
                 <div className="row" style={{ marginTop: 10 }}>
-                  <button className="btn sm" onClick={() => copy(missing.map((x) => `${x.n} ${x.c.name}${x.c.sub ? ` - ${x.c.sub}` : ''}`).join('\n'), 'Shopping list')}>Copy shopping list</button>
+                  <button className="btn sm" onClick={() => copy(missing.map((x) => `${x.buy} ${x.c.name}${x.c.sub ? ` - ${x.c.sub}` : ''}`).join('\n'), 'Shopping list')}>Copy shopping list</button>
                   <a className="btn sm quiet" href="https://www.tcgplayer.com/massentry?productline=Cyberpunk%20TCG" target="_blank" rel="noreferrer">TCGplayer mass entry ↗</a>
                 </div>
               </>

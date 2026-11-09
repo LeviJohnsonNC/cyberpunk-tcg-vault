@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { BY_SLUG, CARDS, defaultPrinting, priceFor, searchCards, shortSet } from '../lib/data';
+import { BY_SLUG, CARDS, defaultPrinting, printingLabel, searchCards, valueHolding } from '../lib/data';
 import { money } from '../lib/currency';
 import { useStore, type Entry } from '../lib/store';
 import { StarterAddedBanner, StarterIntake, type StarterAdded } from '../components/StarterIntake';
@@ -155,7 +155,7 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
           <div className="result-list" style={{ marginTop: 10 }}>
             {results.map((c) => {
               const pid = printFor[c.slug] ?? defaultPrinting(c).id;
-              const pr = priceFor(c.slug, pid);
+              const pr = valueHolding(pid);
               return (
                 <div key={c.slug} className="result">
                   <div onClick={() => onOpen(c.slug)} style={{ cursor: 'pointer' }}><CardImg className="thumb" slug={c.slug} alt="" /></div>
@@ -164,9 +164,9 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
                     <div className="row tiny" style={{ gap: 8 }}>
                       <Pip color={c.color} /> <span className="muted">{c.type}</span>
                       <select className="select" style={{ padding: '3px 6px', fontSize: 12 }} value={pid} onChange={(e) => setPrintFor((m) => ({ ...m, [c.slug]: e.target.value }))}>
-                        {c.printings.map((p) => <option key={p.id} value={p.id}>{shortSet(p.set)} #{p.num}</option>)}
+                        {c.printings.map((p) => <option key={p.id} value={p.id}>{printingLabel(p.id)}</option>)}
                       </select>
-                      <span className="mono">{pr ? money(pr.cad) : ''}</span>
+                      <span className="mono" title={pr ? `${pr.basis}${pr.sourcePrintingId !== pid ? `, from ${printingLabel(pr.sourcePrintingId, false)}` : ''}` : 'No quote for this printing'}>{pr ? money(pr.cad) : 'Unpriced'}</span>
                       <span className="muted">own {ownedQty(pid)}</span>
                     </div>
                   </div>
@@ -227,7 +227,7 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
                         </div>
                       </div>
                       <select className="select" style={{ padding: '4px 6px', fontSize: 12 }} value={s.printingId} onChange={(e) => editScan(s.key, { printingId: e.target.value })}>
-                        {c.printings.map((p) => <option key={p.id} value={p.id}>{shortSet(p.set)} #{p.num}</option>)}
+                        {c.printings.map((p) => <option key={p.id} value={p.id}>{printingLabel(p.id)}</option>)}
                       </select>
                       <input className="input" type="number" min={0} max={99} style={{ padding: '6px', width: '100%' }} value={s.qty} onChange={(e) => editScan(s.key, { qty: Math.max(0, +e.target.value || 0) })} />
                     </div>

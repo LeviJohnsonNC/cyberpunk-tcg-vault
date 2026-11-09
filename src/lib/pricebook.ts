@@ -1,42 +1,48 @@
 // Pure pricing selectors for the Price Book. No React, so they're unit-testable.
-import { BY_SLUG, PRINTING_INDEX, priceConfidence, priceFor, rarityRank, type Card, type Printing } from './data';
+import { BY_SLUG, PRINTING_INDEX, printingLabel, rarityRank, valueHolding, type Card, type HoldingBasis, type Printing } from './data';
 import type { Entry } from './store';
 
-export type Basis = 'Market' | 'Beta proxy' | 'Low listing';
+export type Basis = HoldingBasis;
 
 export interface Line {
   entry: Entry;
   card: Card;
   printing: Printing | undefined;
   rarity: string; // printing rarity (Iconic, Nova...) falling back to the card's base rarity
-  unit: number; // CAD per copy
-  total: number; // CAD for the position
+  unit: number | null; // CAD per copy; null = unpriced
+  total: number | null; // CAD for the position; null = unpriced
   basis: Basis | null;
-  url: string | undefined;
+  url: string | null;
+  sourcePrintingId: string | null; // differs from the holding for a Beta proxy
 }
 
 export interface Group {
   key: string;
-  value: number;
-  count: number;
+  value: number; // CAD, priced copies only
+  count: number; // all copies
+  unpriced: number; // copies with no value
 }
 
 export interface Extra {
   slug: string;
   card: Card;
   copies: number; // copies beyond the 3-per-deck limit
-  unit: number;
+  value: number; // CAD for the priced extra copies
+  unpriced: number; // extra copies with no value
 }
 
 export interface PriceBookModel {
   lines: Line[];
-  total: number;
-  count: number;
-  average: number;
+  total: number; // CAD, priced copies only
+  count: number; // all copies
+  pricedCount: number;
+  unpriced: number; // copies with no value
+  average: number; // over priced copies
   top: Line | null; // most valuable single copy
   extras: Extra[];
   extrasCopies: number;
   extrasValue: number;
+  extrasUnpriced: number;
   byConfidence: Group[];
   byColor: Group[];
   byRarity: Group[];
@@ -46,14 +52,19 @@ export type SortKey = 'total' | 'unit' | 'name' | 'qty';
 
 export const COPY_LIMIT = 3;
 const BASIS_ORDER: Basis[] = ['Market', 'Beta proxy', 'Low listing'];
+const basisRank = (k: string) => {
+  const i = BASIS_ORDER.indexOf(k as Basis);
+  return i < 0 ? BASIS_ORDER.length : i;
+};
 
 function group(lines: Line[], key: (l: Line) => string): Group[] {
   const m = new Map<string, Group>();
   for (const l of lines) {
     const k = key(l);
-    const g = m.get(k) ?? { key: k, value: 0, count: 0 };
-    g.value += l.total;
+    const g = m.get(k) ?? { key: k, value: 0, count: 0, unpriced: 0 };
+    g.value += l.total ?? 0;
     g.count += l.entry.qty;
+    if (l.total == null) g.unpriced += l.entry.qty;
     m.set(k, g);
   }
   return [...m.values()];
@@ -64,42 +75,61 @@ export function buildPriceBook(entries: Entry[]): PriceBookModel {
   for (const entry of entries) {
     const card = BY_SLUG.get(entry.slug);
     if (!card || entry.qty <= 0) continue;
-    const pr = priceFor(entry.slug, entry.printingId);
-    const unit = pr?.cad ?? 0;
+    const v = valueHolding(entry.printingId);
     const printing = PRINTING_INDEX.get(entry.printingId)?.printing;
     lines.push({
       entry,
       card,
       printing,
       rarity: printing?.rarity ?? card.rarity,
-      unit,
-      total: unit * entry.qty,
-      basis: pr ? (priceConfidence(pr.point).label as Basis) : null,
-      url: pr?.point.url,
+      unit: v ? v.cad : null,
+      total: v ? v.cad * entry.qty : null,
+      basis: v?.basis ?? null,
+      url: v?.url ?? null,
+      sourcePrintingId: v?.sourcePrintingId ?? null,
     });
   }
-  const total = lines.reduce((a, l) => a + l.total, 0);
+  const priced = lines.filter((l) => l.unit != null);
+  const total = priced.reduce((a, l) => a + l.total!, 0);
   const count = lines.reduce((a, l) => a + l.entry.qty, 0);
-  const top = lines.reduce<Line | null>((m, l) => (!m || l.unit > m.unit ? l : m), null);
+  const pricedCount = priced.reduce((a, l) => a + l.entry.qty, 0);
+  const top = priced.reduce<Line | null>((m, l) => (!m || l.unit! > m.unit! ? l : m), null);
 
-  const bySlug = new Map<string, number>();
-  for (const l of lines) bySlug.set(l.card.slug, (bySlug.get(l.card.slug) ?? 0) + l.entry.qty);
-  const extras: Extra[] = [...bySlug.entries()]
-    .filter(([, n]) => n > COPY_LIMIT)
-    .map(([slug, n]) => ({ slug, card: BY_SLUG.get(slug)!, copies: n - COPY_LIMIT, unit: priceFor(slug)?.cad ?? 0 }))
-    .sort((a, b) => b.unit * b.copies - a.unit * a.copies || a.card.display.localeCompare(b.card.display));
+  // Trade bait: copies past the deck limit. You'd trade away your least valuable copies first.
+  const bySlug = new Map<string, Line[]>();
+  for (const l of lines) bySlug.set(l.card.slug, [...(bySlug.get(l.card.slug) ?? []), l]);
+  const extras: Extra[] = [];
+  for (const [slug, ls] of bySlug) {
+    let spare = ls.reduce((a, l) => a + l.entry.qty, 0) - COPY_LIMIT;
+    if (spare <= 0) continue;
+    const copies = spare;
+    let value = 0;
+    let unpriced = 0;
+    for (const l of [...ls].sort((a, b) => (a.unit ?? Infinity) - (b.unit ?? Infinity))) {
+      const take = Math.min(spare, l.entry.qty);
+      if (l.unit == null) unpriced += take;
+      else value += l.unit * take;
+      spare -= take;
+      if (!spare) break;
+    }
+    extras.push({ slug, card: BY_SLUG.get(slug)!, copies, value, unpriced });
+  }
+  extras.sort((a, b) => b.value - a.value || a.card.display.localeCompare(b.card.display));
 
   return {
     lines,
     total,
     count,
-    average: count ? total / count : 0,
+    pricedCount,
+    unpriced: count - pricedCount,
+    average: pricedCount ? total / pricedCount : 0,
     top,
     extras,
     extrasCopies: extras.reduce((a, x) => a + x.copies, 0),
-    extrasValue: extras.reduce((a, x) => a + x.unit * x.copies, 0),
+    extrasValue: extras.reduce((a, x) => a + x.value, 0),
+    extrasUnpriced: extras.reduce((a, x) => a + x.unpriced, 0),
     byConfidence: group(lines, (l) => l.basis ?? 'Unpriced').sort(
-      (a, b) => BASIS_ORDER.indexOf(a.key as Basis) - BASIS_ORDER.indexOf(b.key as Basis),
+      (a, b) => basisRank(a.key) - basisRank(b.key), // Market, Beta proxy, Low listing, then Unpriced
     ),
     byColor: group(lines, (l) => l.card.color).sort((a, b) => b.value - a.value),
     byRarity: group(lines, (l) => l.rarity).sort((a, b) => rarityRank(a.key) - rarityRank(b.key)),
@@ -109,8 +139,8 @@ export function buildPriceBook(entries: Entry[]): PriceBookModel {
 export function sortLines(lines: Line[], key: SortKey): Line[] {
   const byName = (a: Line, b: Line) => a.card.display.localeCompare(b.card.display);
   const cmp: Record<SortKey, (a: Line, b: Line) => number> = {
-    total: (a, b) => b.total - a.total || byName(a, b),
-    unit: (a, b) => b.unit - a.unit || byName(a, b),
+    total: (a, b) => (b.total ?? -1) - (a.total ?? -1) || byName(a, b),
+    unit: (a, b) => (b.unit ?? -1) - (a.unit ?? -1) || byName(a, b),
     qty: (a, b) => b.entry.qty - a.entry.qty || byName(a, b),
     name: byName,
   };
@@ -119,7 +149,7 @@ export function sortLines(lines: Line[], key: SortKey): Line[] {
 
 /** CSV of the lines. Amounts are internal CAD; pass toCur/label to export in another display currency. */
 export function toCsv(lines: Line[], toCur: (cadAmount: number) => number = (n) => n, label = 'CAD'): string {
-  const rows = [['Card', 'Set', 'Number', 'Rarity', 'Qty', `Unit ${label}`, `Total ${label}`, 'Price basis']];
+  const rows = [['Card', 'Set', 'Number', 'Rarity', 'Qty', `Unit ${label}`, `Total ${label}`, 'Price basis', 'Priced from']];
   for (const l of lines)
     rows.push([
       l.card.display,
@@ -127,9 +157,10 @@ export function toCsv(lines: Line[], toCur: (cadAmount: number) => number = (n) 
       l.printing?.num ?? '',
       l.rarity,
       String(l.entry.qty),
-      toCur(l.unit).toFixed(2),
-      toCur(l.total).toFixed(2),
-      l.basis ?? '',
+      l.unit == null ? '' : toCur(l.unit).toFixed(2), // unknown stays blank, never 0
+      l.total == null ? '' : toCur(l.total).toFixed(2),
+      l.basis ?? 'Unpriced',
+      l.sourcePrintingId && l.sourcePrintingId !== l.entry.printingId ? printingLabel(l.sourcePrintingId, false) : '',
     ]);
   return rows.map((r) => r.map((x) => `"${x.replace(/"/g, '""')}"`).join(',')).join('\n');
 }
