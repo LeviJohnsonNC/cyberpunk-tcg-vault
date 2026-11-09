@@ -2,7 +2,7 @@
 import { useRef, useState } from 'react';
 import { ConfirmDialog } from './ui';
 import { CardImg, Pip } from './bits';
-import { PENDING_DECK_KEY } from './VaultBuilds';
+import { PENDING_DECK_KEY, openPlanner } from '../lib/handoff';
 import { BY_SLUG } from '../lib/data';
 import { newId, useStore } from '../lib/store';
 import { EDITIONS, looksAlreadyLogged, starterAsDeck, starterCardCount, starterEntries, STARTERS, type StarterDeck, type StarterEdition } from '../lib/starters';
@@ -93,6 +93,8 @@ export function StarterIntake({ onAdded, compact = false }: { onAdded: (a: Start
 
 /** Compact confirmation shown after an intake, with the next steps. */
 export function StarterAddedBanner({ added, onDismiss, goPrices }: { added: StarterAdded; onDismiss: () => void; goPrices: () => void }) {
+  const upgrade = (budget: number) =>
+    openPlanner({ name: `${added.starter.name} (starter)`, kind: 'starter', ...starterAsDeck(added.starter), budget });
   const openInBuilder = () => {
     const { starter } = added;
     const deck = {
@@ -117,7 +119,9 @@ export function StarterAddedBanner({ added, onDismiss, goPrices }: { added: Star
           <b>Added {added.starter.name}</b> ({added.edition === 'retail' ? 'Retail' : 'Beta'}): {starterCardCount(added.starter)} cards.
         </span>
         <span className="spacer" />
-        <button className="btn sm" onClick={openInBuilder}>Open the deck</button>
+        <button className="btn sm" onClick={() => upgrade(0)}>Upgrade this deck</button>
+        <button className="btn ghost sm" onClick={() => upgrade(10)}>What $10 buys</button>
+        <button className="btn quiet sm" onClick={openInBuilder}>Open the deck</button>
         <button className="btn quiet sm" onClick={goPrices}>See what it&apos;s worth</button>
         <button className="btn ghost sm" onClick={onDismiss} aria-label="Dismiss">Done</button>
       </div>
