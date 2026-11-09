@@ -33,6 +33,7 @@ export function PhotoScanIntake() {
   const [scan, setScan] = useState<ScanRow[]>([]);
   const [scanning, setScanning] = useState('');
   const [over, setOver] = useState(false);
+  const [addedCopies, setAddedCopies] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const scanLock = useRef(false);
 
@@ -42,6 +43,7 @@ export function PhotoScanIntake() {
     if (!list.length) return toast('Choose an image to scan.', 'err');
     if (cloudEnabled && !session) return toast('Sign in to scan photos (it keeps the shared AI budget fair).', 'err');
     scanLock.current = true;
+    setAddedCopies(0);
     const found: ScanRow[] = [];
     for (let i = 0; i < list.length; i++) {
       setScanning(`Scanning photo ${i + 1} of ${list.length}…`);
@@ -84,7 +86,7 @@ export function PhotoScanIntake() {
     const ok = await addMany(items, 'add');
     setCommitting(false);
     if (!ok) return; // keep the reviewed rows so nothing is lost; the store already showed why
-    { const n = items.reduce((a, x) => a + x.qty, 0); toast(`Added ${n} ${n === 1 ? 'card' : 'cards'} from photo`); }
+    setAddedCopies(items.reduce((sum, item) => sum + item.qty, 0));
     setScan([]);
   };
   const editScan = (key: string, patch: Partial<ScanRow>) => setScan((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
@@ -107,18 +109,39 @@ export function PhotoScanIntake() {
     <section className="panel intake-panel">
       <h2 className="intake-heading">Scan card photos</h2>
       <p className="intake-description">Upload photos of your cards, then review the suggested matches before saving.</p>
-      {cloudEnabled && !session ? (
-        <p className="callout y">Sign in using the top navigation to scan photos.</p>
-      ) : (
-        <button type="button" className={`dropzone${over ? ' over' : ''}`} disabled={!!scanning || committing}
-          onClick={() => fileRef.current?.click()}
-          onDragOver={(event) => { event.preventDefault(); if (!scanning) setOver(true); }}
-          onDragLeave={() => setOver(false)}
-          onDrop={(event) => { event.preventDefault(); setOver(false); if (!scanning) void runScan(event.dataTransfer.files); }}>
-          <span className="big">Drop photos or tap to upload</span>
-          <span className="intake-scan-tip">Lay your cards flat in good light, with the names readable. Try 20 to 30 cards per photo.</span>
-        </button>
-      )}
+      <div className={`intake-scan-setup${scan.length === 0 ? ' with-guide' : ''}`}>
+        <div className="intake-scan-action">
+          {cloudEnabled && !session ? (
+            <p className="callout y">Sign in using the top navigation to scan photos.</p>
+          ) : (
+            <button type="button" className={`dropzone${over ? ' over' : ''}`} disabled={!!scanning || committing}
+              onClick={() => fileRef.current?.click()}
+              onDragOver={(event) => { event.preventDefault(); if (!scanning) setOver(true); }}
+              onDragLeave={() => setOver(false)}
+              onDrop={(event) => { event.preventDefault(); setOver(false); if (!scanning) void runScan(event.dataTransfer.files); }}>
+              <span className="big">Drop photos or tap to upload</span>
+              <span className="intake-scan-tip">Try 20 to 30 cards per photo.</span>
+            </button>
+          )}
+          <p className="al-action-feedback intake-scan-feedback" data-tone="success" role="status">
+            {addedCopies > 0 ? `Added ${addedCopies} ${addedCopies === 1 ? 'card' : 'cards'} to your vault` : ''}
+          </p>
+        </div>
+        {scan.length === 0 && (
+          <figure className="intake-scan-guide">
+            <img src="/img/scan-guide.svg" width={460} height={300} loading="lazy"
+              alt="Overhead view of a flat grid of spaced cards, all inside the camera frame." />
+            <figcaption>
+              <strong>Set up your shot</strong>
+              <ol>
+                <li>Lay cards flat with space between them.</li>
+                <li>Shoot straight down in good light.</li>
+                <li>Keep every card name readable and in frame.</li>
+              </ol>
+            </figcaption>
+          </figure>
+        )}
+      </div>
       <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(event) => {
         if (event.target.files?.length) void runScan(event.target.files);
         event.target.value = '';

@@ -17,6 +17,7 @@ export function CardSearchIntake({ onOpen }: { onOpen: (slug: string, printingId
   const [qty, setQtyInput] = useState('1');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [saveFailed, setSaveFailed] = useState(false);
   const locked = useRef(false);
   const queryInput = useRef<HTMLInputElement>(null);
   const selectedHeading = useRef<HTMLHeadingElement>(null);
@@ -47,6 +48,7 @@ export function CardSearchIntake({ onOpen }: { onOpen: (slug: string, printingId
     setMessage('');
     try {
       const ok = await setQty(card.slug, pid, current + copies);
+      setSaveFailed(!ok);
       setMessage(ok ? `Added ${copies} ${copies === 1 ? 'copy' : 'copies'} of ${card.display}.` : 'Couldn’t save this addition. Try again.');
       if (ok) setQtyInput('1');
     } finally {
@@ -135,7 +137,7 @@ export function CardSearchIntake({ onOpen }: { onOpen: (slug: string, printingId
             </form>
             {!limit && <p className="muted tiny">This printing has reached the limit of {MAX_PRINTING_COPIES} copies.</p>}
             {limit > 0 && qty && !validQty && <p className="muted tiny">Enter a whole number between 1 and {limit}.</p>}
-            <p className="intake-search-status" role="status">{message}</p>
+            <p className="intake-search-status al-action-feedback" data-tone={message ? saveFailed ? 'error' : 'success' : undefined} role="status">{message}</p>
           </section>
         )}
       </div>

@@ -3,7 +3,7 @@ import { RECOMMENDED, type Card } from '../lib/data';
 import { addDeckCard, formatDeckText, newDeck, readDeckDraft, readDeckText, rememberDeckDraft, totalCopies, type DeckDraft, type DeckZone } from '../lib/deckDraft';
 import { deckFromRecommended, deckNeed, purchaseEstimate, validate } from '../lib/decks';
 import { newId, useStore, type Deck } from '../lib/store';
-import { ConfirmDialog, Masthead } from '../components/ui';
+import { ConfirmDialog, Masthead, ViewTabs } from '../components/ui';
 import { PENDING_DECK_KEY, openPlanner } from '../lib/handoff';
 import { ShareDialog } from '../components/ShareDialog';
 import { HandTester, type TestDeck } from '../components/HandTester';
@@ -301,28 +301,28 @@ function DeckWorkbench({ owner, onOpen, initialDeck }: { owner: string; onOpen: 
           <button type="button" onClick={() => selectPane('checks', true)}>{empty ? 'Checks' : checks.legal ? 'Legal deck' : `${checks.issues.length} rule ${checks.issues.length === 1 ? 'issue' : 'issues'}`}</button>
           <button type="button" onClick={() => selectPane('missing', true)}>{empty || !missing ? 'Missing' : missing.copies ? `${missing.copies} missing` : 'Fully owned'}</button>
         </div>
-        <div className="workbench-mobile-tabs" role="group" aria-label="Workbench view">
+        <div className="workbench-mobile-tabs al-view-tabs" role="group" aria-label="Workbench view">
           <button type="button" aria-pressed={mobileView === 'pool'} onClick={() => switchMobile('pool')}>Find cards</button>
           <button type="button" aria-pressed={mobileView === 'deck'} onClick={() => switchMobile('deck')}>Deck · {deck.legends.length + checks.n + checks.side}</button>
         </div>
-        <p className="workbench-feedback" role="status">{feedback || (pickingLegend ? 'Legend picks go to the crew.' : `Pool adds go to ${zone === 'cards' ? 'Main' : 'Sideboard'}.`)}</p>
+        <p className="workbench-feedback al-action-feedback" data-tone={feedback ? 'success' : undefined} role="status">{feedback || (pickingLegend ? 'Legend picks go to the crew.' : `Pool adds go to ${zone === 'cards' ? 'Main' : 'Sideboard'}.`)}</p>
       </div>
 
       <div className="workbench-grid" data-mobile-view={mobileView}>
         <DeckCardPool deck={deck} owned={owned} ownershipReady={collectionReady} limits={checks.lim} zone={zone} setZone={(next) => { setZone(next); setFeedback(''); }}
           pickingLegend={pickingLegend} browse={() => { setPickingLegend(false); setFeedback(''); }} onOpen={onOpen} onAdd={add} searchRef={search} />
         <section className="workbench-deck" ref={deckPane} aria-label="Deck workspace">
-          <div className="workbench-deck-tabs" role="group" aria-label="Deck view">
-            <button type="button" aria-pressed={pane === 'list'} onClick={() => selectPane('list')}>List</button>
-            <button type="button" aria-pressed={pane === 'checks'} onClick={() => selectPane('checks')}>Checks{!empty && !checks.legal && <span>{checks.issues.length}</span>}</button>
-            <button type="button" aria-pressed={pane === 'missing'} onClick={() => selectPane('missing')}>Missing{!!missing?.copies && <span>{missing.copies}</span>}</button>
-          </div>
-          <div hidden={pane !== 'list'}>
+          <ViewTabs<Pane> id="workbench" label="Deck view" className="workbench-deck-tabs" value={pane} onChange={selectPane} tabs={[
+            { id: 'list', label: 'List' },
+            { id: 'checks', label: <>Checks{!empty && !checks.legal && <span>{checks.issues.length}</span>}</> },
+            { id: 'missing', label: <>Missing{!!missing?.copies && <span>{missing.copies}</span>}</> },
+          ]} />
+          <div id="workbench-panel-list" role="tabpanel" aria-labelledby="workbench-tab-list" tabIndex={0} hidden={pane !== 'list'}>
             <DeckWorkbenchList deck={deck} checks={checks} missing={missing} onChooseLegend={chooseLegend} onLoad={openLoad} onOpen={onOpen}
               onAdd={add} onRemove={remove} onRemoveLegend={(index) => update((current) => ({ ...current, legends: current.legends.filter((_, i) => i !== index) }))} />
           </div>
-          <div hidden={pane !== 'checks'}><DeckWorkbenchChecks deck={deck} checks={checks} /></div>
-          <div hidden={pane !== 'missing'}><DeckWorkbenchMissing empty={empty} missing={missing} fromScratch={fromScratch} mainOnly={mainOnly}
+          <div id="workbench-panel-checks" role="tabpanel" aria-labelledby="workbench-tab-checks" tabIndex={0} hidden={pane !== 'checks'}><DeckWorkbenchChecks deck={deck} checks={checks} /></div>
+          <div id="workbench-panel-missing" role="tabpanel" aria-labelledby="workbench-tab-missing" tabIndex={0} hidden={pane !== 'missing'}><DeckWorkbenchMissing empty={empty} missing={missing} fromScratch={fromScratch} mainOnly={mainOnly}
             hasSide={checks.side > 0} collectionError={collectionError} retryCollection={retryCollection} onOpen={onOpen} copy={copy} /></div>
         </section>
       </div>

@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { IntakeIcon } from '../components/IntakeIcon';
 import { StarterAddedBanner, StarterIntake, type StarterAdded } from '../components/StarterIntake';
-import { Masthead } from '../components/ui';
+import { Masthead, ViewTabs } from '../components/ui';
 import { useStore } from '../lib/store';
 import { CardSearchIntake } from './CardSearchIntake';
 import { PhotoScanIntake } from './PhotoScanIntake';
@@ -15,12 +15,12 @@ const MODES = [
   { id: 'import', label: 'Import File' },
 ] as const;
 type Mode = (typeof MODES)[number]['id'];
+const tabs = MODES.map(({ id, label }) => ({ id, label: <><IntakeIcon name={id} /> {label}</> }));
 
 export function AddCards({ onOpen }: { onOpen: (slug: string, printingId?: string, identify?: boolean) => void }) {
   const { decks, owned, collectionReady, collectionError, retryCollection } = useStore();
   const [mode, setMode] = useState<Mode>('search');
   const [justAdded, setJustAdded] = useState<StarterAdded | null>(null);
-  const tabs = useRef<(HTMLButtonElement | null)[]>([]);
   const count = [...owned.values()].reduce((total, qty) => total + qty, 0);
 
   return (
@@ -32,24 +32,7 @@ export function AddCards({ onOpen }: { onOpen: (slug: string, printingId?: strin
         </a>
       </Masthead>
 
-      <div className="intake-tabs" role="tablist" aria-label="Add cards methods">
-        {MODES.map(({ id, label }, index) => (
-          <button key={id} type="button" role="tab" id={`intake-tab-${id}`} aria-controls={`intake-panel-${id}`}
-            aria-selected={mode === id} tabIndex={mode === id ? 0 : -1}
-            ref={(node) => { tabs.current[index] = node; }}
-            onClick={() => setMode(id)}
-            onKeyDown={(event) => {
-              const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
-              if (!step && event.key !== 'Home' && event.key !== 'End') return;
-              event.preventDefault();
-              const next = event.key === 'Home' ? 0 : event.key === 'End' ? MODES.length - 1 : (index + step + MODES.length) % MODES.length;
-              setMode(MODES[next].id);
-              tabs.current[next]?.focus();
-            }}>
-            <IntakeIcon name={id} /> {label}
-          </button>
-        ))}
-      </div>
+      <ViewTabs id="intake" label="Add cards methods" tabs={tabs} value={mode} onChange={setMode} className="intake-tabs" />
 
       {!collectionReady && (
         <div className="callout y intake-loading" role={collectionError ? 'alert' : 'status'}>

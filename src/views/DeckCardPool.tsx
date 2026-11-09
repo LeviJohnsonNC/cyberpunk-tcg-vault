@@ -81,7 +81,7 @@ export function DeckCardPool({ deck, owned, ownershipReady, limits, zone, setZon
 
       {pool.length === 0 ? <p className="workbench-empty">No cards match these filters. Try another search or clear a filter.</p> : (
         <ul className="workbench-cards">
-          {pool.map((card) => {
+          {pool.map((card, index) => {
             const legend = card.type === 'Legend';
             const inDeck = legend ? Number(deck.legends.includes(card.slug)) : (deck.cards[card.slug] ?? 0) + (deck.sideboard[card.slug] ?? 0);
             const have = owned.get(card.slug) ?? 0;
@@ -91,7 +91,7 @@ export function DeckCardPool({ deck, owned, ownershipReady, limits, zone, setZon
             return (
               <li className={`workbench-card${inDeck ? ' in-deck' : ''}`} key={card.slug}>
                 <div className="workbench-card-art">
-                  <CardImg slug={card.slug} alt="" />
+                  <CardImg slug={card.slug} alt="" priority={index < 4} />
                   {inDeck > 0 && <span>{legend ? 'In crew' : `${inDeck} in deck`}</span>}
                 </div>
                 <div className="workbench-card-name"><Pip color={card.color} bare /><span><strong>{card.name}</strong>{card.sub && <small>{card.sub}</small>}</span></div>

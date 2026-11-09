@@ -1,18 +1,46 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { imageUrl, textSegments, type Card } from '../lib/data';
 
 export const CARD_BACK = '/img/card-back.webp';
 
-export function CardImg({ slug, alt, className }: { slug: string; alt: string; className?: string }) {
-  const [err, setErr] = useState(false);
-  // Card back shows while art loads and if it fails, so there's never a blank rectangle.
+// Reserve priority for the small group of cards a player is about to see.
+const visibleImages = new WeakMap<Element, () => void>();
+let imageObserver: IntersectionObserver | undefined;
+
+export function CardImg({ slug, alt, className, priority = false }: { slug: string; alt: string; className?: string; priority?: boolean }) {
+  const image = useRef<HTMLImageElement>(null);
+  const [near, setNear] = useState(() => typeof IntersectionObserver === 'undefined');
+  const [failed, setFailed] = useState<string>();
+
+  useEffect(() => {
+    const node = image.current;
+    if (!priority || near || !node || typeof IntersectionObserver === 'undefined') return;
+    imageObserver ??= new IntersectionObserver((items, observer) => {
+      for (const item of items) {
+        if (!item.isIntersecting) continue;
+        observer.unobserve(item.target);
+        visibleImages.get(item.target)?.();
+      }
+    }, { rootMargin: '160px 0px' });
+    visibleImages.set(node, () => setNear(true));
+    imageObserver.observe(node);
+    return () => {
+      imageObserver?.unobserve(node);
+      visibleImages.delete(node);
+    };
+  }, [priority, near]);
+
+  const useBack = failed === slug || (priority && !near);
   return (
     <img
+      ref={image}
       className={`${className ?? ''} card-art`}
-      src={err ? CARD_BACK : imageUrl(slug)}
-      alt={err && alt ? `${alt} (art unavailable)` : alt}
-      loading="lazy"
-      onError={() => setErr(true)}
+      src={useBack ? CARD_BACK : imageUrl(slug)}
+      alt={failed === slug && alt ? `${alt} (art unavailable)` : alt}
+      loading={priority && near ? 'eager' : 'lazy'}
+      fetchPriority={priority && near ? 'high' : undefined}
+      decoding="async"
+      onError={useBack ? undefined : () => setFailed(slug)}
     />
   );
 }

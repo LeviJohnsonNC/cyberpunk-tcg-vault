@@ -121,3 +121,39 @@ export function ConfirmDialog({
     </dialog>
   );
 }
+
+interface ViewTab<T extends string> {
+  id: T;
+  label: ReactNode;
+}
+
+export function ViewTabs<T extends string>({ id, label, tabs, value, onChange, className = '' }: {
+  id: string;
+  label: string;
+  tabs: readonly ViewTab<T>[];
+  value: T;
+  onChange: (value: T) => void;
+  className?: string;
+}) {
+  const buttons = useRef<(HTMLButtonElement | null)[]>([]);
+  return (
+    <div className={`al-view-tabs ${className}`} role="tablist" aria-label={label}>
+      {tabs.map((tab, index) => (
+        <button key={tab.id} type="button" role="tab" id={`${id}-tab-${tab.id}`} aria-controls={`${id}-panel-${tab.id}`}
+          aria-selected={value === tab.id} tabIndex={value === tab.id ? 0 : -1}
+          ref={(node) => { buttons.current[index] = node; }}
+          onClick={() => onChange(tab.id)}
+          onKeyDown={(event) => {
+            const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+            if (!step && event.key !== 'Home' && event.key !== 'End') return;
+            event.preventDefault();
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + step + tabs.length) % tabs.length;
+            onChange(tabs[next].id);
+            buttons.current[next]?.focus();
+          }}>
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+}

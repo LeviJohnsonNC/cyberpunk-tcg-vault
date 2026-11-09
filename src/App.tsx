@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from './lib/store';
 import { cloudEnabled } from './lib/supabase';
 import { PRICES } from './lib/data';
@@ -35,6 +35,7 @@ const readHash = (): { tab: TabId; deck?: string } => {
 export default function App() {
   const store = useStore();
   const [route, setRoute] = useState(readHash);
+  const nav = useRef<HTMLElement>(null);
   const [openCard, setOpenCard] = useState<{ slug: string; printingId?: string; identify?: boolean } | null>(null);
   const showCard = (slug: string, printingId?: string, identify?: boolean) => setOpenCard({ slug, printingId, identify });
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -51,11 +52,32 @@ export default function App() {
     return () => window.removeEventListener('hashchange', on);
   }, []);
 
+  useEffect(() => {
+    const rail = nav.current;
+    const active = rail?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!rail || !active) return;
+    const showActive = () => {
+      const container = rail.getBoundingClientRect();
+      const item = active.getBoundingClientRect();
+      if (item.left < container.left || item.right > container.right) {
+        rail.scrollLeft += item.left - container.left - (rail.clientWidth - item.width) / 2;
+      }
+    };
+    showActive();
+    const observer = new ResizeObserver(showActive);
+    observer.observe(rail);
+    return () => observer.disconnect();
+  }, [route.tab]);
+
   const go = (tab: TabId, deck?: string) => {
     window.location.hash = `/${tab}${deck ? `?deck=${encodeURIComponent(deck)}` : ''}`;
   };
 
   const total = [...store.owned.values()].reduce((a, b) => a + b, 0);
+  const sync = store.demo ? 'sample' : store.collectionError ? 'error' : !store.ready || !store.collectionReady ? 'loading'
+    : store.mode === 'cloud' ? 'synced' : 'local';
+  const vaultLabel = { sample: 'Sample vault', error: 'Sync unavailable', loading: store.ready ? 'Syncing…' : 'Connecting…', synced: 'Synced', local: 'Local vault' }[sync];
+  const vaultCount = store.collectionReady ? `${total} ${total === 1 ? 'card' : 'cards'}` : '';
 
   return (
     <>
@@ -65,7 +87,7 @@ export default function App() {
             <span className="brand-badge" aria-hidden="true"><span>€$</span></span>
             <span className="brand-name"><span>Cyberpunk TCG</span>Vault</span>
           </a>
-          <nav className="navlinks" aria-label="Sections">
+          <nav className="navlinks" aria-label="Sections" ref={nav}>
             {TABS.map((t) => (
               <button key={t.id} className="navlink" aria-current={route.tab === t.id ? 'page' : undefined} onClick={() => go(t.id)}>
                 {t.label}
@@ -74,11 +96,11 @@ export default function App() {
             <button className="navlink feedback" onClick={() => setFeedbackOpen(true)}>Feedback</button>
           </nav>
           <div className="status">
-            <span className="hide-sm" title={store.mode === 'cloud' ? 'Synced to your account' : 'Saved in this browser only'}>
-              <span className={`dot ${store.mode === 'local' ? 'local' : ''}`} />
-              {store.mode === 'cloud' ? 'Cloud sync' : 'Local mode'}
+            <span className="vault-sync" data-state={sync}>
+              <span className="vault-sync-dot" aria-hidden="true" />
+              <span role="status">{vaultLabel}</span>
+              {vaultCount && <span className="vault-count">{vaultCount}</span>}
             </span>
-            <span className="hide-sm">{total} cards</span>
             <span className="seg" role="group" aria-label="Price currency">
               {CURRENCIES.map((c) => (
                 <button key={c} aria-pressed={currency === c} onClick={() => chooseCurrency(c)}>{c}</button>
@@ -94,11 +116,11 @@ export default function App() {
         <div className="callout demo-banner" role="status">
           <div className="row">
             <span>
-              <b>Demo mode.</b> You&apos;re exploring a sample collection of {total} cards. Changes aren&apos;t saved.
+              <b>Sample vault.</b> You’re exploring {total} sample cards. Card edits here stay separate from your collection.
             </span>
             <span className="spacer" />
             <button className="btn sm" onClick={() => { store.exitDemo(); go('add'); }}>Start my own vault</button>
-            <button className="btn quiet sm" onClick={store.exitDemo}>Exit demo</button>
+            <button className="btn quiet sm" onClick={store.exitDemo}>Exit sample vault</button>
           </div>
         </div>
       )}

@@ -308,14 +308,15 @@ export function Collection({ onOpen, goAdd }: { onOpen: OpenCollectionCard; goAd
             <section className="empty-hero collection-empty-vault" aria-labelledby="empty-hero-title">
               <img src="/img/empty-vault.webp" alt="" width={960} height={720} />
               <div className="empty-hero-text">
-                <h3 id="empty-hero-title">Your binder is empty</h3>
-                <p>Got a starter deck? Log the whole box in one click.</p>
+                <h3 id="empty-hero-title">Start your vault</h3>
+                <p>Pick a starter, log cards one at a time, or look around with a sample collection.</p>
+                <h4 className="collection-start-label">Log a starter deck</h4>
                 <StarterIntake onAdded={(added) => { setJustAdded(added); setScope('mine'); }} />
                 <div className="row">
-                  <button className="btn quiet" onClick={goAdd}>Add cards</button>
-                  <button className="btn ghost" onClick={startDemo}>Try the demo</button>
-                  <button className="btn quiet" onClick={() => setScope('all')}>Browse full database</button>
+                  <button className="btn quiet" onClick={goAdd}>Add individual cards</button>
+                  <button className="btn ghost" onClick={startDemo}>Explore the sample vault</button>
                 </div>
+                <button className="linklike collection-browse-link" onClick={() => setScope('all')}>Browse full database</button>
               </div>
             </section>
           ) : !rows.length ? (

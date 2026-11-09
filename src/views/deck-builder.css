@@ -43,8 +43,8 @@
 .workbench-status > :last-child { border-inline-end: 0; }
 .workbench-status b { font-weight: 700; font-variant-numeric: tabular-nums; }
 .workbench-status small { font-size: inherit; }
-.workbench-short-side, .workbench-mobile-tabs { display: none; }
-.workbench-feedback { color: var(--color-text-muted); font: 500 11px/1.35 var(--font-mono); margin: var(--space-2) 0 0; min-height: 15px; }
+.workbench-short-side, .workbench-mobile-tabs.al-view-tabs { display: none; }
+.workbench-feedback { margin: var(--space-2) 0 0; min-height: 15px; }
 
 .workbench-grid { display: grid; grid-template-columns: minmax(0, 1.22fr) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
 .workbench-pool {
@@ -97,13 +97,7 @@
 .workbench-deck-tabs {
   position: sticky; top: 0; z-index: 2; display: flex; gap: var(--space-1); padding: 2px 0 var(--space-2); background: var(--color-canvas);
 }
-.workbench-deck-tabs button, .workbench-mobile-tabs button {
-  flex: 1; min-height: 38px; padding: var(--space-2); border: 1px solid var(--color-divider); background: var(--color-surface);
-  border-radius: var(--radius-sm); color: var(--color-text-muted); cursor: pointer; font-weight: 600; font-size: 13px;
-}
-.workbench-deck-tabs button[aria-pressed='true'], .workbench-mobile-tabs button[aria-pressed='true'] {
-  color: var(--color-accent-ink); border-color: var(--color-accent); background: var(--color-accent);
-}
+.workbench-deck-tabs > button, .workbench-mobile-tabs > button { flex: 1; }
 .workbench-deck-tabs button > span { margin-inline-start: 5px; font: 500 11px var(--font-mono); }
 .workbench-list { display: grid; gap: var(--space-3); }
 .workbench-crew, .workbench-zone, .workbench-review { padding: var(--space-3); }
@@ -184,7 +178,7 @@
   .deck-workbench > .al-masthead > .al-masthead-aside { justify-content: flex-start; }
   .workbench-grid { grid-template-columns: minmax(0, 1fr); }
   .workbench-grid[data-mobile-view='deck'] > .workbench-pool, .workbench-grid[data-mobile-view='pool'] > .workbench-deck { display: none; }
-  .workbench-mobile-tabs { display: flex; gap: var(--space-1); margin-top: var(--space-2); }
+  .workbench-mobile-tabs.al-view-tabs { display: flex; gap: var(--space-1); margin-top: var(--space-2); }
   .workbench-deck { position: static; max-height: none; overflow: visible; scrollbar-gutter: auto; padding: 0; }
   .workbench-deck-tabs { top: var(--workbench-deck-top); }
 }
