@@ -221,7 +221,7 @@ export function ramLimits(legendSlugs: string[]): Record<string, number> {
   const lim: Record<string, number> = {};
   for (const s of legendSlugs) {
     const c = BY_SLUG.get(s);
-    if (c && c.ram) lim[c.color] = (lim[c.color] ?? 0) + c.ram;
+    if (c?.type === 'Legend' && c.legal === 'legal' && c.ram) lim[c.color] = (lim[c.color] ?? 0) + c.ram;
   }
   return lim;
 }
