@@ -215,10 +215,13 @@ export function Collection({ onOpen, goAdd }: { onOpen: OpenCollectionCard; goAd
         <Masthead eyebrow="The Afterlife / Inventory" title="Collection" sub={ready ? <>{owned.size} unique <span className="sep" aria-hidden="true">◆</span> {CARDS.length} in the catalog</> : 'Your card vault'} />
         <div className="collection-overview">
           <div className="collection-actions">
-            <button className="btn quiet sm" disabled={!ready || !entries.length} onClick={() => downloadCollection(entries)}>Export</button>
+            <button className="btn quiet sm collection-export" disabled={!ready || !entries.length} onClick={() => downloadCollection(entries)}>Export</button>
             <details className="collection-action-menu">
               <summary className="btn quiet sm" aria-label="Collection actions">•••</summary>
-              <div>{ready ? <DeleteCollection /> : <button className="btn quiet sm" disabled>Delete collection</button>}</div>
+              <div>
+                <button className="btn quiet sm collection-export-mobile" disabled={!ready || !entries.length} onClick={() => downloadCollection(entries)}>Export</button>
+                {ready ? <DeleteCollection /> : <button className="btn quiet sm" disabled>Delete collection</button>}
+              </div>
             </details>
           </div>
           <MetricStrip items={[

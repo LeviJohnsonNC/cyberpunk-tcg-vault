@@ -88,6 +88,7 @@ Fonts are self-hosted via `@fontsource` packages (imported in `theme.css`), so t
 | **Tags** | `.pb-tag.basis-*`, `.pb-rarity.r-*` | Outlined mono chips; colour + text label together. |
 | **Breakdown rail** | `.pb-rail` / `.pb-breakdown` | Label ×count, bar, value. Dashed separators. Explanations in a `<details>` disclosure, not tooltips. |
 | **App header** | `.appbar`, `.brand-badge`, `.navlink[aria-current]` | Plum-black band; skewed pink badge; active section gets a 3px pink underline. |
+| **Binder pockets** | `CollectionBinder` + `collection.css` | Full card artwork in quiet, aligned sleeves. The printing, owned count, and value sit below the image. The cream result strip anchors both Binder and List. |
 
 ## Responsive behaviour
 
@@ -95,7 +96,7 @@ Fonts are self-hosted via `@fontsource` packages (imported in `theme.css`), so t
 - **<1100px:** marquee stacks under the masthead; rail stacks under holdings.
 - **<760px:** metric strip stacks. Table rows reflow into a two-column card: the identity on the left, and total / basis / quantity on the right. Rarity and unit price move into a compact metadata line under the name. Card identity, quantity, total and pricing basis are always visible, with no horizontal page scroll.
 - **≤1100px header:** brand and status on one row; nav becomes a horizontally scrollable row underneath.
-- **Collection table on phones:** secondary columns (colour, type, cost, power, RAM, unit) hide; art, name, owned and value always fit (checked at 360px).
+- **Collection:** Binder uses five columns at wide desktop widths, four on laptops and two on phones. Filters move from a rail to a dialog sheet below 1120px. In the phone List, secondary columns hide so art, name, owned and value fit.
 - **Deck Builder:** the deck column is sticky beside the card pool on laptops and stacks below it under 1100px.
 - Page height follows content (no fixed-height scroll panes on working surfaces).
 - Motion respects `prefers-reduced-motion`.

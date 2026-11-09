@@ -1,25 +1,26 @@
 .app:has(> main > .collection-page) { max-width: 1680px; }
 
-.collection-heading { display: grid; align-items: end; gap: var(--space-4); margin-bottom: var(--space-5); }
+.collection-heading { display: grid; align-items: end; gap: var(--space-4); margin-bottom: var(--space-4); }
 .collection-overview { min-width: 0; }
 .collection-heading .al-strip { margin: var(--space-3) 0 4px; }
 .collection-heading .al-strip > div { gap: var(--space-2); padding: var(--space-3); }
-.collection-heading .al-strip dt { font-size: 12px; }
+.collection-heading .al-strip dt { flex: 1; font-size: 12px; }
 .collection-heading .al-strip dt span { font-size: 12px; }
-.collection-heading .al-strip dd { white-space: normal; overflow-wrap: anywhere; font-size: clamp(25px, 2.6vw, 40px); }
+.collection-heading .al-strip dd { flex: none; white-space: nowrap; font-size: clamp(24px, 2.35vw, 40px); }
 .collection-actions { display: flex; justify-content: flex-end; gap: var(--space-2); }
 .collection-action-menu { position: relative; }
 .collection-action-menu > summary { cursor: pointer; list-style: none; }
 .collection-action-menu > summary::-webkit-details-marker { display: none; }
 .collection-action-menu > div {
-  position: absolute; inset-inline-end: 0; z-index: 4; margin-top: var(--space-1); padding: var(--space-2);
+  position: absolute; inset-inline-end: 0; z-index: 4; display: grid; gap: var(--space-1); margin-top: var(--space-1); padding: var(--space-2);
   background: var(--color-surface); border: 1px solid var(--color-divider); box-shadow: 0 4px 12px var(--color-canvas-deep);
 }
 .collection-action-menu .al-dialog { position: fixed; inset: 0; margin: auto; }
+.collection-export-mobile { display: none; }
 
 .collection-searchbar {
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-4);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-3);
 }
 .collection-searchbar .chip, .collection-searchbar .input { min-height: 42px; }
 .collection-searchbar .input { width: 100%; }
@@ -72,7 +73,7 @@
 
 .collection-ticket {
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-3);
-  background: var(--color-ticket); color: var(--color-ticket-ink); min-height: 44px;
+  background: var(--color-ticket); color: var(--color-ticket-ink); min-height: 40px;
   padding: 5px var(--space-3); border-radius: var(--radius-sm); margin-bottom: var(--space-3);
 }
 .collection-ticket h2 { margin: 0; font: 800 italic 23px/1 var(--font-display); text-transform: uppercase; }
@@ -132,6 +133,7 @@
 }
 .binder-value b { color: var(--color-text); }
 .binder-value .binder-quote-printing { flex-basis: 100%; }
+.binder-total:not(:first-child) { padding-inline-start: var(--space-2); border-inline-start: 1px solid var(--color-divider); }
 .binder-proxy { color: var(--color-basis-proxy); }
 
 .collection-list table.data .collection-art-cell { width: 60px; padding-block: 5px; }
@@ -157,6 +159,9 @@
 @media (max-width: 760px) {
   .collection-heading { position: relative; gap: var(--space-2); margin-bottom: var(--space-3); }
   .collection-heading .al-title { font-size: clamp(42px, 11.4vw, 64px); }
+  .collection-actions { position: absolute; top: 0; inset-inline-end: 0; }
+  .collection-export { display: none; }
+  .collection-export-mobile { display: inline-flex; }
   .collection-heading .al-strip > div { flex-direction: row; gap: var(--space-1); padding: var(--space-2); }
   .collection-heading .al-strip dt { font-size: 10px; }
   .collection-heading .al-strip dt span { font-size: 10px; }
@@ -178,6 +183,7 @@
   .binder-pocket { padding: 6px; }
   .binder-pocket .qty .iconbtn { width: 36px; height: 40px; }
   .binder-pocket .qty-pick { min-height: 36px; }
+  .binder-total:not(:first-child) { padding-inline-start: 0; border: 0; }
   .collection-list table.data .collection-art-cell { width: 42px; }
   .collection-list table.data .collection-thumb { width: 32px; height: 45px; }
   .collection-list .cname, .collection-list .csub { overflow-wrap: anywhere; }

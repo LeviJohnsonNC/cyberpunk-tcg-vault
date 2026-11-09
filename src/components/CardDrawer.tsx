@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { BY_SLUG, acquireQuote, defaultPrinting, editionPrinting, printingLabel, valueHolding, type Card, type Valuation } from '../lib/data';
 import { estimateText, money } from '../lib/currency';
+import { collectionValue } from '../lib/collection';
 import { useStore, type Entry } from '../lib/store';
 import { Pip, RarityBadge, Rules } from './bits';
 import { PrintingArt } from './PrintingArt';
@@ -67,19 +68,13 @@ function CardDetails({ card, onClose, initialPrinting, identify }: { card: Card;
   };
   const printing = card.printings.find((p) => p.id === printingId) ?? defaultPrinting(card);
   const value = valueHolding(printing.id);
-  const qtyOf = (pid: string) => entries.find((e) => e.printingId === pid)?.qty ?? 0;
-  const notes = new Map(entries.filter((e) => e.slug === slug && e.note).map((e) => [e.printingId, e.note]));
+  const holdings = entries.filter((e) => e.slug === slug);
+  const qtyOf = (pid: string) => holdings.find((e) => e.printingId === pid)?.qty ?? 0;
+  const notes = new Map(holdings.map((e) => [e.printingId, e.note]));
   const buy = acquireQuote(slug);
-  const owned = card.printings.reduce((a, p) => a + qtyOf(p.id), 0);
-  // Value of the copies you own, printing by printing (unknowns counted, never guessed).
-  const mine = card.printings
-    .map((p) => ({ q: qtyOf(p.id), v: valueHolding(p.id) }))
-    .concat(entries.filter((e) => e.slug === slug && !card.printings.some((p) => p.id === e.printingId)).map((e) => ({ q: e.qty, v: null })))
-    .filter((x) => x.q > 0)
-    .reduce((a, x) => ({ knownCad: a.knownCad + (x.v ? x.v.cad * x.q : 0), unpriced: a.unpriced + (x.v ? 0 : x.q), copies: a.copies + x.q }), { knownCad: 0, unpriced: 0, copies: 0 });
+  const mine = collectionValue(holdings);
   // Holdings without a verified printing (scanned "Printing unspecified", or an id the catalog no longer has).
-  const loose = entries.filter((e) => e.slug === slug && !card.printings.some((p) => p.id === e.printingId));
-  const ownedAll = owned + loose.reduce((a, e) => a + e.qty, 0);
+  const loose = holdings.filter((e) => !card.printings.some((p) => p.id === e.printingId));
 
   return (
     <dialog
@@ -150,7 +145,7 @@ function CardDetails({ card, onClose, initialPrinting, identify }: { card: Card;
         </div>
 
         <hr className="cut" />
-        <h3 className="panel-title" ref={printingsHeading} tabIndex={-1}>{identify && loose.length ? 'Identify printing' : 'Printings'} <span className="aside">You own {ownedAll}</span></h3>
+        <h3 className="panel-title" ref={printingsHeading} tabIndex={-1}>{identify && loose.length ? 'Identify printing' : 'Printings'} <span className="aside">You own {mine.copies}</span></h3>
         <div className="table-wrap" style={{ maxHeight: 'none' }}>
           <table className="data">
             <thead>

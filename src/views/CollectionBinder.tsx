@@ -1,4 +1,3 @@
-import { CardImg } from '../components/bits';
 import { PrintingArt } from '../components/PrintingArt';
 import { compactPrintingLabel, type CollectionCard } from '../lib/collection';
 import { money } from '../lib/currency';
@@ -57,7 +56,7 @@ function PocketValue({ item }: { item: CollectionCard }) {
       {exact && <span><b>{money(exact.cad)}</b> each</span>}
       {exact?.basis === 'Beta proxy' && <span className="binder-proxy">Beta proxy</span>}
       {exact?.basis === 'Low listing' && <span>Low listing</span>}
-      {(!exact || qty > 1) && <span><b>{money(value.knownCad)}</b> {value.unpriced ? 'priced' : 'total'}</span>}
+      {(!exact || qty > 1) && <span className="binder-total"><b>{money(value.knownCad)}</b> {value.unpriced ? 'priced' : 'total'}</span>}
       {value.unpriced > 0 && <span>+{value.unpriced} unpriced</span>}
     </>
   );
@@ -76,14 +75,12 @@ export function CollectionBinder({ items, onOpen }: { items: CollectionCard[]; o
               onClick={() => onOpen(card.slug, cover?.printingId ?? catalog.id, !cover && unknownCopies > 0)}
               aria-label={`Open ${card.display}${coverLabel ? `, ${coverLabel}` : ''}`}
             >
-              {cover
-                ? <PrintingArt slug={card.slug} printingId={cover.printingId} alt="" pocket />
-                : <span className="binder-art-frame"><CardImg slug={card.slug} alt="" className="binder-card-image" /></span>}
+              <PrintingArt slug={card.slug} printingId={cover?.printingId ?? catalog.id} alt="" pocket />
             </button>
             <div className="binder-identity">
               <h3 title={card.display}>{card.name}{card.sub && <span>{card.sub}</span>}</h3>
               <div className="binder-printing">
-                {coverLabel ?? (unknownCopies ? 'Printing unspecified' : compactPrintingLabel(catalog.id))}
+                {coverLabel ?? (unknownCopies ? 'Printing unspecified · catalog art' : compactPrintingLabel(catalog.id))}
                 {cover && entries.length > 1 && <span> · {unknownCopies ? 'mixed holdings' : `${entries.length} printings`}</span>}
               </div>
             </div>
