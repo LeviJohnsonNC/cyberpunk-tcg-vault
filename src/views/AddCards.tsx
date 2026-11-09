@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { BY_SLUG, CARDS, defaultPrinting, priceFor, searchCards, shortSet } from '../lib/data';
 import { money } from '../lib/currency';
 import { useStore, type Entry } from '../lib/store';
+import { StarterAddedBanner, StarterIntake, type StarterAdded } from '../components/StarterIntake';
 import { cloudEnabled } from '../lib/supabase';
 import { CardImg, Pip } from '../components/bits';
 import { Masthead } from '../components/ui';
@@ -32,6 +33,7 @@ const sortedCards = [...CARDS].sort((a, b) => a.display.localeCompare(b.display)
 
 export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
   const { addMany, setQty, entries, session, mode, toast } = useStore();
+  const [justAdded, setJustAdded] = useState<StarterAdded | null>(null);
   const [q, setQ] = useState('');
   const [qtyFor, setQtyFor] = useState<Record<string, number>>({});
   const [printFor, setPrintFor] = useState<Record<string, string>>({});
@@ -88,9 +90,14 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
     setScan((prev) => [...prev, ...found]);
   };
 
+  const [committing, setCommitting] = useState(false);
   const commitScan = async () => {
+    if (committing) return;
     const items: Entry[] = scan.filter((s) => s.on && s.qty > 0).map((s) => ({ slug: s.slug, printingId: s.printingId, qty: s.qty }));
-    await addMany(items, 'add');
+    setCommitting(true);
+    const ok = await addMany(items, 'add');
+    setCommitting(false);
+    if (!ok) return; // keep the reviewed rows so nothing is lost; the store already showed why
     toast(`Added ${items.reduce((a, x) => a + x.qty, 0)} cards from photo`);
     setScan([]);
   };
@@ -100,7 +107,7 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
     try {
       const data = JSON.parse(await file.text());
       const items: Entry[] = (data.entries ?? data).filter((e: Entry) => BY_SLUG.has(e.slug));
-      await addMany(items, how);
+      if (!(await addMany(items, how))) return;
       toast(`Imported ${items.reduce((a, x) => a + x.qty, 0)} cards`);
     } catch {
       toast('That file is not a valid collection export', 'err');
@@ -109,7 +116,7 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
   const loadSample = async (how: 'add' | 'replace') => {
     const r = await fetch('/imports/levi-collection.json');
     const data = await r.json();
-    await addMany(data.entries, how);
+    if (!(await addMany(data.entries, how))) return;
     toast(`Loaded ${data.entries.reduce((a: number, x: Entry) => a + x.qty, 0)} cards`);
   };
   const scanTotal = scan.filter((s) => s.on).reduce((a, s) => a + s.qty, 0);
@@ -119,8 +126,15 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
       <Masthead
         eyebrow="The Afterlife / Intake"
         title="Add Cards"
-        sub={<>Search <span className="sep" aria-hidden="true">◆</span> scan a photo <span className="sep" aria-hidden="true">◆</span> import a file</>}
+        sub={<>Starter decks <span className="sep" aria-hidden="true">◆</span> search <span className="sep" aria-hidden="true">◆</span> scan a photo <span className="sep" aria-hidden="true">◆</span> import a file</>}
       />
+      {justAdded && <StarterAddedBanner added={justAdded} onDismiss={() => setJustAdded(null)} goPrices={() => (window.location.hash = '/prices')} />}
+      <section className="panel starter-panel" aria-labelledby="starter-panel-title">
+        <div className="panel-title" id="starter-panel-title">
+          Starter decks <span className="aside">Whole box in one click</span>
+        </div>
+        <StarterIntake onAdded={setJustAdded} compact />
+      </section>
       <p className="muted" style={{ maxWidth: '70ch' }}>
         Type to search, or upload photos of your cards laid out on a table. The scanner proposes matches, and nothing is saved until you confirm.
       </p>
@@ -194,7 +208,7 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
                 <span className="mono tiny">REVIEW {scan.length} MATCHES · {scanTotal} CARDS</span>
                 <span className="spacer" />
                 <button className="btn quiet sm" onClick={() => setScan([])}>Discard</button>
-                <button className="btn sm" onClick={commitScan}>Add {scanTotal} to vault</button>
+                <button className="btn sm" onClick={commitScan} disabled={committing || scanTotal === 0}>{committing ? "Saving…" : `Add ${scanTotal} to vault`}</button>
               </div>
               <div className="result-list">
                 {scan.map((s) => {

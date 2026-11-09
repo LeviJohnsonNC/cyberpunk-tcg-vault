@@ -31,7 +31,8 @@ interface StoreValue {
   entries: Entry[];
   owned: Map<string, number>; // slug -> total qty
   setQty: (slug: string, printingId: string, qty: number, note?: string | null) => Promise<void>;
-  addMany: (items: Entry[], mode?: 'add' | 'replace') => Promise<void>;
+  /** Adds (or replaces with) a batch. All-or-nothing: resolves false and changes nothing if the save fails. */
+  addMany: (items: Entry[], mode?: 'add' | 'replace') => Promise<boolean>;
   clearCollection: () => Promise<void>;
   decks: Deck[];
   saveDeck: (d: Deck) => Promise<void>;
@@ -70,11 +71,12 @@ const readLS = <T,>(k: string, d: T): T => {
     return d;
   }
 };
-const writeLS = (k: string, v: unknown) => {
+const writeLS = (k: string, v: unknown): boolean => {
   try {
     localStorage.setItem(k, JSON.stringify(v));
+    return true;
   } catch {
-    /* storage full or blocked */
+    return false; // storage full or blocked
   }
 };
 
@@ -190,20 +192,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return m;
   }, [entries]);
 
-  const upsertCloud = async (items: Entry[]) => {
-    if (!supabase || !session) return;
+  const upsertCloud = async (items: Entry[]): Promise<boolean> => {
+    if (!supabase || !session) return false;
+    let ok = true;
     const del = items.filter((e) => e.qty <= 0).map((e) => e.printingId);
     const up = items
       .filter((e) => e.qty > 0)
       .map((e) => ({ user_id: session.user.id, card_slug: e.slug, printing_id: e.printingId, qty: e.qty, note: e.note ?? null }));
     if (up.length) {
       const { error } = await supabase.from('collection_items').upsert(up, { onConflict: 'user_id,printing_id' });
-      if (error) toast(`Save failed: ${error.message}`, 'err');
+      if (error) {
+        toast(`Save failed: ${error.message}`, 'err');
+        ok = false;
+      }
     }
     if (del.length) {
       const { error } = await supabase.from('collection_items').delete().in('printing_id', del);
-      if (error) toast(`Delete failed: ${error.message}`, 'err');
+      if (error) {
+        toast(`Delete failed: ${error.message}`, 'err');
+        ok = false;
+      }
     }
+    return ok;
   };
 
   const setQty = async (slug: string, printingId: string, qty: number, note?: string | null) => {
@@ -221,17 +231,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (mode === 'cloud') await upsertCloud([changed]);
   };
 
-  const addMany = async (items: Entry[], m: 'add' | 'replace' = 'add') => {
+  const addMany = async (items: Entry[], m: 'add' | 'replace' = 'add'): Promise<boolean> => {
     const next = mergeEntries(m === 'replace' ? [] : entries, items, 'add');
     if (demo) {
       setDemoEntries(next);
-      return;
+      return true;
     }
     if (mode === 'cloud' && supabase && session) {
-      if (m === 'replace') await supabase.from('collection_items').delete().eq('user_id', session.user.id);
-      await upsertCloud(next);
+      // Upsert first (one statement, so it lands whole or not at all), then trim rows a replace dropped.
+      if (!(await upsertCloud(next))) return false;
+      if (m === 'replace') {
+        const keep = new Set(next.map((e) => e.printingId));
+        const drop = entries.filter((e) => !keep.has(e.printingId)).map((e) => ({ ...e, qty: 0 }));
+        if (drop.length && !(await upsertCloud(drop))) return false;
+      }
+    } else if (!writeLS(LS_COL, next)) {
+      toast('Could not save: this browser\'s storage is full or blocked.', 'err');
+      return false;
     }
     setEntries(next);
+    return true;
   };
 
   const clearCollection = async () => {
