@@ -253,7 +253,7 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
                     <td className="num hide-sm">{c.ram ?? '—'}</td>
                     <td className="hide-sm"><RarityBadge r={c.rarity} /></td>
                     <td className="hide-sm csub">{c.traits.join(' · ')}</td>
-                    <td onClick={(e) => e.stopPropagation()}>
+                    <td className="collection-owned" onClick={(e) => e.stopPropagation()}>
                       {target ? (
                         <>
                           <span className="qty">

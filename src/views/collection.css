@@ -89,6 +89,14 @@
   padding-block: 5px;
 }
 
+.collection-panel table.data .collection-owned {
+  padding-block: 4px;
+}
+
+.collection-owned .qty {
+  display: flex;
+}
+
 .collection-panel table.data .collection-thumb {
   width: 38px;
   height: 53px;
@@ -102,9 +110,9 @@
 .qty-target {
   display: block;
   width: max-content;
-  max-width: 15ch;
+  max-width: 19ch;
   margin-top: 3px;
-  font: 500 10px/1.3 var(--font-mono);
+  font: 500 10px/1.2 var(--font-mono);
   color: var(--color-text-muted);
 }
 
