@@ -247,6 +247,9 @@
 .live-scan-status { display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--space-1) var(--space-2); margin: var(--space-2) 0; }
 .live-scan-status strong { color: var(--color-success); font-size: 13px; }
 .live-scan-note { margin: var(--space-2) 0 0; }
+.live-scan-frame { margin-top: var(--space-2); color: var(--color-text-muted); }
+.live-scan-frame summary { cursor: pointer; width: fit-content; padding-block: var(--space-1); }
+.live-scan-frame img { display: block; width: min(100%, 180px); margin-top: var(--space-2); border: 1px solid var(--color-divider); }
 .live-scan-review {
   display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: var(--space-2); align-items: center;
   padding: var(--space-2); background: var(--color-canvas-deep); border: 1px solid var(--color-divider);
