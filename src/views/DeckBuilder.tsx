@@ -5,7 +5,7 @@ import { deckFromRecommended, validate } from '../lib/decks';
 import { newId, useStore, type Deck } from '../lib/store';
 import { Bars, CardImg, Pip } from '../components/bits';
 import { Masthead } from '../components/ui';
-import { PENDING_DECK_KEY } from '../components/VaultBuilds';
+import { PENDING_DECK_KEY, openPlanner } from '../lib/handoff';
 
 const blank = (): Deck => ({ id: newId(), name: 'New crew', legends: [], cards: {}, sideboard: {}, notes: '', updatedAt: '' });
 const sum = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a + b, 0);
@@ -196,6 +196,14 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
         <input className="input deck-name" aria-label="Deck name" value={deck.name} onChange={(e) => update((d) => ({ ...d, name: e.target.value.slice(0, 80) }))} />
         <button className="btn" onClick={() => { saveDeck(deck); setDirty(false); toast('Deck saved'); }}>{dirty ? 'Save*' : 'Save'}</button>
         <button className="btn quiet" onClick={() => { const c = { ...structuredClone(deck), id: newId(), name: `${deck.name} (copy)` }; setDeck(c); saveDeck(c); setDirty(false); toast('Saved as copy'); }}>Save copy</button>
+        <button
+          className="btn ghost"
+          disabled={deck.legends.length !== 3}
+          title={deck.legends.length !== 3 ? 'Pick three Legends first' : undefined}
+          onClick={() => openPlanner({ name: deck.name || 'Untitled deck', kind: decks.some((d) => d.id === deck.id) ? 'saved' : 'current', legends: deck.legends, cards: deck.cards })}
+        >
+          Upgrade this deck
+        </button>
         <button className="btn quiet" onClick={() => copy(deckText(), 'Decklist')}>Copy list</button>
         <button className="btn quiet" aria-expanded={showImport} onClick={() => setShowImport((s) => !s)}>Import</button>
         {decks.some((d) => d.id === deck.id) && (

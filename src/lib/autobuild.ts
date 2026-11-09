@@ -52,7 +52,7 @@ const STYLE_W: Record<Style, Partial<Record<Role, number>>> = {
 };
 
 /** Legend-specific synergy bonus for a card. Kept small and explainable. */
-function synergy(card: Card, legends: string[]): number {
+export function synergy(card: Card, legends: string[]): number {
   let b = 0;
   const t = card.traits;
   const text = card.text;
@@ -116,7 +116,7 @@ function synergy(card: Card, legends: string[]): number {
 const isEarly = (c: Card, r: Rating) => c.type === 'Unit' && (c.cost ?? 9) <= 3 && ((c.power ?? 0) > 0 || r.roles.includes('blocker'));
 const isTopEnd = (c: Card) => (c.cost ?? 0) >= 6;
 
-function cardScore(c: Card, legends: string[], style: Style): number {
+export function cardScore(c: Card, legends: string[], style: Style): number {
   const r = rating(c.slug);
   let s = r.power;
   for (const role of r.roles) s += STYLE_W[style][role] ?? 0;
@@ -175,7 +175,7 @@ function fill(pool: { card: Card; max: number; score: number }[], forced: string
   return { picks, total: picks.reduce((a, p) => a + p.score * p.n, 0) };
 }
 
-function compositionPenalty(cards: Record<string, number>): { penalty: number; stats: Build['stats']; notes: string[] } {
+export function compositionPenalty(cards: Record<string, number>): { penalty: number; stats: Build['stats']; notes: string[] } {
   let units = 0, sellable = 0, removal = 0, early = 0, topEnd = 0, cost = 0, n = 0;
   for (const [slug, q] of Object.entries(cards)) {
     const c = BY_SLUG.get(slug)!;
@@ -196,6 +196,16 @@ function compositionPenalty(cards: Record<string, number>): { penalty: number; s
   if (removal < 2) { penalty += (2 - removal) * 2; notes.push(`Little removal (${removal}).`); }
   if (topEnd > TARGET.topEndMax) { penalty += (topEnd - TARGET.topEndMax) * 2; notes.push(`Top-heavy: ${topEnd} cards cost 6+.`); }
   return { penalty, stats: { units, sellable, removal, early, topEnd, avgCost: n ? cost / n : 0 }, notes };
+}
+
+/** Whole-deck score on the same scale autobuild ranks builds by: card scores + Legends - composition penalty. */
+export function scoreDeck(legends: string[], cards: Record<string, number>, style: Style = 'balanced'): number {
+  let total = legends.reduce((a, l) => a + rating(l).power, 0) * 1.5;
+  for (const [slug, q] of Object.entries(cards)) {
+    const c = BY_SLUG.get(slug);
+    if (c) total += cardScore(c, legends, style) * q;
+  }
+  return total - compositionPenalty(cards).penalty;
 }
 
 function combos<T>(arr: T[], k: number): T[][] {

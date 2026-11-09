@@ -7,8 +7,8 @@ import { newId, useStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
 import { CardImg, Pip } from './bits';
 import { RefinePanel, refineKey, type RefineResult } from './RefinePanel';
+import { PENDING_DECK_KEY, openPlanner } from '../lib/handoff';
 
-export const PENDING_DECK_KEY = 'cptv.pendingDeck';
 const STYLES: { id: Style; label: string }[] = [
   { id: 'balanced', label: 'Balanced' },
   { id: 'aggro', label: 'Aggro' },
@@ -176,6 +176,12 @@ export function VaultBuilds({ onOpen, openPending, goAdd }: { onOpen: (slug: str
                 )}
                 <div className="row" style={{ marginTop: 'auto' }}>
                   <button className="btn sm" onClick={() => open(b)}>Open in builder</button>
+                  <button
+                    className="btn ghost sm"
+                    onClick={() => openPlanner({ name: `Vault: ${b.legends.map(shortName).join(' / ')}`.slice(0, 80), kind: 'generated', legends: b.legends, cards: b.cards })}
+                  >
+                    Upgrade
+                  </button>
                   {canRefine ? (
                     <button
                       className="btn quiet sm"
