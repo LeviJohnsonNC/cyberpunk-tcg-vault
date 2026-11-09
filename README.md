@@ -11,7 +11,7 @@ Repo: `cyberpunk-tcg-vault`. A Night City-styled collection tracker, price book 
 - **Feedback:** an in-app form (stored in Supabase) plus a How it works page.
 - **Upgrade planner:** from the Deck Builder, a Meta Intel auto-build or a freshly logged starter, see up to three legal upgrade options (Strongest, Fewest changes, Best value) for a $0, $10, $25 or custom budget in USD or CAD: cuts, adds, owned vs to-buy copies, the price basis and the cost to finish the deck. Lock cards to keep them. Read-only, no sign-in or AI needed.
 - **Starter decks:** "I own The Heist / Embracing Power" logs the whole box (3 Legends + 40 cards, Retail or Beta printing) in one step, from the official WeirdCo decklists.
-- **Add cards:** type to search, or upload photos. A vision model proposes matches and you confirm before anything is saved.
+- **Add cards:** search, scan with the live camera, or upload photos. A vision model proposes matches and you confirm before anything is saved. Live scans preselect the standard Retail printing when available.
 - **Accounts:** email magic-link login through Supabase, with per-user collections and decks protected by row-level security. Without Supabase configured, the app runs in local mode (browser storage).
 
 > Unofficial fan project. Not affiliated with WeirdCo or CD PROJEKT RED. Card data and images come from the official Cyberpunk TCG card database (netdeck.gg). Prices come from TCGplayer via the [tcgcsv.com](https://tcgcsv.com) daily mirror.
@@ -40,7 +40,7 @@ To test photo scanning locally, use `vercel dev` with the server env vars below.
 ### 1. Supabase
 1. Create a project at supabase.com.
 2. **SQL Editor → New query**: paste [`supabase/schema.sql`](supabase/schema.sql) and run it. Existing projects upgrade by running the files in [`supabase/migrations/`](supabase/migrations) in order (`002_ai_usage.sql` adds the AI refinement counter; `003_global_caps_feedback.sql` adds site-wide AI caps and the feedback table; `004_move_copies.sql` adds the atomic `move_copies` function used to assign a printing to copies. Until 004 runs, moving copies in cloud mode shows a "needs migration 004" message and changes nothing; `005_deck_shares.sql` adds unlisted deck share links and removes the unused public-deck read policy).
-3. **Authentication → URL Configuration**: set **Site URL** to your Vercel URL (e.g. `https://cyberpunk-tcg-vault.vercel.app`), and add the same URL under **Redirect URLs**.
+3. **Authentication → URL Configuration**: set **Site URL** to `https://www.cyberpunkvault.com/` and add the same URL under **Redirect URLs**. The bare domain redirects to `www`. Keep any existing Vercel or localhost entries you still use for testing.
 4. *(Optional) Google sign-in:* create an OAuth client in Google Cloud (see "Google sign-in" below), then **Authentication → Sign In / Providers → Google**: enable it and paste the Client ID and Secret. The "Continue with Google" button appears automatically once the provider is on.
 5. Copy the **publishable/anon key** into `.env.production` (`VITE_SUPABASE_ANON_KEY`). It's public by design. Keep the secret/service-role key out of git.
 
@@ -72,7 +72,7 @@ To test photo scanning locally, use `vercel dev` with the server env vars below.
 
 1. Google Cloud Console → **APIs & Services → OAuth consent screen**: set up an External app (name, support email). Scopes: `openid`, `email`, `profile` only. Then **Publish app**: these basic scopes need no Google review, and while the app is left in Testing, only listed test users can sign in.
 2. **Credentials → Create credentials → OAuth client ID → Web application**
-   - Authorized JavaScript origins: `https://cyberpunk-tcg-vault.vercel.app`
+   - Authorized JavaScript origins: `https://www.cyberpunkvault.com`
    - Authorized redirect URIs: `https://<project-ref>.supabase.co/auth/v1/callback`
 3. Paste the Client ID and Client Secret into Supabase → Authentication → Providers → Google, and enable it.
 
