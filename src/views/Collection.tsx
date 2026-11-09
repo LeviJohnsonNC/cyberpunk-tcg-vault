@@ -7,6 +7,7 @@ import { useStore, type Entry } from '../lib/store';
 import { CardImg, Pip, RarityBadge } from '../components/bits';
 import { Masthead, MetricStrip } from '../components/ui';
 import { DeleteCollection } from '../components/DeleteCollection';
+import { VaultSelect } from '../components/VaultSelect';
 import { downloadCollection } from '../lib/exportCollection';
 import { CollectionBinder, CollectionQuantity, type OpenCollectionCard } from './CollectionBinder';
 import './collection.css';
@@ -30,6 +31,17 @@ const sortOptions: Array<{ key: CollectionSort; direction: 1 | -1; label: string
     { key, direction: -1 as const, label: `${key === 'color' ? 'Color' : 'Type'} (Z–A)` },
   ]),
 ];
+const sortValue = ({ key, direction }: CollectionOrder) => `${key}:${direction}`;
+const sortGroups = [
+  { label: 'Card order', keys: ['name', 'catalog'] },
+  { label: 'Collection and pricing', keys: ['value', 'unit', 'qty'] },
+  { label: 'Card attributes', keys: ['cost', 'power', 'ram', 'rarity', 'color', 'type'] },
+].map(({ label, keys }) => ({
+  label,
+  options: sortOptions.filter(({ key }) => keys.includes(key)).map((sort) => ({ value: sortValue(sort), label: sort.label })),
+}));
+const rarityOptions = [{ value: '', label: 'All rarities' }, ...rarities.map((rarity) => ({ value: rarity, label: rarity }))];
+const costOptions = [{ value: '', label: 'Any cost' }, ...['0', '1', '2', '3', '4', '5', '6', '7+'].map((cost) => ({ value: cost, label: `${cost} €$` }))];
 
 function savedView(): CollectionView {
   try {
@@ -192,17 +204,11 @@ export function Collection({ onOpen, goAdd }: { onOpen: OpenCollectionCard; goAd
       </fieldset>
       <label className="collection-filter">
         <span>Base rarity</span>
-        <select className="select" value={rarity} onChange={(e) => setRarity(e.target.value)}>
-          <option value="">All rarities</option>
-          {rarities.map((value) => <option key={value}>{value}</option>)}
-        </select>
+        <VaultSelect aria-label="Base rarity" value={rarity} onValueChange={setRarity} options={rarityOptions} />
       </label>
       <label className="collection-filter">
         <span>Cost</span>
-        <select className="select" value={cost} onChange={(e) => setCost(e.target.value)}>
-          <option value="">Any cost</option>
-          {['0', '1', '2', '3', '4', '5', '6', '7+'].map((value) => <option key={value} value={value}>{value} €$</option>)}
-        </select>
+        <VaultSelect aria-label="Cost" value={cost} onValueChange={setCost} options={costOptions} />
       </label>
       <label className="collection-check collection-sellable"><input type="checkbox" checked={sellOnly} onChange={(e) => setSellOnly(e.target.checked)} />Sellable only</label>
       <button className="btn quiet sm collection-clear" onClick={clearFilters} disabled={!activeFilters}>Clear filters</button>
@@ -288,12 +294,10 @@ export function Collection({ onOpen, goAdd }: { onOpen: OpenCollectionCard; goAd
             <span className="collection-result-count" role="status">{ready ? `${rows.length} ${rows.length === 1 ? 'card' : 'cards'}` : ''}</span>
             <label className="collection-sort">
               <span>Sort by</span>
-              <select className="select" value={`${sort.key}:${sort.direction}`} onChange={(e) => {
-                const selected = sortOptions[e.currentTarget.selectedIndex];
+              <VaultSelect aria-label="Sort by" value={sortValue(sort)} options={sortGroups} onValueChange={(value) => {
+                const selected = sortOptions.find((option) => sortValue(option) === value);
                 if (selected) setSort(selected);
-              }}>
-                {sortOptions.map(({ key, direction, label }) => <option key={`${key}:${direction}`} value={`${key}:${direction}`}>{label}</option>)}
-              </select>
+              }} />
             </label>
           </header>
           {collectionError ? (

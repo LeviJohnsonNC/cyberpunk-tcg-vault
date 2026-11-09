@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { VaultSelect } from '../components/VaultSelect';
 import { BY_SLUG, COLORS, RECOMMENDED, type Color } from '../lib/data';
 import { estimateText } from '../lib/currency';
 import { useStore } from '../lib/store';
@@ -174,11 +175,11 @@ export function MetaIntel({ onOpen, openInBuilder, goAdd }: { onOpen: (slug: str
         </div>
         <span className="spacer" />
         <label className="sr-only" htmlFor="meta-sort">Sort decks</label>
-        <select id="meta-sort" className="select" value={f.sort} onChange={(e) => set({ sort: e.target.value as SortKey })}>
-          <option value="fit">Sort: best fit for my vault</option>
-          <option value="cost">Sort: cheapest to finish</option>
-          <option value="name">Sort: name</option>
-        </select>
+        <VaultSelect id="meta-sort" value={f.sort} onValueChange={(value) => set({ sort: value as SortKey })} options={[
+          { value: 'fit', label: 'Sort: best fit for my vault' },
+          { value: 'cost', label: 'Sort: cheapest to finish' },
+          { value: 'name', label: 'Sort: name' },
+        ]} />
         <span className="label" aria-live="polite">{shown.length} of {RECOMMENDED.length}</span>
       </div>
 

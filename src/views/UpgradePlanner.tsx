@@ -1,6 +1,7 @@
 // Budget Upgrade Planner: starting deck + budget -> up to three legal upgrade options.
 // Read-only: never writes the collection or the source deck. Works signed out and in demo mode.
 import { useDeferredValue, useMemo, useState } from 'react';
+import { VaultSelect } from '../components/VaultSelect';
 import { HandTester, type TestDeck } from '../components/HandTester';
 import { Masthead } from '../components/ui';
 import { CardImg } from '../components/bits';
@@ -242,14 +243,9 @@ export function UpgradePlanner({ onOpen }: { onOpen: (slug: string) => void }) {
       <section className="panel hot up-controls" aria-label="Planner settings">
         <label className="up-field">
           <span className="label">Starting deck</span>
-          <select className="select" value={Math.min(idx, sources.length - 1)} onChange={(e) => { setIdx(Number(e.target.value)); setLocks(new Set()); }}>
-            {sources.map((s, i) => (
-              <option key={i} value={i}>
-                {s.name}
-                {s.kind === 'generated' ? ' (auto-built)' : ''}
-              </option>
-            ))}
-          </select>
+          <VaultSelect aria-label="Starting deck" value={String(Math.min(idx, sources.length - 1))}
+            onValueChange={(value) => { setIdx(Number(value)); setLocks(new Set()); }}
+            options={sources.map((s, i) => ({ value: String(i), label: `${s.name}${s.kind === 'generated' ? ' (auto-built)' : ''}` }))} />
         </label>
         <div className="up-field">
           <span className="label" id="budget-label">Budget ({currency})</span>

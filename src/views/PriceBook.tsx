@@ -1,6 +1,7 @@
 // Price Book: reference implementation of the Afterlife design language.
 // See docs/design-system.md. Uses only semantic tokens (src/theme.css) and pricebook.css.
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { VaultSelect } from '../components/VaultSelect';
 import { BASIS_CLASS, PRICES, imageUrl, printingLabel } from '../lib/data';
 import { getCurrency, money, moneyOr, toDisplay } from '../lib/currency';
 import { buildPriceBook, sortLines, toCsv, type Basis, type Group, type Line, type SortKey } from '../lib/pricebook';
@@ -169,12 +170,12 @@ export function PriceBook({ onOpen, goAdd }: { onOpen: (slug: string) => void; g
             <h2 id="pb-holdings-title">Holdings <span className="pb-count">{pb.count} cards</span></h2>
             <div className="pb-controls">
               <label className="sr-only" htmlFor="pb-sort">Sort holdings</label>
-              <select id="pb-sort" className="pb-select" value={sortBy} onChange={(e) => setSortBy(e.target.value as SortKey)}>
-                <option value="total">Sort: total value</option>
-                <option value="unit">Sort: unit price</option>
-                <option value="qty">Sort: quantity</option>
-                <option value="name">Sort: name</option>
-              </select>
+              <VaultSelect id="pb-sort" className="pb-select" value={sortBy} onValueChange={(value) => setSortBy(value as SortKey)} options={[
+                { value: 'total', label: 'Sort: total value' },
+                { value: 'unit', label: 'Sort: unit price' },
+                { value: 'qty', label: 'Sort: quantity' },
+                { value: 'name', label: 'Sort: name' },
+              ]} />
               <button className="pb-btn" onClick={exportCsv} disabled={!pb.lines.length}>
                 <span aria-hidden="true">↓</span> Export CSV
               </button>

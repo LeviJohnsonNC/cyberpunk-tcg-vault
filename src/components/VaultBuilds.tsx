@@ -1,5 +1,6 @@
 // "Built from your vault": deterministic auto-builder (instant, local) plus optional AI refinement (signed in).
 import { useMemo, useState } from 'react';
+import { VaultSelect } from './VaultSelect';
 import { BY_SLUG, COLORS, type Color } from '../lib/data';
 import { money, estimateText, moneyOr } from '../lib/currency';
 import { autobuild, type Build, type Style } from '../lib/autobuild';
@@ -92,18 +93,14 @@ export function VaultBuilds({ onOpen, openPending, goAdd }: { onOpen: (slug: str
           ))}
         </div>
         <label className="sr-only" htmlFor="vault-must">Must include a card</label>
-        <select
+        <VaultSelect
           id="vault-must"
-          className="select"
           value=""
+          placeholder={must.length >= 2 ? 'Max 2 must-includes' : 'Must include… (optional)'}
           disabled={must.length >= 2 || ownedOptions.length === 0}
-          onChange={(e) => e.target.value && setMust((m) => [...m, e.target.value].slice(0, 2))}
-        >
-          <option value="">{must.length >= 2 ? 'Max 2 must-includes' : 'Must include… (optional)'}</option>
-          {ownedOptions.filter((c) => !must.includes(c!.slug)).map((c) => (
-            <option key={c!.slug} value={c!.slug}>{c!.display}</option>
-          ))}
-        </select>
+          onValueChange={(value) => setMust((m) => [...m, value].slice(0, 2))}
+          options={ownedOptions.filter((c) => !must.includes(c!.slug)).map((c) => ({ value: c!.slug, label: c!.display }))}
+        />
         {must.map((s) => (
           <button key={s} className="chip on" onClick={() => setMust((m) => m.filter((x) => x !== s))} aria-label={`Remove ${BY_SLUG.get(s)?.display}`}>
             {shortName(s)} ×

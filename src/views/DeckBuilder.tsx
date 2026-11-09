@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { VaultSelect } from '../components/VaultSelect';
 import { BY_SLUG, CARDS, COLORS, RECOMMENDED, TYPES, fitsRam, printingLabel, searchCards, type Card } from '../lib/data';
 import { money, estimateText, moneyOr } from '../lib/currency';
 import { deckFromRecommended, validate, deckNeed, purchaseEstimate } from '../lib/decks';
@@ -181,18 +182,11 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
         sub={<>3 Legends <span className="sep" aria-hidden="true">◆</span> 40 to 50 cards <span className="sep" aria-hidden="true">◆</span> RAM checked live</>}
       />
       <div className="toolbar section-gap">
-        <select className="select" aria-label="Load a deck" value="" onChange={(e) => loadSel(e.target.value)}>
-          <option value="">Load deck…</option>
-          <option value="__new">+ New empty deck</option>
-          {decks.length > 0 && (
-            <optgroup label="My decks">
-              {decks.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </optgroup>
-          )}
-          <optgroup label="Recommended">
-            {RECOMMENDED.map((d) => <option key={d.id} value={d.id}>{d.name} ({d.kind})</option>)}
-          </optgroup>
-        </select>
+        <VaultSelect aria-label="Load a deck" value="" placeholder="Load deck…" onValueChange={loadSel} options={[
+          { value: '__new', label: '+ New empty deck' },
+          ...(decks.length ? [{ label: 'My decks', options: decks.map((d) => ({ value: d.id, label: d.name })) }] : []),
+          { label: 'Recommended', options: RECOMMENDED.map((d) => ({ value: d.id, label: `${d.name} (${d.kind})` })) },
+        ]} />
         <input className="input deck-name" aria-label="Deck name" value={deck.name} onChange={(e) => update((d) => ({ ...d, name: e.target.value.slice(0, 80) }))} />
         <button className="btn" onClick={async () => { if (await saveDeck(deck)) { setDirty(false); toast('Deck saved'); } }}>{dirty ? 'Save*' : 'Save'}</button>
         <button className="btn quiet" onClick={async () => { const c = { ...structuredClone(deck), id: newId(), name: `${deck.name} (copy)`.slice(0, 80) }; if (await saveDeck(c)) { setDeck(c); setDirty(false); toast('Saved as copy'); } }}>Save copy</button>
@@ -243,10 +237,9 @@ export function DeckBuilder({ onOpen, initialDeck }: { onOpen: (slug: string) =>
           <div className="panel-title">Card pool <span className="aside">{pool.length} cards · click to add</span></div>
           <div className="toolbar">
             <input className="input search grow" placeholder="Search cards…" value={q} onChange={(e) => setQ(e.target.value)} />
-            <select className="select" value={type} onChange={(e) => setType(e.target.value)}>
-              <option value="">All types</option>
-              {TYPES.map((t) => <option key={t}>{t}</option>)}
-            </select>
+            <VaultSelect aria-label="Card type" value={type} onValueChange={setType} options={[
+              { value: '', label: 'All types' }, ...TYPES.map((t) => ({ value: t, label: t })),
+            ]} />
           </div>
           <div className="toolbar">
             <div className="chips">

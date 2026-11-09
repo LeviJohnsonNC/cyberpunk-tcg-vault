@@ -9,6 +9,7 @@ import {
   type Rng, type Trial,
 } from '../lib/handtest';
 import { Bars, CardImg } from './bits';
+import { VaultSelect } from './VaultSelect';
 
 export interface TestDeck {
   /** Column label, e.g. "Starting deck" or "Upgrade". */
@@ -208,10 +209,10 @@ export function HandTester({ decks, onClose }: { decks: TestDeck[]; onClose: () 
           <p className="tiny muted">Exact chance of at least one copy in a fresh six-card opener, calculated from deck size and copies. Not from the sample hands above.</p>
           <label className="ht-pick">
             <span className="label">Card</span>
-            <select className="select" value={target} onChange={(e) => setTarget(e.target.value)}>
-              <option value={ANY_SELLABLE}>Any sellable card</option>
-              {choices.map((c) => <option key={c.slug} value={c.slug}>{c.display}</option>)}
-            </select>
+            <VaultSelect aria-label="Card" value={target} onValueChange={setTarget} options={[
+              { value: ANY_SELLABLE, label: 'Any sellable card' },
+              ...choices.map((c) => ({ value: c.slug, label: c.display })),
+            ]} />
           </label>
           <table className="data ht-odds-table">
             <caption className="sr-only">Opening hand odds for {targetName}</caption>

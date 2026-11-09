@@ -5,6 +5,7 @@ import { collectionValue } from '../lib/collection';
 import { useStore, type Entry } from '../lib/store';
 import { Pip, RarityBadge, Rules } from './bits';
 import { PrintingArt } from './PrintingArt';
+import { VaultSelect } from './VaultSelect';
 
 /** Move some or all copies of an unverified holding to a real printing, in one save. */
 function MoveCopies({ card, entry }: { card: Card; entry: Entry }) {
@@ -28,9 +29,8 @@ function MoveCopies({ card, entry }: { card: Card; entry: Entry }) {
       <input id={`mv-n-${entry.printingId}`} className="input" type="number" min={1} max={entry.qty} value={qty} onChange={(e) => setN(+e.target.value)} />
       <span className="tiny muted">of {entry.qty} to</span>
       <label className="sr-only" htmlFor={`mv-to-${entry.printingId}`}>Printing</label>
-      <select id={`mv-to-${entry.printingId}`} className="select" value={to} onChange={(e) => setTo(e.target.value)}>
-        {card.printings.map((p) => <option key={p.id} value={p.id}>{printingLabel(p.id)}</option>)}
-      </select>
+      <VaultSelect id={`mv-to-${entry.printingId}`} value={to} onValueChange={setTo}
+        options={card.printings.map((p) => ({ value: p.id, label: printingLabel(p.id) }))} />
       <button className="btn sm" onClick={go} disabled={busy || !collectionReady || quantityPending(entry.printingId) || quantityPending(to)}>{busy ? 'Moving…' : 'Move'}</button>
     </div>
   );
@@ -53,7 +53,7 @@ function CardDetails({ card, onClose, initialPrinting, identify }: { card: Card;
   const { slug } = card;
   const { entries, setQty, collectionReady, quantityPending } = useStore();
   const [printingId, setPrintingId] = useState(() => initialPrinting ?? defaultPrinting(card).id);
-  const preview = useRef<HTMLSelectElement>(null);
+  const preview = useRef<HTMLButtonElement>(null);
   const drawer = useRef<HTMLDialogElement>(null);
   const printingsHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
@@ -91,9 +91,8 @@ function CardDetails({ card, onClose, initialPrinting, identify }: { card: Card;
           <div className="drawer-preview">
             <label className="drawer-preview-select">
               <span className="label">Viewing printing</span>
-              <select ref={preview} className="select" value={printing.id} onChange={(e) => setPrintingId(e.target.value)}>
-                {card.printings.map((p) => <option key={p.id} value={p.id}>{printingLabel(p.id, false)}</option>)}
-              </select>
+              <VaultSelect aria-label="Viewing printing" ref={preview} value={printing.id} onValueChange={setPrintingId}
+                options={card.printings.map((p) => ({ value: p.id, label: printingLabel(p.id, false) }))} />
             </label>
             <PrintingArt slug={slug} printingId={printing.id} alt={`${card.display}, ${printingLabel(printing.id)}`} />
           </div>
