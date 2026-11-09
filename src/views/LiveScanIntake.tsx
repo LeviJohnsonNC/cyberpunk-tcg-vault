@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CardImg } from '../components/bits';
 import { IntakeIcon } from '../components/IntakeIcon';
 import { VaultSelect } from '../components/VaultSelect';
@@ -8,15 +8,16 @@ import { useStore } from '../lib/store';
 import { cloudEnabled } from '../lib/supabase';
 
 type ScanStep =
-  | { kind: 'opening' | 'aiming' | 'next' | 'no-match' }
+  | { kind: 'opening' | 'aiming' | 'next' }
   | { kind: 'reading'; image: string; token?: string }
+  | { kind: 'no-match'; image: string }
   | { kind: 'review'; slug: string; printingId: string }
   | { kind: 'retry' | 'camera-error'; message: string };
 
 const SCAN_STATUS = {
   opening: 'Opening your camera…',
-  aiming: 'Line up one card and hold it steady.',
-  reading: 'Identifying card…',
+  aiming: 'Line up one card. Hold steady or tap Scan now.',
+  reading: 'Frame captured. Identifying card…',
   next: 'Swap in the next card.',
   'no-match': 'No clear match. Reposition one card inside the guide and tilt away from glare.',
   review: 'Check the match before adding.',
@@ -24,7 +25,8 @@ const SCAN_STATUS = {
 
 function captureFrame(video: HTMLVideoElement) {
   if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
-  const crop = scanCrop(video.videoWidth, video.videoHeight);
+  // Leave a little room around the guide for the title and subtitle near the card edges.
+  const crop = scanCrop(video.videoWidth, video.videoHeight, 0.05);
   const scale = Math.min(1, 1200 / crop.height);
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(crop.width * scale);
@@ -33,6 +35,19 @@ function captureFrame(video: HTMLVideoElement) {
   if (!ctx) return;
   ctx.drawImage(video, crop.x, crop.y, crop.width, crop.height, 0, 0, canvas.width, canvas.height);
   return canvas.toDataURL('image/jpeg', 0.9);
+}
+
+function sampleFrame(video: HTMLVideoElement, ctx: CanvasRenderingContext2D) {
+  const crop = scanCrop(video.videoWidth, video.videoHeight);
+  const { width, height } = ctx.canvas;
+  ctx.drawImage(video, crop.x, crop.y, crop.width, crop.height, 0, 0, width, height);
+  const { data } = ctx.getImageData(0, 0, width, height);
+  const frame = new Uint8ClampedArray(width * height);
+  for (let i = 0; i < frame.length; i++) {
+    const pixel = i * 4;
+    frame[i] = 0.299 * data[pixel] + 0.587 * data[pixel + 1] + 0.114 * data[pixel + 2];
+  }
+  return frame;
 }
 
 export function LiveScanIntake() {
@@ -81,6 +96,8 @@ function LiveCamera({ token, restart }: { token?: string; restart: () => void })
   const { addMany, collectionReady } = useStore();
   const video = useRef<HTMLVideoElement>(null);
   const lastCapture = useRef<Uint8ClampedArray>(undefined);
+  const sampleContext = useRef<CanvasRenderingContext2D | null>(null);
+  const captureLock = useRef(false);
   const saveLock = useRef(false);
   const [step, setStep] = useState<ScanStep>({ kind: 'opening' });
   const [saving, setSaving] = useState(false);
@@ -135,41 +152,57 @@ function LiveCamera({ token, restart }: { token?: string; restart: () => void })
     };
   }, []);
 
+  const readSample = useCallback((preview: HTMLVideoElement) => {
+    if (preview.readyState < 2 || !preview.videoWidth || !preview.videoHeight) return;
+    try {
+      if (!sampleContext.current) {
+        const sample = document.createElement('canvas');
+        sample.width = 24;
+        sample.height = 34;
+        sampleContext.current = sample.getContext('2d', { willReadFrequently: true });
+      }
+      if (sampleContext.current) return sampleFrame(preview, sampleContext.current);
+    } catch {
+      // Some browsers briefly have no drawable frame while the video is starting or refocusing.
+    }
+  }, []);
+
+  const startRecognition = useCallback((frame?: Uint8ClampedArray, manual = false) => {
+    const preview = video.current;
+    if (!preview || captureLock.current) return false;
+    let image: string | undefined;
+    try { image = captureFrame(preview); } catch { /* The browser has no readable frame. */ }
+    if (!image?.startsWith('data:image/jpeg')) {
+      if (manual) setStep({ kind: 'retry', message: 'Couldn’t capture a frame. Wait for the camera preview, then tap Scan now.' });
+      return false;
+    }
+    captureLock.current = true;
+    lastCapture.current = frame ?? readSample(preview);
+    setStep({ kind: 'reading', image, token });
+    return true;
+  }, [readSample, token]);
+
   const kind = step.kind;
   useEffect(() => {
     if (kind !== 'aiming' && kind !== 'next' && kind !== 'no-match') return;
     const preview = video.current;
     if (!preview) return;
-    const sample = document.createElement('canvas');
-    sample.width = 24;
-    sample.height = 34;
-    const ctx = sample.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return;
     const ready = createScanGate();
     const loop = window.setInterval(() => {
-      if (preview.readyState < 2 || !preview.videoWidth || !preview.videoHeight || document.hidden) return;
-      const crop = scanCrop(preview.videoWidth, preview.videoHeight);
-      ctx.drawImage(preview, crop.x, crop.y, crop.width, crop.height, 0, 0, sample.width, sample.height);
-      const { data } = ctx.getImageData(0, 0, sample.width, sample.height);
-      const frame = new Uint8ClampedArray(sample.width * sample.height);
-      for (let i = 0; i < frame.length; i++) {
-        const pixel = i * 4;
-        frame[i] = 0.299 * data[pixel] + 0.587 * data[pixel + 1] + 0.114 * data[pixel + 2];
-      }
+      if (document.hidden) return;
+      const frame = readSample(preview);
+      if (!frame) return;
       if (kind !== 'aiming') {
-        if (lastCapture.current && !scanFrameChanged(lastCapture.current, frame)) return;
+        lastCapture.current ??= frame;
+        if (!scanFrameChanged(lastCapture.current, frame)) return;
         window.clearInterval(loop);
         setStep({ kind: 'aiming' });
-      } else if (ready(frame)) {
-        const image = captureFrame(preview);
-        if (!image) return;
-        lastCapture.current = frame;
+      } else if (ready(frame) && startRecognition(frame)) {
         window.clearInterval(loop);
-        setStep({ kind: 'reading', image, token });
       }
     }, 150);
     return () => window.clearInterval(loop);
-  }, [kind, token]);
+  }, [kind, readSample, startRecognition]);
 
   useEffect(() => {
     if (step.kind !== 'reading') return;
@@ -185,11 +218,12 @@ function LiveCamera({ token, restart }: { token?: string; restart: () => void })
           headers: { 'content-type': 'application/json', ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}) },
           body: JSON.stringify({ image, mode: 'single' }),
         });
-        const data = await response.json();
+        const data = await response.json().catch(() => null);
         if (controller.signal.aborted) return;
-        if (!response.ok) {
-          const message = response.status === 429 && typeof data.error === 'string'
-            ? data.error : 'The scan service is unavailable. Try again or upload a photo.';
+        if (!response.ok || !data) {
+          const message = response.status === 429 && typeof data?.error === 'string' ? data.error
+            : response.status === 401 ? 'Your session expired. Sign in again to scan.'
+              : 'The scan service couldn’t read the captured frame. Try again or upload a photo.';
           setStep({ kind: 'retry', message });
           return;
         }
@@ -198,7 +232,7 @@ function LiveCamera({ token, restart }: { token?: string; restart: () => void })
           && !data.unidentified && !data.unmatched?.length) {
           setStep({ kind: 'review', slug: match.slug, printingId: unspecifiedId(match.slug) });
         } else {
-          setStep({ kind: 'no-match' });
+          setStep({ kind: 'no-match', image });
         }
       } catch {
         if (!controller.signal.aborted) setStep({ kind: 'retry', message: 'Couldn’t reach the scanner. Check your connection and try again.' });
@@ -210,6 +244,7 @@ function LiveCamera({ token, restart }: { token?: string; restart: () => void })
     return () => {
       window.clearTimeout(timeout);
       controller.abort();
+      captureLock.current = false;
     };
   }, [step]);
 
@@ -260,9 +295,13 @@ function LiveCamera({ token, restart }: { token?: string; restart: () => void })
           {saveError && <p className="danger-text" role="alert">Couldn’t save the card. Try Add 1 again.</p>}
         </div>
       ) : step.kind === 'camera-error' ? <button type="button" className="btn quiet" onClick={restart}>Reopen camera</button>
-        : step.kind === 'retry' || step.kind === 'next' || step.kind === 'no-match' ? <button type="button" className="btn quiet" onClick={() => setStep({ kind: 'aiming' })}>
-          {step.kind === 'next' ? 'Scan another copy' : 'Try again'}
-        </button> : null}
+        : step.kind === 'aiming' || step.kind === 'retry' || step.kind === 'next' || step.kind === 'no-match' ? (
+          <button type="button" className="btn" onClick={() => startRecognition(undefined, true)}>Scan now</button>
+        ) : null}
+      {step.kind === 'no-match' && <details className="live-scan-frame">
+        <summary>View captured frame</summary>
+        <img src={step.image} alt="Card frame sent for recognition" />
+      </details>}
       <p className="live-scan-note tiny muted">Choose the printing if you know it. You can also set it later in your collection.</p>
     </>
   );
