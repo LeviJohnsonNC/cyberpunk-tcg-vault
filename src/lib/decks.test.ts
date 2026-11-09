@@ -56,6 +56,16 @@ describe('completion', () => {
 });
 
 describe('validate', () => {
+  it('checks sideboard-only and combined copies against the same cap', () => {
+    const deck = deckFromRecommended('heist-reloaded')!;
+    const checked = validate({ ...deck, cards: { ...deck.cards, 'floor-it': 0 }, sideboard: { 'floor-it': 4, 'psycho-squad': 3 } });
+    expect(checked.overCopies).toEqual(expect.arrayContaining(['floor-it', 'psycho-squad']));
+    const { ['floor-it']: _floorIt, ...main } = deck.cards;
+    const sideOnly = validate({ ...deck, cards: main, sideboard: { 'floor-it': 4 } });
+    expect(sideOnly.overCopies).toEqual(['floor-it']);
+    expect(sideOnly.legal).toBe(false);
+  });
+
   it('flags RAM, copy and size problems', () => {
     const v = validate({ legends: ['v-corporate-exile'], cards: { 'animals-wrecker': 4 }, sideboard: {} });
     expect(v.legal).toBe(false);

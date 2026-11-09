@@ -97,8 +97,8 @@ Fonts are self-hosted via `@fontsource` packages (imported in `theme.css`), so t
 - **<760px:** metric strip stacks. Table rows reflow into a two-column card: the identity on the left, and total / basis / quantity on the right. Rarity and unit price move into a compact metadata line under the name. Card identity, quantity, total and pricing basis are always visible, with no horizontal page scroll.
 - **≤1100px header:** brand and status on one row; nav becomes a horizontally scrollable row underneath.
 - **Collection:** Binder uses five columns at wide desktop widths, four on laptops and two on phones. Filters move from a rail to a dialog sheet below 1120px. In the phone List, secondary columns hide so art, name, owned and value fit.
-- **Deck Builder:** the deck column is sticky beside the card pool on laptops and stacks below it under 1100px.
-- Page height follows content (no fixed-height scroll panes on working surfaces).
+- **Deck Builder:** the status strip stays visible while browsing. On laptops the deck pane sits beside the pool and can scroll independently when the list is long. At 1000px and below, Find cards and Deck switch between the two panes of the same draft.
+- Page height follows content. The laptop Deck Builder keeps its sticky deck pane within the available viewport.
 - Motion respects `prefers-reduced-motion`.
 
 ## States checklist (every screen)
