@@ -339,7 +339,7 @@ hr.cut { border: 0; border-top: 1px dashed var(--color-divider); margin: var(--s
     display: flex; justify-content: flex-end; pointer-events: none;
   }
   .drawer .drawer-close .close { position: static; width: 44px; height: 44px; background: var(--color-surface); pointer-events: auto; }
-  .drawer .drawer-selected-quantity .iconbtn { width: 44px; height: 44px; }
+  .drawer .drawer-selected-quantity .qty .iconbtn { width: 44px; height: 44px; }
   .drawer-preview-select .select { min-height: 44px; }
   .drawer-art { width: min(100%, 290px); justify-self: center; }
   .hide-sm { display: none !important; }

@@ -182,14 +182,21 @@
   .collection-heading .al-strip > div + div { border-top: 0; border-inline-start: 1px dashed var(--color-ticket-muted); }
   .collection-heading .al-strip dt, .collection-heading .al-strip dt span { font-size: 11px; }
   .collection-heading .al-strip dd { font-size: 25px; }
-  .collection-searchbar { grid-template-columns: auto minmax(0, 1fr); gap: var(--space-2); }
+  .collection-searchbar { grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); }
   .collection-searchbar > .input { grid-column: 1 / -1; grid-row: 1; min-height: 44px; font-size: 16px; }
-  .collection-searchbar .chip { padding-inline: 7px; min-height: 44px; font-size: 11px; }
+  .collection-searchbar .chips { gap: var(--space-1); }
+  .collection-searchbar .chip {
+    padding-inline: 6px; min-height: 44px; font: 600 12px/1 var(--font-ui); letter-spacing: 0; text-transform: none;
+  }
   .collection-toolbar-actions { gap: var(--space-1); }
   .collection-view-switch { padding: 2px; gap: 2px; }
   .collection-view-switch button { justify-content: center; padding-inline: 6px; font-size: 12px; min-width: 44px; min-height: 44px; }
   .collection-view-switch svg { display: none; }
-  .collection-filter-trigger { min-height: 44px; padding-inline: 7px; font-size: 12px; gap: 3px; }
+  .collection-toolbar-actions .collection-filter-trigger { position: relative; min-height: 44px; padding-inline: 6px; font-size: 12px; }
+  .collection-filter-count {
+    position: absolute; inset-block-start: -4px; inset-inline-end: -2px; padding: 2px 4px; border-radius: var(--radius-sm);
+    background: var(--color-accent); color: var(--color-accent-ink); font-size: 10px;
+  }
   .collection-filter-heading .iconbtn { width: 44px; height: 44px; }
   .collection-filter-done { min-height: 44px; }
   .collection-ticket {
