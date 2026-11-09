@@ -46,12 +46,11 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
   const results = useMemo(() => (q.trim() ? searchCards(q).slice(0, 30) : []), [q]);
   const ownedQty = (pid: string) => entries.find((e) => e.printingId === pid)?.qty ?? 0;
 
-  const quickAdd = (slug: string) => {
+  const quickAdd = async (slug: string) => {
     const c = BY_SLUG.get(slug)!;
     const pid = printFor[slug] ?? defaultPrinting(c).id;
     const n = qtyFor[slug] ?? 1;
-    setQty(slug, pid, ownedQty(pid) + n);
-    toast(`+${n} ${c.display}`);
+    if (await setQty(slug, pid, ownedQty(pid) + n)) toast(`+${n} ${c.display}`);
   };
 
   const runScan = async (files: FileList | File[]) => {

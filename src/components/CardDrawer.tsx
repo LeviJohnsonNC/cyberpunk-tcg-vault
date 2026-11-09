@@ -1,13 +1,14 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { BY_SLUG, acquireQuote, defaultPrinting, editionPrinting, printingLabel, valueHolding, type Card, type Valuation } from '../lib/data';
 import { estimateText, money } from '../lib/currency';
+import { collectionValue } from '../lib/collection';
 import { useStore, type Entry } from '../lib/store';
 import { Pip, RarityBadge, Rules } from './bits';
 import { PrintingArt } from './PrintingArt';
 
 /** Move some or all copies of an unverified holding to a real printing, in one save. */
 function MoveCopies({ card, entry }: { card: Card; entry: Entry }) {
-  const { movePrinting } = useStore();
+  const { movePrinting, quantityPending, collectionReady } = useStore();
   const [to, setTo] = useState(() => editionPrinting(card.slug, 'Retail')?.id ?? card.printings[0].id);
   const [n, setN] = useState(entry.qty);
   const [busy, setBusy] = useState(false);
@@ -30,7 +31,7 @@ function MoveCopies({ card, entry }: { card: Card; entry: Entry }) {
       <select id={`mv-to-${entry.printingId}`} className="select" value={to} onChange={(e) => setTo(e.target.value)}>
         {card.printings.map((p) => <option key={p.id} value={p.id}>{printingLabel(p.id)}</option>)}
       </select>
-      <button className="btn sm" onClick={go} disabled={busy}>{busy ? 'Moving…' : 'Move'}</button>
+      <button className="btn sm" onClick={go} disabled={busy || !collectionReady || quantityPending(entry.printingId) || quantityPending(to)}>{busy ? 'Moving…' : 'Move'}</button>
     </div>
   );
 }
@@ -48,36 +49,32 @@ function PrintingValue({ value }: { value: Valuation | null }) {
   );
 }
 
-function CardDetails({ card, onClose }: { card: Card; onClose: () => void }) {
+function CardDetails({ card, onClose, initialPrinting, identify }: { card: Card; onClose: () => void; initialPrinting?: string; identify?: boolean }) {
   const { slug } = card;
-  const { entries, setQty } = useStore();
-  const [printingId, setPrintingId] = useState(() => defaultPrinting(card).id);
+  const { entries, setQty, collectionReady, quantityPending } = useStore();
+  const [printingId, setPrintingId] = useState(() => initialPrinting ?? defaultPrinting(card).id);
   const preview = useRef<HTMLSelectElement>(null);
   const drawer = useRef<HTMLDialogElement>(null);
+  const printingsHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     const dialog = drawer.current;
     dialog?.showModal();
+    if (identify) printingsHeading.current?.focus();
     return () => dialog?.close();
-  }, []);
+  }, [identify]);
   const close = () => {
     drawer.current?.close();
     onClose();
   };
   const printing = card.printings.find((p) => p.id === printingId) ?? defaultPrinting(card);
   const value = valueHolding(printing.id);
-  const qtyOf = (pid: string) => entries.find((e) => e.printingId === pid)?.qty ?? 0;
-  const notes = new Map(entries.filter((e) => e.slug === slug && e.note).map((e) => [e.printingId, e.note]));
+  const holdings = entries.filter((e) => e.slug === slug);
+  const qtyOf = (pid: string) => holdings.find((e) => e.printingId === pid)?.qty ?? 0;
+  const notes = new Map(holdings.map((e) => [e.printingId, e.note]));
   const buy = acquireQuote(slug);
-  const owned = card.printings.reduce((a, p) => a + qtyOf(p.id), 0);
-  // Value of the copies you own, printing by printing (unknowns counted, never guessed).
-  const mine = card.printings
-    .map((p) => ({ q: qtyOf(p.id), v: valueHolding(p.id) }))
-    .concat(entries.filter((e) => e.slug === slug && !card.printings.some((p) => p.id === e.printingId)).map((e) => ({ q: e.qty, v: null })))
-    .filter((x) => x.q > 0)
-    .reduce((a, x) => ({ knownCad: a.knownCad + (x.v ? x.v.cad * x.q : 0), unpriced: a.unpriced + (x.v ? 0 : x.q), copies: a.copies + x.q }), { knownCad: 0, unpriced: 0, copies: 0 });
+  const mine = collectionValue(holdings);
   // Holdings without a verified printing (scanned "Printing unspecified", or an id the catalog no longer has).
-  const loose = entries.filter((e) => e.slug === slug && !card.printings.some((p) => p.id === e.printingId));
-  const ownedAll = owned + loose.reduce((a, e) => a + e.qty, 0);
+  const loose = holdings.filter((e) => !card.printings.some((p) => p.id === e.printingId));
 
   return (
     <dialog
@@ -148,7 +145,7 @@ function CardDetails({ card, onClose }: { card: Card; onClose: () => void }) {
         </div>
 
         <hr className="cut" />
-        <div className="panel-title">Printings <span className="aside">You own {ownedAll}</span></div>
+        <h3 className="panel-title" ref={printingsHeading} tabIndex={-1}>{identify && loose.length ? 'Identify printing' : 'Printings'} <span className="aside">You own {mine.copies}</span></h3>
         <div className="table-wrap" style={{ maxHeight: 'none' }}>
           <table className="data">
             <thead>
@@ -167,9 +164,9 @@ function CardDetails({ card, onClose }: { card: Card; onClose: () => void }) {
                     </td>
                     <td>
                       <span className="qty">
-                        <button className="iconbtn minus" onClick={() => setQty(slug, e.printingId, e.qty - 1)} aria-label="Remove an unspecified copy">−</button>
+                        <button className="iconbtn minus" disabled={!collectionReady || quantityPending(e.printingId)} onClick={() => setQty(slug, e.printingId, e.qty - 1)} aria-label="Remove an unspecified copy">−</button>
                         <b>{e.qty}</b>
-                        <button className="iconbtn" onClick={() => setQty(slug, e.printingId, e.qty + 1)} aria-label="Add an unspecified copy">+</button>
+                        <button className="iconbtn" disabled={!collectionReady || quantityPending(e.printingId) || e.qty >= 999} onClick={() => setQty(slug, e.printingId, e.qty + 1)} aria-label="Add an unspecified copy">+</button>
                       </span>
                     </td>
                   </tr>
@@ -199,9 +196,9 @@ function CardDetails({ card, onClose }: { card: Card; onClose: () => void }) {
                     <td className="num"><PrintingValue value={v} /></td>
                     <td>
                       <span className="qty">
-                        <button className="iconbtn minus" onClick={() => setQty(slug, p.id, q - 1)} disabled={q === 0} aria-label={`Remove a ${printingLabel(p.id, false)} copy`}>−</button>
+                        <button className="iconbtn minus" onClick={() => setQty(slug, p.id, q - 1)} disabled={!collectionReady || quantityPending(p.id) || q === 0} aria-label={`Remove a ${printingLabel(p.id, false)} copy`}>−</button>
                         <b>{q}</b>
-                        <button className="iconbtn" onClick={() => setQty(slug, p.id, q + 1)} aria-label={`Add a ${printingLabel(p.id, false)} copy`}>+</button>
+                        <button className="iconbtn" disabled={!collectionReady || quantityPending(p.id) || q >= 999} onClick={() => setQty(slug, p.id, q + 1)} aria-label={`Add a ${printingLabel(p.id, false)} copy`}>+</button>
                       </span>
                     </td>
                   </tr>
@@ -214,7 +211,7 @@ function CardDetails({ card, onClose }: { card: Card; onClose: () => void }) {
   );
 }
 
-export function CardDrawer({ slug, onClose }: { slug: string; onClose: () => void }) {
+export function CardDrawer({ slug, printingId, identify, onClose }: { slug: string; printingId?: string; identify?: boolean; onClose: () => void }) {
   const card = BY_SLUG.get(slug);
-  return card && <CardDetails key={slug} card={card} onClose={onClose} />;
+  return card && <CardDetails key={slug} card={card} initialPrinting={printingId} identify={identify} onClose={onClose} />;
 }

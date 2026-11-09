@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { NETDECK_CARDS, artNeedsRefresh, fetchPrintingArt } from './printingArt';
+import { NETDECK_CARDS, artNeedsRefresh, fetchPrintingArt, getPrintingArt } from './printingArt';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -29,5 +29,25 @@ describe('printing artwork', () => {
     expect(artNeedsRefresh(signed, expiry - 60_000)).toBe(false);
     expect(artNeedsRefresh(signed, expiry - 10_000)).toBe(true);
     expect(artNeedsRefresh('https://art.example/card.webp', expiry)).toBe(false);
+  });
+
+  it('caps concurrent lookups and shares in-flight and cached art across printings', async () => {
+    const responses: Array<(response: Response) => void> = [];
+    const fetch = vi.fn(() => new Promise<Response>((resolve) => responses.push(resolve)));
+    vi.stubGlobal('fetch', fetch);
+    const lookups = Array.from({ length: 5 }, (_, i) => getPrintingArt(`queue-test-${i}`, 'retail'));
+    const alt = getPrintingArt('queue-test-0', 'alt', true);
+    expect(fetch).toHaveBeenCalledTimes(4);
+
+    const reply = () => new Response(JSON.stringify({ printings: [
+      { id: 'retail', image_url: 'https://art.example/retail.webp' },
+      { id: 'alt', image_url: 'https://art.example/alt.webp' },
+    ] }));
+    responses[0](reply());
+    await expect(alt).resolves.toBe('https://art.example/alt.webp');
+    await expect(getPrintingArt('queue-test-0', 'retail')).resolves.toBe('https://art.example/retail.webp');
+    expect(fetch).toHaveBeenCalledTimes(5);
+    responses.slice(1).forEach((respond) => respond(reply()));
+    await Promise.all(lookups);
   });
 });

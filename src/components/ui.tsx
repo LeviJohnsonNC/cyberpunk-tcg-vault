@@ -1,5 +1,5 @@
 // Shared Afterlife components. See docs/design-system.md ("Component patterns").
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import './ui.css';
 
 /** The screen's poster focal point. `hero` = Price Book scale; `compact` = every other screen. */
@@ -85,6 +85,7 @@ export function ConfirmDialog({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const titleId = useId();
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
@@ -98,7 +99,7 @@ export function ConfirmDialog({
     <dialog
       ref={ref}
       className={`al-dialog tone-${tone}`}
-      aria-labelledby="al-dialog-title"
+      aria-labelledby={titleId}
       onCancel={(e) => {
         e.preventDefault();
         if (!busy) onCancel();
@@ -108,7 +109,7 @@ export function ConfirmDialog({
       }}
     >
       <div className="al-dialog-body">
-        <h2 id="al-dialog-title">{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         <div className="al-dialog-content">{children}</div>
         <div className="al-dialog-actions">
           <button ref={cancelRef} className="btn ghost" onClick={onCancel} disabled={busy}>Cancel</button>
