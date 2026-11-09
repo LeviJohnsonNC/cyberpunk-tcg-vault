@@ -1,4 +1,5 @@
 import { Activity, useCallback, useEffect, useRef, useState } from 'react';
+import { Analytics, type BeforeSendEvent } from '@vercel/analytics/react';
 import { useStore } from './lib/store';
 import { cloudEnabled } from './lib/supabase';
 import { PRICES } from './lib/data';
@@ -19,6 +20,13 @@ import { CURRENCIES, getCurrency, setCurrency, type Currency } from './lib/curre
 import { clearSampleDraft, SAMPLE_DRAFT_OWNER } from './lib/deckDraft';
 import { TABS, useVaultNavigation, type TabId } from './lib/vaultNavigation';
 import './mobile-shell.css';
+
+function stripAnalyticsUrlDetails(event: BeforeSendEvent): BeforeSendEvent {
+  const url = new URL(event.url);
+  url.hash = '';
+  url.search = '';
+  return { ...event, url: url.href };
+}
 
 export default function App() {
   const store = useStore();
@@ -92,9 +100,12 @@ export default function App() {
     {CURRENCIES.map((c) => <button key={c} aria-pressed={currency === c} onClick={() => chooseCurrency(c)}>{c}</button>)}
   </span>;
   const showSection = (tab: TabId) => route.tab === tab || (mobile && visited.has(tab));
+  // The browser pathname stays the same when switching Vault screens.
+  const analyticsPath = `/${route.tab}`;
 
   return (
     <>
+      <Analytics route={analyticsPath} path={analyticsPath} beforeSend={stripAnalyticsUrlDetails} />
       <header className="appbar">
         <div className="appbar-inner">
           <a className="brand" href="#/collection" aria-label="Cyberpunk TCG Vault home">

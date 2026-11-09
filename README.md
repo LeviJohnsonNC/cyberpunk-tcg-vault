@@ -63,7 +63,7 @@ To test photo scanning locally, use `vercel dev` with the server env vars below.
 | `SCAN_GLOBAL_DAILY_LIMIT` | `300` | Optional. Site-wide photo scans per day. |
 
 3. Deploy. Pushes to `main` redeploy automatically, including the daily data-sync commits.
-4. *(Optional)* **Analytics → Enable** to turn on Vercel Web Analytics (the app already includes the script).
+4. *(Optional)* Enable **Web Analytics** in Vercel to count visits and screen views. Redeploy if the tracking script is unavailable after enabling it.
 
 ### 3. GitHub Actions
 `.github/workflows/sync-data.yml` refreshes cards, prices and the USD→CAD rate daily. Make sure **Settings → Actions → General → Workflow permissions** is set to **Read and write** so the bot can commit.
