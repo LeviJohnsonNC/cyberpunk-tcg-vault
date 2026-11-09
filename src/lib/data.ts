@@ -180,6 +180,32 @@ export function printingLabel(printingId: string, withRarity = true): string {
   return `${set} #${printing.num}${withRarity ? ` · ${printing.rarity}` : ''}`;
 }
 
+// ---------- printing identity ----------
+// A holding is keyed by printing id. When the printing isn't known (a scan can read the name but
+// not Retail vs Beta), it's stored under a stable per-card id so different cards never collide.
+// Unspecified copies count toward playable ownership but have no holding value.
+export const UNSPECIFIED = 'unspecified:';
+export const unspecifiedId = (slug: string) => `${UNSPECIFIED}${slug}`;
+export const isUnspecified = (printingId: string) => printingId.startsWith(UNSPECIFIED);
+
+/** A stored or imported printing id, checked against the card: valid printing, else the card's unspecified id. */
+export function normalizePrinting(slug: string, printingId: string | null | undefined): string {
+  if (printingId && PRINTING_INDEX.get(printingId)?.card.slug === slug) return printingId;
+  return unspecifiedId(slug);
+}
+
+/** The card's base-rarity printing in the main Retail or Beta release (booster set, else its starter deck). */
+export function editionPrinting(slug: string, edition: 'Retail' | 'Beta'): Printing | undefined {
+  const card = BY_SLUG.get(slug);
+  if (!card) return undefined;
+  const sets = [`Welcome to Night City — ${edition}`, `The Heist — ${edition} Starter Deck`, `Embracing Power — ${edition} Starter Deck`];
+  for (const set of sets) {
+    const p = card.printings.find((x) => x.set === set && x.rarity === card.rarity);
+    if (p) return p;
+  }
+  return undefined;
+}
+
 export const BASIS_CLASS: Record<HoldingBasis, string> = { Market: 'market', 'Beta proxy': 'proxy', 'Low listing': 'low' };
 
 export function shortSet(s: string): string {

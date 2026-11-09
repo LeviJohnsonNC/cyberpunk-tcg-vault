@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import { BY_SLUG } from './data';
+import { BY_SLUG, normalizePrinting } from './data';
 
 export interface Entry {
   slug: string;
@@ -34,6 +34,11 @@ interface StoreValue {
   /** Adds (or replaces with) a batch. All-or-nothing: resolves false and changes nothing if the save fails. */
   addMany: (items: Entry[], mode?: 'add' | 'replace') => Promise<boolean>;
   clearCollection: () => Promise<void>;
+  /**
+   * Move `qty` copies of a card from one printing to another (e.g. resolve "Printing unspecified").
+   * All-or-nothing: resolves false and changes nothing on failure. Safe to retry.
+   */
+  movePrinting: (slug: string, from: string, to: string, qty: number) => Promise<boolean>;
   decks: Deck[];
   saveDeck: (d: Deck) => Promise<void>;
   deleteDeck: (id: string) => Promise<void>;
@@ -83,10 +88,12 @@ const writeLS = (k: string, v: unknown): boolean => {
 export const newId = () =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `d${Date.now()}${Math.random().toString(16).slice(2)}`;
 
-function mergeEntries(base: Entry[], items: Entry[], mode: 'add' | 'replace'): Entry[] {
+export function mergeEntries(base: Entry[], items: Entry[], mode: 'add' | 'replace'): Entry[] {
   const map = new Map(base.map((e) => [e.printingId, { ...e }]));
-  for (const it of items) {
-    if (!BY_SLUG.has(it.slug) || it.qty <= 0) continue;
+  for (const raw of items) {
+    if (!BY_SLUG.has(raw.slug) || !(raw.qty > 0)) continue;
+    // Unknown or mismatched printing ids (old exports, typos) keep their copies as "unspecified".
+    const it = { ...raw, qty: Math.min(999, Math.round(raw.qty)), printingId: normalizePrinting(raw.slug, raw.printingId) };
     const cur = map.get(it.printingId);
     if (cur && mode === 'add') {
       cur.qty += it.qty;
@@ -149,7 +156,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         toast(`Cloud load failed: ${(col.error || dk.error)?.message}`, 'err');
         return;
       }
-      setEntries(col.data.map((r) => ({ slug: r.card_slug, printingId: r.printing_id, qty: r.qty, note: r.note })));
+      // Rows load exactly as stored (an unknown printing id shows as "Printing unspecified" and is
+      // unpriced). Rewriting ids here could leave the original row behind and duplicate copies.
+      setEntries(col.data.filter((r) => BY_SLUG.has(r.card_slug)).map((r) => ({ slug: r.card_slug, printingId: r.printing_id, qty: r.qty, note: r.note })));
       setDecks(
         dk.data.map((r) => ({
           id: r.id,
@@ -289,6 +298,42 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (mode === 'cloud' && supabase) await supabase.from('decks').delete().eq('id', id);
   };
 
+  const reloadCloud = async () => {
+    if (!supabase || !session) return;
+    const { data, error } = await supabase.from('collection_items').select('card_slug, printing_id, qty, note');
+    if (!error && data) setEntries(data.filter((r) => BY_SLUG.has(r.card_slug)).map((r) => ({ slug: r.card_slug, printingId: r.printing_id, qty: r.qty, note: r.note })));
+  };
+
+  const movePrinting = async (slug: string, from: string, to: string, qty: number): Promise<boolean> => {
+    const src = entries.find((e) => e.printingId === from);
+    const n = Math.floor(qty);
+    if (!src || from === to || n <= 0 || n > src.qty) return false;
+    const dst = entries.find((e) => e.printingId === to);
+    const next = entries
+      .map((e) => (e.printingId === from ? { ...e, qty: e.qty - n } : e.printingId === to ? { ...e, qty: e.qty + n, note: e.note ?? src.note ?? null } : e))
+      .filter((e) => e.qty > 0);
+    if (!dst) next.push({ slug, printingId: to, qty: n, note: src.note ?? null });
+    if (demo) {
+      setDemoEntries(next);
+      return true;
+    }
+    if (mode === 'cloud' && supabase && session) {
+      // One transaction on the server, guarded by the quantity we saw (see migration 004).
+      const { error } = await supabase.rpc('move_copies', { p_slug: slug, p_from: from, p_to: to, p_qty: n, p_expect_from: src.qty });
+      if (error) {
+        const missing = /move_copies/.test(error.message) && /(not find|does not exist)/i.test(error.message);
+        toast(missing ? 'Moving copies needs database migration 004. Nothing was changed.' : `Couldn't move copies: ${error.message}. Nothing was changed.`, 'err');
+        if (/stale move/.test(error.message)) await reloadCloud(); // another device or a retry already moved them
+        return false;
+      }
+    } else if (!writeLS(LS_COL, next)) {
+      toast('Could not save: this browser\'s storage is full or blocked.', 'err');
+      return false;
+    }
+    setEntries(next);
+    return true;
+  };
+
   const startDemo = async () => {
     try {
       const r = await fetch(DEMO_URL);
@@ -318,7 +363,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value: StoreValue = {
     ready, syncing, mode, session, entries, owned, setQty, addMany, clearCollection,
     decks, saveDeck, deleteDeck, signOut, localPending, pushLocalToCloud, toasts, toast,
-    demo, startDemo, exitDemo,
+    demo, startDemo, exitDemo, movePrinting,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
