@@ -56,6 +56,93 @@ function cardLine(slug: string, ownedQty?: number) {
   return `- ${c.display} [${stats}]${ownedQty != null ? ` owned:${Math.min(ownedQty, 3)}` : ''} :: ${c.text.replace(/\s+/g, ' ').slice(0, 240)}`;
 }
 
+type Parsed = {
+  deck?: { name: string; qty: number }[];
+  swaps?: { out: string; in: string; why: string }[];
+  summary?: string;
+  plan?: string[];
+  mulligan?: string;
+  buy?: { name: string; why: string }[];
+};
+
+/**
+ * Pull the answer object out of whatever the model wrote: bare JSON, fenced JSON,
+ * JSON with prose around it, or JSON with trailing commas. Returns null if nothing has a deck.
+ */
+export function extractJson(content: string): Parsed | null {
+  const text = content.replace(/```(?:json)?/gi, '');
+  const tryParse = (s: string): Parsed | null => {
+    for (const candidate of [s, s.replace(/,\s*([}\]])/g, '$1')]) {
+      try {
+        const v = JSON.parse(candidate) as Parsed;
+        if (v && typeof v === 'object' && Array.isArray(v.deck)) return v;
+      } catch {
+        /* try the next candidate */
+      }
+    }
+    return null;
+  };
+  const whole = tryParse(text.trim());
+  if (whole) return whole;
+  // Scan for balanced {...} blocks (string-aware) and take the first that has a deck.
+  for (let start = text.indexOf('{'); start !== -1; start = text.indexOf('{', start + 1)) {
+    let depth = 0;
+    let inStr = false;
+    for (let i = start; i < text.length; i++) {
+      const ch = text[i];
+      if (inStr) {
+        if (ch === '\\') i++;
+        else if (ch === '"') inStr = false;
+      } else if (ch === '"') inStr = true;
+      else if (ch === '{') depth++;
+      else if (ch === '}' && --depth === 0) {
+        const hit = tryParse(text.slice(start, i + 1));
+        if (hit) return hit;
+        break;
+      }
+    }
+  }
+  return null;
+}
+
+type ModelOut = { content: string; finish?: string; fatal?: string };
+
+async function callModel(messages: { role: string; content: string }[]): Promise<ModelOut> {
+  try {
+    const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'content-type': 'application/json',
+        'HTTP-Referer': 'https://github.com/LeviJohnsonNC/cyberpunk-tcg-vault',
+        'X-Title': 'Cyberpunk TCG Vault',
+      },
+      body: JSON.stringify({ model: MODEL, temperature: 0.3, max_tokens: 6000, messages }),
+    });
+    const raw = await r.text();
+    let data: {
+      choices?: { finish_reason?: string; message?: { content?: string | { type?: string; text?: string }[] | null } }[];
+      error?: { message?: string; code?: number | string };
+    } = {};
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      return { content: '', fatal: `AI service returned an unexpected response (${r.status}).` };
+    }
+    // OpenRouter can report provider errors inside a 200 response.
+    if (!r.ok || data.error) {
+      console.error('[refine-deck] model error', r.status, data.error);
+      return { content: '', fatal: `AI model error: ${data.error?.message ?? r.status}` };
+    }
+    const choice = data.choices?.[0];
+    const c = choice?.message?.content;
+    const content = typeof c === 'string' ? c : Array.isArray(c) ? c.map((p) => p.text ?? '').join('') : '';
+    return { content, finish: choice?.finish_reason };
+  } catch (e) {
+    return { content: '', fatal: `AI request failed: ${(e as Error).message}` };
+  }
+}
+
 export function buildPrompt(legends: string[], baseline: Record<string, number>, pool: Record<string, number>, style: string, must: string[]) {
   const lim = ramLimits(legends);
   return `${RULES}
@@ -117,44 +204,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // ---- model ----
   const lim = ramLimits(legends);
   const pool = Object.fromEntries(Object.entries(owned).filter(([s]) => CARD.get(s)!.type !== 'Legend' && fits(CARD.get(s)!, lim)));
-  let content = '';
-  try {
-    const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'content-type': 'application/json',
-        'HTTP-Referer': 'https://github.com/LeviJohnsonNC/cyberpunk-tcg-vault',
-        'X-Title': 'Cyberpunk TCG Vault',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        temperature: 0.3,
-        max_tokens: 2500,
-        messages: [{ role: 'user', content: buildPrompt(legends, baseline, pool, style, must) }],
-      }),
-    });
-    const data = (await r.json()) as { choices?: { message?: { content?: string } }[]; error?: { message?: string } };
-    if (!r.ok) return res.status(502).json({ error: `AI model error: ${data.error?.message ?? r.status}` });
-    content = data.choices?.[0]?.message?.content ?? '';
-  } catch (e) {
-    return res.status(502).json({ error: `AI request failed: ${(e as Error).message}` });
+  const messages: { role: 'user' | 'assistant'; content: string }[] = [
+    { role: 'user', content: buildPrompt(legends, baseline, pool, style, must) },
+  ];
+  let parsed: Parsed | null = null;
+  let lastProblem = '';
+  // One retry: if the first answer is empty, cut off or not JSON, ask again for JSON only.
+  for (let attempt = 0; attempt < 2 && !parsed; attempt++) {
+    const out = await callModel(messages);
+    if (out.fatal) return res.status(502).json({ error: out.fatal });
+    parsed = extractJson(out.content);
+    if (parsed) break;
+    lastProblem = !out.content.trim()
+      ? `the model returned an empty answer${out.finish ? ` (${out.finish})` : ''}`
+      : out.finish === 'length'
+        ? 'the answer was cut off before it finished'
+        : 'the answer was not valid JSON';
+    console.error('[refine-deck] unreadable answer', { attempt, finish: out.finish, length: out.content.length, head: out.content.slice(0, 300) });
+    if (out.content.trim()) messages.push({ role: 'assistant', content: out.content.slice(0, 4000) });
+    messages.push({ role: 'user', content: 'That reply could not be parsed. Reply again with only the JSON object described above: no prose, no code fences, nothing before { or after }.' });
   }
-
-  let parsed: {
-    deck?: { name: string; qty: number }[];
-    swaps?: { out: string; in: string; why: string }[];
-    summary?: string;
-    plan?: string[];
-    mulligan?: string;
-    buy?: { name: string; why: string }[];
-  };
-  try {
-    const json = content.slice(content.indexOf('{'), content.lastIndexOf('}') + 1);
-    parsed = JSON.parse(json);
-  } catch {
-    return res.status(502).json({ error: 'The AI answer could not be read. Try again.' });
-  }
+  if (!parsed) return res.status(502).json({ error: `The AI answer could not be read: ${lastProblem}. Try again.` });
 
   // ---- repair + verify ----
   const fixed = repair(legends, Array.isArray(parsed.deck) ? parsed.deck : [], pool, baseline);

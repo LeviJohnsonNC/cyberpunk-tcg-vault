@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import sample from '../public/imports/levi-collection.json';
 import { autobuild } from '../src/lib/autobuild';
 import { validateDeck } from './_deckrules';
+import { extractJson } from './refine-deck';
 
 const owned: Record<string, number> = {};
 for (const e of sample.entries) owned[e.slug] = (owned[e.slug] ?? 0) + e.qty;
@@ -24,8 +25,9 @@ const req = (over: Record<string, unknown> = {}, auth = 'Bearer good') => ({
   body: { legends: base.legends, baseline: base.cards, owned, style: 'balanced', ...over },
 });
 
-function mockFetch(opts: { email?: string; used?: number; model?: string; modelStatus?: number }) {
+function mockFetch(opts: { email?: string; used?: number; model?: string | string[]; modelStatus?: number; modelBody?: unknown }) {
   const calls: string[] = [];
+  const answers = Array.isArray(opts.model) ? [...opts.model] : null;
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: { body?: string }) => {
     calls.push(url);
     if (url.endsWith('/auth/v1/user'))
@@ -33,7 +35,9 @@ function mockFetch(opts: { email?: string; used?: number; model?: string; modelS
     if (url.includes('/rpc/bump_ai_usage')) return new Response(String(opts.used ?? 1), { status: 200 });
     if (url.includes('openrouter.ai')) {
       expect(JSON.parse(init!.body!).model).toBe('anthropic/claude-sonnet-5.5');
-      return new Response(JSON.stringify({ choices: [{ message: { content: opts.model ?? '{}' } }] }), { status: opts.modelStatus ?? 200 });
+      if (opts.modelBody) return new Response(JSON.stringify(opts.modelBody), { status: opts.modelStatus ?? 200 });
+      const content = answers ? answers.shift() ?? '' : opts.model ?? '{}';
+      return new Response(JSON.stringify({ choices: [{ message: { content }, finish_reason: 'stop' }] }), { status: opts.modelStatus ?? 200 });
     }
     throw new Error('unexpected ' + url);
   }));
@@ -109,5 +113,45 @@ describe('POST /api/refine-deck', () => {
     await (await load())(req() as never, res as never);
     expect(res.code).toBe(502);
     expect(res.body.cards).toBeUndefined();
+  });
+  it('reports OpenRouter errors sent inside a 200 response', async () => {
+    mockFetch({ email: 'someone@example.com', used: 1, modelBody: { error: { message: 'Provider returned error', code: 502 } } });
+    const res = mkRes();
+    await (await load())(req() as never, res as never);
+    expect(res.code).toBe(502);
+    expect(res.body.error).toMatch(/Provider returned error/);
+  });
+  it('retries once when the first answer is unreadable', async () => {
+    const calls = mockFetch({ email: 'someone@example.com', used: 1, model: ['', JSON.stringify({ deck: [], summary: 'second try' })] });
+    const res = mkRes();
+    await (await load())(req() as never, res as never);
+    expect(res.code).toBe(200);
+    expect(res.body.summary).toBe('second try');
+    expect(calls.filter((c) => c.includes('openrouter')).length).toBe(2);
+  });
+  it('says why when both answers are unreadable', async () => {
+    mockFetch({ email: 'someone@example.com', used: 1, model: ['', 'I think this deck is great!'] });
+    const res = mkRes();
+    await (await load())(req() as never, res as never);
+    expect(res.code).toBe(502);
+    expect(res.body.error).toMatch(/not valid JSON/);
+  });
+});
+
+describe('extractJson', () => {
+  const obj = { deck: [{ name: 'Psycho Squad', qty: 3 }], summary: 'Uses {braces} and "quotes" in text.' };
+  const j = JSON.stringify(obj);
+  it.each([
+    ['bare', j],
+    ['fenced', '```json\n' + j + '\n```'],
+    ['prose around it', 'Here is the deck {as asked}:\n' + j + '\nLet me know if {anything} else.'],
+    ['trailing commas', '{"deck":[{"name":"Psycho Squad","qty":3},],"summary":"x",}'],
+  ])('reads %s', (_, input) => {
+    expect(extractJson(input)?.deck?.[0].name).toBe('Psycho Squad');
+  });
+  it('returns null without a deck', () => {
+    expect(extractJson('')).toBeNull();
+    expect(extractJson('{"summary":"no deck"}')).toBeNull();
+    expect(extractJson('{"deck":[{"name":"Psy')).toBeNull();
   });
 });
