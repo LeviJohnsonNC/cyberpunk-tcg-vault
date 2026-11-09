@@ -11,6 +11,7 @@ import { MetaIntel } from './views/MetaIntel';
 import { AddCards } from './views/AddCards';
 import { HowItWorks } from './views/HowItWorks';
 import { FeedbackDialog } from './components/Feedback';
+import { MusicPlayer } from './components/MusicPlayer';
 import { CURRENCIES, getCurrency, setCurrency, type Currency } from './lib/currency';
 
 const TABS = [
@@ -120,6 +121,7 @@ export default function App() {
       </main>
 
       {openCard && <CardDrawer slug={openCard} onClose={() => setOpenCard(null)} />}
+      <MusicPlayer />
       <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} page={route.tab} />
 
       <div className="toasts">
