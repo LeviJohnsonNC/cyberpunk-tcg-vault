@@ -1,6 +1,6 @@
-# Cyberpunk TCG Vault
+# Fixer: a Cyberpunk TCG toolkit
 
-A Night City-styled collection tracker, price book (USD or CAD) and deck builder for the **Cyberpunk Trading Card Game** (WeirdCo × CD PROJEKT RED, set *Welcome to Night City*).
+Repo: `cyberpunk-tcg-vault`. A Night City-styled collection tracker, price book (USD or CAD) and deck builder for the **Cyberpunk Trading Card Game** (WeirdCo × CD PROJEKT RED, set *Welcome to Night City*).
 
 - **Collection:** the full card database (152 cards, every printing) with search, sort and filters (colour, type, rarity, cost, sell tag) and one-click quantity edits.
 - **Price book:** TCGplayer market prices in USD or CAD (toggle in the header), with value by rarity and colour, a price-confidence flag on every card, trade-binder extras and CSV export.
