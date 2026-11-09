@@ -1,0 +1,159 @@
+{
+ "_source": "WeirdCo, \"Welcome to Night City Starter Decks: Full Decklists Revealed\" (cyberpunktcg.com/blog/wnc-starter-decks, Aug 21 2026). Cross-checked against gamertagmythras.com and cyberpunktcg.wiki (The Heist). Printing IDs from the official card database.",
+ "decks": {
+  "the-heist": {
+   "name": "The Heist",
+   "colors": [
+    "Blue",
+    "Yellow"
+   ],
+   "printings": {
+    "retail": {
+     "v-corporate-exile": "4a5591f9-743e-4186-8deb-560971bb3f82",
+     "viktor-vektor-sit-down-and-relax": "7d539173-4022-402e-a9f4-100338935fd2",
+     "jackie-welles-pour-one-out-for-me": "a33d3324-fe48-4a9f-80a8-8545a0a4727f",
+     "dexter-deshawn-one-last-chance": "e2f38541-ecc9-41dc-ae15-164171391bff",
+     "heywood-ripperdoc": "364ef4ac-8b0c-48b1-8cf2-454477abc452",
+     "offduty-malfini": "1043d9b7-5dae-4fc5-852d-ec31daaaa88d",
+     "secondhand-bombus": "b7d9313c-f2a4-40c0-85ed-81adb7653125",
+     "t-bug-amateur-philosopher": "46ddb436-ea2f-4c7f-b9b4-7987835c9cce",
+     "kiroshi-optics": "aa9b8a2e-ffd6-4435-8bed-c4e64e1c32ac",
+     "mandibular-upgrade": "d13b8b15-8e31-448c-b28b-322bb498d0a7",
+     "zetatech-faceplate": "26b755e4-b754-48fc-b89b-ba8ce670d43b",
+     "afterparty-at-lizzie-s": "17db8555-a470-4c5b-9a24-4fac4bf04c4c",
+     "delamain-cab": "8092ff00-bff0-4a33-98e1-1fa33adabb8d",
+     "evelyn-parker-scheming-siren": "4b037f20-0cb8-4dfa-bd34-3a3b8381632b",
+     "mt0d12-flathead": "5f0d9dac-2547-4ecb-896e-0c603968422a",
+     "psycho-squad": "b6295362-bd30-4b91-8755-738938cf839b",
+     "dying-night-v-s-pistol": "4bb35017-9842-4178-99a6-34353a3de2d4",
+     "tetratronic-rippler": "39747fc8-20a0-4fbb-80d7-2a869b735ac9",
+     "floor-it": "60255f42-3ddd-4865-9e4a-335963694be1",
+     "reboot-optics": "270c2b70-35fb-4d47-b1c0-3df11141f880"
+    },
+    "beta": {
+     "v-corporate-exile": "a6511c82-3a16-41b3-a39a-5194897c8648",
+     "viktor-vektor-sit-down-and-relax": "56a13bb3-7e1d-4846-ac79-9163f33c0143",
+     "jackie-welles-pour-one-out-for-me": "a0ef9536-ad3b-47f6-8c2a-171aa3b8b181",
+     "dexter-deshawn-one-last-chance": "f9c512f2-a41f-4114-9500-cee3f8d8cc35",
+     "heywood-ripperdoc": "aebf807a-2fbb-4b60-ae4b-36783314871f",
+     "offduty-malfini": "e7ef78a6-72d3-42a4-ba98-14facb194eb9",
+     "secondhand-bombus": "2e2f977d-e0a6-4a21-a6b3-92937eb6e909",
+     "t-bug-amateur-philosopher": "646dde1d-a112-4c7b-aecc-f63e130d4df0",
+     "kiroshi-optics": "b18ce43d-3441-4a55-a6a9-34ae8765aa27",
+     "mandibular-upgrade": "c3399413-d205-49e7-871a-4f16d7c3ade6",
+     "zetatech-faceplate": "e38dee5b-9f4a-4323-a18f-aff42256b158",
+     "afterparty-at-lizzie-s": "a8dcad7d-7b45-427d-8123-3140b30ac612",
+     "delamain-cab": "a6bc4a11-ed78-49dc-999b-68b7fe50aefd",
+     "evelyn-parker-scheming-siren": "c7bc2b37-c1a4-43aa-a4c3-5dd60514b098",
+     "mt0d12-flathead": "d4a627d7-2ea9-4080-9f54-435a7d77fb27",
+     "psycho-squad": "e2fe4b47-4d66-4989-bab7-16143f7256ac",
+     "dying-night-v-s-pistol": "1dc3c618-a40a-4717-bf4d-a573915c8ac0",
+     "tetratronic-rippler": "7ef4d862-b97f-47be-ba0f-071c8e8354b0",
+     "floor-it": "d8b28345-bcd5-4c52-b51d-3052d8b24874",
+     "reboot-optics": "f393f463-2e62-4d77-aaf4-ed1bafaee8c5"
+    }
+   },
+   "legends": [
+    "v-corporate-exile",
+    "viktor-vektor-sit-down-and-relax",
+    "jackie-welles-pour-one-out-for-me"
+   ],
+   "cards": {
+    "dexter-deshawn-one-last-chance": 2,
+    "heywood-ripperdoc": 2,
+    "offduty-malfini": 2,
+    "secondhand-bombus": 2,
+    "t-bug-amateur-philosopher": 2,
+    "kiroshi-optics": 3,
+    "mandibular-upgrade": 3,
+    "zetatech-faceplate": 3,
+    "afterparty-at-lizzie-s": 2,
+    "delamain-cab": 3,
+    "evelyn-parker-scheming-siren": 3,
+    "mt0d12-flathead": 2,
+    "psycho-squad": 2,
+    "dying-night-v-s-pistol": 2,
+    "tetratronic-rippler": 2,
+    "floor-it": 3,
+    "reboot-optics": 2
+   }
+  },
+  "embracing-power": {
+   "name": "Embracing Power",
+   "colors": [
+    "Green",
+    "Red"
+   ],
+   "printings": {
+    "retail": {
+     "goro-takemura-hands-unclean": "2ba68619-7050-44c5-b0ce-b32d48b8f40f",
+     "yorinobu-arasaka-embracing-destruction": "f70b75b5-aa2f-4c2d-b8c3-01fcb2a670ec",
+     "saburo-arasaka-stubborn-patriarch": "6ac7adce-01af-4b5b-956b-698eda0bed14",
+     "chrome-fang": "0aab2858-fa5e-42f6-997e-39797fefb669",
+     "minotaur": "19587d4f-6d47-44fe-b4da-99743e2742f7",
+     "ruthless-lowlife": "c4806b05-6476-4c67-95a5-fc9c4ce2aaa2",
+     "swordwise-huscle": "9ecace66-9724-4582-8a45-ae614ffc640f",
+     "emergency-atlus": "b00202eb-35e5-4ae7-8079-34b70a143040",
+     "field-operator": "377a3054-68e1-4843-8109-70e230592519",
+     "goro-takemura-losing-his-way": "42e03e7a-923d-4f2b-8d79-191e69873947",
+     "maxtac-av": "3b69e0c7-418c-4000-b6f4-f9584bc541e3",
+     "arasaka-emergency-radioport": "49c919ef-61d7-47d3-b855-1d4d7c0f783f",
+     "mantis-blades": "087c30c2-1a7d-423e-b2f3-a7e1e8cfca12",
+     "satori-sword-of-saburo": "0e0e7e20-eaf3-4dea-a177-cb54e01ffec6",
+     "industrial-assembly": "301b47dd-eab3-4648-aece-bc071b87dcd1",
+     "over-the-edge": "9e5a152e-6105-44a4-8db0-9cbf6cda2252",
+     "shattered-memories": "b03a2e07-73a4-49c4-b4a3-761748a7b09e",
+     "corpo-security": "0ce87466-8869-484f-bd4c-5094fdfc6dbc",
+     "sandevistan": "a4684963-6c44-4e6e-9466-56d987f86112",
+     "corporate-surveillance": "8a13760d-050c-4a9c-bc44-f6b5796bb9f2"
+    },
+    "beta": {
+     "goro-takemura-hands-unclean": "25b09451-8cc8-4581-898d-3b5ee6ff6b14",
+     "yorinobu-arasaka-embracing-destruction": "362bef23-c935-4729-a13b-dc3bc646d9b3",
+     "saburo-arasaka-stubborn-patriarch": "54136fbd-ce97-4d23-a8e8-f876e3e64819",
+     "chrome-fang": "1e80ecfb-a3f2-421d-ac71-c05547366fb6",
+     "minotaur": "a8dd2d7b-88b8-4b15-b4dd-e3aa3757bb25",
+     "ruthless-lowlife": "9c59c8d2-586a-4845-b969-43be1fd3b388",
+     "swordwise-huscle": "6c695f7c-8b57-4932-aa4c-d85f0b1d29e3",
+     "emergency-atlus": "0a5892de-42fa-4001-b48a-2c294251dad8",
+     "field-operator": "34d2a24a-7976-4178-9f9e-b819f15a6a34",
+     "goro-takemura-losing-his-way": "fb45ca8c-cb8a-4de9-8cf4-04a697c3fdfd",
+     "maxtac-av": "5a28466e-e4e1-408d-9d84-2ce48e95d89d",
+     "arasaka-emergency-radioport": "be0d995d-84fc-41c3-bed6-1875caf85fc7",
+     "mantis-blades": "7e3cd1e0-4438-46e7-a327-0d9846778bb3",
+     "satori-sword-of-saburo": "e9dba54d-79bf-4f33-bd67-ba026e371c03",
+     "industrial-assembly": "84bdb994-a01d-4e4c-81d9-a970aef4d08c",
+     "over-the-edge": "de9b7361-6d1c-4a27-bcfb-50ec7a78e518",
+     "shattered-memories": "4adda471-e0c8-4628-aba1-d1ed11eae0af",
+     "corpo-security": "07cad5ea-45c4-404b-99b8-8f53c280a4fb",
+     "sandevistan": "e1a14bfa-cd87-4fa9-bfe8-207abb4545c4",
+     "corporate-surveillance": "e9d18fa1-0069-4b22-b64e-a75d2e30158a"
+    }
+   },
+   "legends": [
+    "goro-takemura-hands-unclean",
+    "yorinobu-arasaka-embracing-destruction",
+    "saburo-arasaka-stubborn-patriarch"
+   ],
+   "cards": {
+    "chrome-fang": 2,
+    "minotaur": 2,
+    "ruthless-lowlife": 3,
+    "swordwise-huscle": 2,
+    "emergency-atlus": 2,
+    "field-operator": 2,
+    "goro-takemura-losing-his-way": 2,
+    "maxtac-av": 2,
+    "arasaka-emergency-radioport": 2,
+    "mantis-blades": 3,
+    "satori-sword-of-saburo": 3,
+    "industrial-assembly": 2,
+    "over-the-edge": 2,
+    "shattered-memories": 2,
+    "corpo-security": 3,
+    "sandevistan": 3,
+    "corporate-surveillance": 3
+   }
+  }
+ }
+}

@@ -13,7 +13,9 @@ Run `npm run check` (lint + tests + typecheck/build) before committing. Tests li
 - Amounts are computed internally in CAD. Display them only through `money()` from `src/lib/currency.ts`, which follows the USD/CAD toggle (default USD). Never format prices by hand or hardcode a currency label; use `getCurrency()`.
 - **Hand-curated data** (edit these, not `src/data/`):
   - `src/curated/card-ratings.json`: power (1-10) + roles for every playable card. Drives the auto-builder.
+  - `src/curated/starter-decks.json`: the physical retail starter lists (official WeirdCo decklists) with Retail and Beta printing IDs. Separate from the demo collection. `src/lib/starters.test.ts` checks every printing exists and both decks are legal.
   - `scripts/deck_notes.json` + `scripts/decks_src.py`: recommended deck lists and write-ups. Run `python3 scripts/decks_src.py` to validate and regenerate `src/data/decks.json`.
+- `addMany` in the store is all-or-nothing and resolves `false` on a failed save; callers must check it before reporting success.
 - Deck rules live in `src/lib/decks.ts` (`validate`, `completion`). The auto-builder (`src/lib/autobuild.ts`) is deterministic and must only return decks that pass `validate`.
 - Serverless functions can't import app modules at runtime, so `api/_deckrules.ts` mirrors those rules for the server. `api/_deckrules.test.ts` checks the two agree; change both together.
 - AI deck refinement (`api/refine-deck.ts`): the model only proposes. Code repairs its list to owned, RAM-legal cards and re-validates before returning; prices never come from the model. Usage is capped per user per day (`ai_usage`, `DECK_DAILY_LIMIT`) and site-wide (`api/_aiguard.ts`, `ai_global_usage`), with `UNLIMITED_EMAILS` as an env-only bypass. Any new AI endpoint must go through `takeGlobal`. Never hardcode emails or keys; the repo is public.

@@ -423,3 +423,27 @@ img.card-art { background: var(--color-canvas-deep) url('/img/card-back.webp') c
 .music-tab:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
 .music-tab-wrap.is-playing .music-tab { border-color: var(--color-accent-deep); }
 @media (max-width: 760px) { .music-tab-wrap { bottom: 12px; } }
+
+/* ---------- starter intake ---------- */
+.starters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4); }
+.starter-btn { display: flex; align-items: center; gap: var(--space-3); min-width: 0; padding: var(--space-3); text-align: left; background: var(--color-surface); border: 1px solid var(--color-divider); border-left: 3px solid var(--color-accent); color: inherit; cursor: pointer; }
+.starter-btn:hover { border-color: var(--color-accent); background: var(--color-surface-raised); }
+.starter-btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.starter-legends { display: flex; flex: none; }
+.starter-legends img { width: 30px; aspect-ratio: 5 / 7; object-fit: cover; border: 1px solid var(--color-divider); border-radius: 2px; }
+.starter-legends img + img { margin-left: -12px; }
+.starter-text { display: grid; gap: 4px; min-width: 0; }
+.starter-name { font: 800 italic 20px/1 var(--font-display); text-transform: uppercase; color: var(--color-text); overflow-wrap: anywhere; }
+.starter-meta { display: flex; align-items: center; gap: 4px; font: 500 11px/1 var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); }
+.starters.compact { margin-bottom: 0; }
+.starter-panel { margin-bottom: var(--space-4); }
+.empty-hero-or { font-size: 14px !important; margin-bottom: var(--space-3) !important; }
+.edition-pick { border: 0; margin: var(--space-3) 0 0; padding: 0; display: grid; gap: 8px; }
+.edition-pick legend { margin-bottom: 6px; }
+.edition { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--color-divider); cursor: pointer; color: var(--color-text); }
+.edition.on { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 8%, transparent); }
+.edition input { accent-color: var(--color-accent); margin-top: 3px; }
+.starter-added { margin-bottom: var(--space-4); border-left-color: var(--color-success); }
+.starter-added .row { flex-wrap: wrap; gap: var(--space-2) var(--space-3); }
+.linklike { background: none; border: 0; padding: 0; color: var(--color-accent); text-decoration: underline; cursor: pointer; font: inherit; }
+@media (max-width: 760px) { .starters { grid-template-columns: 1fr; } }

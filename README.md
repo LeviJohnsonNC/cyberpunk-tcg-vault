@@ -9,6 +9,7 @@ Repo: `cyberpunk-tcg-vault`. A Night City-styled collection tracker, price book 
 - **Music:** an optional soundtrack player (never autoplays). Tracks live in `public/music/`, listed in `src/lib/playlist.ts`.
 - **Demo mode:** try everything with a sample collection, no sign-in, nothing saved.
 - **Feedback:** an in-app form (stored in Supabase) plus a How it works page.
+- **Starter decks:** "I own The Heist / Embracing Power" logs the whole box (3 Legends + 40 cards, Retail or Beta printing) in one step, from the official WeirdCo decklists.
 - **Add cards:** type to search, or upload photos. A vision model proposes matches and you confirm before anything is saved.
 - **Accounts:** email magic-link login through Supabase, with per-user collections and decks protected by row-level security. Without Supabase configured, the app runs in local mode (browser storage).
 

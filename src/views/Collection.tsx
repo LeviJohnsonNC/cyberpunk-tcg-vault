@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { StarterAddedBanner, StarterIntake, type StarterAdded } from '../components/StarterIntake';
 import { CARDS, COLORS, TYPES, defaultPrinting, priceFor, rarityRank, searchCards, type Card } from '../lib/data';
 import { getCurrency, money } from '../lib/currency';
 import { useStore, type Entry } from '../lib/store';
@@ -17,6 +18,7 @@ export function valueOf(entries: Entry[]) {
 
 export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; goAdd: () => void }) {
   const { entries, owned, setQty, startDemo } = useStore();
+  const [justAdded, setJustAdded] = useState<StarterAdded | null>(null);
   const [q, setQ] = useState('');
   const [scope, setScope] = useState<'mine' | 'all'>(entries.length ? 'mine' : 'all');
   const [colors, setColors] = useState<string[]>([]);
@@ -108,14 +110,17 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
         ]}
       />
 
+      {justAdded && <StarterAddedBanner added={justAdded} onDismiss={() => setJustAdded(null)} goPrices={() => (window.location.hash = '/prices')} />}
       {entries.length === 0 && (
         <section className="empty-hero" aria-labelledby="empty-hero-title">
           <img src="/img/empty-vault.webp" alt="" width={960} height={720} />
           <div className="empty-hero-text">
             <h2 id="empty-hero-title">Your case is empty</h2>
-            <p>Add cards by search or photo to see what your collection is worth and which decks you can build. Or look around with a sample collection first.</p>
+            <p>Got a starter deck? Log the whole box in one click.</p>
+            <StarterIntake onAdded={(a) => { setJustAdded(a); setScope('mine'); }} />
+            <p className="empty-hero-or">Or add cards by search or photo, or look around with a sample collection first.</p>
             <div className="row">
-              <button className="btn" onClick={goAdd}>Add cards</button>
+              <button className="btn quiet" onClick={goAdd}>Add cards</button>
               <button className="btn ghost" onClick={startDemo}>Try the demo</button>
             </div>
           </div>
