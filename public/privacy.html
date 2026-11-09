@@ -15,7 +15,7 @@ a{color:#02d7f2} .muted{color:#8d8a7c;font-size:14px}
 <ul>
 <li><b>Account:</b> if you sign in (email link or Google), we receive your email address and a user ID from our authentication provider, Supabase. With Google sign-in we request only your basic profile (name, email). We never see your Google password.</li>
 <li><b>Your collection and decks:</b> the cards, quantities, notes and decks you save are stored in our Supabase database and linked to your user ID.</li>
-<li><b>Photo scans:</b> photos you upload for card recognition are sent to an AI vision model through OpenRouter to identify cards, and then discarded. We do not store your photos. We keep a daily count of scans per user to enforce usage limits.</li>
+<li><b>Card scans:</b> uploaded photos and cropped still frames taken with the live camera are sent to an AI vision model through OpenRouter to identify cards. The live preview stays on your device. We do not store your photos or frames. We keep a daily count of scans per user to enforce usage limits.</li>
 <li><b>Local mode:</b> if you don't sign in, your collection stays in your browser's local storage and never reaches our servers.</li>
 </ul>
 <h2>What we don't do</h2>

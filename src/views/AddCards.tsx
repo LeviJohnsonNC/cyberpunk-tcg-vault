@@ -4,6 +4,7 @@ import { StarterAddedBanner, StarterIntake, type StarterAdded } from '../compone
 import { Masthead, ViewTabs } from '../components/ui';
 import { useStore } from '../lib/store';
 import { CardSearchIntake } from './CardSearchIntake';
+import { LiveScanIntake } from './LiveScanIntake';
 import { PhotoScanIntake } from './PhotoScanIntake';
 import { VaultFileIntake } from './VaultFileIntake';
 import './intake.css';
@@ -44,6 +45,7 @@ export function AddCards({ onOpen }: { onOpen: (slug: string, printingId?: strin
         <CardSearchIntake onOpen={onOpen} />
       </div>
       <div id="intake-panel-scan" role="tabpanel" aria-labelledby="intake-tab-scan" hidden={mode !== 'scan'} tabIndex={0}>
+        {mode === 'scan' && <LiveScanIntake />}
         <PhotoScanIntake />
       </div>
       <div id="intake-panel-starter" role="tabpanel" aria-labelledby="intake-tab-starter" hidden={mode !== 'starter'} tabIndex={0}>
