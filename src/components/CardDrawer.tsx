@@ -45,6 +45,7 @@ export function CardDrawer({ slug, onClose }: { slug: string; onClose: () => voi
   if (!card) return null;
   const base = defaultPrinting(card);
   const qtyOf = (pid: string) => entries.find((e) => e.printingId === pid)?.qty ?? 0;
+  const notes = new Map(entries.filter((e) => e.slug === slug && e.note).map((e) => [e.printingId, e.note]));
   const buy = acquireQuote(slug);
   const owned = card.printings.reduce((a, p) => a + qtyOf(p.id), 0);
   // Value of the copies you own, printing by printing (unknowns counted, never guessed).
@@ -53,7 +54,6 @@ export function CardDrawer({ slug, onClose }: { slug: string; onClose: () => voi
     .concat(entries.filter((e) => e.slug === slug && !card.printings.some((p) => p.id === e.printingId)).map((e) => ({ q: e.qty, v: null })))
     .filter((x) => x.q > 0)
     .reduce((a, x) => ({ knownCad: a.knownCad + (x.v ? x.v.cad * x.q : 0), unpriced: a.unpriced + (x.v ? 0 : x.q), copies: a.copies + x.q }), { knownCad: 0, unpriced: 0, copies: 0 });
-  const notes = entries.filter((e) => e.slug === slug && e.note).map((e) => e.note);
   // Holdings without a verified printing (scanned "Printing unspecified", or an id the catalog no longer has).
   const loose = entries.filter((e) => e.slug === slug && !card.printings.some((p) => p.id === e.printingId));
   const ownedAll = owned + loose.reduce((a, e) => a + e.qty, 0);
@@ -106,7 +106,6 @@ export function CardDrawer({ slug, onClose }: { slug: string; onClose: () => voi
                 )}
               </div>
             </div>
-            {notes.length > 0 && <div className="callout y tiny">{notes.join(' ')}</div>}
           </div>
         </div>
 
@@ -126,6 +125,7 @@ export function CardDrawer({ slug, onClose }: { slug: string; onClose: () => voi
                   <tr className="unspec-row" style={{ cursor: 'default' }}>
                     <td colSpan={3} className="unspec-label">
                       <b>Printing unspecified</b> <span className="muted tiny">counts for decks, unpriced</span>
+                      {e.note && <div className="drawer-note"><b>Note</b> · {e.note}</div>}
                     </td>
                     <td>
                       <span className="qty">
@@ -147,7 +147,10 @@ export function CardDrawer({ slug, onClose }: { slug: string; onClose: () => voi
                 const q = qtyOf(p.id);
                 return (
                   <tr key={p.id} style={{ cursor: 'default' }}>
-                    <td className="mono tiny">{printingLabel(p.id, false)}</td>
+                    <td className="mono tiny">
+                      {p.set} #{p.num}
+                      {notes.get(p.id) && <div className="drawer-note"><b>Note</b> · {notes.get(p.id)}</div>}
+                    </td>
                     <td className="hide-sm"><RarityBadge r={p.rarity} /></td>
                     <td className="num">
                       {v ? (

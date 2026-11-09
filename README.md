@@ -1,4 +1,4 @@
-# Fixer: a Cyberpunk TCG toolkit
+# Cyberpunk TCG Vault
 
 Repo: `cyberpunk-tcg-vault`. A Night City-styled collection tracker, price book (USD or CAD) and deck builder for the **Cyberpunk Trading Card Game** (WeirdCo × CD PROJEKT RED, set *Welcome to Night City*).
 

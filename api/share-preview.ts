@@ -22,7 +22,7 @@ const total = (r: unknown) =>
   r && typeof r === 'object' ? Object.values(r as Record<string, unknown>).reduce<number>((a, v) => a + (typeof v === 'number' && v > 0 ? v : 0), 0) : 0;
 
 export function previewText(d: PreviewDeck | null): { title: string; description: string } {
-  if (!d) return { title: 'Shared deck not found · Fixer', description: 'This deck link was replaced or revoked. Fixer is a free Cyberpunk TCG collection, price and deck toolkit.' };
+  if (!d) return { title: 'Shared deck not found · Cyberpunk TCG Vault', description: 'This deck link was replaced or revoked. Cyberpunk TCG Vault is a free collection, price and deck toolkit.' };
   const legends = (Array.isArray(d.legends) ? d.legends : []).map((s) => CARD.get(s)?.name).filter(Boolean);
   const main = total(d.cards);
   const side = total(d.sideboard);
@@ -31,7 +31,7 @@ export function previewText(d: PreviewDeck | null): { title: string; description
     `${main} card main deck${side ? `, ${side} card sideboard` : ''}.`,
     'Compare it to your collection and see what it costs to finish.',
   ];
-  return { title: `${String(d.name || 'Untitled deck').slice(0, 80)} · Cyberpunk TCG deck on Fixer`, description: parts.join(' ') };
+  return { title: `${String(d.name || 'Untitled deck').slice(0, 80)} · Cyberpunk TCG deck · Cyberpunk TCG Vault`, description: parts.join(' ') };
 }
 
 export function renderPreview(token: string, d: PreviewDeck | null, origin = SITE): string {
@@ -45,7 +45,7 @@ export function renderPreview(token: string, d: PreviewDeck | null, origin = SIT
 <meta name="description" content="${esc(description)}" />
 <meta name="robots" content="noindex" />
 <meta property="og:type" content="website" />
-<meta property="og:site_name" content="Fixer" />
+<meta property="og:site_name" content="Cyberpunk TCG Vault" />
 <meta property="og:title" content="${esc(title)}" />
 <meta property="og:description" content="${esc(description)}" />
 <meta property="og:url" content="${origin}/d/${token}" />
@@ -57,7 +57,7 @@ export function renderPreview(token: string, d: PreviewDeck | null, origin = SIT
 <meta name="theme-color" content="#17101B" />
 <meta http-equiv="refresh" content="0; url=${target}" />
 </head><body>
-<p><a href="${target}">Open ${esc(d?.name ?? 'the deck')} in Fixer</a></p>
+<p><a href="${target}">Open ${esc(d?.name ?? 'the deck')} in Cyberpunk TCG Vault</a></p>
 <script>location.replace(${JSON.stringify(target)});</script>
 </body></html>`;
 }

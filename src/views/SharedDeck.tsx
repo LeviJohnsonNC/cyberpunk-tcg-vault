@@ -121,7 +121,7 @@ export function SharedDeck({ token, onOpen, goAdd }: { token?: string; onOpen: (
 
       {deck.dropped.length > 0 && (
         <p className="share-note" role="note">
-          {plural(deck.dropped.length, 'card')} in this link {deck.dropped.length === 1 ? "isn't" : "aren't"} in Fixer's card list yet, so {deck.dropped.length === 1 ? "it's" : "they're"} not shown or priced.
+          {plural(deck.dropped.length, 'card')} in this link {deck.dropped.length === 1 ? "isn't" : "aren't"} in the Vault's card list yet, so {deck.dropped.length === 1 ? "it's" : "they're"} not shown or priced.
         </p>
       )}
 

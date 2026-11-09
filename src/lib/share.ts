@@ -164,7 +164,7 @@ export type LoadResult = { deck: SharedDeck } | { missing: true } | { error: str
 /** Anyone can call this, signed in or not. */
 export async function loadShared(token: string): Promise<LoadResult> {
   if (!TOKEN_RE.test(token)) return { missing: true };
-  if (!supabase) return { error: 'This copy of Fixer has no database connected.' };
+  if (!supabase) return { error: 'This copy of Cyberpunk TCG Vault has no database connected.' };
   const { data, error } = await supabase.rpc('get_shared_deck', { p_token: token });
   if (error) return { error: friendly(error.message) };
   const row = Array.isArray(data) ? data[0] : data;
