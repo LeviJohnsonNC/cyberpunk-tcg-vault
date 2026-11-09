@@ -7,7 +7,7 @@ import { PrintingArt } from './PrintingArt';
 
 /** Move some or all copies of an unverified holding to a real printing, in one save. */
 function MoveCopies({ card, entry }: { card: Card; entry: Entry }) {
-  const { movePrinting } = useStore();
+  const { movePrinting, quantityPending, collectionReady } = useStore();
   const [to, setTo] = useState(() => editionPrinting(card.slug, 'Retail')?.id ?? card.printings[0].id);
   const [n, setN] = useState(entry.qty);
   const [busy, setBusy] = useState(false);
@@ -30,7 +30,7 @@ function MoveCopies({ card, entry }: { card: Card; entry: Entry }) {
       <select id={`mv-to-${entry.printingId}`} className="select" value={to} onChange={(e) => setTo(e.target.value)}>
         {card.printings.map((p) => <option key={p.id} value={p.id}>{printingLabel(p.id)}</option>)}
       </select>
-      <button className="btn sm" onClick={go} disabled={busy}>{busy ? 'Moving…' : 'Move'}</button>
+      <button className="btn sm" onClick={go} disabled={busy || !collectionReady || quantityPending(entry.printingId) || quantityPending(to)}>{busy ? 'Moving…' : 'Move'}</button>
     </div>
   );
 }
@@ -48,17 +48,19 @@ function PrintingValue({ value }: { value: Valuation | null }) {
   );
 }
 
-function CardDetails({ card, onClose }: { card: Card; onClose: () => void }) {
+function CardDetails({ card, onClose, initialPrinting, identify }: { card: Card; onClose: () => void; initialPrinting?: string; identify?: boolean }) {
   const { slug } = card;
-  const { entries, setQty } = useStore();
-  const [printingId, setPrintingId] = useState(() => defaultPrinting(card).id);
+  const { entries, setQty, collectionReady, quantityPending } = useStore();
+  const [printingId, setPrintingId] = useState(() => initialPrinting ?? defaultPrinting(card).id);
   const preview = useRef<HTMLSelectElement>(null);
   const drawer = useRef<HTMLDialogElement>(null);
+  const printingsHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     const dialog = drawer.current;
     dialog?.showModal();
+    if (identify) printingsHeading.current?.focus();
     return () => dialog?.close();
-  }, []);
+  }, [identify]);
   const close = () => {
     drawer.current?.close();
     onClose();
@@ -148,7 +150,7 @@ function CardDetails({ card, onClose }: { card: Card; onClose: () => void }) {
         </div>
 
         <hr className="cut" />
-        <div className="panel-title">Printings <span className="aside">You own {ownedAll}</span></div>
+        <h3 className="panel-title" ref={printingsHeading} tabIndex={-1}>{identify && loose.length ? 'Identify printing' : 'Printings'} <span className="aside">You own {ownedAll}</span></h3>
         <div className="table-wrap" style={{ maxHeight: 'none' }}>
           <table className="data">
             <thead>
@@ -167,9 +169,9 @@ function CardDetails({ card, onClose }: { card: Card; onClose: () => void }) {
                     </td>
                     <td>
                       <span className="qty">
-                        <button className="iconbtn minus" onClick={() => setQty(slug, e.printingId, e.qty - 1)} aria-label="Remove an unspecified copy">−</button>
+                        <button className="iconbtn minus" disabled={!collectionReady || quantityPending(e.printingId)} onClick={() => setQty(slug, e.printingId, e.qty - 1)} aria-label="Remove an unspecified copy">−</button>
                         <b>{e.qty}</b>
-                        <button className="iconbtn" onClick={() => setQty(slug, e.printingId, e.qty + 1)} aria-label="Add an unspecified copy">+</button>
+                        <button className="iconbtn" disabled={!collectionReady || quantityPending(e.printingId) || e.qty >= 999} onClick={() => setQty(slug, e.printingId, e.qty + 1)} aria-label="Add an unspecified copy">+</button>
                       </span>
                     </td>
                   </tr>
@@ -199,9 +201,9 @@ function CardDetails({ card, onClose }: { card: Card; onClose: () => void }) {
                     <td className="num"><PrintingValue value={v} /></td>
                     <td>
                       <span className="qty">
-                        <button className="iconbtn minus" onClick={() => setQty(slug, p.id, q - 1)} disabled={q === 0} aria-label={`Remove a ${printingLabel(p.id, false)} copy`}>−</button>
+                        <button className="iconbtn minus" onClick={() => setQty(slug, p.id, q - 1)} disabled={!collectionReady || quantityPending(p.id) || q === 0} aria-label={`Remove a ${printingLabel(p.id, false)} copy`}>−</button>
                         <b>{q}</b>
-                        <button className="iconbtn" onClick={() => setQty(slug, p.id, q + 1)} aria-label={`Add a ${printingLabel(p.id, false)} copy`}>+</button>
+                        <button className="iconbtn" disabled={!collectionReady || quantityPending(p.id) || q >= 999} onClick={() => setQty(slug, p.id, q + 1)} aria-label={`Add a ${printingLabel(p.id, false)} copy`}>+</button>
                       </span>
                     </td>
                   </tr>
@@ -214,7 +216,7 @@ function CardDetails({ card, onClose }: { card: Card; onClose: () => void }) {
   );
 }
 
-export function CardDrawer({ slug, onClose }: { slug: string; onClose: () => void }) {
+export function CardDrawer({ slug, printingId, identify, onClose }: { slug: string; printingId?: string; identify?: boolean; onClose: () => void }) {
   const card = BY_SLUG.get(slug);
-  return card && <CardDetails key={slug} card={card} onClose={onClose} />;
+  return card && <CardDetails key={slug} card={card} initialPrinting={printingId} identify={identify} onClose={onClose} />;
 }

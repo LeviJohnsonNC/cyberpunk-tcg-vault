@@ -14,8 +14,9 @@ export function DeleteCollection({ size = 'sm' }: { size?: 'sm' | 'md' }) {
   const confirm = async () => {
     setBusy(true);
     if (backup) downloadCollection(entries, 'backup');
-    await clearCollection();
+    const deleted = await clearCollection();
     setBusy(false);
+    if (!deleted) return;
     setOpen(false);
     toast(`Deleted ${copies} cards${backup ? '. Backup downloaded.' : ''}`);
   };

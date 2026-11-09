@@ -35,7 +35,8 @@ const readHash = (): { tab: TabId; deck?: string } => {
 export default function App() {
   const store = useStore();
   const [route, setRoute] = useState(readHash);
-  const [openCard, setOpenCard] = useState<string | null>(null);
+  const [openCard, setOpenCard] = useState<{ slug: string; printingId?: string; identify?: boolean } | null>(null);
+  const showCard = (slug: string, printingId?: string, identify?: boolean) => setOpenCard({ slug, printingId, identify });
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   // Prices are formatted from a module-level setting; this state re-renders the app when it changes.
   const [currency, setCur] = useState<Currency>(getCurrency);
@@ -114,17 +115,17 @@ export default function App() {
       )}
 
       <main>
-        {route.tab === 'collection' && <Collection onOpen={setOpenCard} goAdd={() => go('add')} />}
-        {route.tab === 'prices' && <PriceBook onOpen={setOpenCard} goAdd={() => go('add')} />}
-        {route.tab === 'builder' && <DeckBuilder onOpen={setOpenCard} initialDeck={route.deck} />}
-        {route.tab === 'meta' && <MetaIntel onOpen={setOpenCard} openInBuilder={(id) => go('builder', id)} goAdd={() => go('add')} />}
-        {route.tab === 'add' && <AddCards onOpen={setOpenCard} />}
+        {route.tab === 'collection' && <Collection onOpen={showCard} goAdd={() => go('add')} />}
+        {route.tab === 'prices' && <PriceBook onOpen={showCard} goAdd={() => go('add')} />}
+        {route.tab === 'builder' && <DeckBuilder onOpen={showCard} initialDeck={route.deck} />}
+        {route.tab === 'meta' && <MetaIntel onOpen={showCard} openInBuilder={(id) => go('builder', id)} goAdd={() => go('add')} />}
+        {route.tab === 'add' && <AddCards onOpen={showCard} />}
         {route.tab === 'about' && <HowItWorks openFeedback={() => setFeedbackOpen(true)} />}
-        {route.tab === 'upgrade' && <UpgradePlanner onOpen={setOpenCard} />}
-        {route.tab === 'shared' && <SharedDeck token={route.deck} onOpen={setOpenCard} goAdd={() => go('add')} />}
+        {route.tab === 'upgrade' && <UpgradePlanner onOpen={showCard} />}
+        {route.tab === 'shared' && <SharedDeck token={route.deck} onOpen={showCard} goAdd={() => go('add')} />}
       </main>
 
-      {openCard && <CardDrawer slug={openCard} onClose={() => setOpenCard(null)} />}
+      {openCard && <CardDrawer {...openCard} onClose={() => setOpenCard(null)} />}
       <MusicPlayer />
       <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} page={route.tab} />
 

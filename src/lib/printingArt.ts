@@ -18,3 +18,38 @@ export async function fetchPrintingArt(slug: string, signal: AbortSignal): Promi
   }
   return art;
 }
+
+const cache = new Map<string, { images: Map<string, string>; checkedAt: number }>();
+const pending = new Map<string, Promise<Map<string, string>>>();
+const queued: Array<() => void> = [];
+const maxRequests = 4;
+let active = 0;
+
+/** Share lookups across pockets and the drawer, including while a lookup is still in flight. */
+export async function getPrintingArt(slug: string, printingId: string, prioritize = false): Promise<string | null> {
+  const cached = cache.get(slug);
+  const url = cached?.images.get(printingId);
+  if (cached && Date.now() - cached.checkedAt < 240_000 && (!url || !artNeedsRefresh(url))) return url ?? null;
+
+  let lookup = pending.get(slug);
+  if (!lookup) {
+    lookup = new Promise((resolve, reject) => {
+      const start = () => {
+        active += 1;
+        void fetchPrintingArt(slug, AbortSignal.timeout(8000)).then((images) => {
+          cache.set(slug, { images, checkedAt: Date.now() });
+          resolve(images);
+        }, reject).finally(() => {
+          pending.delete(slug);
+          active -= 1;
+          queued.shift()?.();
+        });
+      };
+      if (active < maxRequests) start();
+      else if (prioritize) queued.unshift(start);
+      else queued.push(start);
+    });
+    pending.set(slug, lookup);
+  }
+  return (await lookup).get(printingId) ?? null;
+}
