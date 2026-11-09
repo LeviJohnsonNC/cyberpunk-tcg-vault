@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { BY_SLUG, CARDS, defaultPrinting, printingLabel, searchCards, valueHolding } from '../lib/data';
+import { BY_SLUG, CARDS, defaultPrinting, editionPrinting, isUnspecified, printingLabel, searchCards, unspecifiedId, valueHolding } from '../lib/data';
 import { money } from '../lib/currency';
 import { useStore, type Entry } from '../lib/store';
 import { StarterAddedBanner, StarterIntake, type StarterAdded } from '../components/StarterIntake';
@@ -78,7 +78,8 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
           if (!c) continue;
           const ex = found.find((f) => f.slug === m.slug);
           if (ex) ex.qty += m.qty;
-          else found.push({ key: `${m.slug}-${found.length}`, slug: m.slug, qty: m.qty, printingId: defaultPrinting(c).id, confidence: m.confidence ?? 0.8, read: m.read ?? '', on: true });
+          // The scanner reads names, not printings, so every match starts as "Printing unspecified".
+          else found.push({ key: `${m.slug}-${Date.now()}-${found.length}`, slug: c.slug, qty: m.qty, printingId: unspecifiedId(c.slug), confidence: m.confidence ?? 0.8, read: m.read ?? '', on: true });
         }
         if (data.unmatched?.length) toast(`Couldn't match: ${data.unmatched.slice(0, 5).join(', ')}`, 'err');
         if (typeof data.remaining === 'number') toast(`${data.remaining} scans left today`);
@@ -98,17 +99,29 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
     const ok = await addMany(items, 'add');
     setCommitting(false);
     if (!ok) return; // keep the reviewed rows so nothing is lost; the store already showed why
-    toast(`Added ${items.reduce((a, x) => a + x.qty, 0)} cards from photo`);
+    { const n = items.reduce((a, x) => a + x.qty, 0); toast(`Added ${n} ${n === 1 ? 'card' : 'cards'} from photo`); }
     setScan([]);
   };
   const editScan = (key: string, patch: Partial<ScanRow>) => setScan((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  /** Split one copy off a grouped match so it can get its own printing (e.g. 2 Retail + 1 Beta). */
+  const splitScan = (key: string) =>
+    setScan((rows) => {
+      const i = rows.findIndex((r) => r.key === key);
+      if (i < 0 || rows[i].qty < 2) return rows;
+      const r = rows[i];
+      const copy: ScanRow = { ...r, key: `${r.key}-s${Date.now()}`, qty: 1, printingId: unspecifiedId(r.slug) };
+      return [...rows.slice(0, i), { ...r, qty: r.qty - 1 }, copy, ...rows.slice(i + 1)];
+    });
+  const setAllEdition = (edition: 'Retail' | 'Beta' | null) =>
+    setScan((rows) => rows.map((r) => ({ ...r, printingId: edition ? editionPrinting(r.slug, edition)?.id ?? r.printingId : unspecifiedId(r.slug) })));
+  const unspecifiedCount = scan.filter((s) => s.on && isUnspecified(s.printingId)).reduce((a, s) => a + s.qty, 0);
 
   const importJson = async (file: File, how: 'add' | 'replace') => {
     try {
       const data = JSON.parse(await file.text());
       const items: Entry[] = (data.entries ?? data).filter((e: Entry) => BY_SLUG.has(e.slug));
       if (!(await addMany(items, how))) return;
-      toast(`Imported ${items.reduce((a, x) => a + x.qty, 0)} cards`);
+      { const n = items.reduce((a, x) => a + x.qty, 0); toast(`Imported ${n} ${n === 1 ? 'card' : 'cards'}`); }
     } catch {
       toast('That file is not a valid collection export', 'err');
     }
@@ -205,10 +218,19 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
           {scan.length > 0 && (
             <>
               <div className="row" style={{ margin: '12px 0 8px' }}>
-                <span className="mono tiny">REVIEW {scan.length} MATCHES · {scanTotal} CARDS</span>
+                <span className="mono tiny">
+                  REVIEW {scan.length} MATCHES · {scanTotal} CARDS{unspecifiedCount > 0 && ` · ${unspecifiedCount} PRINTING UNSPECIFIED`}
+                </span>
                 <span className="spacer" />
                 <button className="btn quiet sm" onClick={() => setScan([])}>Discard</button>
                 <button className="btn sm" onClick={commitScan} disabled={committing || scanTotal === 0}>{committing ? "Saving…" : `Add ${scanTotal} to vault`}</button>
+              </div>
+              <div className="row scan-bulk" role="group" aria-label="Set printing for every match">
+                <span className="tiny muted">Printing for all:</span>
+                <button className="chip" onClick={() => setAllEdition('Retail')}>Retail</button>
+                <button className="chip" onClick={() => setAllEdition('Beta')}>Beta</button>
+                <button className="chip" onClick={() => setAllEdition(null)}>Unspecified</button>
+                <span className="tiny muted">Unspecified copies count for deck building but stay unpriced until you set them.</span>
               </div>
               <div className="result-list">
                 {scan.map((s) => {
@@ -218,7 +240,7 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
                       <input type="checkbox" checked={s.on} onChange={(e) => editScan(s.key, { on: e.target.checked })} style={{ accentColor: 'var(--color-accent)' }} aria-label="Include this match" />
                       <CardImg className="thumb" slug={s.slug} alt="" />
                       <div>
-                        <select className="select" style={{ width: '100%', padding: '4px 6px' }} value={s.slug} onChange={(e) => editScan(s.key, { slug: e.target.value, printingId: defaultPrinting(BY_SLUG.get(e.target.value)!).id })}>
+                        <select className="select" style={{ width: '100%', padding: '4px 6px' }} aria-label="Card" value={s.slug} onChange={(e) => editScan(s.key, { slug: e.target.value, printingId: unspecifiedId(e.target.value) })}>
                           {sortedCards.map((x) => <option key={x.slug} value={x.slug}>{x.display}</option>)}
                         </select>
                         <div className="tiny muted">
@@ -226,10 +248,18 @@ export function AddCards({ onOpen }: { onOpen: (slug: string) => void }) {
                           <span className={s.confidence < 0.6 ? 'danger-text' : undefined}>{Math.round(s.confidence * 100)}% sure</span>
                         </div>
                       </div>
-                      <select className="select" style={{ padding: '4px 6px', fontSize: 12 }} value={s.printingId} onChange={(e) => editScan(s.key, { printingId: e.target.value })}>
+                      <select
+                        className={`select ${isUnspecified(s.printingId) ? 'unspecified' : ''}`}
+                        style={{ padding: '4px 6px', fontSize: 12 }}
+                        aria-label="Printing"
+                        value={s.printingId}
+                        onChange={(e) => editScan(s.key, { printingId: e.target.value })}
+                      >
+                        <option value={unspecifiedId(s.slug)}>Printing unspecified</option>
                         {c.printings.map((p) => <option key={p.id} value={p.id}>{printingLabel(p.id)}</option>)}
                       </select>
-                      <input className="input" type="number" min={0} max={99} style={{ padding: '6px', width: '100%' }} value={s.qty} onChange={(e) => editScan(s.key, { qty: Math.max(0, +e.target.value || 0) })} />
+                      <input className="input" type="number" min={0} max={99} aria-label="Quantity" style={{ padding: '6px', width: '100%' }} value={s.qty} onChange={(e) => editScan(s.key, { qty: Math.max(0, +e.target.value || 0) })} />
+                      <button className="btn quiet sm" onClick={() => splitScan(s.key)} disabled={s.qty < 2} title="Split off one copy to give it a different printing">Split</button>
                     </div>
                   );
                 })}

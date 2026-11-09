@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { StarterAddedBanner, StarterIntake, type StarterAdded } from '../components/StarterIntake';
-import { CARDS, COLORS, TYPES, acquireQuote, defaultPrinting, rarityRank, searchCards, valueHolding, type Card } from '../lib/data';
+import { BY_SLUG, CARDS, COLORS, TYPES, acquireQuote, defaultPrinting, isUnspecified, printingLabel, rarityRank, searchCards, valueHolding, type Card } from '../lib/data';
 import { getCurrency, money, moneyOr } from '../lib/currency';
 import { useStore, type Entry } from '../lib/store';
 import { CardImg, Pip, RarityBadge } from '../components/bits';
@@ -92,12 +92,16 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
   );
   const rarities = [...new Set(CARDS.map((c) => c.rarity))].sort((a, b) => rarityRank(a) - rarityRank(b));
 
+  // Quick +/- only when the target printing is unambiguous: the one holding you have, or the
+  // card's default printing when you have none. With several printings you choose in the drawer.
+  const quickTarget = (c: Card, es: Entry[]) => (es.length === 1 ? es[0].printingId : es.length === 0 ? defaultPrinting(c).id : null);
   const bump = (c: Card, es: Entry[], d: number) => {
-    const target = es.slice().sort((a, b) => b.qty - a.qty)[0];
-    const pid = target?.printingId ?? defaultPrinting(c).id;
-    const cur = target?.qty ?? 0;
-    setQty(c.slug, pid, cur + d);
+    const pid = quickTarget(c, es);
+    if (!pid) return onOpen(c.slug);
+    setQty(c.slug, pid, (es.find((e) => e.printingId === pid)?.qty ?? 0) + d);
   };
+  const unspec = entries.filter((e) => isUnspecified(e.printingId) || !BY_SLUG.get(e.slug)?.printings.some((p) => p.id === e.printingId));
+  const unspecCopies = unspec.reduce((a, e) => a + e.qty, 0);
 
   return (
     <section>
@@ -122,6 +126,23 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
         ]}
       />
 
+      {unspecCopies > 0 && (
+        <div className="callout y unspec-banner" role="status">
+          <div className="row">
+            <span>
+              <b>{unspecCopies} {unspecCopies === 1 ? 'copy has' : 'copies have'} no printing set.</b> They count for deck building but stay unpriced. Set Retail or Beta to price them.
+            </span>
+          </div>
+          <div className="unspec-list">
+            {unspec.slice(0, 12).map((e) => (
+              <button key={e.printingId} className="chip" onClick={() => onOpen(e.slug)}>
+                {BY_SLUG.get(e.slug)?.name} ×{e.qty}
+              </button>
+            ))}
+            {unspec.length > 12 && <span className="tiny muted">and {unspec.length - 12} more</span>}
+          </div>
+        </div>
+      )}
       {justAdded && <StarterAddedBanner added={justAdded} onDismiss={() => setJustAdded(null)} goPrices={() => (window.location.hash = '/prices')} />}
       {entries.length === 0 && (
         <section className="empty-hero" aria-labelledby="empty-hero-title">
@@ -196,7 +217,7 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
                   <td>
                     <button className="cname" onClick={(e) => { e.stopPropagation(); onOpen(c.slug); }}>{c.name}</button>
                     {c.sub && <div className="csub">{c.sub}</div>}
-                    {es.some((e) => e.note) && <span className="badge warn" title={es.map((e) => e.note).join(' ')}>Check finish</span>}
+                    {es.some((e) => e.note) && <span className="badge" title={es.filter((e) => e.note).map((e) => e.note).join(' · ')}>Note</span>}
                   </td>
                   <td className="hide-sm"><Pip color={c.color} /></td>
                   <td className="hide-sm">
@@ -208,11 +229,25 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
                   <td className="hide-sm"><RarityBadge r={c.rarity} /></td>
                   <td className="hide-sm csub">{c.traits.join(' · ')}</td>
                   <td onClick={(e) => e.stopPropagation()}>
-                    <span className="qty">
-                      <button className="iconbtn minus" disabled={qty === 0} onClick={() => bump(c, es, -1)}>−</button>
-                      <b>{qty}</b>
-                      <button className="iconbtn" onClick={() => bump(c, es, 1)}>+</button>
-                    </span>
+                    {quickTarget(c, es) ? (
+                      <>
+                        <span className="qty">
+                          <button className="iconbtn minus" disabled={qty === 0} onClick={() => bump(c, es, -1)} aria-label={`Remove a ${printingLabel(quickTarget(c, es)!, false)} copy of ${c.name}`}>−</button>
+                          <b>{qty}</b>
+                          <button className="iconbtn" onClick={() => bump(c, es, 1)} aria-label={`Add a ${printingLabel(quickTarget(c, es)!, false)} copy of ${c.name}`}>+</button>
+                        </span>
+                        <span className={`qty-target ${isUnspecified(quickTarget(c, es)!) ? 'unspec' : ''}`} title={printingLabel(quickTarget(c, es)!)}>
+                          {printingLabel(quickTarget(c, es)!, false)}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="qty"><b>{qty}</b></span>
+                        <button className="btn quiet qty-pick" onClick={() => onOpen(c.slug)} aria-label={`Choose a printing of ${c.name} to change`}>
+                          {es.length} printings
+                        </button>
+                      </>
+                    )}
                   </td>
                   <td className={`num hide-sm ${unit == null ? 'muted' : ''}`}>{moneyOr(unit)}</td>
                   <td className={`num ${value.knownCad ? 'accent' : 'muted'}`}>
