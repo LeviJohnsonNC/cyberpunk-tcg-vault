@@ -1,28 +1,36 @@
 import { useEffect, useRef, useState } from 'react';
-import { getPrintingArt } from '../lib/printingArt';
+import { getPrintingArt, prioritizePrintingArt } from '../lib/printingArt';
 import { CARD_BACK } from './bits';
 
-const near = new WeakMap<Element, () => void>();
-let observer: IntersectionObserver | undefined;
+const artRequests = new WeakMap<Element, (visible: boolean) => void>();
+let lookahead: IntersectionObserver | undefined;
+let viewport: IntersectionObserver | undefined;
 
-function nearViewport(element: Element, enter: () => void) {
-  if (typeof IntersectionObserver === 'undefined') {
-    enter();
-    return;
-  }
-  observer ??= new IntersectionObserver((items, observer) => {
+function artObserver(visible: boolean) {
+  return new IntersectionObserver((items, observer) => {
     for (const item of items) {
       if (!item.isIntersecting) continue;
       observer.unobserve(item.target);
-      near.get(item.target)?.();
-      near.delete(item.target);
+      if (visible) lookahead?.unobserve(item.target);
+      artRequests.get(item.target)?.(visible);
     }
-  }, { rootMargin: '120px' });
-  near.set(element, enter);
-  observer.observe(element);
+  }, { rootMargin: visible ? '0px' : '640px 0px' });
+}
+
+function observeArt(element: Element, load: (visible: boolean) => void) {
+  if (typeof IntersectionObserver === 'undefined') {
+    load(true);
+    return;
+  }
+  viewport ??= artObserver(true);
+  lookahead ??= artObserver(false);
+  artRequests.set(element, load);
+  viewport.observe(element);
+  lookahead.observe(element);
   return () => {
-    observer?.unobserve(element);
-    near.delete(element);
+    viewport?.unobserve(element);
+    lookahead?.unobserve(element);
+    artRequests.delete(element);
   };
 }
 
@@ -32,13 +40,22 @@ export function PrintingArt({ slug, printingId, alt, pocket = false }: { slug: s
 
   useEffect(() => {
     let current = true;
-    const load = () => {
-      void getPrintingArt(slug, printingId, !pocket).then(
+    let started = false;
+    const node = image.current;
+    if (node) node.fetchPriority = 'auto';
+    const load = (visible: boolean) => {
+      if (visible && node) node.fetchPriority = 'high';
+      if (started) {
+        if (visible) prioritizePrintingArt(slug);
+        return;
+      }
+      started = true;
+      void getPrintingArt(slug, printingId, visible).then(
         (src) => { if (current) setArt({ printingId, src }); },
         () => { if (current) setArt({ printingId, src: null }); },
       );
     };
-    const stop = pocket && image.current ? nearViewport(image.current, load) : (load(), undefined);
+    const stop = pocket && node ? observeArt(node, load) : (load(true), undefined);
     return () => {
       current = false;
       stop?.();
@@ -53,6 +70,7 @@ export function PrintingArt({ slug, printingId, alt, pocket = false }: { slug: s
       className={pocket ? 'binder-card-image' : 'card-art'}
       src={src ?? CARD_BACK}
       alt={src ? alt : ''}
+      decoding="async"
       referrerPolicy="no-referrer"
       onError={src ? () => setArt({ printingId, src: null }) : undefined}
     />

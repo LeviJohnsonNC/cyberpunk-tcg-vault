@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { NETDECK_CARDS, artNeedsRefresh, fetchPrintingArt, getPrintingArt } from './printingArt';
+import { NETDECK_CARDS, artNeedsRefresh, fetchPrintingArt, getPrintingArt, prioritizePrintingArt } from './printingArt';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -49,5 +49,27 @@ describe('printing artwork', () => {
     expect(fetch).toHaveBeenCalledTimes(5);
     responses.slice(1).forEach((respond) => respond(reply()));
     await Promise.all(lookups);
+  });
+
+  it('starts a whole visible row ahead of queued lookahead without losing the request cap', async () => {
+    const responses: Array<(response: Response) => void> = [];
+    const fetch = vi.fn((_url: string) => new Promise<Response>((resolve) => responses.push(resolve)));
+    vi.stubGlobal('fetch', fetch);
+    const lookups = Array.from({ length: 7 }, (_, i) => getPrintingArt(`lookahead-${i}`, 'retail'));
+    expect(fetch).toHaveBeenCalledTimes(4);
+
+    prioritizePrintingArt('lookahead-6');
+    prioritizePrintingArt('lookahead-5');
+    prioritizePrintingArt('lookahead-4');
+    expect(fetch.mock.calls.map(([url]) => url.split('/').at(-1))).toEqual([
+      'lookahead-0', 'lookahead-1', 'lookahead-2', 'lookahead-3', 'lookahead-6', 'lookahead-5',
+    ]);
+
+    const reply = () => new Response(JSON.stringify({ printings: [{ id: 'retail', image_url: 'https://art.example/retail.webp' }] }));
+    responses[0](reply());
+    await lookups[0];
+    expect(fetch.mock.calls.at(-1)?.[0]).toBe(`${NETDECK_CARDS}/lookahead-4`);
+    responses.slice(1).forEach((respond) => respond(reply()));
+    await expect(Promise.all(lookups)).resolves.toEqual(Array(7).fill('https://art.example/retail.webp'));
   });
 });
