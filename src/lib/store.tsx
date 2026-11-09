@@ -117,6 +117,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const demo = demoEntries !== null;
   const entries = demoEntries ?? realEntries;
   const [decks, setDecks] = useState<Deck[]>(() => readLS(LS_DECKS, [] as Deck[]));
+  const [demoDecks, setDemoDecks] = useState<Deck[]>([]);
   const [localPending, setLocalPending] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [loadedFor, setLoadedFor] = useState<string | null>(null); // user id whose cloud data is loaded
@@ -344,6 +345,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const saveDeck = async (d: Deck): Promise<boolean> => {
     const deck = { ...d, updatedAt: new Date().toISOString() };
+    if (demo) {
+      setDemoDecks((prev) => [deck, ...prev.filter((x) => x.id !== d.id)]);
+      return true;
+    }
     if (mode === 'cloud' && supabase && session) {
       const { error } = await supabase.from('decks').upsert({
         id: deck.id,
@@ -365,6 +370,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteDeck = async (id: string): Promise<boolean> => {
+    if (demo) {
+      setDemoDecks((prev) => prev.filter((d) => d.id !== id));
+      return true;
+    }
     if (mode === 'cloud' && supabase && session) {
       const { error } = await supabase.from('decks').delete().eq('id', id);
       if (error) {
@@ -423,7 +432,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       toast('Could not load the demo collection. Try again.', 'err');
     }
   };
-  const exitDemo = () => setDemoEntries(null);
+  const exitDemo = () => {
+    setDemoEntries(null);
+    setDemoDecks([]);
+  };
 
   const pushLocalToCloud = async () => {
     const local = readLS(LS_COL, [] as Entry[]);
@@ -443,7 +455,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value: StoreValue = {
     ready, syncing, mode, collectionReady, collectionError, retryCollection, session, entries, owned, setQty, quantityPending, addMany, clearCollection,
-    decks, saveDeck, deleteDeck, signOut, localPending, pushLocalToCloud, toasts, toast,
+    decks: demo ? demoDecks : decks, saveDeck, deleteDeck, signOut, localPending, pushLocalToCloud, toasts, toast,
     demo, startDemo, exitDemo, movePrinting,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

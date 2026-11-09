@@ -1,6 +1,7 @@
 // Compact background-music player pinned bottom-left. Never autoplays: music starts only
 // when the visitor presses play. Survives tab changes (hash routing never reloads the page).
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { PLAYLIST, type Track } from '../lib/playlist';
 
 const KEY = 'cptv.music.track.v1';
@@ -27,7 +28,8 @@ const Svg = ({ d }: { d: React.ReactNode }) => (
   <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="currentColor">{d}</svg>
 );
 
-export function MusicPlayer({ tracks = PLAYLIST }: { tracks?: Track[] }) {
+export function MusicPlayer({ tracks = PLAYLIST, controlsContainer }: { tracks?: Track[]; controlsContainer?: HTMLElement | null }) {
+  const inline = controlsContainer !== undefined;
   const audio = useRef<HTMLAudioElement>(null);
   const [index, setIndex] = useState(() => readIndex(tracks.length));
   const [playing, setPlaying] = useState(false);
@@ -119,7 +121,7 @@ export function MusicPlayer({ tracks = PLAYLIST }: { tracks?: Track[] }) {
     />
   );
 
-  const view = !open ? (
+  const view = !open && !inline ? (
       <div className={`music-tab-wrap ${playing ? 'is-playing' : ''}`}>
         <button
           ref={tabRef}
@@ -135,7 +137,7 @@ export function MusicPlayer({ tracks = PLAYLIST }: { tracks?: Track[] }) {
         </button>
       </div>
   ) : (
-    <div ref={barRef} id="music-player" className={`music ${playing ? 'is-playing' : ''}`} role="region" aria-label="Music player">
+    <div ref={barRef} id="music-player" className={`music${inline ? ' music-inline' : ''}${playing ? ' is-playing' : ''}`} role="region" aria-label="Music player">
       <button className="music-btn" onClick={() => step(-1)} disabled={empty || tracks.length < 2} aria-label="Previous track">
         <Svg d={Icon.back} />
       </button>
@@ -155,9 +157,9 @@ export function MusicPlayer({ tracks = PLAYLIST }: { tracks?: Track[] }) {
         {playing && <span className="music-eq" aria-hidden="true"><i /><i /><i /></span>}
         <span className="music-name">{label}</span>
       </span>
-      <button className="music-btn collapse" onClick={() => toggle(false)} aria-expanded={true} aria-label="Collapse music player" title="Collapse">
+      {!inline && <button className="music-btn collapse" onClick={() => toggle(false)} aria-expanded={true} aria-label="Collapse music player" title="Collapse">
         <Svg d={Icon.collapse} />
-      </button>
+      </button>}
     </div>
   );
 
@@ -165,7 +167,7 @@ export function MusicPlayer({ tracks = PLAYLIST }: { tracks?: Track[] }) {
   return (
     <>
       {audioEl}
-      {view}
+      {inline ? controlsContainer && createPortal(view, controlsContainer) : view}
     </>
   );
 }

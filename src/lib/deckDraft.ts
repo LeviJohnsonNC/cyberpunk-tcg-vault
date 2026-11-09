@@ -23,6 +23,11 @@ export function addDeckCard(deck: Deck, card: Card, zone: DeckZone): { deck: Dec
 }
 
 const key = (owner: string) => `cptv.builderDraft.v1:${owner}`;
+export const SAMPLE_DRAFT_OWNER = 'sample';
+
+export function clearSampleDraft() {
+  try { sessionStorage.removeItem(key(SAMPLE_DRAFT_OWNER)); } catch { /* Storage can be disabled. */ }
+}
 
 export function readDeckDraft(owner: string): DeckDraft | undefined {
   try {
