@@ -73,11 +73,18 @@ Respond with JSON only:
 {"cards":[{"name":"<exact name from list>","count":<int>,"confidence":<0-1>,"read":"<text you actually read>"}],"unidentified":<int>}
 If you cannot read a card well enough, add it to "unidentified" rather than guessing.`;
 
+const SINGLE_PROMPT = `Identify one physical Cyberpunk TCG card centered in a cropped camera frame. The frame may be empty or contain a blurry or partly visible card.
+Read the printed title and subtitle, and only identify the card if you can distinguish it from similar cards in this catalog:
+{{NAMES}}
+Respond with JSON only, using {"cards":[{"name":"<exact name from catalog>","count":1,"confidence":<0-1>,"read":"<text you actually read>"}],"unidentified":0}.
+If no single card is clearly identifiable, return {"cards":[],"unidentified":1}. Never infer a card from background objects.`;
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   if (!process.env.OPENROUTER_API_KEY) return res.status(503).json({ error: 'Photo scanning is not configured on this server yet.' });
 
   const image: string | undefined = req.body?.image;
+  const single = req.body?.mode === 'single';
   if (!image || !image.startsWith('data:image/') || image.length > 6_000_000)
     return res.status(400).json({ error: 'Send a JPEG/PNG data URL under ~4 MB.' });
 
@@ -124,7 +131,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           {
             role: 'user',
             content: [
-              { type: 'text', text: PROMPT.replace('{{NAMES}}', names) },
+              { type: 'text', text: (single ? SINGLE_PROMPT : PROMPT).replace('{{NAMES}}', names) },
               { type: 'image_url', image_url: { url: image } },
             ],
           },
