@@ -1,4 +1,4 @@
-# Cyberpunk TCG Vault: agent notes
+# Fixer (cyberpunk-tcg-vault): agent notes
 
 React 19 + Vite + TypeScript front end, Supabase (auth + RLS data), and a Vercel function for photo scanning. See `README.md` for setup and architecture.
 

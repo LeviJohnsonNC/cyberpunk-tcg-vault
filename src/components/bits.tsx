@@ -1,10 +1,20 @@
 import { useState } from 'react';
 import { imageUrl, textSegments, type Card } from '../lib/data';
 
+export const CARD_BACK = '/img/card-back.webp';
+
 export function CardImg({ slug, alt, className }: { slug: string; alt: string; className?: string }) {
   const [err, setErr] = useState(false);
-  if (err) return <div className={className} style={{ display: 'grid', placeItems: 'center', fontSize: 10, color: 'var(--color-text-faint)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase' }}>No art</div>;
-  return <img className={className} src={imageUrl(slug)} alt={alt} loading="lazy" onError={() => setErr(true)} />;
+  // Card back shows while art loads and if it fails, so there's never a blank rectangle.
+  return (
+    <img
+      className={`${className ?? ''} card-art`}
+      src={err ? CARD_BACK : imageUrl(slug)}
+      alt={err && alt ? `${alt} (art unavailable)` : alt}
+      loading="lazy"
+      onError={() => setErr(true)}
+    />
+  );
 }
 
 export function Rules({ text }: { text: string }) {

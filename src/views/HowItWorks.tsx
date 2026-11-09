@@ -4,7 +4,7 @@ import { PRICES } from '../lib/data';
 export function HowItWorks({ openFeedback }: { openFeedback: () => void }) {
   return (
     <div className="how">
-      <Masthead size="compact" eyebrow="The Afterlife / How it works" title="How it works" sub="Unofficial · free · open source" />
+      <Masthead size="compact" eyebrow="The Afterlife / How it works" title="How it works" sub="Fixer · unofficial · free · open source" />
       <div className="how-grid">
         <section className="panel">
           <div className="panel-title">Your collection</div>
