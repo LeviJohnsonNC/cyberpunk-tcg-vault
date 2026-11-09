@@ -5,9 +5,15 @@
 .pb button { font: inherit; }
 
 /* ---------- hero: masthead + marquee ---------- */
-.pb-hero { display: grid; grid-template-columns: minmax(260px, 0.55fr) minmax(0, 1fr); gap: var(--space-6); align-items: stretch; }
+.pb-hero {
+  display: grid; grid-template: 'masthead feature' 'valuation valuation' / minmax(260px, 0.55fr) minmax(0, 1fr);
+  gap: var(--space-5) var(--space-6); align-items: stretch; margin-bottom: var(--space-5);
+}
+.pb-hero > .al-masthead { grid-area: masthead; }
+.pb-valuation { grid-area: valuation; min-width: 0; }
+.pb-valuation .al-strip { margin: 0; }
 .pb-marquee {
-  position: relative; min-height: 270px; overflow: hidden; isolation: isolate;
+  grid-area: feature; position: relative; min-height: 270px; overflow: hidden; isolation: isolate;
   border: 1px solid var(--color-accent);
   clip-path: polygon(0 0, calc(100% - var(--cut-lg)) 0, 100% var(--cut-lg), 100% 100%, var(--cut-lg) 100%, 0 calc(100% - var(--cut-lg)));
   background:
@@ -73,7 +79,7 @@
   display: grid; grid-template-columns: minmax(0, 1fr) 112px 52px 92px 100px 112px; gap: var(--space-3); align-items: center;
   padding: var(--space-3) var(--space-5); border-bottom: 1px solid var(--color-divider); cursor: pointer;
 }
-.pb-row:not(.pb-row-head):hover { background: var(--color-surface-raised); }
+.pb-row:not(.pb-row-head):is(:hover, :focus-within) { background: var(--color-surface-raised); }
 .pb-row-head { cursor: default; padding-top: var(--space-2); padding-bottom: var(--space-2); font: 500 12px/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-text-muted); }
 .pb-row .r { text-align: right; }
 .pb-id { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
@@ -144,36 +150,64 @@
 
 /* ---------- responsive ---------- */
 @media (max-width: 1100px) {
-  .pb-hero { grid-template-columns: 1fr; gap: var(--space-4); }
+  .pb-hero { grid-template: 'masthead' 'feature' 'valuation' / minmax(0, 1fr); gap: var(--space-4); }
   .pb-body { grid-template-columns: 1fr; }
   .pb-rail { position: static; }
 }
 @media (max-width: 760px) {
-  .pb-marquee { min-height: 250px; }
-  .pb-marquee-copy { right: 40%; left: var(--space-4); bottom: var(--space-4); }
-  .pb-marquee-card { right: 6%; top: 56px; width: 34%; max-width: 140px; transform: rotate(8deg); }
-  .pb-marquee-card:hover { transform: rotate(5deg); }
-  .pb-marquee-price .num { font-size: 26px; }
-  .pb-holdings-head { padding: var(--space-3) var(--space-4); }
+  .pb-hero { grid-template: 'masthead' 'valuation' / minmax(0, 1fr); gap: var(--space-3); margin-bottom: var(--space-3); }
+  .pb-hero:has(.pb-marquee) { grid-template-areas: 'masthead' 'valuation' 'feature'; }
+  .pb-hero .al-masthead-hero .al-title { font-size: clamp(49px, 12vw, 66px); }
+  .pb-hero .al-subline { margin-top: var(--space-2); }
+  .pb-valuation .al-strip > div { padding: var(--space-3); }
+  .pb-valuation .al-strip dd { font-size: clamp(30px, 8vw, 40px); }
+  .pb-valuation-details { margin-top: 4px; }
+  .pb-valuation-details summary { min-height: 44px; width: fit-content; padding-block: 12px; color: var(--color-text-muted); cursor: pointer; font-size: 13px; }
+  .pb-valuation-details summary::marker { color: var(--color-accent); }
+  .pb-valuation-details dl {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2);
+    margin: 0; padding: var(--space-2) var(--space-3); background: var(--color-surface); border: 1px solid var(--color-divider);
+  }
+  .pb-valuation-details dt, .pb-valuation-details dd > span { color: var(--color-text-muted); font-size: 12px; }
+  .pb-valuation-details dd { margin: 2px 0 0; }
+  .pb-valuation-details dd > strong { color: var(--color-ticket); }
+  .pb-valuation-details dd > span { display: block; }
+  .pb-marquee {
+    display: grid; grid-template: 'ticket art' auto 'copy art' 1fr / minmax(0, 1fr) clamp(70px, 24%, 92px);
+    align-items: center; gap: var(--space-2) var(--space-3); min-height: 0; padding: var(--space-3) var(--space-4);
+    background: linear-gradient(112deg, var(--color-surface-raised), var(--color-accent-deep) 53%, var(--color-accent));
+  }
+  .pb-marquee .pb-ticket { grid-area: ticket; justify-self: start; position: static; font-size: 10px; }
+  .pb-marquee-copy { grid-area: copy; position: relative; inset: auto; }
+  .pb-marquee-name { color: var(--color-text); font-size: clamp(24px, 6vw, 32px); text-shadow: none; }
+  .pb-marquee-sub { margin-top: var(--space-1); font-size: 12px; }
+  .pb-marquee-price { margin-top: var(--space-1); flex-wrap: wrap; gap: 3px var(--space-2); }
+  .pb-marquee-price .num { font-size: 23px; }
+  .pb-marquee-basis { font-size: 10px; letter-spacing: 0.05em; }
+  .pb-marquee-card {
+    grid-area: art; position: relative; inset: auto; width: 100%; transform: rotate(6deg);
+    border-width: 2px; border-radius: 6px; box-shadow: 4px 5px 0 var(--color-accent-ink);
+  }
+  .pb-marquee-card:hover { transform: rotate(3deg); }
+  .pb-marquee-noart { padding: var(--space-1); font-size: 12px; }
+  .pb-holdings-head { gap: var(--space-2); padding: var(--space-3) var(--space-4); }
+  .pb-holdings-head h2 { font-size: 29px; }
   .pb-controls { margin-left: 0; width: 100%; }
-  .pb-select { flex: 1; }
+  .pb-select { flex: 1; min-width: 0; }
+  .pb-select, .pb-btn { min-height: 44px; }
   .pb-row-head { display: none; }
   .pb-row {
     grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'id total' 'id basis' 'id qty';
-    row-gap: 4px; padding: var(--space-3) var(--space-4);
+    gap: 2px var(--space-2); min-height: 88px; padding: var(--space-2) var(--space-3);
   }
-  .pb-id { grid-area: id; align-items: flex-start; }
+  .pb-id { grid-area: id; gap: var(--space-2); }
   .pb-c-rarity, .pb-c-unit { display: none; }
   .pb-meta-compact { display: block; }
   .pb-c-total { grid-area: total; }
   .pb-c-basis { grid-area: basis; justify-self: end; }
+  .pb-c-basis a { display: inline-flex; align-items: center; min-height: 44px; }
+  .pb-c-basis .pb-tag { font-size: 10px; }
   .pb-c-qty { grid-area: qty; font-size: 13px; color: var(--color-text-muted); }
   .pb-x { display: inline; margin-right: 1px; }
   .pb-breakdown li { grid-template-columns: minmax(0, 1fr) 56px 70px; }
-}
-@media (max-width: 420px) {
-  .pb-marquee-copy { right: var(--space-4); bottom: var(--space-4); }
-  .pb-marquee-card { top: 58px; width: 30%; transform: rotate(8deg); }
-  .pb-marquee-card:hover { transform: rotate(5deg); }
-  .pb-marquee-name { font-size: 32px; padding-right: 32%; }
 }

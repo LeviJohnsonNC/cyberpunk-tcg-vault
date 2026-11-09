@@ -71,8 +71,12 @@
 }
 .meta-feature-main {
   display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, 1.36fr) minmax(0, 0.9fr);
+  grid-template-areas: 'crew art action';
   align-items: center; gap: var(--space-5); margin: var(--space-3) 0;
 }
+.meta-feature-identity { grid-area: crew; }
+.meta-feature-art { grid-area: art; }
+.meta-feature-action { grid-area: action; }
 .meta-feature-identity h3 { margin: 0 0 var(--space-3); font: 800 clamp(25px, 3vw, 38px)/1.05 var(--font-display); overflow-wrap: anywhere; scroll-margin-block-start: 118px; }
 .meta-legend-name { display: inline-block; max-width: 100%; }
 .meta-crew-divider { color: var(--color-text-muted); }
@@ -203,6 +207,9 @@
   .meta-section-head { column-gap: var(--space-3); }
   .meta-section-head h2 { flex-basis: 100%; }
   .meta-section-head h2 ~ * { padding: 0; border: 0; font-size: 13px; }
+  .meta-start { padding: var(--space-4); }
+  .meta-start .row { display: grid; gap: var(--space-2); }
+  .meta-start .btn { min-height: 44px; justify-content: center; }
   .meta-mobile-options.btn {
     display: grid; grid-template-columns: auto minmax(0, 1fr) auto; width: 100%; min-height: 44px; margin-bottom: var(--space-3);
     white-space: normal; text-align: start; line-height: 1.35;
@@ -218,11 +225,13 @@
   .meta-build-options > .meta-option + .meta-option { padding: 0; border: 0; }
   .meta-colour-menu { position: static; box-shadow: none; margin-top: var(--space-1); }
   .meta-feature { padding: var(--space-3) var(--space-4); }
-  .meta-feature-main { grid-template-columns: 1fr; gap: var(--space-3); }
+  .meta-feature-main { grid-template: 'crew' 'action' 'art' / minmax(0, 1fr); gap: var(--space-3); }
   .meta-feature-art { padding: 0; border: 0; grid-template-columns: repeat(3, minmax(0, 104px)); }
   .meta-feature-action { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
-  .meta-feature-action .btn { width: auto; }
+  .meta-feature-action .btn { min-height: 44px; width: auto; }
   .meta-feature-action p { margin: 0; }
+  .meta-build-details { padding-top: 0; }
+  .meta-build-details > summary { min-height: 44px; padding-block: 12px; }
   .meta-open-draft span { display: none; }
   .meta-build-details-body, .meta-game-plan { grid-template-columns: 1fr; gap: var(--space-3); }
   .meta-alternatives { grid-template-columns: 1fr; gap: var(--space-2); margin-top: var(--space-3); }

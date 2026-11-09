@@ -6,6 +6,7 @@ import { COPY_MAX } from '../lib/decks';
 import type { Deck } from '../lib/store';
 
 interface Props {
+  mobile: boolean;
   deck: Deck;
   owned: Map<string, number>;
   ownershipReady: boolean;
@@ -19,7 +20,7 @@ interface Props {
   searchRef: RefObject<HTMLInputElement | null>;
 }
 
-export function DeckCardPool({ deck, owned, ownershipReady, limits, zone, setZone, pickingLegend, browse, onOpen, onAdd, searchRef }: Props) {
+export function DeckCardPool({ mobile, deck, owned, ownershipReady, limits, zone, setZone, pickingLegend, browse, onOpen, onAdd, searchRef }: Props) {
   const [q, setQ] = useState('');
   const [legendQuery, setLegendQuery] = useState('');
   const [colors, setColors] = useState<string[]>([]);
@@ -41,19 +42,8 @@ export function DeckCardPool({ deck, owned, ownershipReady, limits, zone, setZon
       });
   }, [search, pickingLegend, type, colors, ownershipReady, ownedOnly, owned, fitsOnly, deck.legends.length, limits]);
 
-  return (
-    <section className="panel workbench-pool" id="workbench-pool" aria-labelledby="workbench-pool-title">
-      <div className="workbench-section-head">
-        <h2 id="workbench-pool-title">Card pool</h2>
-        {pickingLegend && <span className="workbench-ticket">Choose a Legend</span>}
-        <span className="workbench-card-count">{pool.length} {pool.length === 1 ? 'card' : 'cards'}</span>
-      </div>
-      <div className="workbench-search">
-        <input ref={searchRef} className="input search" aria-label={pickingLegend ? 'Search Legends' : 'Search cards'}
-          placeholder={pickingLegend ? 'Search Legends…' : 'Search cards…'} value={search}
-          onChange={(event) => (pickingLegend ? setLegendQuery : setQ)(event.target.value)} />
-        {pickingLegend && <button type="button" className="btn quiet" onClick={browse}>Browse cards</button>}
-      </div>
+  const filters = (
+    <>
       {!pickingLegend && (
         <div className="chips workbench-filters" role="group" aria-label="Card type">
           <button type="button" className="chip" aria-pressed={!type} onClick={() => setType('')}>All types</button>
@@ -71,6 +61,30 @@ export function DeckCardPool({ deck, owned, ownershipReady, limits, zone, setZon
         <label className="toggle"><input type="checkbox" checked={ownedOnly} disabled={!ownershipReady} onChange={(event) => setOwnedOnly(event.target.checked)} />Owned only</label>
         {!pickingLegend && <label className="toggle"><input type="checkbox" checked={fitsOnly} onChange={(event) => setFitsOnly(event.target.checked)} />Fits RAM</label>}
       </div>
+    </>
+  );
+  const filterSummary = [type, colors.length ? `${colors.length} ${colors.length === 1 ? 'colour' : 'colours'}` : '',
+    ownershipReady && ownedOnly ? 'Owned only' : '', fitsOnly && deck.legends.length ? 'Fits RAM' : ''].filter(Boolean).join(' · ');
+
+  return (
+    <section className="panel workbench-pool" id="workbench-pool" aria-labelledby="workbench-pool-title">
+      <div className="workbench-section-head">
+        <h2 id="workbench-pool-title">Card pool</h2>
+        {pickingLegend && <span className="workbench-ticket">Choose a Legend</span>}
+        <span className="workbench-card-count">{pool.length} {pool.length === 1 ? 'card' : 'cards'}</span>
+      </div>
+      <div className="workbench-search">
+        <input ref={searchRef} className="input search" aria-label={pickingLegend ? 'Search Legends' : 'Search cards'}
+          placeholder={pickingLegend ? 'Search Legends…' : 'Search cards…'} value={search}
+          onChange={(event) => (pickingLegend ? setLegendQuery : setQ)(event.target.value)} />
+        {pickingLegend && <button type="button" className="btn quiet" onClick={browse}>Browse cards</button>}
+      </div>
+      {mobile && !pickingLegend ? (
+        <details className="workbench-pool-filter-toggle">
+          <summary>Pool filters{filterSummary && <small>{filterSummary}</small>}</summary>
+          {filters}
+        </details>
+      ) : filters}
       {!pickingLegend && (
         <div className="workbench-destination" role="group" aria-label="Pool add destination">
           <span>Add cards to</span>

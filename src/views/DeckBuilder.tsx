@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { RECOMMENDED, type Card } from '../lib/data';
 import { addDeckCard, formatDeckText, formatMeleeDeck, newDeck, readDeckDraft, readDeckText, rememberDeckDraft, SAMPLE_DRAFT_OWNER, totalCopies, type DeckDraft, type DeckZone } from '../lib/deckDraft';
 import { deckFromRecommended, deckNeed, purchaseEstimate, validate } from '../lib/decks';
@@ -15,20 +15,21 @@ type MobileView = 'pool' | 'deck';
 type Pane = 'list' | 'checks' | 'missing';
 type Replacement = { next: DeckDraft; imported?: string[] };
 const initialView = (deck: Deck): MobileView => deck.legends.length || totalCopies(deck.cards) || totalCopies(deck.sideboard) ? 'deck' : 'pool';
+const splitWorkbench = () => window.matchMedia('(max-width: 1000px)').matches;
 
-type BuilderProps = { onOpen: (slug: string) => void; initialDeck?: string; onConsumeDeck: () => void };
+type BuilderProps = { onOpen: (slug: string) => void; initialDeck?: string; onConsumeDeck: () => void; mobile: boolean };
 
-export function DeckBuilder({ onOpen, initialDeck, onConsumeDeck }: BuilderProps) {
+export function DeckBuilder(props: BuilderProps) {
   const { ready, session, demo } = useStore();
   const owner = demo ? SAMPLE_DRAFT_OWNER : session?.user.id ?? 'local';
   if (!ready) return <section>
     <Masthead eyebrow="The Afterlife / Crew Builder" title="Deck Builder" />
     <p className="callout section-gap" role="status">Opening your workbench…</p>
   </section>;
-  return <DeckWorkbench key={owner} owner={owner} onOpen={onOpen} initialDeck={initialDeck} onConsumeDeck={onConsumeDeck} />;
+  return <DeckWorkbench key={owner} owner={owner} {...props} />;
 }
 
-function DeckWorkbench({ owner, onOpen, initialDeck, onConsumeDeck }: BuilderProps & { owner: string }) {
+function DeckWorkbench({ owner, onOpen, initialDeck, onConsumeDeck, mobile }: BuilderProps & { owner: string }) {
   const { decks, saveDeck, deleteDeck, owned, toast, collectionReady, collectionError, retryCollection, demo } = useStore();
   const [draft, setDraft] = useState<DeckDraft>(() => readDeckDraft(owner) ?? { deck: newDeck(), dirty: false });
   const { deck, dirty } = draft;
@@ -52,8 +53,10 @@ function DeckWorkbench({ owner, onOpen, initialDeck, onConsumeDeck }: BuilderPro
   const deckPane = useRef<HTMLElement>(null);
   const workbench = useRef<HTMLElement>(null);
   const sticky = useRef<HTMLDivElement>(null);
+  const viewBar = useRef<HTMLDivElement>(null);
   const handledRoute = useRef<string>(undefined);
   const scroll = useRef<Record<MobileView, number>>({ pool: 0, deck: 0 });
+  const pendingScroll = useRef<number | null>(null);
   const savePending = useRef(false);
   const feedbackTimer = useRef<number>(undefined);
 
@@ -69,6 +72,7 @@ function DeckWorkbench({ owner, onOpen, initialDeck, onConsumeDeck }: BuilderPro
   const mainOnly = useMemo(() => collectionReady ? purchaseEstimate(mainNeed, owned) : undefined, [collectionReady, mainNeed, owned]);
   const fromScratch = useMemo(() => purchaseEstimate(fullNeed, new Map()), [fullNeed]);
   const empty = !deck.legends.length && !checks.n && !checks.side;
+  const total = deck.legends.length + checks.n + checks.side;
   const saveStatus = dirty ? 'Unsaved changes' : saved ? 'Saved' : collectionReady ? 'New draft' : 'Checking save status…';
 
   useEffect(() => { rememberDeckDraft(owner, draft); }, [owner, draft]);
@@ -76,19 +80,43 @@ function DeckWorkbench({ owner, onOpen, initialDeck, onConsumeDeck }: BuilderPro
   useEffect(() => {
     const header = document.querySelector('.appbar');
     const strip = sticky.current;
+    const tabs = viewBar.current;
     const root = workbench.current;
-    if (!header || !strip || !root) return;
+    if (!header || !strip || !tabs || !root) return;
     const measure = () => {
       const top = Math.ceil(header.getBoundingClientRect().height);
+      const bar = splitWorkbench() ? tabs : strip;
       root.style.setProperty('--workbench-top', `${top}px`);
-      root.style.setProperty('--workbench-deck-top', `${Math.ceil(top + strip.getBoundingClientRect().height + 4)}px`);
+      root.style.setProperty('--workbench-deck-top', `${Math.ceil(top + bar.getBoundingClientRect().height + 4)}px`);
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(header);
     observer.observe(strip);
+    observer.observe(tabs);
     return () => observer.disconnect();
   }, []);
+
+  useLayoutEffect(() => {
+    const top = pendingScroll.current;
+    pendingScroll.current = null;
+    if (top !== null && splitWorkbench()) window.scrollTo(0, top);
+  }, [deck, mobileView]);
+
+  const finishReplacement = useCallback((change: Replacement) => {
+    scroll.current = { pool: 0, deck: 0 };
+    pendingScroll.current = 0;
+    if (deckPane.current) deckPane.current.scrollTop = 0;
+    setDraft(change.next);
+    setZone('cards');
+    setPane('list');
+    setPickingLegend(!change.next.deck.legends.length);
+    setMobileView(initialView(change.next.deck));
+    if (change.imported) toast(change.imported.length
+      ? `Imported. Skipped ${change.imported.length}: ${change.imported.slice(0, 4).join(', ')}` : 'Deck imported', change.imported.length ? 'err' : 'ok');
+    setReplacement(undefined);
+    setFeedback('');
+  }, [toast]);
 
   // Consume incoming drafts once. A plain builder URL then recovers the workbench after refresh or Back.
   useEffect(() => {
@@ -118,16 +146,8 @@ function DeckWorkbench({ owner, onOpen, initialDeck, onConsumeDeck }: BuilderPro
     if (!incoming) return;
     const next = { deck: structuredClone(incoming), dirty: nextDirty };
     if (dirty) setReplacement({ next });
-    else {
-      setDraft(next);
-      setPickingLegend(!next.deck.legends.length);
-      setMobileView(initialView(next.deck));
-      setPane('list');
-      scroll.current = { pool: 0, deck: 0 };
-      if (deckPane.current) deckPane.current.scrollTop = 0;
-      if (window.matchMedia('(max-width: 760px)').matches) window.scrollTo(0, 0);
-    }
-  }, [initialDeck, decks, collectionReady, dirty, onConsumeDeck]);
+    else finishReplacement({ next });
+  }, [initialDeck, decks, collectionReady, dirty, onConsumeDeck, finishReplacement]);
 
   function announce(message: string) {
     setFeedback(message);
@@ -163,48 +183,48 @@ function DeckWorkbench({ owner, onOpen, initialDeck, onConsumeDeck }: BuilderPro
     });
   }
 
-  function switchMobile(view: MobileView) {
-    const isMobile = window.matchMedia('(max-width: 1000px)').matches;
-    if (view !== mobileView) {
-      if (isMobile) scroll.current[mobileView] = window.scrollY;
-      setMobileView(view);
+  function switchMobile(view: MobileView, restore = true) {
+    if (view === mobileView) return;
+    if (splitWorkbench()) {
+      scroll.current[mobileView] = window.scrollY;
+      pendingScroll.current = restore ? scroll.current[view] : null;
     }
-    requestAnimationFrame(() => {
-      if (isMobile && view !== mobileView) window.scrollTo({ top: scroll.current[view], behavior: 'auto' });
-    });
+    setMobileView(view);
+  }
+
+  function revealBelowBars(target: HTMLElement, inDeck = false) {
+    const header = document.querySelector('.appbar')?.getBoundingClientRect().height ?? 0;
+    const top = header + (viewBar.current?.offsetHeight ?? 0)
+      + (inDeck ? deckPane.current?.querySelector<HTMLElement>('.workbench-deck-tabs')?.offsetHeight ?? 0 : 0)
+      + 8;
+    const bottom = document.querySelector('.vault-mobile-nav')?.getBoundingClientRect().top ?? window.innerHeight;
+    const bounds = target.getBoundingClientRect();
+    if (bounds.top < top || bounds.bottom > bottom) window.scrollTo(0, window.scrollY + bounds.top - top);
   }
 
   function chooseLegend() {
     setPickingLegend(true);
-    switchMobile('pool');
-    requestAnimationFrame(() => search.current?.focus());
+    switchMobile('pool', false);
+    requestAnimationFrame(() => {
+      const input = search.current;
+      if (!input) return;
+      input.focus({ preventScroll: true });
+      if (splitWorkbench()) revealBelowBars(input);
+    });
   }
 
   function selectPane(next: Pane, fromStatus = false) {
     setPane(next);
     if (deckPane.current) deckPane.current.scrollTop = 0;
-    if (!fromStatus) return;
-    switchMobile('deck');
+    if (fromStatus) switchMobile('deck', false);
+    if (!fromStatus && !splitWorkbench()) return;
     requestAnimationFrame(() => {
-      const title = document.getElementById(`workbench-${next}-title`);
-      title?.focus({ preventScroll: true });
-      if (title && (title.getBoundingClientRect().top < 185 || title.getBoundingClientRect().bottom > window.innerHeight)) title.scrollIntoView({ block: 'start' });
+      const title = document.getElementById(next === 'list' ? 'workbench-crew-title' : `workbench-${next}-title`);
+      if (!title) return;
+      if (fromStatus) title.focus({ preventScroll: true });
+      if (splitWorkbench()) revealBelowBars(title, true);
+      else if (fromStatus) title.scrollIntoView({ block: 'nearest' });
     });
-  }
-
-  function finishReplacement(change: Replacement) {
-    setDraft(change.next);
-    setZone('cards');
-    setPane('list');
-    setPickingLegend(!change.next.deck.legends.length);
-    setMobileView(initialView(change.next.deck));
-    scroll.current = { pool: 0, deck: 0 };
-    if (deckPane.current) deckPane.current.scrollTop = 0;
-    if (window.matchMedia('(max-width: 760px)').matches) window.scrollTo(0, 0);
-    if (change.imported) toast(change.imported.length
-      ? `Imported. Skipped ${change.imported.length}: ${change.imported.slice(0, 4).join(', ')}` : 'Deck imported', change.imported.length ? 'err' : 'ok');
-    setReplacement(undefined);
-    setFeedback('');
   }
 
   function replace(next: DeckDraft, imported?: string[]) {
@@ -308,15 +328,18 @@ function DeckWorkbench({ owner, onOpen, initialDeck, onConsumeDeck }: BuilderPro
           <button type="button" onClick={() => selectPane('checks', true)}>{empty ? 'Checks' : checks.legal ? 'Legal deck' : `${checks.issues.length} rule ${checks.issues.length === 1 ? 'issue' : 'issues'}`}</button>
           <button type="button" onClick={() => selectPane('missing', true)}>{empty || !missing ? 'Missing' : missing.copies ? `${missing.copies} missing` : 'Fully owned'}</button>
         </div>
+        <p className="workbench-feedback al-action-feedback" data-tone={feedback ? 'success' : undefined} role="status">{feedback || (pickingLegend ? 'Legend picks go to the crew.' : `Pool adds go to ${zone === 'cards' ? 'Main' : 'Sideboard'}.`)}</p>
+      </div>
+      <div className="workbench-view-bar" ref={viewBar}>
         <div className="workbench-mobile-tabs al-view-tabs" role="group" aria-label="Workbench view">
           <button type="button" aria-pressed={mobileView === 'pool'} onClick={() => switchMobile('pool')}>Find cards</button>
-          <button type="button" aria-pressed={mobileView === 'deck'} onClick={() => switchMobile('deck')}>Deck · {deck.legends.length + checks.n + checks.side}</button>
+          <button type="button" aria-pressed={mobileView === 'deck'} onClick={() => switchMobile('deck')}>Deck <small>{total} total</small></button>
         </div>
-        <p className="workbench-feedback al-action-feedback" data-tone={feedback ? 'success' : undefined} role="status">{feedback || (pickingLegend ? 'Legend picks go to the crew.' : `Pool adds go to ${zone === 'cards' ? 'Main' : 'Sideboard'}.`)}</p>
+        <p className="workbench-feedback al-action-feedback" data-tone="success" role="status">{feedback}</p>
       </div>
 
       <div className="workbench-grid" data-mobile-view={mobileView}>
-        <DeckCardPool deck={deck} owned={owned} ownershipReady={collectionReady} limits={checks.lim} zone={zone} setZone={(next) => { setZone(next); setFeedback(''); }}
+        <DeckCardPool mobile={mobile} deck={deck} owned={owned} ownershipReady={collectionReady} limits={checks.lim} zone={zone} setZone={(next) => { setZone(next); setFeedback(''); }}
           pickingLegend={pickingLegend} browse={() => { setPickingLegend(false); setFeedback(''); }} onOpen={onOpen} onAdd={add} searchRef={search} />
         <section className="workbench-deck" ref={deckPane} aria-label="Deck workspace">
           <ViewTabs<Pane> id="workbench" label="Deck view" className="workbench-deck-tabs" value={pane} onChange={selectPane} tabs={[

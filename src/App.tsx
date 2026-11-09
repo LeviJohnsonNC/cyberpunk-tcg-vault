@@ -179,8 +179,8 @@ export default function App() {
 
       <main key={scope}>
         {showSection('collection') && <Activity mode={route.tab === 'collection' ? 'visible' : 'hidden'}><Collection mobile={mobile} onOpen={showCard} goAdd={() => go('add')} /></Activity>}
-        {showSection('prices') && <Activity mode={route.tab === 'prices' ? 'visible' : 'hidden'}><PriceBook onOpen={showCard} goAdd={() => go('add')} /></Activity>}
-        {showSection('builder') && <Activity mode={route.tab === 'builder' ? 'visible' : 'hidden'}><DeckBuilder onOpen={showCard} initialDeck={route.tab === 'builder' ? route.deck : undefined} onConsumeDeck={consumeDeck} /></Activity>}
+        {showSection('prices') && <Activity mode={route.tab === 'prices' ? 'visible' : 'hidden'}><PriceBook mobile={mobile} onOpen={showCard} goAdd={() => go('add')} /></Activity>}
+        {showSection('builder') && <Activity mode={route.tab === 'builder' ? 'visible' : 'hidden'}><DeckBuilder mobile={mobile} onOpen={showCard} initialDeck={route.tab === 'builder' ? route.deck : undefined} onConsumeDeck={consumeDeck} /></Activity>}
         {showSection('meta') && <Activity mode={route.tab === 'meta' ? 'visible' : 'hidden'}><MetaIntel onOpen={showCard} openInBuilder={(id) => go('builder', id)} goAdd={() => go('add')} /></Activity>}
         {route.tab === 'add' && <AddCards onOpen={showCard} onSignIn={requestSignIn} />}
         {route.tab === 'about' && <HowItWorks openFeedback={() => setFeedbackOpen(true)} />}
@@ -190,7 +190,7 @@ export default function App() {
 
       {openCard && <CardDrawer {...openCard} onClose={() => {
         const opener = openCard.opener?.isConnected ? openCard.opener
-          : openCard.opener ? document.querySelector<HTMLElement>('.collection-heading') : null;
+          : openCard.opener ? document.querySelector<HTMLElement>(route.tab === 'prices' ? '#pb-holdings-title' : '.collection-heading') : null;
         opener?.focus({ preventScroll: true });
         setOpenCard(null);
       }} />}
