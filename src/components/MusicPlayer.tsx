@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { PLAYLIST, type Track } from '../lib/playlist';
 
 const KEY = 'cptv.music.track.v1';
+const OPEN_KEY = 'cptv.music.open.v1';
 
 function readIndex(n: number) {
   try {
@@ -19,6 +20,8 @@ const Icon = {
   fwd: <path d="M16 5h2v14h-2zM4 5l11 7-11 7z" />,
   play: <path d="M7 4l13 8-13 8z" />,
   stop: <path d="M6 6h12v12H6z" />,
+  note: <path d="M9 3v11.3A3.5 3.5 0 1 0 11 17.5V8h8V3z" />,
+  collapse: <path d="M15.4 5.4 14 4l-8 8 8 8 1.4-1.4L8.8 12z" />,
 };
 const Svg = ({ d }: { d: React.ReactNode }) => (
   <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="currentColor">{d}</svg>
@@ -29,6 +32,32 @@ export function MusicPlayer({ tracks = PLAYLIST }: { tracks?: Track[] }) {
   const [index, setIndex] = useState(() => readIndex(tracks.length));
   const [playing, setPlaying] = useState(false);
   const [error, setError] = useState(false);
+  // Collapsed to a small music-note tab by default so it never covers content.
+  const [open, setOpen] = useState(() => {
+    try {
+      return localStorage.getItem(OPEN_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const tabRef = useRef<HTMLButtonElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+  const moved = useRef(false);
+  useEffect(() => {
+    // Keep keyboard focus with the control the user just used (skip the first render).
+    if (!moved.current) return;
+    if (open) barRef.current?.querySelector<HTMLButtonElement>('.music-btn.main')?.focus();
+    else tabRef.current?.focus();
+  }, [open]);
+  const toggle = (v: boolean) => {
+    moved.current = true;
+    setOpen(v);
+    try {
+      localStorage.setItem(OPEN_KEY, v ? '1' : '0');
+    } catch {
+      /* storage blocked */
+    }
+  };
   const track = tracks[index];
   const empty = tracks.length === 0;
 
@@ -77,8 +106,36 @@ export function MusicPlayer({ tracks = PLAYLIST }: { tracks?: Track[] }) {
 
   const label = empty ? 'No tracks yet' : error ? `Can't play ${track.title}` : track.title;
 
-  return (
-    <div className={`music ${playing ? 'is-playing' : ''}`} role="region" aria-label="Music player">
+  const audioEl = track && (
+    <audio
+      ref={audio}
+      src={track.src}
+      preload="none"
+      onEnded={() => (tracks.length > 1 ? step(1) : stop())}
+      onError={() => {
+        setError(true);
+        setPlaying(false);
+      }}
+    />
+  );
+
+  const view = !open ? (
+      <div className={`music-tab-wrap ${playing ? 'is-playing' : ''}`}>
+        <button
+          ref={tabRef}
+          className="music-tab"
+          onClick={() => toggle(true)}
+          aria-expanded={false}
+          aria-controls="music-player"
+          aria-label={playing ? `Open music player, playing ${track?.title ?? ''}` : 'Open music player'}
+          title={playing ? `Playing: ${track?.title}` : 'Music'}
+        >
+          <Svg d={Icon.note} />
+          {playing && <span className="music-eq" aria-hidden="true"><i /><i /><i /></span>}
+        </button>
+      </div>
+  ) : (
+    <div ref={barRef} id="music-player" className={`music ${playing ? 'is-playing' : ''}`} role="region" aria-label="Music player">
       <button className="music-btn" onClick={() => step(-1)} disabled={empty || tracks.length < 2} aria-label="Previous track">
         <Svg d={Icon.back} />
       </button>
@@ -98,18 +155,17 @@ export function MusicPlayer({ tracks = PLAYLIST }: { tracks?: Track[] }) {
         {playing && <span className="music-eq" aria-hidden="true"><i /><i /><i /></span>}
         <span className="music-name">{label}</span>
       </span>
-      {track && (
-        <audio
-          ref={audio}
-          src={track.src}
-          preload="none"
-          onEnded={() => (tracks.length > 1 ? step(1) : stop())}
-          onError={() => {
-            setError(true);
-            setPlaying(false);
-          }}
-        />
-      )}
+      <button className="music-btn collapse" onClick={() => toggle(false)} aria-expanded={true} aria-label="Collapse music player" title="Collapse">
+        <Svg d={Icon.collapse} />
+      </button>
     </div>
+  );
+
+  // The <audio> sits outside both views so expanding or collapsing never interrupts playback.
+  return (
+    <>
+      {audioEl}
+      {view}
+    </>
   );
 }
