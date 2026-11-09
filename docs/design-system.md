@@ -94,7 +94,7 @@ Fonts are self-hosted via `@fontsource` packages (imported in `theme.css`), so t
 - **≥1100px:** masthead and marquee side by side; holdings about 70%, rail about 30% and sticky.
 - **<1100px:** marquee stacks under the masthead; rail stacks under holdings.
 - **<760px:** metric strip stacks. Table rows reflow into a two-column card: the identity on the left, and total / basis / quantity on the right. Rarity and unit price move into a compact metadata line under the name. Card identity, quantity, total and pricing basis are always visible, with no horizontal page scroll.
-- **<900px header:** brand and status on one row; nav becomes a horizontally scrollable row underneath.
+- **≤1100px header:** brand and status on one row; nav becomes a horizontally scrollable row underneath.
 - **Collection table on phones:** secondary columns (colour, type, cost, power, RAM, unit) hide; art, name, owned and value always fit (checked at 360px).
 - **Deck Builder:** the deck column is sticky beside the card pool on laptops and stacks below it under 1100px.
 - Page height follows content (no fixed-height scroll panes on working surfaces).

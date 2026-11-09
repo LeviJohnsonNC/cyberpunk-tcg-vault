@@ -60,9 +60,9 @@ export default function App() {
     <>
       <header className="appbar">
         <div className="appbar-inner">
-          <a className="brand" href="#/collection" aria-label="Fixer, Cyberpunk TCG toolkit, home">
+          <a className="brand" href="#/collection" aria-label="Cyberpunk TCG Vault home">
             <span className="brand-badge" aria-hidden="true"><span>€$</span></span>
-            <span className="brand-name">Fixer</span>
+            <span className="brand-name"><span>Cyberpunk TCG</span>Vault</span>
           </a>
           <nav className="navlinks" aria-label="Sections">
             {TABS.map((t) => (

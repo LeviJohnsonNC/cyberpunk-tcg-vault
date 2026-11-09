@@ -1,14 +1,27 @@
 import { useMemo, useState } from 'react';
 import { StarterAddedBanner, StarterIntake, type StarterAdded } from '../components/StarterIntake';
-import { BY_SLUG, CARDS, COLORS, TYPES, acquireQuote, defaultPrinting, isUnspecified, printingLabel, rarityRank, searchCards, valueHolding, type Card } from '../lib/data';
+import { BY_SLUG, CARDS, COLORS, PRINTING_INDEX, TYPES, acquireQuote, defaultPrinting, isUnspecified, printingLabel, rarityRank, searchCards, valueHolding, type Card } from '../lib/data';
 import { getCurrency, money, moneyOr } from '../lib/currency';
 import { useStore, type Entry } from '../lib/store';
 import { CardImg, Pip, RarityBadge } from '../components/bits';
 import { Masthead, MetricStrip } from '../components/ui';
 import { DeleteCollection } from '../components/DeleteCollection';
 import { downloadCollection } from '../lib/exportCollection';
+import './collection.css';
 
 type SortKey = 'name' | 'color' | 'type' | 'cost' | 'power' | 'ram' | 'rarity' | 'qty' | 'unit' | 'value';
+
+function quantityTargetLabel(printingId: string): string {
+  const printing = PRINTING_INDEX.get(printingId)?.printing;
+  if (!printing) return 'Unspecified';
+  const set = printing.set
+    .replace('Welcome to Night City — ', '')
+    .replace('The Heist — ', 'Heist ')
+    .replace('Embracing Power — ', 'Power ')
+    .replace(' Starter Deck', '')
+    .replace(' — ', ' ');
+  return `${set} #${printing.num}`;
+}
 
 /** Holdings value: priced copies summed, unpriced copies counted (never valued at zero or borrowed). */
 export function valueOf(entries: Entry[]) {
@@ -95,11 +108,6 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
   // Quick +/- only when the target printing is unambiguous: the one holding you have, or the
   // card's default printing when you have none. With several printings you choose in the drawer.
   const quickTarget = (c: Card, es: Entry[]) => (es.length === 1 ? es[0].printingId : es.length === 0 ? defaultPrinting(c).id : null);
-  const bump = (c: Card, es: Entry[], d: number) => {
-    const pid = quickTarget(c, es);
-    if (!pid) return onOpen(c.slug);
-    setQty(c.slug, pid, (es.find((e) => e.printingId === pid)?.qty ?? 0) + d);
-  };
   const unspec = entries.filter((e) => isUnspecified(e.printingId) || !BY_SLUG.get(e.slug)?.printings.some((p) => p.id === e.printingId));
   const unspecCopies = unspec.reduce((a, e) => a + e.qty, 0);
 
@@ -160,36 +168,51 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
         </section>
       )}
 
-      <div className="panel">
-        <div className="toolbar">
+      <div className="panel collection-panel">
+        <div className="toolbar collection-searchbar">
           <div className="chips" role="group" aria-label="Scope">
-            <button className={`chip ${scope === 'mine' ? 'on' : ''}`} onClick={() => setScope('mine')}>My cards</button>
-            <button className={`chip ${scope === 'all' ? 'on' : ''}`} onClick={() => setScope('all')}>Full database</button>
+            <button className="chip" aria-pressed={scope === 'mine'} onClick={() => setScope('mine')}>My cards</button>
+            <button className="chip" aria-pressed={scope === 'all'} onClick={() => setScope('all')}>Full database</button>
           </div>
-          <input className="input search grow" placeholder="Search name, trait, rules text… e.g. blocker, netrunner, min gig" value={q} onChange={(e) => setQ(e.target.value)} />
-          <select className="select" value={rarity} onChange={(e) => setRarity(e.target.value)}>
-            <option value="">All rarities</option>
-            {rarities.map((r) => <option key={r}>{r}</option>)}
-          </select>
-          <select className="select" value={cost} onChange={(e) => setCost(e.target.value)}>
-            <option value="">Any cost</option>
-            {['0', '1', '2', '3', '4', '5', '6', '7+'].map((c) => <option key={c} value={c}>{c} €$</option>)}
-          </select>
+          <input className="input search grow" type="search" aria-label="Search cards" placeholder="Search name, traits, or rules text" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
-        <div className="toolbar">
-          <div className="chips">
-            {COLORS.map((c) => (
-              <button key={c} className={`chip c-${c} ${colors.includes(c) ? 'on' : ''}`} onClick={() => toggle(colors, c, setColors)}>{c}</button>
-            ))}
+        <div className="collection-filters">
+          <div className="collection-filter" role="group" aria-labelledby="collection-color-label">
+            <span id="collection-color-label" className="collection-filter-label">Color</span>
+            <div className="chips">
+              {COLORS.map((c) => (
+                <button key={c} className="chip collection-color" aria-pressed={colors.includes(c)} onClick={() => toggle(colors, c, setColors)}>
+                  <span aria-hidden="true"><Pip color={c} bare /></span>{c}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="chips">
-            {TYPES.map((t) => (
-              <button key={t} className={`chip ${types.includes(t) ? 'on' : ''}`} onClick={() => toggle(types, t, setTypes)}>{t}</button>
-            ))}
+          <div className="collection-filter collection-type" role="group" aria-labelledby="collection-type-label">
+            <span id="collection-type-label" className="collection-filter-label">Type</span>
+            <div className="chips">
+              {TYPES.map((t) => (
+                <button key={t} className="chip" aria-pressed={types.includes(t)} onClick={() => toggle(types, t, setTypes)}>{t}</button>
+              ))}
+            </div>
+          </div>
+          <div className="collection-filter-selects">
+            <label className="collection-filter">
+              <span className="collection-filter-label">Rarity</span>
+              <select className="select" data-active={!!rarity} value={rarity} onChange={(e) => setRarity(e.target.value)}>
+                <option value="">All rarities</option>
+                {rarities.map((r) => <option key={r}>{r}</option>)}
+              </select>
+            </label>
+            <label className="collection-filter">
+              <span className="collection-filter-label">Cost</span>
+              <select className="select" data-active={!!cost} value={cost} onChange={(e) => setCost(e.target.value)}>
+                <option value="">Any cost</option>
+                {['0', '1', '2', '3', '4', '5', '6', '7+'].map((c) => <option key={c} value={c}>{c} €$</option>)}
+              </select>
+            </label>
           </div>
           <label className="toggle"><input type="checkbox" checked={sellOnly} onChange={(e) => setSellOnly(e.target.checked)} />Sellable only</label>
-          <span className="spacer" />
-          <span className="mono tiny muted">{rows.length} RESULTS</span>
+          <span className="collection-results mono tiny muted" role="status">{rows.length} {rows.length === 1 ? 'result' : 'results'}</span>
         </div>
 
         <div className="table-wrap">
@@ -211,53 +234,57 @@ export function Collection({ onOpen, goAdd }: { onOpen: (slug: string) => void; 
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ c, qty, unit, value, es }) => (
-                <tr key={c.slug} className={qty === 0 && scope === 'all' ? 'unowned' : ''} onClick={() => onOpen(c.slug)}>
-                  <td><CardImg className="thumb" slug={c.slug} alt="" /></td>
-                  <td>
-                    <button className="cname" onClick={(e) => { e.stopPropagation(); onOpen(c.slug); }}>{c.name}</button>
-                    {c.sub && <div className="csub">{c.sub}</div>}
-                    {es.some((e) => e.note) && <span className="badge" title={es.filter((e) => e.note).map((e) => e.note).join(' · ')}>Note</span>}
-                  </td>
-                  <td className="hide-sm"><Pip color={c.color} /></td>
-                  <td className="hide-sm">
-                    {c.type} {c.sellable && <span className="badge sell" title="Has a sell tag">€$</span>}
-                  </td>
-                  <td className="num hide-sm">{c.cost ?? '—'}</td>
-                  <td className="num hide-sm">{c.power != null ? (c.type === 'Gear' ? `+${c.power}` : c.power) : '—'}</td>
-                  <td className="num hide-sm">{c.ram ?? '—'}</td>
-                  <td className="hide-sm"><RarityBadge r={c.rarity} /></td>
-                  <td className="hide-sm csub">{c.traits.join(' · ')}</td>
-                  <td onClick={(e) => e.stopPropagation()}>
-                    {quickTarget(c, es) ? (
-                      <>
-                        <span className="qty">
-                          <button className="iconbtn minus" disabled={qty === 0} onClick={() => bump(c, es, -1)} aria-label={`Remove a ${printingLabel(quickTarget(c, es)!, false)} copy of ${c.name}`}>−</button>
-                          <b>{qty}</b>
-                          <button className="iconbtn" onClick={() => bump(c, es, 1)} aria-label={`Add a ${printingLabel(quickTarget(c, es)!, false)} copy of ${c.name}`}>+</button>
-                        </span>
-                        <span className={`qty-target ${isUnspecified(quickTarget(c, es)!) ? 'unspec' : ''}`} title={printingLabel(quickTarget(c, es)!)}>
-                          {printingLabel(quickTarget(c, es)!, false)}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="qty"><b>{qty}</b></span>
-                        <button className="btn quiet qty-pick" onClick={() => onOpen(c.slug)} aria-label={`Choose a printing of ${c.name} to change`}>
-                          {es.length} printings
-                        </button>
-                      </>
-                    )}
-                  </td>
-                  <td className={`num hide-sm ${unit == null ? 'muted' : ''}`}>{moneyOr(unit)}</td>
-                  <td className={`num ${value.knownCad ? 'accent' : 'muted'}`}>
-                    {!value.copies ? '' : value.unpriced === value.copies ? 'Unpriced' : money(value.knownCad)}
-                    {value.unpriced > 0 && value.unpriced < value.copies && <div className="csub">+{value.unpriced} unpriced</div>}
-                  </td>
-                </tr>
-              ))}
+              {rows.map(({ c, qty, unit, value, es }) => {
+                const target = quickTarget(c, es);
+                const targetLabel = target ? printingLabel(target, false) : '';
+                return (
+                  <tr key={c.slug} className={qty === 0 && scope === 'all' ? 'unowned' : ''} onClick={() => onOpen(c.slug)}>
+                    <td className="collection-art-cell"><CardImg className="thumb collection-thumb" slug={c.slug} alt="" /></td>
+                    <td>
+                      <button className="cname" onClick={(e) => { e.stopPropagation(); onOpen(c.slug); }}>{c.name}</button>
+                      {c.sub && <div className="csub">{c.sub}</div>}
+                    </td>
+                    <td className="hide-sm"><Pip color={c.color} /></td>
+                    <td className="hide-sm">
+                      {c.type} {c.sellable && <span className="badge sell" title="Has a sell tag">€$</span>}
+                    </td>
+                    <td className="num hide-sm">{c.cost ?? '—'}</td>
+                    <td className="num hide-sm">{c.power != null ? (c.type === 'Gear' ? `+${c.power}` : c.power) : '—'}</td>
+                    <td className="num hide-sm">{c.ram ?? '—'}</td>
+                    <td className="hide-sm"><RarityBadge r={c.rarity} /></td>
+                    <td className="hide-sm csub">{c.traits.join(' · ')}</td>
+                    <td className="collection-owned" onClick={(e) => e.stopPropagation()}>
+                      {target ? (
+                        <>
+                          <span className="qty">
+                            <button className="iconbtn minus" disabled={qty === 0} onClick={() => setQty(c.slug, target, qty - 1)} aria-label={`Remove a ${targetLabel} copy of ${c.name}`}>−</button>
+                            <b>{qty}</b>
+                            <button className="iconbtn" onClick={() => setQty(c.slug, target, qty + 1)} aria-label={`Add a ${targetLabel} copy of ${c.name}`}>+</button>
+                          </span>
+                          <span className={`qty-target${isUnspecified(target) ? ' unspec' : ''}`}>
+                            {quantityTargetLabel(target)}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="qty"><b>{qty}</b></span>
+                          <button className="btn quiet qty-pick" onClick={() => onOpen(c.slug)} aria-label={`Choose a printing of ${c.name} to change`}>
+                            {es.length} printings
+                          </button>
+                        </>
+                      )}
+                    </td>
+                    <td className={`num hide-sm ${unit == null ? 'muted' : ''}`}>{moneyOr(unit)}</td>
+                    <td className={`num ${value.knownCad ? 'accent' : 'muted'}`}>
+                      {!value.copies ? '' : value.unpriced === value.copies ? 'Unpriced' : money(value.knownCad)}
+                      {value.unpriced > 0 && value.unpriced < value.copies && <div className="csub">+{value.unpriced} unpriced</div>}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+          {rows.length === 0 && <p className="collection-empty muted">No matching cards. Try a different search or filter.</p>}
         </div>
       </div>
     </section>

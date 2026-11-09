@@ -96,7 +96,7 @@ export function MusicPlayer({ tracks = PLAYLIST }: { tracks?: Track[] }) {
   // Lock-screen / headset controls where the browser supports them.
   useEffect(() => {
     if (!('mediaSession' in navigator) || !track) return;
-    navigator.mediaSession.metadata = new MediaMetadata({ title: track.title, artist: track.artist ?? 'Fixer' });
+    navigator.mediaSession.metadata = new MediaMetadata({ title: track.title, artist: track.artist ?? 'Cyberpunk TCG Vault' });
     navigator.mediaSession.setActionHandler('play', play);
     navigator.mediaSession.setActionHandler('stop', stop);
     navigator.mediaSession.setActionHandler('pause', stop);
