@@ -1,15 +1,14 @@
 // Price Book: reference implementation of the Afterlife design language.
 // See docs/design-system.md. Uses only semantic tokens (src/theme.css) and pricebook.css.
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
-import { PRICES, imageUrl, shortSet } from '../lib/data';
-import { getCurrency, money, toDisplay } from '../lib/currency';
+import { BASIS_CLASS, PRICES, imageUrl, printingLabel } from '../lib/data';
+import { getCurrency, money, moneyOr, toDisplay } from '../lib/currency';
 import { buildPriceBook, sortLines, toCsv, type Basis, type Group, type Line, type SortKey } from '../lib/pricebook';
 import { useStore } from '../lib/store';
 import { CARD_BACK } from '../components/bits';
 import { Masthead, MetricStrip } from '../components/ui';
 import './pricebook.css';
 
-const BASIS_CLASS: Record<string, string> = { Market: 'market', 'Beta proxy': 'proxy', 'Low listing': 'low' };
 const COLOR_VAR: Record<string, string> = {
   Yellow: 'var(--color-card-yellow)',
   Blue: 'var(--color-card-blue)',
@@ -19,9 +18,13 @@ const COLOR_VAR: Record<string, string> = {
 const rarityClass = (r: string) =>
   r === 'Epic' ? 'epic' : r === 'Rare' ? 'rare' : /Secret|Iconic|Nova/.test(r) ? 'top' : 'base';
 
-function BasisTag({ basis }: { basis: Basis | null }) {
-  if (!basis) return <span className="pb-tag">Unpriced</span>;
-  return <span className={`pb-tag basis-${BASIS_CLASS[basis]}`}>{basis}</span>;
+function BasisTag({ basis, from }: { basis: Basis | null; from?: string | null }) {
+  if (!basis) return <span className="pb-tag" title="No quote for this exact printing">Unpriced</span>;
+  return (
+    <span className={`pb-tag basis-${BASIS_CLASS[basis]}`} title={from ? `Priced from ${printingLabel(from, false)}` : undefined}>
+      {basis}
+    </span>
+  );
 }
 
 function Thumb({ slug, className }: { slug: string; className: string }) {
@@ -74,7 +77,7 @@ function Marquee({ top, loading, onOpen, goAdd }: { top: Line | null; loading: b
         <h2 className="pb-marquee-name">{card.name}</h2>
         {card.sub && <p className="pb-marquee-sub">{card.sub}</p>}
         <p className="pb-marquee-price">
-          <span className="num">{money(top.unit)}</span>
+          <span className="num">{money(top.unit!)}</span>
           <span className="pb-marquee-basis">{top.basis ?? 'Unpriced'}</span>
           <span className="sr-only"> per copy</span>
         </p>
@@ -106,7 +109,10 @@ function Breakdown({ title, groups, total, fill, children }: { title: string; gr
             <span className="pb-bar" role="img" aria-label={`${Math.round((g.value / (total || 1)) * 100)}% of value`}>
               <span style={{ width: `${(g.value / max) * 100}%`, background: fill(g.key) } as CSSProperties} />
             </span>
-            <span className="pb-bk-value num">{money(g.value)}</span>
+            <span className="pb-bk-value num">
+              {g.unpriced === g.count ? 'Unpriced' : money(g.value)}
+              {g.unpriced > 0 && g.unpriced < g.count && <span className="pb-dim"> +{g.unpriced}</span>}
+            </span>
           </li>
         ))}
       </ul>
@@ -131,7 +137,7 @@ export function PriceBook({ onOpen, goAdd }: { onOpen: (slug: string) => void; g
     URL.revokeObjectURL(a.href);
   };
 
-  const updated = new Date(PRICES.updatedAt).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' });
+  const updated = new Date(PRICES.updatedAt).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' }).replace(/\.$/, '');
 
   return (
     <div className="pb">
@@ -147,9 +153,13 @@ export function PriceBook({ onOpen, goAdd }: { onOpen: (slug: string) => void; g
 
       <MetricStrip
         items={[
-          { label: 'Total value', context: `${pb.count} cards`, value: money(pb.total) },
-          { label: 'Average / card', context: 'Near Mint', value: money(pb.average) },
-          { label: 'Trade bait', context: `${pb.extrasCopies} extra ${pb.extrasCopies === 1 ? 'copy' : 'copies'}`, value: money(pb.extrasValue) },
+          { label: 'Total value', context: pb.unpriced ? `${pb.count} cards · ${pb.unpriced} unpriced` : `${pb.count} cards`, value: money(pb.total) },
+          { label: 'Average / card', context: pb.unpriced ? 'Near Mint · priced cards' : 'Near Mint', value: money(pb.average) },
+          {
+            label: 'Trade bait',
+            context: `${pb.extrasCopies} extra ${pb.extrasCopies === 1 ? 'copy' : 'copies'}${pb.extrasUnpriced ? ` · ${pb.extrasUnpriced} unpriced` : ''}`,
+            value: money(pb.extrasValue),
+          },
         ]}
       />
 
@@ -197,19 +207,21 @@ export function PriceBook({ onOpen, goAdd }: { onOpen: (slug: string) => void; g
                     <span className="pb-id-text">
                       <button className="pb-name" onClick={(e) => { e.stopPropagation(); onOpen(l.card.slug); }}>{l.card.name}</button>
                       {l.card.sub && <span className="pb-sub">{l.card.sub}</span>}
-                      <span className="pb-print">{l.printing ? `${shortSet(l.printing.set)} #${l.printing.num}` : 'Unknown printing'}</span>
+                      <span className="pb-print">{printingLabel(l.entry.printingId, false)}</span>
                       <span className="pb-meta-compact">
-                        <span className={`pb-rarity r-${rarityClass(l.rarity)}`}>{l.rarity}</span> · {money(l.unit)} each
+                        <span className={`pb-rarity r-${rarityClass(l.rarity)}`}>{l.rarity}</span> · {l.unit == null ? 'Unpriced' : `${money(l.unit)} each`}
                       </span>
                     </span>
                   </span>
                   <span role="cell" className="pb-c-rarity"><span className={`pb-rarity r-${rarityClass(l.rarity)}`}>{l.rarity}</span></span>
                   <span role="cell" className="pb-c-qty num r"><span className="pb-x" aria-hidden="true">×</span>{l.entry.qty}</span>
-                  <span role="cell" className="pb-c-unit num r">{money(l.unit)}</span>
-                  <span role="cell" className="pb-c-total num r">{money(l.total)}</span>
+                  <span role="cell" className={`pb-c-unit num r ${l.unit == null ? 'pb-dim' : ''}`}>{moneyOr(l.unit)}</span>
+                  <span role="cell" className={`pb-c-total num r ${l.total == null ? 'pb-dim' : ''}`}>{moneyOr(l.total)}</span>
                   <span role="cell" className="pb-c-basis" onClick={(e) => e.stopPropagation()}>
                     {l.url ? (
-                      <a href={l.url} target="_blank" rel="noreferrer" title="View on TCGplayer"><BasisTag basis={l.basis} /></a>
+                      <a href={l.url} target="_blank" rel="noreferrer" aria-label={`${l.basis} price on TCGplayer`}>
+                        <BasisTag basis={l.basis} from={l.sourcePrintingId !== l.entry.printingId ? l.sourcePrintingId : null} />
+                      </a>
                     ) : (
                       <BasisTag basis={l.basis} />
                     )}
@@ -225,7 +237,9 @@ export function PriceBook({ onOpen, goAdd }: { onOpen: (slug: string) => void; g
               <ul>
                 {pb.extras.map((x) => (
                   <li key={x.slug}>
-                    <button onClick={() => onOpen(x.slug)}>{x.card.display}</button> ×{x.copies} <span className="num">{money(x.unit * x.copies)}</span>
+                    <button onClick={() => onOpen(x.slug)}>{x.card.display}</button> ×{x.copies}{' '}
+                    <span className="num">{x.unpriced === x.copies ? 'Unpriced' : money(x.value)}</span>
+                    {x.unpriced > 0 && x.unpriced < x.copies && <span className="pb-dim"> + {x.unpriced} unpriced</span>}
                   </li>
                 ))}
               </ul>
@@ -238,7 +252,7 @@ export function PriceBook({ onOpen, goAdd }: { onOpen: (slug: string) => void; g
             title="Price confidence"
             groups={pb.byConfidence}
             total={pb.total}
-            fill={(k) => `var(--color-basis-${BASIS_CLASS[k] ?? 'low'})`}
+            fill={(k) => (k in BASIS_CLASS ? `var(--color-basis-${BASIS_CLASS[k as Basis]})` : 'var(--color-divider)')}
           >
             <details className="pb-disclosure">
               <summary>What these labels mean</summary>
@@ -246,9 +260,11 @@ export function PriceBook({ onOpen, goAdd }: { onOpen: (slug: string) => void; g
                 <dt><span className="pb-tag basis-market">Market</span></dt>
                 <dd>Recent TCGplayer sales for this exact printing.</dd>
                 <dt><span className="pb-tag basis-proxy">Beta proxy</span></dt>
-                <dd>The Retail printing hasn't sold yet (Retail launched Nov 6, 2026), so the identical Beta printing's market price stands in.</dd>
+                <dd>This Retail printing has no sales yet, only a higher listing or none, so its verified Beta twin's market price stands in. Hover the tag to see which printing.</dd>
                 <dt><span className="pb-tag basis-low">Low listing</span></dt>
-                <dd>No sales anywhere, so the cheapest current listing is used. It never outranks a known market price for the same card.</dd>
+                <dd>No recent sales for this exact printing, so its cheapest current listing is used.</dd>
+                <dt><span className="pb-tag">Unpriced</span></dt>
+                <dd>No quote for this exact printing (common for promos and event cards). It isn't counted in totals, and it never borrows another printing's price.</dd>
               </dl>
             </details>
           </Breakdown>

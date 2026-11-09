@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { PRICES, fitsRam, ramLimits, BY_SLUG } from './data';
+import { PRICES, fitsRam, ramLimits, BY_SLUG, acquireQuote, _clearQuoteCache } from './data';
+import { completion, deckNeed, purchaseEstimate } from './decks';
 import { validate, COPY_MAX } from './decks';
 import { budgetStatus, finishCost, planUpgrades, quoteFor } from './upgrade';
 import { starterByKey, starterEntries } from './starters';
@@ -90,8 +91,10 @@ describe('planUpgrades', () => {
 
   it('never confirms a budget when a required purchase is unpriced, and never adds one', () => {
     const slug = 'kiroshi-optics';
-    const saved = PRICES.ref[slug];
-    delete PRICES.ref[slug];
+    const ids = BY_SLUG.get(slug)!.printings.map((p) => p.id);
+    const saved = Object.fromEntries(ids.map((id) => [id, PRICES.printings[id]]));
+    for (const id of ids) delete PRICES.printings[id];
+    _clearQuoteCache();
     try {
       expect(quoteFor(slug)).toBeNull();
       const owned = new Map(heistOnly);
@@ -107,8 +110,63 @@ describe('planUpgrades', () => {
       const free = planUpgrades({ ...base, owned: heistOnly, budget: 25, currency: 'USD' });
       for (const o of free.options) expect(o.cards[slug] ?? 0).toBeLessThanOrEqual(heist.cards[slug]); // never adds the unpriced card
     } finally {
-      PRICES.ref[slug] = saved;
+      for (const id of ids) if (saved[id]) PRICES.printings[id] = saved[id];
+      _clearQuoteCache();
     }
+  });
+
+  it('a $0 plan on a fully owned deck needs nothing, and a missing unpriced copy blocks a confirmed result', () => {
+    const p = planUpgrades({ ...base, budget: 0, currency: 'CAD' });
+    expect(p.base.cost.copies).toBe(0);
+    expect(p.base.status).toBe('within');
+    const slug = 'kiroshi-optics';
+    const ids = BY_SLUG.get(slug)!.printings.map((x) => x.id);
+    const saved = Object.fromEntries(ids.map((id) => [id, PRICES.printings[id]]));
+    for (const id of ids) delete PRICES.printings[id];
+    _clearQuoteCache();
+    try {
+      const owned = new Map(heistOnly);
+      owned.set(slug, 2); // one copy short, and it has no quote
+      const q = planUpgrades({ ...base, owned, budget: 0, currency: 'USD', locks: new Set([slug]) });
+      expect(q.base.status).toBe('unknown');
+      for (const o of q.options) expect(o.status).not.toBe('within');
+    } finally {
+      for (const id of ids) if (saved[id]) PRICES.printings[id] = saved[id];
+      _clearQuoteCache();
+    }
+  });
+
+  it('prices every purchase line with the shared estimator: same printing, basis and amount for search, budget and display', () => {
+    const owned = new Map(heistOnly);
+    owned.set('kiroshi-optics', 1); // a copy the starting list is already missing
+    for (const currency of ['USD', 'CAD'] as const) {
+      const p = planUpgrades({ ...base, owned, budget: 25, currency });
+      for (const o of [{ cost: p.base.cost }, ...p.options])
+        for (const l of o.cost.lines) {
+          const q = acquireQuote(l.slug);
+          expect(l.quote).toEqual(q);
+          if (l.quote) expect(['Market', 'Low listing']).toContain(l.quote.basis); // never a valuation proxy
+        }
+      for (const o of p.options) {
+        const known = o.cost.lines.reduce((a, l) => a + (l.quote ? l.quote.cad * l.buy : 0), 0);
+        expect(o.cost.knownCad).toBeCloseTo(known, 6);
+        expect(o.status).toBe(budgetStatus(o.cost, 25, currency));
+      }
+      // already-missing copies show up in the line items too
+      expect(p.base.cost.lines.find((l) => l.slug === 'kiroshi-optics')?.buy).toBe(2);
+    }
+  });
+
+  it('agrees with Meta Intel and the Deck Builder on the Legends + main-deck requirement', () => {
+    const owned = new Map(heistOnly);
+    owned.set('kiroshi-optics', 1);
+    owned.set('jackie-welles-pour-one-out-for-me', 0);
+    const planner = finishCost(heist.legends, heist.cards, owned);
+    const meta = completion({ legends: heist.legends, cards: heist.cards }, owned).estimate;
+    const builder = purchaseEstimate(deckNeed({ legends: heist.legends, cards: heist.cards }), owned);
+    expect(meta).toEqual(planner);
+    expect(builder).toEqual(planner);
+    expect(planner.lines.map((l) => l.slug).sort()).toEqual(['jackie-welles-pour-one-out-for-me', 'kiroshi-optics']);
   });
 
   it('does not mutate the source deck and is deterministic', () => {

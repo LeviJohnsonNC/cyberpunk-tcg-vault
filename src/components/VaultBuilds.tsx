@@ -1,7 +1,7 @@
 // "Built from your vault": deterministic auto-builder (instant, local) plus optional AI refinement (signed in).
 import { useMemo, useState } from 'react';
 import { BY_SLUG, COLORS, type Color } from '../lib/data';
-import { money } from '../lib/currency';
+import { money, estimateText, moneyOr } from '../lib/currency';
 import { autobuild, type Build, type Style } from '../lib/autobuild';
 import { newId, useStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
@@ -14,6 +14,14 @@ const STYLES: { id: Style; label: string }[] = [
   { id: 'aggro', label: 'Aggro' },
   { id: 'control', label: 'Control' },
 ];
+
+function upgradeEstimate(ups: Build['upgrades']) {
+  return {
+    knownCad: ups.reduce((a, u) => a + (u.quote ? u.quote.cad * u.add : 0), 0),
+    unpriced: ups.reduce((a, u) => a + (u.quote ? 0 : u.add), 0),
+    copies: ups.reduce((a, u) => a + u.add, 0),
+  };
+}
 
 function shortName(slug: string) {
   return BY_SLUG.get(slug)?.name ?? slug;
@@ -112,7 +120,7 @@ export function VaultBuilds({ onOpen, openPending, goAdd }: { onOpen: (slug: str
               {result.suggestions.map((s, i) => (
                 <span key={s.slug}>
                   {i > 0 && ', '}
-                  <a href="#" onClick={(e) => { e.preventDefault(); onOpen(s.slug); }}>{BY_SLUG.get(s.slug)?.display}</a> ({money(s.unit)})
+                  <a href="#" onClick={(e) => { e.preventDefault(); onOpen(s.slug); }}>{BY_SLUG.get(s.slug)?.display}</a> ({moneyOr(s.quote?.cad)})
                 </span>
               ))}
             </p>
@@ -163,12 +171,12 @@ export function VaultBuilds({ onOpen, openPending, goAdd }: { onOpen: (slug: str
                 {b.notes.length > 0 && <div className="tiny weak">{b.notes.join(' ')}</div>}
                 {b.upgrades.length > 0 && (
                   <details className="vault-upgrades">
-                    <summary>Upgrades to buy ({money(b.upgrades.reduce((a, u) => a + u.unit * u.add, 0))})</summary>
+                    <summary>Upgrades to buy ({estimateText(upgradeEstimate(b.upgrades))})</summary>
                     <ul>
                       {b.upgrades.map((u) => (
                         <li key={u.slug + (u.replaces ?? '')}>
                           +{u.add} <a href="#" onClick={(e) => { e.preventDefault(); onOpen(u.slug); }}>{shortName(u.slug)}</a>
-                          {u.replaces && <span className="muted"> for {shortName(u.replaces)}</span>} <span className="num">{money(u.unit * u.add)}</span>
+                          {u.replaces && <span className="muted"> for {shortName(u.replaces)}</span>} <span className="num">{u.quote ? money(u.quote.cad * u.add) : 'Unpriced'}</span>
                         </li>
                       ))}
                     </ul>

@@ -1,5 +1,5 @@
 // Pure deck helpers: legality, recommended-deck completion. No React.
-import { BY_SLUG, RECOMMENDED, fitsRam, ramLimits, refPrice, type RecommendedDeck } from './data';
+import { BY_SLUG, RECOMMENDED, acquireQuote, fitsRam, ramLimits, type AcquireQuote, type RecommendedDeck } from './data';
 import type { Deck } from './store';
 
 export const MAIN_MIN = 40;
@@ -44,29 +44,68 @@ export function validate(d: Pick<Deck, 'legends' | 'cards' | 'sideboard'>) {
   return { lim, n, side, issues, passes, legal: issues.length === 0 };
 }
 
+export interface PurchaseLine {
+  slug: string;
+  buy: number; // copies to buy
+  quote: AcquireQuote | null; // null = unpriced
+}
+
+/** What buying the missing copies costs. Shared by Meta Intel, the Deck Builder and the planner. */
+export interface PurchaseEstimate {
+  knownCad: number; // priced lines only
+  unpriced: number; // copies with no quote
+  copies: number; // all copies to buy
+  lines: PurchaseLine[];
+}
+
+/** Cost to acquire everything in `need` (slug -> copies) beyond what `owned` covers. */
+export function purchaseEstimate(need: Record<string, number>, owned: Map<string, number>): PurchaseEstimate {
+  const lines: PurchaseLine[] = [];
+  let knownCad = 0;
+  let unpriced = 0;
+  let copies = 0;
+  for (const [slug, n] of Object.entries(need)) {
+    const buy = n - Math.min(n, owned.get(slug) ?? 0);
+    if (buy <= 0) continue;
+    const quote = acquireQuote(slug);
+    if (quote) knownCad += quote.cad * buy;
+    else unpriced += buy;
+    copies += buy;
+    lines.push({ slug, buy, quote });
+  }
+  lines.sort((a, b) => (b.quote ? b.quote.cad * b.buy : Infinity) - (a.quote ? a.quote.cad * a.buy : Infinity) || a.slug.localeCompare(b.slug));
+  return { knownCad, unpriced, copies, lines };
+}
+
+/** Legends + main deck as one need map (the requirement the planner, builder and Meta Intel share). */
+export function deckNeed(deck: Pick<RecommendedDeck, 'legends' | 'cards'>): Record<string, number> {
+  const need: Record<string, number> = { ...deck.cards };
+  for (const l of deck.legends) need[l] = (need[l] ?? 0) + 1;
+  return need;
+}
+
 export interface Completion {
   have: number;
   total: number;
   pct: number; // 0-100, rounded down so 99.x never shows as 100
-  cost: number; // CAD to buy what's missing
-  missing: { slug: string; n: number; unit: number }[];
+  estimate: PurchaseEstimate;
 }
 
 /** How much of a deck (Legends + main) a collection covers, and what the rest costs. */
 export function completion(deck: Pick<RecommendedDeck, 'legends' | 'cards'>, owned: Map<string, number>): Completion {
-  const need: Record<string, number> = { ...deck.cards };
-  for (const l of deck.legends) need[l] = (need[l] ?? 0) + 1;
+  const need = deckNeed(deck);
   let have = 0;
   let total = 0;
-  const missing: Completion['missing'] = [];
   for (const [slug, n] of Object.entries(need)) {
-    const h = Math.min(n, owned.get(slug) ?? 0);
-    have += h;
+    have += Math.min(n, owned.get(slug) ?? 0);
     total += n;
-    if (n > h) missing.push({ slug, n: n - h, unit: refPrice(slug) });
   }
-  missing.sort((a, b) => b.unit * b.n - a.unit * a.n);
-  return { have, total, pct: total ? Math.floor((have / total) * 100) : 0, cost: missing.reduce((a, m) => a + m.unit * m.n, 0), missing };
+  return { have, total, pct: total ? Math.floor((have / total) * 100) : 0, estimate: purchaseEstimate(need, owned) };
+}
+
+/** Sort key for "cheapest to finish": complete estimates first by cost, incomplete ones after. */
+export function costRank(e: PurchaseEstimate): number {
+  return e.unpriced > 0 ? 1e9 + e.knownCad : e.knownCad;
 }
 
 export type BuildFilter = 'all' | 'close' | 'owned';

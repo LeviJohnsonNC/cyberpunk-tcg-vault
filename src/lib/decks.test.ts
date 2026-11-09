@@ -32,7 +32,8 @@ describe('completion', () => {
     for (const id of ['lowball-netrun', 'heist-reloaded']) {
       const c = completion(RECOMMENDED.find((d) => d.id === id)!, owned);
       expect(c.have).toBe(c.total);
-      expect(c.cost).toBe(0);
+      expect(c.estimate.copies).toBe(0);
+      expect(c.estimate.knownCad).toBe(0);
       expect(matchesFilter(c, 'owned')).toBe(true);
     }
   });
