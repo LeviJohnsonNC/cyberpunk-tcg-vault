@@ -3,5 +3,21 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "functions": { "api/scan.ts": { "maxDuration": 60 }, "api/refine-deck.ts": { "maxDuration": 120 } }
+  "functions": {
+    "api/scan.ts": {
+      "maxDuration": 60
+    },
+    "api/refine-deck.ts": {
+      "maxDuration": 120
+    },
+    "api/share-preview.ts": {
+      "maxDuration": 10
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/d/:token",
+      "destination": "/api/share-preview?token=:token"
+    }
+  ]
 }
