@@ -110,12 +110,12 @@ export function VaultBuilds({ onOpen, goAdd }: { onOpen: (slug: string) => void;
           {collectionError && <button className="btn quiet" onClick={retryCollection}>Try again</button>}
         </div>
       ) : !owned.size ? (
-        <div className="panel meta-state">
+        <div className="panel meta-state meta-start">
           <h3>Add your first cards</h3>
-          <p>Log cards or a starter deck to see what you can build. Explore a sample vault with the demo.</p>
+          <p>Log cards or a starter deck to see what you can build. You can also try a stocked sample Vault.</p>
           <div className="row">
             <button className="btn" onClick={goAdd}>Add cards</button>
-            {!demo && <button className="btn ghost" onClick={startDemo}>Explore the sample vault</button>}
+            {!demo && <button className="btn ghost" onClick={startDemo}>Explore the sample Vault</button>}
           </div>
         </div>
       ) : (
@@ -201,15 +201,15 @@ export function VaultBuilds({ onOpen, goAdd }: { onOpen: (slug: string) => void;
                     <p className="meta-feature-size">{featured.legends.length} Legends · {Object.values(featured.cards).reduce((sum, qty) => sum + qty, 0)} main-deck cards</p>
                     <span className="meta-owned-badge">Fully owned</span>
                   </div>
-                  <div className="meta-feature-art" aria-label="Legend cards">
-                    {featured.legends.map((slug) => <button key={slug} type="button" aria-label={`Open ${BY_SLUG.get(slug)?.display}`}
-                      title={BY_SLUG.get(slug)?.display} onClick={() => onOpen(slug)}><CardImg slug={slug} alt="" priority /></button>)}
-                  </div>
                   <div className="meta-feature-action">
                     <button className="btn meta-open-draft" type="button" onClick={() => open(featured)}>
                       Open draft<span> in Deck Builder</span>
                     </button>
                     <p>Edit and save in Deck Builder.</p>
+                  </div>
+                  <div className="meta-feature-art" aria-label="Legend cards">
+                    {featured.legends.map((slug) => <button key={slug} type="button" aria-label={`Open ${BY_SLUG.get(slug)?.display}`}
+                      title={BY_SLUG.get(slug)?.display} onClick={() => onOpen(slug)}><CardImg slug={slug} alt="" priority /></button>)}
                   </div>
                 </div>
                 <details key={crewKey(featured)} className="meta-build-details meta-disclosure">

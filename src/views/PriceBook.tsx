@@ -19,6 +19,13 @@ const COLOR_VAR: Record<string, string> = {
 };
 const rarityClass = (r: string) =>
   r === 'Epic' ? 'epic' : r === 'Rare' ? 'rare' : /Secret|Iconic|Nova/.test(r) ? 'top' : 'base';
+type OpenHolding = (slug: string, printingId?: string, identify?: boolean, opener?: HTMLElement) => void;
+const holdingSorts: { value: SortKey; label: string }[] = [
+  { value: 'total', label: 'Total value' },
+  { value: 'unit', label: 'Unit price' },
+  { value: 'qty', label: 'Quantity' },
+  { value: 'name', label: 'Name' },
+];
 
 function BasisTag({ basis, from }: { basis: Basis | null; from?: string | null }) {
   if (!basis) return <span className="pb-tag" title="No quote for this exact printing">Unpriced</span>;
@@ -39,7 +46,9 @@ function Skyline() {
   );
 }
 
-function Marquee({ top, loading, onOpen, goAdd }: { top: Line | null; loading: boolean; onOpen: (slug: string, printingId?: string) => void; goAdd: () => void }) {
+function Marquee({ top, loading, hasCards, onOpen, goAdd }: {
+  top: Line | null; loading: boolean; hasCards: boolean; onOpen: OpenHolding; goAdd: () => void;
+}) {
   if (loading) {
     return (
       <section className="pb-marquee is-loading" aria-busy="true" aria-label="Most valuable card, loading">
@@ -57,9 +66,9 @@ function Marquee({ top, loading, onOpen, goAdd }: { top: Line | null; loading: b
       <section className="pb-marquee is-empty" aria-label="Most valuable card">
         <span className="pb-ticket">Most valuable card</span>
         <div className="pb-marquee-copy">
-          <h2 className="pb-marquee-name">Nothing on the books</h2>
-          <p className="pb-marquee-sub">Add cards and your most valuable one headlines here.</p>
-          <button className="btn quiet" onClick={goAdd}>Add cards</button>
+          <h2 className="pb-marquee-name">{hasCards ? 'No priced holdings yet' : 'Nothing on the books'}</h2>
+          <p className="pb-marquee-sub">{hasCards ? 'Your holdings appear below. Their value is pending a quote.' : 'Add cards and your most valuable one headlines here.'}</p>
+          {!hasCards && <button className="btn quiet" onClick={goAdd}>Add cards</button>}
         </div>
         <Skyline />
       </section>
@@ -79,7 +88,7 @@ function Marquee({ top, loading, onOpen, goAdd }: { top: Line | null; loading: b
         </p>
       </div>
       <Skyline />
-      <button className="pb-marquee-card" onClick={() => onOpen(card.slug, top.printing?.id)} aria-label={`Open ${card.display}`}>
+      <button className="pb-marquee-card" onClick={(event) => onOpen(card.slug, top.printing?.id, undefined, event.currentTarget)} aria-label={`Open ${card.display}`}>
         {top.printing ? <PrintingArt slug={card.slug} printingId={top.printing.id} alt="" pocket /> : <CardImg slug={card.slug} alt="" priority />}
       </button>
     </section>
@@ -118,12 +127,26 @@ function Breakdown({ title, groups, total, fill, children }: { title: string; gr
 }
 
 /* ---------- page ---------- */
-export function PriceBook({ onOpen, goAdd }: { onOpen: (slug: string, printingId?: string) => void; goAdd: () => void }) {
-  const { entries, syncing } = useStore();
+export function PriceBook({ mobile, onOpen, goAdd }: { mobile: boolean; onOpen: OpenHolding; goAdd: () => void }) {
+  const { entries, collectionReady, collectionError, retryCollection } = useStore();
   const [sortBy, setSortBy] = useState<SortKey>('total');
   const pb = useMemo(() => buildPriceBook(entries), [entries]);
   const sorted = useMemo(() => sortLines(pb.lines, sortBy), [pb.lines, sortBy]);
-  const loading = syncing && entries.length === 0;
+  const loading = !collectionReady && !collectionError;
+  const currency = getCurrency();
+  const headline = {
+    label: 'Total value',
+    context: collectionReady ? `${currency} · ${pb.count} ${pb.count === 1 ? 'card' : 'cards'}${pb.unpriced ? ` · ${pb.unpriced} unpriced` : ''}` : currency,
+    value: !collectionReady ? '—' : pb.count && !pb.pricedCount ? 'Unpriced' : money(pb.total),
+  };
+  const valuationDetails = [
+    { label: 'Average / card', context: pb.unpriced ? 'Near Mint · priced cards' : 'Near Mint', value: !collectionReady ? '—' : pb.count && !pb.pricedCount ? 'Unpriced' : money(pb.average) },
+    {
+      label: 'Trade bait',
+      context: `${pb.extrasCopies} extra ${pb.extrasCopies === 1 ? 'copy' : 'copies'}${pb.extrasUnpriced ? ` · ${pb.extrasUnpriced} unpriced` : ''}`,
+      value: !collectionReady ? '—' : pb.extrasCopies && pb.extrasUnpriced === pb.extrasCopies ? 'Unpriced' : money(pb.extrasValue),
+    },
+  ];
 
   const exportCsv = () => {
     const a = document.createElement('a');
@@ -144,46 +167,45 @@ export function PriceBook({ onOpen, goAdd }: { onOpen: (slug: string, printingId
           title={<>Price <br />Book</>}
           sub={<>Near Mint prices <span className="sep" aria-hidden="true">◆</span> {getCurrency()}</>}
         />
-        <Marquee top={pb.top} loading={loading} onOpen={onOpen} goAdd={goAdd} />
+        <div className="pb-valuation">
+          <MetricStrip items={mobile ? [headline] : [headline, ...valuationDetails]} />
+          {mobile && collectionReady && pb.count > 0 && (
+            <details className="pb-valuation-details">
+              <summary>More valuation details</summary>
+              <dl>{valuationDetails.map(({ label, context, value }) => <div key={label}>
+                <dt>{label}</dt><dd><strong>{value}</strong> <span>{context}</span></dd>
+              </div>)}</dl>
+            </details>
+          )}
+        </div>
+        {!collectionError && (!mobile || pb.top) && <Marquee top={pb.top} loading={loading} hasCards={pb.count > 0} onOpen={onOpen} goAdd={goAdd} />}
       </div>
-
-      <MetricStrip
-        items={[
-          { label: 'Total value', context: pb.unpriced ? `${pb.count} cards · ${pb.unpriced} unpriced` : `${pb.count} cards`, value: money(pb.total) },
-          { label: 'Average / card', context: pb.unpriced ? 'Near Mint · priced cards' : 'Near Mint', value: money(pb.average) },
-          {
-            label: 'Trade bait',
-            context: `${pb.extrasCopies} extra ${pb.extrasCopies === 1 ? 'copy' : 'copies'}${pb.extrasUnpriced ? ` · ${pb.extrasUnpriced} unpriced` : ''}`,
-            value: money(pb.extrasValue),
-          },
-        ]}
-      />
 
       <div className="pb-body">
         <section className="pb-holdings" aria-labelledby="pb-holdings-title">
           <header className="pb-holdings-head">
-            <h2 id="pb-holdings-title">Holdings <span className="pb-count">{pb.count} cards</span></h2>
+            <h2 id="pb-holdings-title" tabIndex={-1}>Holdings {collectionReady && <span className="pb-count">{pb.count} {pb.count === 1 ? 'card' : 'cards'}</span>}</h2>
             <div className="pb-controls">
               <label className="sr-only" htmlFor="pb-sort">Sort holdings</label>
-              <VaultSelect id="pb-sort" className="pb-select" value={sortBy} onValueChange={(value) => setSortBy(value as SortKey)} options={[
-                { value: 'total', label: 'Sort: total value' },
-                { value: 'unit', label: 'Sort: unit price' },
-                { value: 'qty', label: 'Sort: quantity' },
-                { value: 'name', label: 'Sort: name' },
-              ]} />
-              <button className="pb-btn" onClick={exportCsv} disabled={!pb.lines.length}>
+              <VaultSelect id="pb-sort" className="pb-select" value={sortBy} onValueChange={(value) => setSortBy(value as SortKey)}
+                options={mobile ? holdingSorts : holdingSorts.map(({ value, label }) => ({ value, label: `Sort: ${label.toLowerCase()}` }))} />
+              <button className="pb-btn" onClick={exportCsv} disabled={!collectionReady || !pb.lines.length}>
                 <span aria-hidden="true">↓</span> Export CSV
               </button>
             </div>
           </header>
 
-          {loading ? (
+          {collectionError ? (
+            <div className="pb-empty" role="alert">
+              <p>Couldn’t load your holdings.</p><button className="pb-btn" onClick={retryCollection}>Try again</button>
+            </div>
+          ) : loading ? (
             <div className="pb-rows" aria-busy="true">
               {[0, 1, 2, 3, 4].map((i) => <div key={i} className="pb-skel pb-skel-row" />)}
             </div>
           ) : pb.lines.length === 0 ? (
             <div className="pb-empty">
-              <p>No cards priced yet. Add cards by search or photo and they'll show up here with live prices.</p>
+              <p>Add a card to see its printing, quantity, and latest available price here.</p>
               <button className="pb-btn" onClick={goAdd}>Add cards</button>
             </div>
           ) : (
@@ -197,15 +219,19 @@ export function PriceBook({ onOpen, goAdd }: { onOpen: (slug: string, printingId
                 <span role="columnheader">Basis</span>
               </div>
               {sorted.map((l) => (
-                <div key={l.entry.printingId} className="pb-row" role="row" onClick={() => onOpen(l.card.slug)}>
+                <div key={l.entry.printingId} className="pb-row" role="row" onClick={(event) => {
+                  if (event.target instanceof Element && event.target.closest('a')) return;
+                  onOpen(l.card.slug, l.printing?.id, !l.printing, event.currentTarget.querySelector('button.pb-name') ?? undefined);
+                }}>
                   <span role="cell" className="pb-id">
                     <CardImg slug={l.card.slug} className="pb-thumb" alt="" />
                     <span className="pb-id-text">
-                      <button className="pb-name" onClick={(e) => { e.stopPropagation(); onOpen(l.card.slug); }}>{l.card.name}</button>
+                      <button className="pb-name" aria-label={`Open ${l.card.display}, ${printingLabel(l.entry.printingId, false)}`}
+                        onClick={(event) => { event.stopPropagation(); onOpen(l.card.slug, l.printing?.id, !l.printing, event.currentTarget); }}>{l.card.name}</button>
                       {l.card.sub && <span className="pb-sub">{l.card.sub}</span>}
                       <span className="pb-print">{printingLabel(l.entry.printingId, false)}</span>
                       <span className="pb-meta-compact">
-                        <span className={`pb-rarity r-${rarityClass(l.rarity)}`}>{l.rarity}</span> · {l.unit == null ? 'Unpriced' : `${money(l.unit)} each`}
+                        <span className={`pb-rarity r-${rarityClass(l.rarity)}`}>{l.rarity}</span>{l.unit != null && ` · ${money(l.unit)} each`}
                       </span>
                     </span>
                   </span>
@@ -213,7 +239,7 @@ export function PriceBook({ onOpen, goAdd }: { onOpen: (slug: string, printingId
                   <span role="cell" className="pb-c-qty num r"><span className="pb-x" aria-hidden="true">×</span>{l.entry.qty}</span>
                   <span role="cell" className={`pb-c-unit num r ${l.unit == null ? 'pb-dim' : ''}`}>{moneyOr(l.unit)}</span>
                   <span role="cell" className={`pb-c-total num r ${l.total == null ? 'pb-dim' : ''}`}>{moneyOr(l.total)}</span>
-                  <span role="cell" className="pb-c-basis" onClick={(e) => e.stopPropagation()}>
+                  <span role="cell" className="pb-c-basis">
                     {l.url ? (
                       <a href={l.url} target="_blank" rel="noreferrer" aria-label={`${l.basis} price on TCGplayer`}>
                         <BasisTag basis={l.basis} from={l.sourcePrintingId !== l.entry.printingId ? l.sourcePrintingId : null} />
