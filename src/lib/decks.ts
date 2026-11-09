@@ -28,20 +28,21 @@ export function validate(d: Pick<Deck, 'legends' | 'cards' | 'sideboard'>) {
   else passes.push('3 unique Legends');
   if (n < MAIN_MIN || n > MAIN_MAX) issues.push(`Main deck must be ${MAIN_MIN} to ${MAIN_MAX} cards (has ${n})`);
   else passes.push(`${n} card main deck`);
-  const over = Object.entries(d.cards).filter(([s, q]) => q + (d.sideboard[s] ?? 0) > COPY_MAX);
-  if (over.length) issues.push(`Max ${COPY_MAX} copies: ${over.map(([s]) => BY_SLUG.get(s)?.name ?? s).join(', ')}`);
+  const slugs = Object.keys({ ...d.cards, ...d.sideboard });
+  const overCopies = slugs.filter((s) => (d.cards[s] ?? 0) + (d.sideboard[s] ?? 0) > COPY_MAX);
+  if (overCopies.length) issues.push(`Max ${COPY_MAX} copies: ${overCopies.map((s) => BY_SLUG.get(s)?.name ?? s).join(', ')}`);
   else passes.push('Copy limits OK');
-  const unknown = Object.keys({ ...d.cards, ...d.sideboard }).filter((s) => !BY_SLUG.has(s));
+  const unknown = slugs.filter((s) => !BY_SLUG.has(s));
   if (unknown.length) issues.push(`Unknown cards: ${unknown.join(', ')}`);
-  const ramBad = Object.keys({ ...d.cards, ...d.sideboard }).filter((s) => {
+  const ramBad = slugs.filter((s) => {
     const c = BY_SLUG.get(s);
     return c && !fitsRam(c, lim);
   });
   if (ramBad.length) issues.push(`Over RAM limit: ${ramBad.map((s) => BY_SLUG.get(s)?.name).join(', ')}`);
   else passes.push('All cards fit RAM');
   if (side !== 0 && side !== SIDEBOARD_SIZE) issues.push(`Sideboard must be exactly ${SIDEBOARD_SIZE} for Bo3 (has ${side})`);
-  else if (side === SIDEBOARD_SIZE) passes.push(`${SIDEBOARD_SIZE} card sideboard (Bo3 ready)`);
-  return { lim, n, side, issues, passes, legal: issues.length === 0 };
+  else if (side === SIDEBOARD_SIZE) passes.push(`${SIDEBOARD_SIZE}-card sideboard`);
+  return { lim, n, side, issues, passes, overCopies, ramBad, legal: issues.length === 0 };
 }
 
 export interface PurchaseLine {
