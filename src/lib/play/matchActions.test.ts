@@ -33,6 +33,24 @@ describe('desktop match prompts', () => {
     expect(action.fields({ card: ['program'] })).toHaveLength(1);
   });
 
+  it('links Eddie payment choices to the mat without exposing pool markers to the engine', () => {
+    const view = freshView();
+    view.prompt.availableMoves = [{ moveId: 'callLegend', inputSpec: { type: 'callLegend', candidates: ['calling'] } }];
+    view.prompt.payment = {
+      eddieIds: ['sold-card'], eddies: 2, legendIds: ['reserved', 'ready-legend'], effectGearHosts: {},
+      costs: { callLegend: { action: { amount: 2, reservedLegendIds: ['reserved'] } } },
+    };
+    const [action] = matchActions(view);
+    const fields = action.fields({ card: ['calling'] });
+    expect(fields[1].options.map(({ id, cardId }) => ({ id, cardId }))).toEqual([
+      { id: 'sold-card', cardId: 'sold-card' }, { id: 'pool:0', cardId: 'pool:0' },
+      { id: 'ready-legend', cardId: 'ready-legend' },
+    ]);
+    const picks = { card: ['calling'], payment: ['sold-card', 'pool:0'] };
+    expect(isReady(fields, picks)).toBe(true);
+    expect(action.move(picks)).toEqual({ move: 'callLegend', args: { legendId: 'calling', paymentSourceIds: ['sold-card'] } });
+  });
+
   it('limits atomic Gig adjustments to legal faces and keeps decline available', () => {
     const view = freshView();
     view.players.player.zones.gigArea = [card('gig', { definitionId: 'd6', zone: 'gigArea', power: 5 })];

@@ -1,10 +1,11 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { CARD_BACK, CardImg, Pip, Rules } from '../components/bits';
 import { CARDS, BY_SLUG } from '../lib/data';
 import { isReady, matchActions, type MatchActionForm, type Picks } from '../lib/play/matchActions';
-import { visibleCards, zoneCards, zoneCount } from '../lib/play/matchView';
+import { visibleCards, zoneCards } from '../lib/play/matchView';
 import type { CardView, MatchSnapshot, Move, Seat } from '../lib/play/protocol';
 import { DieFace, GigRollDisplay } from './PlayDice';
+import { GigZones, PlayMat } from './PlayMat';
 
 const byId = new Map(CARDS.map((card) => [card.id, card]));
 const byDisplay = new Map(CARDS.map((card) => [card.display, card]));
@@ -18,103 +19,6 @@ function vaultCard(card: CardView) {
 function CardFace({ card }: { card: CardView }) {
   const printing = vaultCard(card);
   return printing ? <CardImg slug={printing.slug} alt="" priority /> : <img className="card-art" src={CARD_BACK} alt="" />;
-}
-
-type CardTile = (card: CardView, label?: string) => ReactNode;
-
-function SeatLane({ seat, snapshot, name, active, renderCard, onPick, targetIds, chosenIds }: {
-  seat: Seat; snapshot: MatchSnapshot; name: string; active: boolean; renderCard: CardTile;
-  onPick: (id: string) => void; targetIds: Set<string>; chosenIds: Set<string>;
-}) {
-  const view = snapshot.view.players[seat];
-  const own = seat === 'player';
-  const gigs = zoneCards(view, 'gigArea');
-  const fixer = zoneCards(view, 'fixerArea');
-  const legends = zoneCards(view, 'legendArea');
-  const field = zoneCards(view, 'field');
-  const resolving = zoneCards(view, 'resolvingProgram');
-  const trash = zoneCards(view, 'trash');
-  const removed = zoneCards(view, 'removedFromGame');
-  const hosts = new Set([...legends, ...field].map((card) => card.instanceId));
-  const attached = field.filter((card) => card.attachedToId && hosts.has(card.attachedToId));
-  const attachedIds = new Set(attached.map((card) => card.instanceId));
-  const fieldCards = field.filter((card) => !attachedIds.has(card.instanceId));
-  const legendGear = attached.filter((card) => legends.some((legend) => legend.instanceId === card.attachedToId));
-
-  function withGear(card: CardView, label?: string) {
-    const gear = attached.filter((item) => item.attachedToId === card.instanceId);
-    return gear.length ? <div key={card.instanceId} className="play-equipped">
-      {renderCard(card, label)}
-      <div className="play-attachments" role="group" aria-label={`Gear attached to ${card.cardName ?? label ?? 'this card'}`}>
-        {gear.map((item) => renderCard(item))}
-      </div>
-    </div> : renderCard(card, label);
-  }
-
-  function die(card: CardView, isFixer = false) {
-    const target = targetIds.has(card.instanceId);
-    return <button key={card.instanceId} type="button" className={`play-die${isFixer ? ' play-die-fixer' : ''}`}
-      aria-label={isFixer ? `Roll ${card.definitionId}` : `${card.definitionId} Gig · ${card.power}`}
-      title={isFixer ? card.definitionId : `${card.definitionId} Gig · ${card.power}`}
-      data-card-id={card.instanceId} data-target={target} disabled={!target}
-      aria-pressed={target ? chosenIds.has(card.instanceId) : undefined} onClick={() => onPick(card.instanceId)}>
-      <DieFace type={card.definitionId} value={isFixer ? undefined : card.power} />
-      {!isFixer && <small>{card.definitionId}</small>}
-    </button>;
-  }
-
-  return (
-    <section className="play-seat" data-seat={seat} data-active={active} aria-label={own ? 'Your board' : 'Rival board'}>
-      <div className="play-seat-meta">
-        <div className="play-seat-name"><span className="play-eyebrow">{own ? 'You' : 'Rival'}</span><h2 title={name}>{name}</h2></div>
-        <dl className="play-stats">
-          <div><dt>Gigs</dt><dd>{view.gigCount}</dd></div>
-          <div><dt>Street cred</dt><dd>{view.streetCred}</dd></div>
-          <div><dt>Ready €$</dt><dd>{view.availableEddies}</dd></div>
-        </dl>
-        <p className="play-zone-count">{zoneCount(view, 'hand')} hand <span>·</span> {zoneCount(view, 'deck')} deck</p>
-      </div>
-      <div className="play-seat-zones">
-        <div className="play-dice-line">
-          <div className="play-dice" role="group" aria-label={own ? 'Your Gigs' : 'Rival Gigs'}>
-            <span className="play-eyebrow">Gigs</span>
-            {gigs.length ? gigs.map((card) => die(card)) : <span className="play-empty">—</span>}
-          </div>
-          <div className="play-dice" role="group" aria-label={own ? 'Your Fixer dice' : 'Rival Fixer dice'}>
-            <span className="play-eyebrow">Fixer</span>
-            {fixer.length ? fixer.map((card) => die(card, true)) : <span className="play-empty">—</span>}
-          </div>
-          {(trash.length > 0 || removed.length > 0) && <details className="play-discard">
-            <summary>Trash {trash.length}{removed.length ? ` · Removed ${removed.length}` : ''}</summary>
-            <div className="play-discard-body">
-              {trash.length > 0 && <section aria-label="Trash"><h3 className="play-eyebrow">Trash</h3>
-                <div className="play-card-row">{trash.map((card) => renderCard(card))}</div>
-              </section>}
-              {removed.length > 0 && <section aria-label="Removed from game"><h3 className="play-eyebrow">Removed from game</h3>
-                <div className="play-card-row">{removed.map((card) => renderCard(card))}</div>
-              </section>}
-            </div>
-          </details>}
-        </div>
-        <div className="play-zones" data-resolving={resolving.length > 0}>
-          <section className="play-legends" aria-label="Legend slots">
-            <h3 className="play-eyebrow">Legends <span>{legends.length}</span></h3>
-            <div className="play-card-row">{legends.map((card, index) => withGear(card, `Slot ${index + 1}`))}</div>
-          </section>
-          <section className="play-field" aria-label="Field">
-            <h3 className="play-eyebrow">Field <span>{field.length - legendGear.length}</span></h3>
-            <div className="play-card-row">{fieldCards.length
-              ? fieldCards.map((card) => withGear(card))
-              : <span className="play-empty">Field is clear</span>}</div>
-          </section>
-          {resolving.length > 0 && <section className="play-resolving" aria-label="Resolving Programs">
-            <h3 className="play-eyebrow">Resolving</h3>
-            <div className="play-card-row">{resolving.map((card) => renderCard(card))}</div>
-          </section>}
-        </div>
-      </div>
-    </section>
-  );
 }
 
 function CardInspection({ card, hostName, shortcuts, onClose }: {
@@ -391,13 +295,14 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
       </aside>
       <div className="play-table">
         <GigRollDisplay rolls={snapshot.gigRolls} stateID={view.stateID} />
-        <SeatLane seat="rival" snapshot={snapshot} name={names.rival} active={active === 'rival' && !isSetup && !view.gameEnded} renderCard={renderCard} onPick={pickOnBoard} targetIds={targetIds} chosenIds={chosenIds} />
+        <PlayMat seat="rival" snapshot={snapshot} name={names.rival} active={active === 'rival' && !isSetup && !view.gameEnded} renderCard={renderCard} renderFace={(card) => <CardFace card={card} />} onPick={pickOnBoard} targetIds={targetIds} chosenIds={chosenIds} />
+        <GigZones snapshot={snapshot} onPick={pickOnBoard} targetIds={targetIds} chosenIds={chosenIds} />
         <div className="play-table-strip" data-combat={!!combat}>
           <span>{view.gameEnded ? `Final board · Turn ${view.turnNumber}` : isSetup ? 'Opening setup'
             : `Turn ${view.turnNumber} · ${active === 'player' ? 'Your turn' : 'Rival turn'}`}</span>
           <span>{view.gameEnded ? 'Match complete' : [view.overtimeActive && 'Overtime', combatStep].filter(Boolean).join(' · ') || 'Best of one'}</span>
         </div>
-        <SeatLane seat="player" snapshot={snapshot} name={names.player} active={active === 'player' && !isSetup && !view.gameEnded} renderCard={renderCard} onPick={pickOnBoard} targetIds={targetIds} chosenIds={chosenIds} />
+        <PlayMat seat="player" snapshot={snapshot} name={names.player} active={active === 'player' && !isSetup && !view.gameEnded} renderCard={renderCard} renderFace={(card) => <CardFace card={card} />} onPick={pickOnBoard} targetIds={targetIds} chosenIds={chosenIds} />
         <section className="play-hand" aria-label="Your hand">
           <div className="play-hand-heading">
             <h2 className="play-eyebrow">Your hand <span>{hand.length}</span></h2>
