@@ -1,6 +1,7 @@
-import { Activity, useCallback, useEffect, useRef, useState } from 'react';
+import { Activity, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Analytics, type BeforeSendEvent } from '@vercel/analytics/react';
 import { useStore } from './lib/store';
+import type { Deck } from './lib/store';
 import { cloudEnabled } from './lib/supabase';
 import { PRICES } from './lib/data';
 import { AuthBox } from './components/AuthBox';
@@ -19,7 +20,10 @@ import { MobileVaultNav } from './components/MobileVaultNav';
 import { CURRENCIES, getCurrency, setCurrency, type Currency } from './lib/currency';
 import { clearSampleDraft, SAMPLE_DRAFT_OWNER } from './lib/deckDraft';
 import { TABS, useVaultNavigation, type TabId } from './lib/vaultNavigation';
+import { playPreviewEnabled } from './lib/play/playPreview';
 import './mobile-shell.css';
+
+const PlayMode = playPreviewEnabled ? lazy(() => import('./views/PlayMode')) : null;
 
 function stripAnalyticsUrlDetails(event: BeforeSendEvent): BeforeSendEvent {
   const url = new URL(event.url);
@@ -47,6 +51,8 @@ export default function App() {
     setFeedbackOpen(false);
   }, []);
   const { route, visited, mobile, consumeDeck } = useVaultNavigation(scope, closeOverlays);
+  const [playDraft, setPlayDraft] = useState<{ scope: string; deck: Deck }>();
+  const [playRival, setPlayRival] = useState<{ scope: string; id: string }>();
   const requestSignIn = () => {
     if (mobile) {
       menu.current?.showModal();
@@ -164,7 +170,7 @@ export default function App() {
       </dialog>}
 
     <div className="app page">
-      {store.demo && !mobile && (
+      {store.demo && !mobile && route.tab !== 'play' && (
         <div className="callout demo-banner" role="status">
           <div className="row">
             <span>
@@ -191,12 +197,25 @@ export default function App() {
       <main key={scope}>
         {showSection('collection') && <Activity mode={route.tab === 'collection' ? 'visible' : 'hidden'}><Collection mobile={mobile} onOpen={showCard} goAdd={() => go('add')} /></Activity>}
         {showSection('prices') && <Activity mode={route.tab === 'prices' ? 'visible' : 'hidden'}><PriceBook mobile={mobile} onOpen={showCard} goAdd={() => go('add')} /></Activity>}
-        {showSection('builder') && <Activity mode={route.tab === 'builder' ? 'visible' : 'hidden'}><DeckBuilder mobile={mobile} onOpen={showCard} initialDeck={route.tab === 'builder' ? route.deck : undefined} onConsumeDeck={consumeDeck} /></Activity>}
+        {(showSection('builder') || (route.tab === 'play' && playDraft?.scope === scope)) && <Activity mode={route.tab === 'builder' ? 'visible' : 'hidden'}><DeckBuilder mobile={mobile} onOpen={showCard} initialDeck={route.tab === 'builder' ? route.deck : undefined} onConsumeDeck={consumeDeck} onPlay={PlayMode && !mobile ? (deck) => {
+          setPlayDraft({ scope, deck: structuredClone(deck) });
+          go('play');
+        } : undefined} /></Activity>}
         {showSection('meta') && <Activity mode={route.tab === 'meta' ? 'visible' : 'hidden'}><MetaIntel onOpen={showCard} openInBuilder={(id) => go('builder', id)} goAdd={() => go('add')} /></Activity>}
         {route.tab === 'add' && <AddCards onOpen={showCard} onSignIn={requestSignIn} />}
         {route.tab === 'about' && <HowItWorks openFeedback={() => setFeedbackOpen(true)} />}
         {route.tab === 'upgrade' && <UpgradePlanner onOpen={showCard} />}
         {route.tab === 'shared' && <SharedDeck token={route.deck} onOpen={showCard} goAdd={() => go('add')} />}
+        {route.tab === 'play' && (PlayMode && !mobile && playDraft?.scope === scope
+          ? <Suspense fallback={<p className="callout" role="status">Opening Play Mode…</p>}>
+            <PlayMode deck={playDraft.deck} initialRival={playRival?.scope === scope ? playRival.id : undefined}
+              rememberRival={(id) => setPlayRival({ scope, id })} onEdit={() => go('builder')} />
+          </Suspense>
+          : <section className="panel">
+            <h1 className="panel-title">Play Mode</h1>
+            <p>{mobile ? 'Play Mode is available on desktop.' : PlayMode ? 'Open a legal draft in Deck Builder to start a match.' : 'Play Mode is currently in preview.'}</p>
+            <button type="button" className="btn" onClick={() => go('builder')}>Open Deck Builder</button>
+          </section>)}
       </main>
 
       {openCard && <CardDrawer {...openCard} onClose={() => {
