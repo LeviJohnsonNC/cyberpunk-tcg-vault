@@ -1,6 +1,7 @@
 import { chooseMove, createCardCatalog, createMatchState, LocalEngine, projectRevealedCardView, SeededRNG } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import type { EngineEvent, EngineState } from '../../../vendor/cyberpunk-engine/engine.mjs';
-import type { CardView, MatchSetup, MatchSnapshot, Move, Seat } from './protocol';
+import { describeAction, hideConcealedTargets } from './matchView';
+import type { CardView, MatchLogEntry, MatchSetup, MatchSnapshot, Move, Seat } from './protocol';
 
 const catalog = createCardCatalog();
 const cardAliases: Record<string, string> = {
@@ -35,7 +36,7 @@ export function initialEngineState(setup: MatchSetup, seed: string, matchId: str
 }
 
 export function botDecision(engine: LocalEngine, seat: Seat, rng: () => number) {
-  const view = engine.getFilteredView(seat);
+  const view = hideConcealedTargets(engine.getFilteredView(seat));
   if (view.prompt.status === 'choice' || view.prompt.status === 'action') {
     return chooseMove(view, rng, seat);
   }
@@ -68,6 +69,7 @@ export function createEngineSession(
   const botRng = new SeededRNG(seeds.bot);
   const known = new Map<string, Set<Seat>>();
   let peeks: CardView[] = [];
+  const log: MatchLogEntry[] = [];
   let commandNumber = 0;
   let stalled = false;
 
@@ -76,12 +78,19 @@ export function createEngineSession(
     if (!prompt.availableMoves.some(({ moveId }) => moveId === command.move)) {
       throw new Error('That action is no longer available.');
     }
+    const before = engine.getFilteredView('player');
     const result = engine.processCommand({
       commandID: String(++commandNumber),
       move: command.move,
       input: command.args ? { args: command.args } : undefined,
     }, seat);
     if (!result.success) throw new Error(result.error);
+    const after = engine.getFilteredView('player');
+    const text = describeAction(seat, command, before, after);
+    if (text) {
+      log.push({ id: commandNumber, turn: before.turnNumber, seat, text });
+      if (log.length > 80) log.shift();
+    }
     if (seat === 'player') peeks = [];
     peeks.push(...recordLegendPeeks(result.state, result.gameEvents, known));
   }
@@ -89,14 +98,14 @@ export function createEngineSession(
   function advance(): MatchSnapshot {
     try {
       for (let actions = 0; actions < 200; actions++) {
-        const view = engine.getFilteredView('player');
+        const view = hideConcealedTargets(engine.getFilteredView('player'));
         if (view.gameEnded || view.prompt.status === 'action' || view.prompt.status === 'choice') {
           const concealed = new Set(Object.values(view.players).flatMap(({ zones }) => {
             const legends = zones.legendArea;
             return Array.isArray(legends) ? legends.filter((card) => card.faceDown).map((card) => card.instanceId) : [];
           }));
           return {
-            matchId, view, peeks: [...peeks],
+            matchId, view, peeks: [...peeks], log: [...log],
             knownLegends: [...known].filter(([id]) => concealed.has(id))
               .flatMap(([instanceId, viewers]) => [...viewers].map(seat => ({ instanceId, seat }))),
           };

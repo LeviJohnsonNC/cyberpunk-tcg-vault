@@ -20,6 +20,13 @@ export interface CardView {
   power: number;
   effectivePower: number;
   cost: number | null;
+  effectiveCost?: number | null;
+  zone?: string;
+  type?: string | null;
+  damage?: number;
+  hasLag?: boolean;
+  grantedRules?: string[];
+  attachedToId?: string | null;
 }
 
 export interface SeatView {
@@ -53,7 +60,10 @@ export interface PlayerView {
   winReason: string | null;
   stateID: number;
   prompt: Prompt;
+  attackState?: { attackerId: string; defenderId?: string; step: string } | null;
 }
+
+export interface MatchLogEntry { id: number; turn: number; seat: Seat; text: string }
 
 export interface MatchSnapshot {
   matchId: string;
@@ -61,6 +71,7 @@ export interface MatchSnapshot {
   /** Slots a seat has legally peeked at. Identity is only in the transient peek. */
   knownLegends: { instanceId: string; seat: Seat }[];
   peeks: CardView[];
+  log: MatchLogEntry[];
 }
 
 export type MatchAction =

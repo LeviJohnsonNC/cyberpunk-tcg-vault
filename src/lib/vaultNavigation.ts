@@ -8,12 +8,12 @@ export const TABS = [
   { id: 'add', label: 'Add Cards' },
 ] as const;
 export type PrimaryTab = (typeof TABS)[number]['id'];
-export type TabId = PrimaryTab | 'about' | 'upgrade' | 'shared';
+export type TabId = PrimaryTab | 'about' | 'upgrade' | 'shared' | 'play';
 type Route = { tab: TabId; deck?: string };
 
 const readHash = (): Route => {
   const [path, query] = window.location.hash.replace(/^#\/?/, '').split('?');
-  const tab = path === 'about' || path === 'upgrade' || path === 'shared'
+  const tab = path === 'about' || path === 'upgrade' || path === 'shared' || path === 'play'
     ? path : TABS.find((item) => item.id === path)?.id ?? 'collection';
   return { tab, deck: new URLSearchParams(query).get('deck') ?? undefined };
 };
@@ -63,8 +63,8 @@ export function useVaultNavigation(scope: string, closeOverlays: () => void) {
       currentScope.current = scope;
       positions.current.clear();
     }
-    if (mobile) window.scrollTo(0, changedScope ? 0 : navigation.arrival.top);
-  }, [mobile, navigation.arrival, scope]);
+    if (mobile || navigation.route.tab === 'play') window.scrollTo(0, changedScope ? 0 : navigation.arrival.top);
+  }, [mobile, navigation.arrival, navigation.route.tab, scope]);
 
   const consumeDeck = useCallback(() => {
     const current = currentRoute.current;

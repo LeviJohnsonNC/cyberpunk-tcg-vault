@@ -17,7 +17,7 @@ type Replacement = { next: DeckDraft; imported?: string[] };
 const initialView = (deck: Deck): MobileView => deck.legends.length || totalCopies(deck.cards) || totalCopies(deck.sideboard) ? 'deck' : 'pool';
 const splitWorkbench = () => window.matchMedia('(max-width: 1000px)').matches;
 
-type BuilderProps = { onOpen: (slug: string) => void; initialDeck?: string; onConsumeDeck: () => void; mobile: boolean };
+type BuilderProps = { onOpen: (slug: string) => void; initialDeck?: string; onConsumeDeck: () => void; onPlay?: (deck: Deck) => void; mobile: boolean };
 
 export function DeckBuilder(props: BuilderProps) {
   const { ready, session, demo } = useStore();
@@ -29,7 +29,7 @@ export function DeckBuilder(props: BuilderProps) {
   return <DeckWorkbench key={owner} owner={owner} {...props} />;
 }
 
-function DeckWorkbench({ owner, onOpen, initialDeck, onConsumeDeck, mobile }: BuilderProps & { owner: string }) {
+function DeckWorkbench({ owner, onOpen, initialDeck, onConsumeDeck, onPlay, mobile }: BuilderProps & { owner: string }) {
   const { decks, saveDeck, deleteDeck, owned, toast, collectionReady, collectionError, retryCollection, demo } = useStore();
   const [draft, setDraft] = useState<DeckDraft>(() => readDeckDraft(owner) ?? { deck: newDeck(), dirty: false });
   const { deck, dirty } = draft;
@@ -301,6 +301,15 @@ function DeckWorkbench({ owner, onOpen, initialDeck, onConsumeDeck, mobile }: Bu
           <button type="button" className="btn quiet" disabled={saving || deleting} aria-haspopup="dialog" onClick={openLoad}>Load deck</button>
           <button type="button" className="btn" disabled={saving || deleting} onClick={() => void save()}>Save deck</button>
           <button type="button" className="btn quiet" aria-haspopup="dialog" onClick={() => setTesting([{ label: 'This deck', ...structuredClone(deck) }])}>Test hand</button>
+          {onPlay && <button type="button" className="btn ghost" disabled={saving || deleting} onClick={() => {
+            if (!checks.legal) {
+              selectPane('checks', true);
+              toast('Resolve the deck checks to start a match.', 'err');
+              return;
+            }
+            rememberDeckDraft(owner, draft);
+            onPlay(deck);
+          }}>Play match</button>}
           {!demo && !empty && <button type="button" className="btn quiet" disabled={saving || deleting} aria-haspopup="dialog" onClick={() => setShareOpen(true)}>Share</button>}
           <details className="workbench-more" ref={actions}>
             <summary className="btn quiet">More</summary>
