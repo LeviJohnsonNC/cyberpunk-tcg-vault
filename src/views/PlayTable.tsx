@@ -115,7 +115,7 @@ export function PlayTable({ snapshot, names, busy, error, send, rematch, edit }:
     const values = picks[fieldId] ?? [];
     if (!values.includes(id) && target.max > 1 && values.length >= target.max) return;
     const next = values.includes(id) ? values.filter((value) => value !== id) : target.max === 1 ? [id] : [...values, id];
-    const resetFollowing = target.id === 'card' || target.id === 'attacker' || target.id === 'from' || target.id === 'die';
+    const resetFollowing = target.id === 'card' || target.id === 'ability' || target.id === 'attacker' || target.id === 'from' || target.id === 'die';
     setPicks(resetFollowing ? { ...Object.fromEntries(fields.slice(0, index).map((field) => [field.id, picks[field.id] ?? []])), [fieldId]: next } : { ...picks, [fieldId]: next });
   }
 

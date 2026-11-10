@@ -43,10 +43,19 @@ export interface Move {
   args?: Record<string, unknown>;
 }
 
+export interface PaymentPrompt {
+  legendIds: string[];
+  eddieIds: string[];
+  eddies: number;
+  costs: Record<string, Record<string, { amount: number; reservedLegendIds?: string[] }>>;
+  effectGearHosts: Record<string, string[]>;
+}
+
 export interface Prompt {
   status: 'idle' | 'action' | 'choice' | 'waiting';
   availableMoves: { moveId: string; inputSpec: { type: string; [field: string]: unknown } }[];
   choice: { type: string; [field: string]: unknown } | null;
+  payment?: PaymentPrompt;
 }
 
 export interface PlayerView {

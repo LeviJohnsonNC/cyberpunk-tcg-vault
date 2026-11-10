@@ -28,6 +28,7 @@ export function createMatchState(options: {
   catalog: Catalog;
   seed: string;
   matchId?: string;
+  manualPaymentPlayerId?: Seat;
 }): EngineState;
 
 export class LocalEngine {
