@@ -4,6 +4,7 @@ import { CARDS, BY_SLUG } from '../lib/data';
 import { isReady, matchActions, type MatchActionForm, type Picks } from '../lib/play/matchActions';
 import { visibleCards, zoneCards, zoneCount } from '../lib/play/matchView';
 import type { CardView, MatchSnapshot, Move, Seat } from '../lib/play/protocol';
+import { DieFace, GigRollDisplay } from './PlayDice';
 
 const byId = new Map(CARDS.map((card) => [card.id, card]));
 const byDisplay = new Map(CARDS.map((card) => [card.display, card]));
@@ -54,9 +55,11 @@ function SeatLane({ seat, snapshot, name, active, renderCard, onPick, targetIds,
     const target = targetIds.has(card.instanceId);
     return <button key={card.instanceId} type="button" className={`play-die${isFixer ? ' play-die-fixer' : ''}`}
       aria-label={isFixer ? `Roll ${card.definitionId}` : `${card.definitionId} Gig · ${card.power}`}
+      title={isFixer ? card.definitionId : `${card.definitionId} Gig · ${card.power}`}
       data-card-id={card.instanceId} data-target={target} disabled={!target}
       aria-pressed={target ? chosenIds.has(card.instanceId) : undefined} onClick={() => onPick(card.instanceId)}>
-      {isFixer ? card.definitionId : <><b>{card.power}</b><small>{card.definitionId}</small></>}
+      <DieFace type={card.definitionId} value={isFixer ? undefined : card.power} />
+      {!isFixer && <small>{card.definitionId}</small>}
     </button>;
   }
 
@@ -198,6 +201,7 @@ export function PlayTable({ snapshot, names, busy, error, send, rematch, edit }:
   const combat = view.attackState;
   const combatStep = combat && combatSteps[combat.step];
   const cards = visibleCards(view);
+  const dice = new Map(cards.filter((card) => card.zone === 'gigArea' || card.zone === 'fixerArea').map((card) => [card.instanceId, card]));
   const attacker = cards.find((card) => card.instanceId === combat?.attackerId);
   const defender = cards.find((card) => card.instanceId === combat?.defenderId);
   const waiting = !actions.length && view.prompt.status === 'waiting';
@@ -325,7 +329,9 @@ export function PlayTable({ snapshot, names, busy, error, send, rematch, edit }:
                   <div className="play-pick-list">
                     {field.options.map((option) => {
                       const rank = picks[field.id]?.indexOf(option.id) ?? -1;
-                      return <button key={option.id} type="button" className="play-option" data-pick-option={option.id} aria-pressed={rank >= 0} onClick={() => chooseValue(field.id, option.id)}>
+                      const die = option.cardId && dice.get(option.cardId);
+                      return <button key={option.id} type="button" className={`play-option${die ? ' play-option-die' : ''}`} data-pick-option={option.id} aria-pressed={rank >= 0} onClick={() => chooseValue(field.id, option.id)}>
+                        {die && <DieFace type={die.definitionId} value={die.zone === 'gigArea' ? die.power : undefined} />}
                         <span>{field.ordered && rank >= 0 ? `${rank + 1}. ` : ''}{option.label}</span>
                         {option.note && <small>{option.note}</small>}
                       </button>;
@@ -334,7 +340,9 @@ export function PlayTable({ snapshot, names, busy, error, send, rematch, edit }:
                   </div>
                 </fieldset>)}
               </div>
-              <button className="btn play-confirm" data-confirm-move={selected.id} disabled={busy || !isReady(fields, picks)}>Confirm</button>
+              <button className="btn play-confirm" data-confirm-move={selected.id} disabled={busy || !isReady(fields, picks)}>
+                {selected.id === 'gainGig' ? 'Roll die' : 'Confirm'}
+              </button>
             </form>}
             {presented?.length ? <section className="play-reveal" aria-label="Revealed cards"><h3 className="play-eyebrow">Revealed cards</h3>
               <div className="play-card-row">{presented.map((card) => renderCard(card))}</div>
@@ -359,6 +367,7 @@ export function PlayTable({ snapshot, names, busy, error, send, rematch, edit }:
         </section>
       </aside>
       <div className="play-table">
+        <GigRollDisplay rolls={snapshot.gigRolls} stateID={view.stateID} />
         <SeatLane seat="rival" snapshot={snapshot} name={names.rival} active={active === 'rival' && !isSetup && !view.gameEnded} renderCard={renderCard} onPick={pickOnBoard} targetIds={targetIds} chosenIds={chosenIds} />
         <div className="play-table-strip" data-combat={!!combat}>
           <span>{view.gameEnded ? `Final board · Turn ${view.turnNumber}` : isSetup ? 'Opening setup'
