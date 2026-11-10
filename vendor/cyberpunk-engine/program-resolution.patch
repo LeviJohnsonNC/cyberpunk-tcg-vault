@@ -1,0 +1,826 @@
+--- a/submodules/cyberpunk/packages/cards/src/cards/legends/alt-cunningham-soulkiller-architect.ts
++++ b/submodules/cyberpunk/packages/cards/src/cards/legends/alt-cunningham-soulkiller-architect.ts
+@@ -112,18 +112,5 @@
+               id: "selectedProgram",
+             },
+-          },
+-          {
+-            effect: "delayed",
+-            timing: "afterTriggerResolution",
+-            effects: [
+-              {
+-                effect: "moveCard",
+-                target: {
+-                  selector: "bound",
+-                  id: "selectedProgram",
+-                },
+-                destination: "deckBottom",
+-              },
+-            ],
++            programDestination: "deckBottom",
+           },
+         ],
+--- a/submodules/cyberpunk/packages/cards/src/cards/units/lizzy-wizzy-delicate-weapon.ts
++++ b/submodules/cyberpunk/packages/cards/src/cards/units/lizzy-wizzy-delicate-weapon.ts
+@@ -64,29 +64,11 @@
+         effects: [
+           {
+-            effect: "ifYouDo",
+-            doEffect: {
+-              effect: "playCard",
+-              target: {
+-                selector: "bound",
+-                id: "selectedProgram",
+-              },
+-              free: true,
++            effect: "playCard",
++            target: {
++              selector: "bound",
++              id: "selectedProgram",
+             },
+-            ifEffects: [
+-              {
+-                effect: "delayed",
+-                timing: "afterTriggerResolution",
+-                effects: [
+-                  {
+-                    effect: "moveCard",
+-                    target: {
+-                      selector: "bound",
+-                      id: "selectedProgram",
+-                    },
+-                    destination: "deckBottom",
+-                  },
+-                ],
+-              },
+-            ],
++            free: true,
++            programDestination: "deckBottom",
+           },
+         ],
+--- a/submodules/cyberpunk/packages/cards/src/cards/units/modded-kusanagi.ts
++++ b/submodules/cyberpunk/packages/cards/src/cards/units/modded-kusanagi.ts
+@@ -46,4 +46,5 @@
+             target: {
+               selector: "self",
++              zone: "field",
+             },
+             destinationOwner: "owner",
+--- a/submodules/cyberpunk/packages/engine/src/ability-executor.ts
++++ b/submodules/cyberpunk/packages/engine/src/ability-executor.ts
+@@ -133,5 +133,5 @@
+   }
+   const queue = state.G.turnMetadata.triggerQueue;
+-  const pendingBeforeProgram = event.type === "cardPlayed" && event.nestedProgram ? queue.length : 0;
++  const queueLengthBefore = queue.length;
+   const matches = matchTriggers(event, state);
+   const hasRollReplacement =
+@@ -283,14 +283,13 @@
+     }
+   }
+-  if (event.type === "cardPlayed" && pendingBeforeProgram > 0) {
+-    // WeirdCo's Lizzy Wizzy ruling: a nested Program finishes resolving
+-    // before a player may return to the original pending effects.
+-    const programTriggers = queue.slice(pendingBeforeProgram)
+-      .filter((trigger) => trigger.sourceCardId === event.cardId).map(({ id }) => id);
+-    if (programTriggers.length) {
+-      for (const trigger of queue.slice(0, pendingBeforeProgram)) {
+-        trigger.waitForTriggerIds = [...(trigger.waitForTriggerIds ?? []), ...programTriggers];
+-      }
+-    }
++  if (event.type === "cardPlayed" && state.G.cardIndex[event.cardId]?.zone === "resolvingProgram") {
++    const triggerIds = queue.slice(queueLengthBefore)
++      .filter((trigger) => trigger.sourceCardId === event.cardId)
++      .map(({ id }) => id);
++    (state.G.turnMetadata.resolvingPrograms ??= []).push({
++      cardId: event.cardId,
++      destination: event.programDestination === "deckBottom" ? "deck" : "trash",
++      triggerIds,
++    });
+   }
+   if (
+@@ -316,5 +315,17 @@
+
+   while (!state.G.gameEnded && !state.G.turnMetadata.pendingChoice && !state.G.turnMetadata.currentTrigger) {
+-    const queue = state.G.turnMetadata.triggerQueue;
++    const { triggerQueue: queue, resolvingPrograms } = state.G.turnMetadata;
++    const program = resolvingPrograms?.at(-1);
++    // CR 4.14: finish the Program and move it immediately, before the
++    // scheduler returns to other pending effects (including its payment).
++    const programTriggers = program && queue.filter((trigger) => program.triggerIds.includes(trigger.id));
++    if (program && programTriggers?.length === 0) {
++      resolvingPrograms!.pop();
++      const card = state.G.cardIndex[program.cardId];
++      if (card?.zone === "resolvingProgram") {
++        operations.zone.moveCard(program.cardId, program.destination, card.ownerId);
++      }
++      continue;
++    }
+     if (queue.length === 0) {
+       if (resolveAfterTriggerDelayedEffects(state, operations)) {
+@@ -326,8 +337,11 @@
+
+     const pendingIds = new Set(queue.map((t) => t.id));
+-    const eligibleQueue = queue.filter(
++    const eligibleQueue = (programTriggers ?? queue).filter(
+       (t) => !t.waitForTriggerIds?.some((id) => pendingIds.has(id)),
+     );
+-    const earliest = [...eligibleQueue].sort((a, b) => a.order - b.order)[0];
++    const turnEnded = eligibleQueue.some((trigger) => trigger.event.type === "turnEnded");
++    const active = state.G.turnMetadata.activePlayerId;
++    const activePending = turnEnded ? eligibleQueue.filter((trigger) => trigger.sourcePlayerId === active) : [];
++    const earliest = [...(activePending.length ? activePending : eligibleQueue)].sort((a, b) => a.order - b.order)[0];
+     if (!earliest) throw new Error("Trigger dependencies cannot form a cycle");
+     const controllerId = earliest.sourcePlayerId;
+@@ -451,7 +465,10 @@
+   playerId: PlayerId,
+ ): void {
+-  const before = state.G.turnMetadata.triggerQueue.length;
+-  state.G.turnMetadata.triggerQueue = state.G.turnMetadata.triggerQueue.filter(
+-    (trigger) => trigger.sourcePlayerId !== playerId || !trigger.optional,
++  const { pendingChoice, triggerQueue } = state.G.turnMetadata;
++  const options = pendingChoice?.type === "chooseTrigger" ? pendingChoice.payload.options : [];
++  const optionalIds = new Set(options.filter((option) => option.optional).map(({ triggerId }) => triggerId));
++  const before = triggerQueue.length;
++  state.G.turnMetadata.triggerQueue = triggerQueue.filter(
++    (trigger) => trigger.sourcePlayerId !== playerId || !optionalIds.has(trigger.id),
+   );
+   operations.game.setPendingChoice(undefined);
+@@ -604,5 +621,7 @@
+       }
+       const status = executeAbilityEffects(
+-        current.resolution.effects,
++        current.resolution.requiresFieldTarget &&
++          state.G.cardIndex[current.resolution.requiresFieldTarget]?.zone !== "field"
++          ? [] : current.resolution.effects,
+         ctx,
+         operations,
+--- a/submodules/cyberpunk/packages/engine/src/animation/builder.ts
++++ b/submodules/cyberpunk/packages/engine/src/animation/builder.ts
+@@ -827,5 +827,5 @@
+         const source = context.fromState.G.cardIndex[sourceId as string];
+         if (!source) break;
+-        if (source.zone === "field" || source.zone === "legendArea") {
++        if (source.zone === "field" || source.zone === "legendArea" || source.zone === "resolvingProgram") {
+           pushActionEmphasis("resolveChooseEffect", { kind: "card", cardId: sourceId });
+         } else if (source.zone === "hand" || source.zone === "deck" || source.zone === "trash") {
+--- a/submodules/cyberpunk/packages/engine/src/cards/gear/deadman-transmitter.test.ts
++++ b/submodules/cyberpunk/packages/engine/src/cards/gear/deadman-transmitter.test.ts
+@@ -214,5 +214,5 @@
+       cardId: engine.getCard(transmitter, "trash", P1).instanceId,
+       hostId: host.instanceId,
+-      defeatedBy: null,
++      defeatedBy: engine.getCard(welcomeToNightCityRetailCyberpsychosis, "trash", P1).instanceId,
+     });
+   });
+--- a/submodules/cyberpunk/packages/engine/src/cards/legends/judy-alvarez-braindance-maestro.test.ts
++++ b/submodules/cyberpunk/packages/engine/src/cards/legends/judy-alvarez-braindance-maestro.test.ts
+@@ -21,20 +21,4 @@
+ const program = welcomeToNightCityRetailRebootOptics;
+ const gear = welcomeToNightCityRetailKiroshiOptics;
+-
+-function resolveJudyPlayTrigger(engine: CyberpunkTestEngine): void {
+-  const choice = engine.getState().G.turnMetadata.pendingChoice;
+-  if (!choice || choice.type !== "chooseTrigger") {
+-    throw new Error("Expected a trigger-order choice after playing the BRAINDANCE Program.");
+-  }
+-  const judyTrigger = choice.payload.options.find(
+-    (option) => option.cardName === judy.displayName && option.abilityIndex === 0,
+-  );
+-  if (!judyTrigger) throw new Error("Expected Judy's BRAINDANCE trigger in the trigger queue.");
+-  engine.executeMove(
+-    "resolveTrigger",
+-    { args: { triggerId: judyTrigger.triggerId } },
+-    choice.chooserId,
+-  );
+-}
+
+ describe("Judy Álvarez — Braindance Maestro", () => {
+@@ -110,5 +94,4 @@
+
+     engine.playCard(braindance, { as: P1 });
+-    resolveJudyPlayTrigger(engine);
+
+     const choice = engine.getState().G.turnMetadata.pendingChoice;
+@@ -154,5 +137,4 @@
+
+     engine.playCard(braindance, { as: P1 });
+-    resolveJudyPlayTrigger(engine);
+     engine.resolveEffectTargetIds([unit.instanceId], { as: P1 });
+     expect(getEffectivePower(engine.getState(), unit.instanceId)).toBe(basePower + 1);
+--- a/submodules/cyberpunk/packages/engine/src/cards/programs/bootleg-black-sapphire-show.test.ts
++++ b/submodules/cyberpunk/packages/engine/src/cards/programs/bootleg-black-sapphire-show.test.ts
+@@ -10,5 +10,5 @@
+ } from "@tcg/cyberpunk-cards";
+ import { enMessages, formatActionLog, stripPrivateFields } from "../../logging/index.ts";
+-import { CyberpunkTestEngine, P1, P2, expectNotSellable } from "../../testing/index.ts";
++import { CyberpunkTestEngine, P1, P2 } from "../../testing/index.ts";
+
+ describe("Bootleg Black Sapphire Show", () => {
+@@ -50,5 +50,5 @@
+   });
+
+-  it("counts its deck sale as the Sell action and draws 2 with even and odd friendly Gigs", () => {
++  it("sells a deck card and draws 2 with even and odd friendly Gigs", () => {
+     const engine = CyberpunkTestEngine.createWithFixture({
+       hand: [welcomeToNightCityRetailBootlegBlackSapphireShow, welcomeToNightCityRetailFloorIt],
+@@ -107,13 +107,8 @@
+     );
+     expect(engine.getEddies(P1)).toBe(1);
++    expect(engine.getState().G.players[P1]!.soldThisTurn).toBe(false);
++    // WeirdCo's card FAQ keeps Sell for Turn available after the Program.
++    expect(engine.sellCard(welcomeToNightCityRetailFloorIt, { as: P1 }).success).toBe(true);
+     expect(engine.getState().G.players[P1]!.soldThisTurn).toBe(true);
+-    // CR 11.9.2.2: an effect that says to Sell counts as the Main Phase Sell action.
+-    const secondSell = engine.expectFailure(() =>
+-      engine.sellCard(welcomeToNightCityRetailFloorIt, { as: P1 }),
+-    );
+-    expect(secondSell.errorCode).toBe("ALREADY_SOLD");
+-    expect(engine.getCardsInZone("hand", P1).map((card) => card.definitionId)).toContain(
+-      welcomeToNightCityRetailFloorIt.id,
+-    );
+     const sellFromDeckLog = result.moveLogs.find(
+       (log) => log.type === "action" && log.messageKey === "effect.sellFromDeck.resolved",
+@@ -235,5 +230,5 @@
+   });
+
+-  it("uses the Sell action for the turn even when the Sell came from the Program effect", () => {
++  it("leaves Sell for Turn available after the Program effect", () => {
+     const engine = CyberpunkTestEngine.createWithFixture({
+       hand: [
+@@ -247,5 +242,6 @@
+     engine.playCard(welcomeToNightCityRetailBootlegBlackSapphireShow, { as: P1 });
+
+-    expectNotSellable(engine, welcomeToNightCityRetailAfterpartyAtLizzieS, { as: P1 });
++    expect(engine.sellCard(welcomeToNightCityRetailAfterpartyAtLizzieS, { as: P1 }).success).toBe(true);
++    expect(engine.getState().G.players[P1]!.soldThisTurn).toBe(true);
+   });
+
+--- a/submodules/cyberpunk/packages/engine/src/cards/programs/fool-on-the-hill.test.ts
++++ b/submodules/cyberpunk/packages/engine/src/cards/programs/fool-on-the-hill.test.ts
+@@ -165,7 +165,5 @@
+       ["cardMoved", "deck", "hand"],
+       ["cardMoved", "deck", "hand"],
+-      // The staged resolving program settles onto its (already-current) trash
+-      // zone once the suspended effect finishes.
+-      ["programResolutionCompleted", "trash", "trash"],
++      ["programResolutionCompleted", "resolvingProgram", "trash"],
+     ]);
+     const actionLog = engine
+@@ -207,7 +205,7 @@
+
+     expect(engine.getCardsInZone("trash", P1).map((card) => card.definitionId)).toEqual([
+-      welcomeToNightCityRetailFoolOnTheHill.id,
+       welcomeToNightCityRetailCorpoSecurity.id,
+       welcomeToNightCityRetailFieldOperator.id,
++      welcomeToNightCityRetailFoolOnTheHill.id,
+     ]);
+     expect(engine.getCardsInZone("hand", P1).map((card) => card.definitionId)).toEqual([
+@@ -229,5 +227,5 @@
+       ["cardMoved", "deck", "trash"],
+       ["cardMoved", "deck", "trash"],
+-      ["programResolutionCompleted", "trash", "trash"],
++      ["programResolutionCompleted", "resolvingProgram", "trash"],
+     ]);
+     const actionLog = engine
+--- a/submodules/cyberpunk/packages/engine/src/cards/programs/shattered-memories.test.ts
++++ b/submodules/cyberpunk/packages/engine/src/cards/programs/shattered-memories.test.ts
+@@ -115,7 +115,8 @@
+     expect(skipResult.animationScript.steps).toContainEqual(
+       expect.objectContaining({
+-        kind: "actionEmphasis",
+-        reason: "resolveChooseEffect",
+-        target: { kind: "zone", zone: "trash", playerId: P1 },
++        kind: "cardMove",
++        reason: "programResolutionCompleted",
++        fromZone: "resolvingProgram",
++        toZone: "trash",
+       }),
+     );
+--- a/submodules/cyberpunk/packages/engine/src/cards/programs/wild-in-the-streets.test.ts
++++ b/submodules/cyberpunk/packages/engine/src/cards/programs/wild-in-the-streets.test.ts
+@@ -83,5 +83,5 @@
+     const playResult = engine.playCard(welcomeToNightCityRetailWildInTheStreets, { as: P1 });
+     expect(engine.getState().G.turnMetadata.pendingChoice?.type).toBe("chooseTarget");
+-    const programId = engine.findCardId(wild, "trash", P1);
++    const programId = engine.findCardId(wild, "resolvingProgram", P1);
+     const targetId = engine.findCardId(welcomeToNightCityRetailCorpoSecurity, "field", P2);
+     expect(playResult.animationScript.steps).toContainEqual(
+@@ -90,5 +90,5 @@
+         cardId: programId,
+         fromZone: "hand",
+-        toZone: "trash",
++        toZone: "resolvingProgram",
+         presentation: "resolving-effect",
+       }),
+@@ -115,5 +115,5 @@
+     );
+     expect(programExit).toMatchObject({
+-      fromZone: "trash",
++      fromZone: "resolvingProgram",
+       toZone: "trash",
+       presentation: "resolved-effect",
+--- a/submodules/cyberpunk/packages/engine/src/cards/units/lizzy-wizzy-delicate-weapon.test.ts
++++ b/submodules/cyberpunk/packages/engine/src/cards/units/lizzy-wizzy-delicate-weapon.test.ts
+@@ -57,12 +57,7 @@
+           effects: [
+             expect.objectContaining({
+-              effect: "ifYouDo",
+-              doEffect: expect.objectContaining({ effect: "playCard", free: true }),
+-              ifEffects: [
+-                expect.objectContaining({
+-                  effect: "delayed",
+-                  timing: "afterTriggerResolution",
+-                }),
+-              ],
++              effect: "playCard",
++              free: true,
++              programDestination: "deckBottom",
+             }),
+           ],
+@@ -212,5 +207,5 @@
+
+     expectPendingChoice(engine, "chooseTarget");
+-    expect(engine.getCardsInZone("trash", P1).map((card) => card.definitionId)).toContain(
++    expect(engine.getCardsInZone("resolvingProgram", P1).map((card) => card.definitionId)).toContain(
+       welcomeToNightCityRetailFloorIt.id,
+     );
+--- a/submodules/cyberpunk/packages/engine/src/cards/units/maelstrom-zealots.test.ts
++++ b/submodules/cyberpunk/packages/engine/src/cards/units/maelstrom-zealots.test.ts
+@@ -86,5 +86,5 @@
+   });
+
+-  it("waits for River Ward's scry before applying its own fight-result defeat", () => {
++  it("applies both defeats before River Ward's post-fight scry", () => {
+     const engine = CyberpunkTestEngine.createWithFixture(
+       {
+@@ -121,6 +121,6 @@
+     const scryChoice = engine.getState().G.turnMetadata.pendingChoice;
+     if (!scryChoice || scryChoice.type !== "scry") throw new Error("Expected River Ward's scry");
+-    expect(engine.getAttackState()?.step).toBe("fightResult");
+-    expect(engine.getCardsInZone("field", P1).map((card) => card.definitionId)).toContain(
++    expect(engine.getAttackState()).toBeNull();
++    expect(engine.getCardsInZone("trash", P1).map((card) => card.definitionId)).toContain(
+       welcomeToNightCityRetailMaelstromZealots.id,
+     );
+@@ -129,5 +129,4 @@
+     );
+     engine.resolveScryTo("trash", [scryChoice.payload.revealedCardIds[0]!], { as: P2 });
+-    engine.resolveFullFight({ as: P1 });
+     expect(engine.getCardsInZone("trash", P1).map((card) => card.definitionId)).toContain(
+       welcomeToNightCityRetailMaelstromZealots.id,
+--- a/submodules/cyberpunk/packages/engine/src/cards/units/modded-kusanagi.test.ts
++++ b/submodules/cyberpunk/packages/engine/src/cards/units/modded-kusanagi.test.ts
+@@ -42,5 +42,5 @@
+           {
+             effect: "returnToHand",
+-            target: { selector: "self" },
++            target: { selector: "self", zone: "field" },
+             destinationOwner: "owner",
+           },
+@@ -111,4 +111,10 @@
+     engine.completeTurn({ as: P1 });
+
++    const choice = engine.getState().G.turnMetadata.pendingChoice;
++    if (choice?.type === "chooseTrigger") {
++      const unit = engine.findCardId(kusanagi, "field", P1);
++      const trigger = choice.payload.options.find(({ sourceCardId }) => sourceCardId === unit)!;
++      engine.executeMove("resolveTrigger", { args: { triggerId: trigger.triggerId } }, P1);
++    }
+     expect(engine.getCardsInZone("hand", P1).map((card) => card.definitionId)).toEqual(
+       expect.arrayContaining([kusanagi.id, welcomeToNightCityRetailDyingNightVSPistol.id]),
+--- a/submodules/cyberpunk/packages/engine/src/cards/units/rogue-amendiares-queen-of-the-afterlife.test.ts
++++ b/submodules/cyberpunk/packages/engine/src/cards/units/rogue-amendiares-queen-of-the-afterlife.test.ts
+@@ -246,9 +246,5 @@
+     const cascadeTarget = gigChoice.payload.eligibleIds?.[0];
+     if (!cascadeTarget) throw new Error("Expected an eligible Gorilla Arms Gig");
+-    engine.resolveEffectTargetIds([cascadeTarget], {
+-      as: P1,
+-      allowPendingChoice: true,
+-      reason: "the cascade queues same-turn triggers whose first-time limits must auto-drain",
+-    });
++    engine.resolveEffectTargetIds([cascadeTarget], { as: P1 });
+     for (;;) {
+       const pending = engine.getState().G.turnMetadata.pendingChoice;
+--- a/submodules/cyberpunk/packages/engine/src/effects/handlers/index.ts
++++ b/submodules/cyberpunk/packages/engine/src/effects/handlers/index.ts
+@@ -631,4 +631,5 @@
+       targetCardId: id as CardInstanceId,
+       kind: "defeatAtEndOfTurnIfAttacked",
++      playerId: ctx.sourcePlayerId,
+       duration: "turn",
+       origin: "imperative",
+@@ -1475,4 +1476,5 @@
+           cardIds: [cardId],
+           free: effect.free,
++          programDestination: effect.programDestination,
+           attachTo: effect.attachTo,
+           resolvedAttachToId,
+@@ -1494,4 +1496,5 @@
+       cardId,
+       free: effect.free,
++      programDestination: effect.programDestination,
+       resolvedAttachToId,
+     });
+@@ -1521,4 +1524,5 @@
+       cardIds: playableTargets,
+       free: effect.free,
++      programDestination: effect.programDestination,
+       attachTo: effect.attachTo,
+       resolvedAttachToId,
+--- a/submodules/cyberpunk/packages/engine/src/effects/target-resolver.ts
++++ b/submodules/cyberpunk/packages/engine/src/effects/target-resolver.ts
+@@ -31,5 +31,7 @@
+   switch (target.selector) {
+     case "self":
+-      return [ctx.sourceCardId as string];
++      return !target.zone || ctx.state.G.cardIndex[ctx.sourceCardId]?.zone === target.zone
++        ? [ctx.sourceCardId as string]
++        : [];
+     case "host": {
+       const card = ctx.state.G.cardIndex[ctx.sourceCardId as string];
+--- a/submodules/cyberpunk/packages/engine/src/moves/pass-phase.ts
++++ b/submodules/cyberpunk/packages/engine/src/moves/pass-phase.ts
+@@ -1,5 +1,10 @@
+ import type { Effect } from "@tcg/cyberpunk-types";
+ import type { MoveDefinition, MoveInput } from "../types/commands.ts";
+-import { executeAbilityEffects, processEventTriggers } from "../ability-executor.ts";
++import {
++  continueTriggerResolution,
++  enqueueEventTriggers,
++  executeAbilityEffects,
++  processEventTriggers,
++} from "../ability-executor.ts";
+ import { resolveTarget, type ResolutionContext } from "../effects/target-resolver.ts";
+ import type { CardInstanceId, PlayerId as PlayerIdType } from "../types/branded.ts";
+@@ -9,7 +14,6 @@
+ import { beginGainGigStep, readySpentCards } from "./gain-gig.ts";
+ import { defOf } from "../state/lookups.ts";
+-import { getCardsMarkedForEndTurnDefeat } from "../active-effects/index.ts";
++import type { GameEvent } from "../types/game-events.ts";
+ import { getMustAttackCardIds } from "./attack-requirements.ts";
+-import { resolveEndOfTurnDefeats } from "./resolve-attack.ts";
+ import { bothFixerAreasEmpty } from "./overtime.ts";
+
+@@ -97,9 +101,7 @@
+   };
+   operations.event.emit(turnEndedEvent);
+-  // Fire any end-of-turn triggers keyed on the `turnEnded` event (e.g.
+-  // modded-kusanagi's return-to-hand, panam-palmer's mass-ready) BEFORE
+-  // delayed-effects-bag cleanup so immediate end-of-turn triggers resolve
+-  // first. Every emitted event must have its triggers processed.
+-  processEventTriggers(turnEndedEvent, state, operations);
++  enqueueEventTriggers(turnEndedEvent, state, operations);
++  enqueueMarkedDefeats(turnEndedEvent, state, operations);
++  continueTriggerResolution(state, operations);
+   if (pendingResolutionBlocksEndTurn(state)) {
+     state.G.turnMetadata.suspendedEndTurn = { playerId, turnNumber: currentTurn };
+@@ -158,6 +160,4 @@
+   }
+
+-  defeatCardsMarkedForEndTurn(state, operations);
+-
+   // Defeated-card triggers ({Defeated} abilities, defeat-observing Legends)
+   // queue a prompt that must resolve BEFORE the turn flips — resetTurnFlags
+@@ -257,23 +257,36 @@
+ }
+
+-function defeatCardsMarkedForEndTurn(state: MatchState, operations: Operations): void {
+-  const marked = getCardsMarkedForEndTurnDefeat(state).filter((cardId) => {
+-    const card = state.G.cardIndex[cardId as string];
+-    return card?.zone === "field";
+-  });
+-  // Consume the delayed process before it can suspend for a replacement
+-  // choice. Resuming the end turn re-enters finishEndTurn, and the same
+-  // process must not apply twice (CR 10.29.1).
+-  const markedIds = new Set(marked.map((cardId) => cardId as string));
+-  for (const effect of state.G.activeEffects) {
+-    if (
+-      effect.kind === "defeatAtEndOfTurnIfAttacked" &&
+-      effect.triggered &&
+-      markedIds.has(effect.targetCardId as string)
+-    ) {
+-      operations.game.removeActiveEffect(effect.id);
+-    }
+-  }
+-  resolveEndOfTurnDefeats(state, operations, marked);
++function enqueueMarkedDefeats(
++  event: Extract<GameEvent, { type: "turnEnded" }>,
++  state: MatchState,
++  operations: Operations,
++): void {
++  // Cyberpsychosis and other end-of-turn abilities enter pending together.
++  for (const effect of [...state.G.activeEffects]) {
++    if (effect.kind !== "defeatAtEndOfTurnIfAttacked" || !effect.triggered) continue;
++    operations.game.removeActiveEffect(effect.id);
++    const target = state.G.cardIndex[effect.targetCardId];
++    const source = state.G.cardIndex[effect.sourceCardId];
++    if (target?.zone !== "field" || !source) continue;
++    const order = state.G.turnMetadata.nextTriggerId++;
++    state.G.turnMetadata.triggerQueue.push({
++      kind: "delayed",
++      id: `trigger-${order}`,
++      sourceCardId: effect.sourceCardId,
++      sourcePlayerId: effect.playerId ?? source.controllerId,
++      activeEffectId: effect.id,
++      sourceAbilityIndex: effect.abilityIndex,
++      abilityText: `Defeat ${defOf(target).displayName ?? defOf(target).name}.`,
++      event,
++      contextTargets: {},
++      boundTargets: { target: [effect.targetCardId] },
++      resolution: {
++        kind: "effects",
++        effects: [{ effect: "defeat", target: { selector: "bound", id: "target" } }],
++        requiresFieldTarget: effect.targetCardId,
++      },
++      order,
++    });
++  }
+ }
+
+--- a/submodules/cyberpunk/packages/engine/src/moves/play-card.ts
++++ b/submodules/cyberpunk/packages/engine/src/moves/play-card.ts
+@@ -38,5 +38,8 @@
+     }
+
+-    return player.zones.hand.length > 0;
++    return player.zones.hand.length > 0 || player.zones.legendArea.some((id) => {
++      const card = state.G.cardIndex[id];
++      return card && !card.meta.faceDown && defOf(card).type === "legend" && defOf(card).cost !== null;
++    });
+   },
+
+@@ -64,5 +67,8 @@
+     }
+
+-    if (!player.zones.hand.includes(cardId as CardInstanceId)) {
++    const playsLegend =
++      card && !card.meta.faceDown && defOf(card).type === "legend" && defOf(card).cost !== null &&
++      player.zones.legendArea.includes(cardId as CardInstanceId);
++    if (!player.zones.hand.includes(cardId as CardInstanceId) && !playsLegend) {
+       return { valid: false, error: "Card not in hand", errorCode: "CARD_NOT_IN_HAND" };
+     }
+@@ -162,11 +168,15 @@
+
+     if (def.type === "program") {
+-      operations.zone.moveCard(cardId as CardInstanceId, "trash", playerId);
++      operations.zone.moveCard(cardId as CardInstanceId, "resolvingProgram", playerId);
+     } else if (def.type === "gear" && attachToId) {
+       operations.zone.moveCard(cardId as CardInstanceId, "field", playerId);
+       operations.card.attachGear(cardId as CardInstanceId, attachToId as CardInstanceId);
+     } else if (def.type === "unit" || def.type === "legend") {
++      // CR 4.5: ordinary Legend play preserves orientation and has Lag.
++      // Capture orientation after payment, including if the Legend paid for itself.
++      const spentLegend = def.type === "legend" && card.meta.spent;
+       operations.zone.moveCard(cardId as CardInstanceId, "field", playerId);
+       operations.card.moveAttachedGear(cardId as CardInstanceId, "field");
++      if (spentLegend) operations.card.setMeta(cardId as CardInstanceId, { spent: true });
+       operations.card.setHasLag(cardId as CardInstanceId, true);
+     }
+--- a/submodules/cyberpunk/packages/engine/src/moves/play-selected-card.ts
++++ b/submodules/cyberpunk/packages/engine/src/moves/play-selected-card.ts
+@@ -13,4 +13,5 @@
+   cardId: CardInstanceId;
+   free?: boolean;
++  programDestination?: "deckBottom";
+   resolvedAttachToId?: string;
+   paymentSourceIds?: CardInstanceId[];
+@@ -27,4 +28,5 @@
+   cardId,
+   free,
++  programDestination,
+   resolvedAttachToId,
+   paymentSourceIds,
+@@ -54,5 +56,5 @@
+     operations.card.attachGear(cardId, resolvedAttachToId as CardInstanceId);
+   } else if (def.type === "program") {
+-    operations.zone.moveCard(cardId, "trash", playerId);
++    operations.zone.moveCard(cardId, "resolvingProgram", playerId);
+   } else {
+     operations.zone.moveCard(cardId, "field", playerId);
+@@ -68,5 +70,5 @@
+     playerId,
+     cost,
+-    ...(def.type === "program" && { nestedProgram: true }),
++    ...(programDestination && { programDestination }),
+   };
+   operations.event.emit(cardPlayedEvent);
+--- a/submodules/cyberpunk/packages/engine/src/moves/resolve-attack.ts
++++ b/submodules/cyberpunk/packages/engine/src/moves/resolve-attack.ts
+@@ -389,17 +389,18 @@
+   skippedReplacementIds: ReadonlySet<string> = new Set(),
+ ): boolean {
+-  const redirectable = remaining.find((cardId) => {
+-    const jackieId = findFriendlyDefeatRedirect(state, cardId as string, skippedReplacementIds);
+-    if (!jackieId) return false;
+-    const jackie = state.G.cardIndex[jackieId as string];
+-    if (!jackie) return false;
+-    return availableEddies(state, jackie.controllerId) >= 1;
++  const redirects = remaining.flatMap((cardId) => {
++    const replacement = findFriendlyDefeatRedirect(state, cardId, skippedReplacementIds);
++    const jackie = replacement && state.G.cardIndex[replacement];
++    return replacement && jackie && availableEddies(state, jackie.controllerId) >= 1
++      ? [{ cardId, replacement }]
++      : [];
+   });
+-  if (!redirectable) return false;
+-  const jackieId = findFriendlyDefeatRedirect(
+-    state,
+-    redirectable as string,
+-    skippedReplacementIds,
+-  )!;
++  // If Jackie and another friendly Unit would be defeated together, Jackie
++  // can save that Unit. Keep the default useful for automatic callers.
++  const first = redirects.find(({ cardId, replacement }) => cardId !== replacement) ?? redirects[0];
++  if (!first) return false;
++  const { cardId: redirectable, replacement: jackieId } = first;
++  const eligibleProtectedCardIds = redirects.filter(({ replacement }) => replacement === jackieId)
++    .map(({ cardId }) => cardId);
+   const jackie = state.G.cardIndex[jackieId as string]!;
+   operations.game.setPendingChoice({
+@@ -409,4 +410,5 @@
+     payload: {
+       protectedCardId: redirectable,
++      ...(eligibleProtectedCardIds.length > 1 && { eligibleProtectedCardIds }),
+       replacementCardId: jackieId,
+       cost: 1,
+@@ -603,4 +605,5 @@
+   args: {
+     pass?: boolean;
++    protectedCardId?: string;
+     paymentSourceIds?: string[];
+   };
+@@ -630,4 +633,9 @@
+     if (choice.payload.continuation.kind === "fight" && !state.G.attackState) {
+       return { valid: false, error: "No attack in progress", errorCode: "NO_ATTACK" };
++    }
++    if (input.args.protectedCardId !== undefined &&
++      !(choice.payload.eligibleProtectedCardIds ?? [choice.payload.protectedCardId])
++        .includes(input.args.protectedCardId as CardInstanceId)) {
++      return { valid: false, error: "Invalid Unit to protect", errorCode: "INVALID_CHOICE" };
+     }
+     if (
+@@ -652,6 +660,7 @@
+
+     operations.game.setPendingChoice(undefined);
+-    const { protectedCardId, replacementCardId, continuation, skippedReplacementIds } =
++    const { protectedCardId: defaultTarget, replacementCardId, continuation, skippedReplacementIds } =
+       choice.payload;
++    const protectedCardId = (input.args.protectedCardId ?? defaultTarget) as CardInstanceId;
+
+     if (!input.args.pass) {
+@@ -698,5 +707,5 @@
+         state,
+         operations,
+-        [protectedCardId, ...continuation.remainingCardIds],
++        [defaultTarget, ...continuation.remainingCardIds],
+         { ...continuation, remainingCardIds: [] },
+         attack,
+@@ -710,5 +719,6 @@
+       state,
+       operations,
+-      continuation.remainingCardIds,
++      [defaultTarget, ...continuation.remainingCardIds]
++        .filter((id) => id !== protectedCardId && id !== replacementCardId),
+       { ...continuation, remainingCardIds: [] },
+       attack,
+--- a/submodules/cyberpunk/packages/engine/src/moves/resolve-card-to-play.ts
++++ b/submodules/cyberpunk/packages/engine/src/moves/resolve-card-to-play.ts
+@@ -109,4 +109,5 @@
+     const {
+       free,
++      programDestination,
+       resolvedAttachToId,
+       boundTargets,
+@@ -201,4 +202,5 @@
+       cardId: cardId as CardInstanceId,
+       free,
++      programDestination,
+       resolvedAttachToId: attachId,
+       ...(paymentSourceIds === undefined
+--- a/submodules/cyberpunk/packages/engine/src/state/initial-state.ts
++++ b/submodules/cyberpunk/packages/engine/src/state/initial-state.ts
+@@ -61,4 +61,5 @@
+       eddieArea: [],
+       removedFromGame: [],
++      resolvingProgram: [],
+     },
+     combatPriority: "automatic",
+--- a/submodules/cyberpunk/packages/engine/src/types/game-events.ts
++++ b/submodules/cyberpunk/packages/engine/src/types/game-events.ts
+@@ -77,6 +77,6 @@
+   playerId: PlayerId;
+   cost: number;
+-  /** A Program played by another effect resolves before the old pending effects. */
+-  nestedProgram?: boolean;
++  /** Override the default move to trash after the Program resolves. */
++  programDestination?: "deckBottom";
+ }
+
+--- a/submodules/cyberpunk/packages/engine/src/types/match-state.ts
++++ b/submodules/cyberpunk/packages/engine/src/types/match-state.ts
+@@ -149,5 +149,5 @@
+         sourceAbilityIndex: number;
+         resolution:
+-          | { kind: "effects"; effects: Effect[] }
++          | { kind: "effects"; effects: Effect[]; requiresFieldTarget?: CardInstanceId }
+           | { kind: "fightProtection"; protectedCardId: CardInstanceId };
+       }
+@@ -204,4 +204,9 @@
+   triggerQueue: QueuedTrigger[];
+   currentTrigger?: ResolvingTrigger;
++  resolvingPrograms?: {
++    cardId: CardInstanceId;
++    destination: "trash" | "deck";
++    triggerIds: string[];
++  }[];
+   nextTriggerId: number;
+ }
+@@ -412,4 +417,5 @@
+   payload: {
+     protectedCardId: CardInstanceId;
++    eligibleProtectedCardIds?: CardInstanceId[];
+     replacementCardId: CardInstanceId;
+     cost: number;
+@@ -467,4 +473,5 @@
+     cardIds: CardInstanceId[];
+     free?: boolean;
++    programDestination?: "deckBottom";
+     attachTo?: TargetDSL;
+     resolvedAttachToId?: string;
+--- a/submodules/cyberpunk/packages/engine/src/types/zone-types.ts
++++ b/submodules/cyberpunk/packages/engine/src/types/zone-types.ts
+@@ -61,4 +61,11 @@
+     ownerScoped: true,
+   },
++  resolvingProgram: {
++    id: "resolvingProgram",
++    name: "Resolving Program",
++    visibility: "public",
++    ordered: false,
++    ownerScoped: true,
++  },
+   removedFromGame: {
+     id: "removedFromGame",
+@@ -78,4 +85,5 @@
+   "eddieArea",
+   "removedFromGame",
++  "resolvingProgram",
+ ];
+
+--- a/submodules/cyberpunk/packages/engine/src/view/filter.ts
++++ b/submodules/cyberpunk/packages/engine/src/view/filter.ts
+@@ -432,4 +432,5 @@
+       "eddieArea",
+       "removedFromGame",
++      "resolvingProgram",
+     ];
+
+--- a/submodules/cyberpunk/packages/engine/src/view/player-prompt.ts
++++ b/submodules/cyberpunk/packages/engine/src/view/player-prompt.ts
+@@ -363,4 +363,5 @@
+   payload: {
+     protectedCardId: string;
++    eligibleProtectedCardIds?: string[];
+     replacementCardId: string;
+     cost: number;
+@@ -648,8 +649,9 @@
+   const candidates: PlayCardCandidate[] = [];
+   const isDefending = isReactStep(state, playerId);
+-  for (const id of player.zones.hand) {
++  for (const id of [...player.zones.hand, ...player.zones.legendArea]) {
+     const card = state.G.cardIndex[id as string];
+     if (!card) continue;
+     const def = defOf(card);
++    if (card.zone === "legendArea" && (def.type !== "legend" || card.meta.faceDown || def.cost === null)) continue;
+     const cost = computeEffectiveCost(state, id, playerId);
+     if (cost > availableEddies(state, playerId)) continue;
+@@ -1117,4 +1119,5 @@
+         payload: {
+           protectedCardId: choice.payload.protectedCardId as string,
++          eligibleProtectedCardIds: choice.payload.eligibleProtectedCardIds,
+           replacementCardId: choice.payload.replacementCardId as string,
+           cost: choice.payload.cost,
+--- a/submodules/cyberpunk/packages/types/src/index.ts
++++ b/submodules/cyberpunk/packages/types/src/index.ts
+@@ -470,5 +470,6 @@
+   | "gigArea"
+   | "eddieArea"
+-  | "removedFromGame";
++  | "removedFromGame"
++  | "resolvingProgram";
+
+ export type CardState = "ready" | "spent";
+@@ -544,4 +545,5 @@
+ export interface SelfTargetDSL {
+   selector: "self";
++  zone?: CardZone;
+ }
+
+@@ -1262,4 +1264,6 @@
+   target: TargetDSL;
+   free?: boolean;
++  /** Where a Program goes immediately after resolving. Defaults to trash. */
++  programDestination?: "deckBottom";
+   attachTo?: TargetDSL;
+   /**
