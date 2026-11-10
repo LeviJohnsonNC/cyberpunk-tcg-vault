@@ -1,3 +1,5 @@
+import type { DeckDraft } from '../deckDraft';
+
 export type Seat = 'player' | 'rival';
 
 export interface MatchDeck {
@@ -84,6 +86,7 @@ export interface GigRoll {
 
 export interface MatchSnapshot {
   matchId: string;
+  names: Record<Seat, string>;
   view: PlayerView;
   /** Slots a seat has legally peeked at. Identity is only in the transient peek. */
   knownLegends: { instanceId: string; seat: Seat }[];
@@ -93,11 +96,19 @@ export interface MatchSnapshot {
 }
 
 export type MatchAction =
-  | { type: 'start'; setup: MatchSetup }
+  | { type: 'start'; setup: MatchSetup; draft?: DeckDraft; replaceMatchId?: string }
+  | { type: 'resume' }
   | { type: 'move'; matchId: string; stateID: number; move: Move }
-  | { type: 'rematch'; matchId: string };
+  | { type: 'rematch'; matchId: string; stateID: number };
 
 export interface MatchRequest { id: number; action: MatchAction }
+export interface ScopedMatchRequest extends MatchRequest { scope: string }
+
+export interface MatchSummary {
+  matchId: string;
+  ended: boolean;
+  draft?: DeckDraft;
+}
 
 export type MatchResponse =
   | { id: number; snapshot: MatchSnapshot }

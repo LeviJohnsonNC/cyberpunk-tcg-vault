@@ -2,10 +2,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { CardImg, Pip } from '../components/bits';
 import { ConfirmDialog, Masthead } from '../components/ui';
 import { BY_SLUG, RECOMMENDED } from '../lib/data';
+import type { DeckDraft } from '../lib/deckDraft';
 import { deckFromRecommended } from '../lib/decks';
-import { openPlayMatch } from '../lib/play/matchClient';
-import type { MatchSnapshot, Move } from '../lib/play/protocol';
-import type { Deck } from '../lib/store';
+import { openPlayMatch, resumePlayMatch } from '../lib/play/matchClient';
+import type { MatchSnapshot, MatchSummary, Move } from '../lib/play/protocol';
 import { PlayTable } from './PlayTable';
 import './play-mode.css';
 
@@ -21,21 +21,25 @@ const rivals = rivalPlans.flatMap((plan) => {
 });
 
 type Client = Awaited<ReturnType<typeof openPlayMatch>>;
-type Confirm = 'edit' | 'restart' | 'concede';
+type Confirm = 'replace' | 'restart' | 'concede';
 
-export default function PlayMode({ deck, initialRival, rememberRival, onEdit }: {
-  deck: Deck; initialRival?: string; rememberRival: (id: string) => void; onEdit: () => void;
+export default function PlayMode({ scope, draft, saved, initialRival, rememberRival, onCheckpoint, onEdit }: {
+  scope: string; draft?: DeckDraft; saved?: MatchSummary; initialRival?: string; rememberRival: (id: string) => void;
+  onCheckpoint: (snapshot: MatchSnapshot) => void; onEdit: () => void;
 }) {
   const [rivalId, setRivalId] = useState(() => rivals.some(({ id }) => id === initialRival) ? initialRival : rivals[0]?.id);
+  const [resume] = useState(!draft);
+  const [resumeAttempt, setResumeAttempt] = useState(0);
   const [snapshot, setSnapshot] = useState<MatchSnapshot>();
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(resume);
   const [error, setError] = useState<string>();
   const [confirm, setConfirm] = useState<Confirm>();
   const client = useRef<Client | null>(null);
   const generation = useRef(0);
   const locked = useRef(false);
   const rival = rivals.find(({ id }) => id === rivalId);
-  const name = deck.name.trim() || 'Untitled deck';
+  const deck = draft?.deck;
+  const name = deck?.name.trim() || 'Untitled deck';
   const matchId = snapshot?.matchId;
 
   useLayoutEffect(() => {
@@ -48,6 +52,23 @@ export default function PlayMode({ deck, initialRival, rememberRival, onEdit }: 
     client.current = null;
   }, []);
 
+  useEffect(() => {
+    if (!resume) return;
+    let active = true;
+    void resumePlayMatch(scope).then((next) => {
+      if (active) {
+        client.current = next;
+        setSnapshot(next.opening);
+        setBusy(false);
+      } else next.close();
+    }).catch((cause: unknown) => {
+      if (!active) return;
+      setError(cause instanceof Error ? cause.message : 'The saved match could not be opened.');
+      setBusy(false);
+    });
+    return () => { active = false; };
+  }, [resume, resumeAttempt, scope]);
+
   async function run(action: (isCurrent: () => boolean) => Promise<MatchSnapshot>) {
     if (locked.current) return;
     const current = generation.current;
@@ -57,7 +78,10 @@ export default function PlayMode({ deck, initialRival, rememberRival, onEdit }: 
     setError(undefined);
     try {
       const next = await action(isCurrent);
-      if (isCurrent()) setSnapshot(next);
+      if (isCurrent()) {
+        setSnapshot(next);
+        onCheckpoint(next);
+      }
     } catch (cause) {
       if (isCurrent()) setError(cause instanceof Error ? cause.message : 'The match could not continue.');
     } finally {
@@ -68,12 +92,16 @@ export default function PlayMode({ deck, initialRival, rememberRival, onEdit }: 
     }
   }
 
-  function start() {
-    if (!rival) return;
+  function start(replace = false) {
+    if (!rival || !draft) return;
+    if (saved && !saved.ended && !replace) {
+      setConfirm('replace');
+      return;
+    }
     const rivalDeck = deckFromRecommended(rival.id);
     if (!rivalDeck) return;
     void run(async (isCurrent) => {
-      const next = await openPlayMatch(deck, rivalDeck);
+      const next = await openPlayMatch(scope, draft, rivalDeck, saved?.matchId);
       if (isCurrent()) {
         client.current = next;
         rememberRival(rival.id);
@@ -92,32 +120,27 @@ export default function PlayMode({ deck, initialRival, rememberRival, onEdit }: 
     if (current && snapshot) void run(() => current.rematch(snapshot));
   }
 
-  function edit() {
-    if (snapshot && !snapshot.view.gameEnded) setConfirm('edit');
-    else onEdit();
-  }
-
   const live = snapshot && !snapshot.view.gameEnded;
   return (
     <section className="play-mode">
-      {snapshot && rival ? <>
+      {snapshot ? <>
         <header className="play-match-header">
           <div className="play-match-identity">
-            <p className="play-eyebrow">The Afterlife <span>/</span> Practice table</p>
-            <h1 title={`${name} vs. ${rival.list.name}`}>{name} <span>vs.</span> {rival.list.name}</h1>
+            <p className="play-eyebrow" title="Match saved in this browser">The Afterlife <span>/</span> Practice table <span>/</span> Autosaved</p>
+            <h1 title={`${snapshot.names.player} vs. ${snapshot.names.rival}`}>{snapshot.names.player} <span>vs.</span> {snapshot.names.rival}</h1>
           </div>
           <div className="play-header-actions">
             {live && <button type="button" className="btn quiet" disabled={busy} onClick={() => setConfirm('restart')}>Restart match</button>}
             {live && <button type="button" className="btn danger-ghost" disabled={busy} onClick={() => setConfirm('concede')}>Concede</button>}
-            <button type="button" className="btn quiet" disabled={busy} onClick={edit}>Back to draft</button>
+            <button type="button" className="btn quiet" disabled={busy} onClick={onEdit}>Back to draft</button>
           </div>
         </header>
-        <PlayTable key={snapshot.matchId} snapshot={snapshot} names={{ player: name, rival: rival.list.name }}
+        <PlayTable key={snapshot.matchId} scope={scope} snapshot={snapshot} names={snapshot.names}
           busy={busy} error={error} send={send} rematch={rematch} edit={onEdit} />
-      </> : <>
+      </> : deck ? <>
         <div className="play-entrance">
           <Masthead eyebrow="The Afterlife / Practice table" title="Play Mode" sub="Local practice ◆ Best of one">
-            <button type="button" className="btn quiet" disabled={busy} onClick={edit}>Back to draft</button>
+            <button type="button" className="btn quiet" disabled={busy} onClick={onEdit}>Back to draft</button>
           </Masthead>
           <p>Bring your deck to the back room and see how it holds up against a rival crew.</p>
         </div>
@@ -153,20 +176,33 @@ export default function PlayMode({ deck, initialRival, rememberRival, onEdit }: 
                 <span>Rival</span><strong>{rival.list.name}</strong>
                 <span>{rival.list.colors.map((color) => <Pip key={color} color={color} bare />)}</span>
               </div>}
-              <button type="button" className="btn play-start" disabled={busy || !rival} onClick={start}>{busy ? 'Dealing…' : 'Start match'}</button>
+              <button type="button" className="btn play-start" disabled={busy || !rival} onClick={() => start()}>{busy ? 'Dealing…' : 'Start match'}</button>
             </div>
           </aside>
         </div>
-      </>}
-      <ConfirmDialog open={!!confirm} title={confirm === 'concede' ? 'Concede this match?' : confirm === 'restart' ? 'Start a fresh match?' : 'Return to your draft?'}
-        confirmLabel={confirm === 'concede' ? 'Concede match' : confirm === 'restart' ? 'Restart match' : 'Return to draft'} onCancel={() => setConfirm(undefined)}
+      </> : <div className="panel">
+        <h1 className="panel-title">Saved match</h1>
+        {busy ? <p role="status">Restoring the table…</p> : <>
+          {error && <p className="play-error" role="alert">{error}</p>}
+          <div className="play-actions">
+            <button type="button" className="btn" onClick={() => {
+              setBusy(true);
+              setError(undefined);
+              setResumeAttempt((attempt) => attempt + 1);
+            }}>Try again</button>
+            <button type="button" className="btn quiet" onClick={onEdit}>Back to draft</button>
+          </div>
+        </>}
+      </div>}
+      <ConfirmDialog open={!!confirm} title={confirm === 'concede' ? 'Concede this match?' : confirm === 'restart' ? 'Start a fresh match?' : 'Replace your saved match?'}
+        confirmLabel={confirm === 'concede' ? 'Concede match' : confirm === 'restart' ? 'Restart match' : 'Replace match'} onCancel={() => setConfirm(undefined)}
         onConfirm={() => {
           setConfirm(undefined);
-          if (confirm === 'edit') onEdit();
+          if (confirm === 'replace') start(true);
           if (confirm === 'restart') rematch();
           if (confirm === 'concede') send({ move: 'concede' });
         }}>
-        <p>{confirm === 'concede' ? 'The rival wins this match.' : confirm === 'restart' ? 'The current match ends and both decks are shuffled again.' : 'The current match ends. Your draft is ready to edit in Deck Builder.'}</p>
+        <p>{confirm === 'concede' ? 'The rival wins this match.' : confirm === 'restart' ? 'The current match ends and both decks are shuffled again.' : 'Starting a new match replaces the one in progress for this Vault.'}</p>
       </ConfirmDialog>
     </section>
   );

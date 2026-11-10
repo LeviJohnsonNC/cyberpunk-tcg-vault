@@ -417,7 +417,7 @@ describe('play engine', () => {
       () => `worker-private-12-${sequence++}` as ReturnType<typeof crypto.randomUUID>,
     );
     try {
-      const respond = createMatchController();
+      const { respond } = createMatchController();
       let response = respond({ id: 0, action: { type: 'start', setup: { player: rival, rival } } });
       const rng = new SeededRNG('worker-player');
       let playerSearch = false;
@@ -1010,14 +1010,14 @@ describe('play engine', () => {
   });
 
   it('keeps the starting draft for rematch and rejects moves from an earlier match', () => {
-    const respond = createMatchController();
+    const { respond } = createMatchController();
     const original = structuredClone(setup('chrome-syndicate'));
     const opening = respond({ id: 1, action: { type: 'start', setup: original } });
     if (!('snapshot' in opening)) throw new Error(opening.error);
     original.player.legends.length = 0;
     original.player.mainDeck.length = 0;
     const firstId = opening.snapshot.matchId;
-    const rematch = respond({ id: 2, action: { type: 'rematch', matchId: firstId } });
+    const rematch = respond({ id: 2, action: { type: 'rematch', matchId: firstId, stateID: opening.snapshot.view.stateID } });
     if (!('snapshot' in rematch)) throw new Error(rematch.error);
     expect(rematch.snapshot.matchId).not.toBe(firstId);
     expect(rematch.snapshot.view.gameEnded).toBe(false);
@@ -1025,6 +1025,36 @@ describe('play engine', () => {
     expect(respond({ id: 3, action: { type: 'move', matchId: firstId, stateID: 0, move: { move: 'concede' } } })).toEqual({
       id: 3, error: 'That match is no longer active.',
     });
+  });
+
+  it('restores an engine checkpoint and continues with identical randomness and choices', () => {
+    const live = createMatchController();
+    let result = live.respond({ id: 0, action: { type: 'start', setup: setup('chrome-syndicate') } });
+    for (let i = 1; i <= 12; i++) {
+      if (!('snapshot' in result)) throw new Error(result.error);
+      const { view, matchId, gigRolls } = result.snapshot;
+      if (gigRolls.some((roll) => roll.seat === 'player')) break;
+      const move = chooseMove(view, () => 0.3, 'player')!;
+      result = live.respond({ id: i, action: { type: 'move', matchId, stateID: view.stateID, move } });
+    }
+    if (!('snapshot' in result)) throw new Error(result.error);
+    const original = result.snapshot;
+    expect(original.gigRolls.some((roll) => roll.seat === 'player')).toBe(true);
+    const restored = createMatchController(structuredClone(live.save(original)));
+    expect(restored.respond({ id: 13, action: { type: 'resume' } })).toEqual({
+      id: 13, snapshot: { ...original, gigRolls: [] },
+    });
+
+    let view = original.view;
+    for (let i = 14; i < 25; i++) {
+      const move = chooseMove(view, () => 0.3, 'player')!;
+      const request = { id: i, action: { type: 'move' as const, matchId: original.matchId, stateID: view.stateID, move } };
+      const next = live.respond(request);
+      expect(restored.respond(request)).toEqual(next);
+      if (!('snapshot' in next)) throw new Error(next.error);
+      view = next.snapshot.view;
+      if (view.gameEnded) break;
+    }
   });
 });
 

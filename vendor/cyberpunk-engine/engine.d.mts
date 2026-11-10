@@ -10,6 +10,7 @@ interface Catalog {
 }
 
 export interface EngineState {
+  ctx: { stateID: number };
   G: {
     players: Record<Seat, { zones: Record<string, string[]> }>;
     cardIndex: Record<string, { definitionId: string }>;
@@ -44,6 +45,8 @@ export class LocalEngine {
 export class SeededRNG {
   constructor(seed: string);
   next(): number;
+  getState(): { state: number };
+  setState(state: { state: number }): void;
 }
 
 export function chooseMove(view: PlayerView, rng: () => number, seat: Seat): Move | undefined;

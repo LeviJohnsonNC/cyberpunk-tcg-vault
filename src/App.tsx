@@ -1,7 +1,6 @@
 import { Activity, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Analytics, type BeforeSendEvent } from '@vercel/analytics/react';
 import { useStore } from './lib/store';
-import type { Deck } from './lib/store';
 import { cloudEnabled } from './lib/supabase';
 import { PRICES } from './lib/data';
 import { AuthBox } from './components/AuthBox';
@@ -18,9 +17,11 @@ import { FeedbackDialog } from './components/Feedback';
 import { MusicPlayer } from './components/MusicPlayer';
 import { MobileVaultNav } from './components/MobileVaultNav';
 import { CURRENCIES, getCurrency, setCurrency, type Currency } from './lib/currency';
-import { clearSampleDraft, SAMPLE_DRAFT_OWNER } from './lib/deckDraft';
+import { clearSampleDraft, readDeckDraft, rememberDeckDraft, SAMPLE_DRAFT_OWNER, type DeckDraft } from './lib/deckDraft';
 import { TABS, useVaultNavigation, type TabId } from './lib/vaultNavigation';
 import { playPreviewEnabled } from './lib/play/playPreview';
+import { readMatchSummary } from './lib/play/matchStorage';
+import type { MatchSnapshot, MatchSummary } from './lib/play/protocol';
 import './mobile-shell.css';
 
 const PlayMode = playPreviewEnabled ? lazy(() => import('./views/PlayMode')) : null;
@@ -51,8 +52,12 @@ export default function App() {
     setFeedbackOpen(false);
   }, []);
   const { route, visited, mobile, consumeDeck } = useVaultNavigation(scope, closeOverlays);
-  const [playDraft, setPlayDraft] = useState<{ scope: string; deck: Deck }>();
+  const [playDraft, setPlayDraft] = useState<{ scope: string; draft: DeckDraft }>();
   const [playRival, setPlayRival] = useState<{ scope: string; id: string }>();
+  const [matchLookup, setMatchLookup] = useState<{ scope: string; saved?: MatchSummary; failed?: boolean }>();
+  const matchInfo = matchLookup?.scope === scope ? matchLookup : undefined;
+  const savedMatch = matchInfo?.saved;
+  const matchDraft = playDraft?.scope === scope ? playDraft.draft : undefined;
   const requestSignIn = () => {
     if (mobile) {
       menu.current?.showModal();
@@ -77,6 +82,27 @@ export default function App() {
   }, [mobile, demo, toast]);
 
   useEffect(() => {
+    if (!PlayMode || mobile || !store.ready) return;
+    let active = true;
+    const refresh = async () => {
+      try {
+        const saved = await readMatchSummary(scope);
+        if (!active) return;
+        setMatchLookup({ scope, saved });
+        if (saved && !saved.ended && !window.location.hash) window.location.hash = '/play';
+      } catch {
+        if (active) setMatchLookup((previous) => previous?.scope === scope && previous.saved ? previous : { scope, failed: true });
+      }
+    };
+    void refresh();
+    window.addEventListener('focus', refresh);
+    return () => {
+      active = false;
+      window.removeEventListener('focus', refresh);
+    };
+  }, [mobile, scope, store.ready]);
+
+  useEffect(() => {
     const rail = nav.current;
     const active = rail?.querySelector<HTMLElement>('[aria-current="page"]');
     if (!rail || !active) return;
@@ -94,8 +120,23 @@ export default function App() {
   }, [route.tab, mobile]);
 
   const go = (tab: TabId, deck?: string) => {
+    if (tab !== 'play') setPlayDraft(undefined);
     window.location.hash = `/${tab}${deck ? `?deck=${encodeURIComponent(deck)}` : ''}`;
   };
+
+  function acceptMatch(snapshot: MatchSnapshot) {
+    const ended = snapshot.view.gameEnded;
+    if (savedMatch?.matchId !== snapshot.matchId || savedMatch.ended !== ended) {
+      setMatchLookup({ scope, saved: { matchId: snapshot.matchId, ended, draft: matchDraft ?? savedMatch?.draft } });
+    }
+    if (matchDraft) setPlayDraft(undefined);
+  }
+
+  function returnToDraft() {
+    const draft = matchDraft ?? savedMatch?.draft;
+    if (draft && !readDeckDraft(scope)) rememberDeckDraft(scope, draft);
+    go('builder');
+  }
 
   const total = [...store.owned.values()].reduce((a, b) => a + b, 0);
   const sync = store.demo ? 'sample' : store.collectionError ? 'error' : !store.ready || !store.collectionReady ? 'loading'
@@ -198,23 +239,31 @@ export default function App() {
       <main key={scope}>
         {showSection('collection') && <Activity mode={route.tab === 'collection' ? 'visible' : 'hidden'}><Collection mobile={mobile} onOpen={showCard} goAdd={() => go('add')} /></Activity>}
         {showSection('prices') && <Activity mode={route.tab === 'prices' ? 'visible' : 'hidden'}><PriceBook mobile={mobile} onOpen={showCard} goAdd={() => go('add')} /></Activity>}
-        {(showSection('builder') || (route.tab === 'play' && playDraft?.scope === scope)) && <Activity mode={route.tab === 'builder' ? 'visible' : 'hidden'}><DeckBuilder mobile={mobile} onOpen={showCard} initialDeck={route.tab === 'builder' ? route.deck : undefined} onConsumeDeck={consumeDeck} onPlay={PlayMode && !mobile ? (deck) => {
-          setPlayDraft({ scope, deck: structuredClone(deck) });
-          go('play');
-        } : undefined} /></Activity>}
+        {(showSection('builder') || (route.tab === 'play' && (matchDraft || (savedMatch && readDeckDraft(scope))))) && <Activity mode={route.tab === 'builder' ? 'visible' : 'hidden'}><DeckBuilder mobile={mobile} onOpen={showCard} initialDeck={route.tab === 'builder' ? route.deck : undefined} onConsumeDeck={consumeDeck}
+          onResume={PlayMode && !mobile && savedMatch ? () => {
+            setPlayDraft(undefined);
+            go('play');
+          } : undefined} resumeEnded={savedMatch?.ended}
+          onPlay={PlayMode && !mobile ? (draft) => {
+            setPlayDraft({ scope, draft: structuredClone(draft) });
+            go('play');
+          } : undefined} /></Activity>}
         {showSection('meta') && <Activity mode={route.tab === 'meta' ? 'visible' : 'hidden'}><MetaIntel onOpen={showCard} openInBuilder={(id) => go('builder', id)} goAdd={() => go('add')} /></Activity>}
         {route.tab === 'add' && <AddCards onOpen={showCard} onSignIn={requestSignIn} />}
         {route.tab === 'about' && <HowItWorks openFeedback={() => setFeedbackOpen(true)} />}
         {route.tab === 'upgrade' && <UpgradePlanner onOpen={showCard} />}
         {route.tab === 'shared' && <SharedDeck token={route.deck} onOpen={showCard} goAdd={() => go('add')} />}
-        {route.tab === 'play' && (PlayMode && !mobile && playDraft?.scope === scope
+        {route.tab === 'play' && (PlayMode && !mobile && store.ready && matchInfo && (matchDraft || savedMatch)
           ? <Suspense fallback={<p className="callout" role="status">Opening Play Mode…</p>}>
-            <PlayMode deck={playDraft.deck} initialRival={playRival?.scope === scope ? playRival.id : undefined}
-              rememberRival={(id) => setPlayRival({ scope, id })} onEdit={() => go('builder')} />
+            <PlayMode scope={scope} draft={matchDraft} saved={savedMatch} initialRival={playRival?.scope === scope ? playRival.id : undefined}
+              rememberRival={(id) => setPlayRival({ scope, id })} onCheckpoint={acceptMatch} onEdit={returnToDraft} />
           </Suspense>
+          : PlayMode && !mobile && (!store.ready || !matchInfo) ? <p className="callout" role="status">Checking for a saved match…</p>
           : <section className="panel">
             <h1 className="panel-title">Play Mode</h1>
-            <p>{mobile ? 'Play Mode is available on desktop.' : PlayMode ? 'Open a legal draft in Deck Builder to start a match.' : 'Play Mode is currently in preview.'}</p>
+            <p>{mobile ? 'Play Mode is available on desktop.' : !PlayMode ? 'Play Mode is currently in preview.'
+              : matchInfo?.failed ? 'Play Mode couldn’t read this browser’s match storage.'
+              : 'Open a legal draft in Deck Builder to start a match.'}</p>
             <button type="button" className="btn" onClick={() => go('builder')}>Open Deck Builder</button>
           </section>)}
       </main>

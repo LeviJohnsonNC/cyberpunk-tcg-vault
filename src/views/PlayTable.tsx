@@ -175,13 +175,26 @@ const winReasons: Record<string, string> = {
   deck_out_victory: 'Deck-out', concede: 'Concession', concession: 'Concession',
 };
 
-export function PlayTable({ snapshot, names, busy, error, send, rematch, edit }: {
-  snapshot: MatchSnapshot; names: Record<Seat, string>; busy: boolean; error?: string;
+type SavedDecision = { matchId: string; state: number; selection?: number; picks: Picks };
+
+function readDecision(key: string, snapshot: MatchSnapshot): SavedDecision | undefined {
+  try {
+    const saved = JSON.parse(localStorage.getItem(key) ?? 'null') as SavedDecision | null;
+    if (saved?.matchId === snapshot.matchId && saved.state === snapshot.view.stateID
+      && (saved.selection === undefined || Number.isInteger(saved.selection))
+      && saved.picks && Object.values(saved.picks).every((values) =>
+        Array.isArray(values) && values.every((value) => typeof value === 'string'))) return saved;
+  } catch { /* The committed match still resumes when local storage is unavailable. */ }
+}
+
+export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, edit }: {
+  scope: string; snapshot: MatchSnapshot; names: Record<Seat, string>; busy: boolean; error?: string;
   send: (move: Move) => void; rematch: () => void; edit: () => void;
 }) {
   const { view } = snapshot;
   const actions = matchActions(view);
-  const [decision, setDecision] = useState<{ state: number; selection?: number; picks: Picks }>();
+  const decisionKey = `cptv.playDecision.v1:${scope}`;
+  const [decision, setDecision] = useState(() => readDecision(decisionKey, snapshot));
   const [inspection, setInspection] = useState<{ state: number; card: CardView }>();
   const title = useRef<HTMLHeadingElement>(null);
   const choice = view.prompt.choice;
@@ -225,7 +238,9 @@ export function PlayTable({ snapshot, names, busy, error, send, rematch, edit }:
   useEffect(() => { title.current?.focus({ preventScroll: true }); }, [view.stateID]);
 
   function setChoice(selection: number | undefined, picks: Picks) {
-    setDecision({ state: view.stateID, selection, picks });
+    const next = { matchId: snapshot.matchId, state: view.stateID, selection, picks };
+    setDecision(next);
+    try { localStorage.setItem(decisionKey, JSON.stringify(next)); } catch { /* Optional UI state. */ }
   }
 
   function chooseValue(fieldId: string, id: string) {
