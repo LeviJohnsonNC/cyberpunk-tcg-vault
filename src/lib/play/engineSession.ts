@@ -1,7 +1,7 @@
 import { chooseMove, createCardCatalog, createMatchState, LocalEngine, projectRevealedCardView, SeededRNG } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import type { EngineEvent, EngineState } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import { describeAction, hideConcealedTargets } from './matchView';
-import type { CardView, MatchLogEntry, MatchSetup, MatchSnapshot, Move, Seat } from './protocol';
+import type { CardView, GigRoll, MatchLogEntry, MatchSetup, MatchSnapshot, Move, Seat } from './protocol';
 
 const catalog = createCardCatalog();
 const cardAliases: Record<string, string> = {
@@ -70,6 +70,7 @@ export function createEngineSession(
   const known = new Map<string, Set<Seat>>();
   let peeks: CardView[] = [];
   const log: MatchLogEntry[] = [];
+  let gigRolls: GigRoll[] = [];
   let commandNumber = 0;
   let stalled = false;
 
@@ -93,6 +94,13 @@ export function createEngineSession(
     }
     if (seat === 'player') peeks = [];
     peeks.push(...recordLegendPeeks(result.state, result.gameEvents, known));
+    for (const event of result.gameEvents) {
+      if (event.type === 'gigDieRolled') {
+        gigRolls.push({
+          dieId: event.dieId, dieType: event.dieType, result: event.result, seat: event.playerId, origin: event.origin,
+        });
+      }
+    }
   }
 
   function advance(): MatchSnapshot {
@@ -104,11 +112,13 @@ export function createEngineSession(
             const legends = zones.legendArea;
             return Array.isArray(legends) ? legends.filter((card) => card.faceDown).map((card) => card.instanceId) : [];
           }));
-          return {
-            matchId, view, peeks: [...peeks], log: [...log],
+          const snapshot = {
+            matchId, view, peeks: [...peeks], log: [...log], gigRolls,
             knownLegends: [...known].filter(([id]) => concealed.has(id))
               .flatMap(([instanceId, viewers]) => [...viewers].map(seat => ({ instanceId, seat }))),
           };
+          gigRolls = [];
+          return snapshot;
         }
         const command = botDecision(engine, 'rival', () => botRng.next());
         if (!command || command.move === 'concede') throw new Error('The rival could not resolve its current action.');

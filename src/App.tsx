@@ -106,13 +106,14 @@ export default function App() {
     {CURRENCIES.map((c) => <button key={c} aria-pressed={currency === c} onClick={() => chooseCurrency(c)}>{c}</button>)}
   </span>;
   const showSection = (tab: TabId) => route.tab === tab || (mobile && visited.has(tab));
+  const desktopPlay = route.tab === 'play' && !mobile;
   // The browser pathname stays the same when switching Vault screens.
   const analyticsPath = `/${route.tab}`;
 
   return (
     <>
       <Analytics route={analyticsPath} path={analyticsPath} beforeSend={stripAnalyticsUrlDetails} />
-      <header className="appbar">
+      <header className={desktopPlay ? 'appbar appbar--play' : 'appbar'}>
         <div className="appbar-inner">
           <a className="brand" href="#/collection" aria-label="Cyberpunk TCG Vault home">
             <span className="brand-badge" aria-hidden="true"><span>€$</span></span>
@@ -169,7 +170,7 @@ export default function App() {
         </div>
       </dialog>}
 
-    <div className="app page">
+    <div className={desktopPlay ? 'app page app--play' : 'app page'}>
       {store.demo && !mobile && route.tab !== 'play' && (
         <div className="callout demo-banner" role="status">
           <div className="row">
@@ -233,7 +234,7 @@ export default function App() {
         ))}
       </div>
 
-      <footer className="footer">
+      {route.tab !== 'play' && <footer className="footer">
         Unofficial fan-made tool. Not affiliated with WeirdCo or CD PROJEKT RED. Card data and images come from the official
         Cyberpunk TCG card database. Cyberpunk and card art are trademarks and copyrights of CD PROJEKT S.A.
         <br />
@@ -244,7 +245,7 @@ export default function App() {
         <a href="#" onClick={(e) => { e.preventDefault(); setFeedbackOpen(true); }}>Send feedback</a> ·{' '}
         <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a> ·{' '}
         <a href="https://github.com/LeviJohnsonNC/cyberpunk-tcg-vault" target="_blank" rel="noreferrer">GitHub</a>
-      </footer>
+      </footer>}
     </div>
     {mobile && <MobileVaultNav tab={route.tab} />}
     </>

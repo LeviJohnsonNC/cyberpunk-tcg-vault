@@ -54,6 +54,29 @@ describe('play engine', () => {
     expect(snapshot.view.winReason).toMatch(/^(gig_victory|overtime_majority|deck_out_victory)$/);
   });
 
+  it('delivers public rolls from both seats once, with the engine’s landed values', () => {
+    const session = createEngineSession(setup('chrome-syndicate'), { shuffle: 'vault-rolls', bot: 'vault-rolls' });
+    let snapshot = session.start();
+    const seats = new Set<Seat>();
+    for (let i = 0; i < 24 && seats.size < 2; i++) {
+      const move = chooseMove(snapshot.view, () => 0.3, 'player')!;
+      snapshot = session.move(snapshot.view.stateID, move);
+      for (const roll of snapshot.gigRolls) {
+        expect(roll.origin).toBe('gainGig');
+        expect(snapshot.log).toContainEqual(expect.objectContaining({
+          seat: roll.seat, text: `Gained a ${roll.dieType} Gig · rolled ${roll.result}.`,
+        }));
+        if (roll.seat === 'player') {
+          const landed = (snapshot.view.players.player.zones.gigArea as CardView[]).find((die) => die.instanceId === roll.dieId);
+          expect(landed).toMatchObject({ definitionId: roll.dieType, power: roll.result });
+        }
+        seats.add(roll.seat);
+      }
+      expect(session.start().gigRolls).toEqual([]);
+    }
+    expect(seats).toEqual(new Set(['player', 'rival']));
+  });
+
   it('keeps hidden card identities and pre-shuffle Legend IDs out of both seat projections', () => {
     const { engine, preview } = afterSetup(setup('chrome-syndicate'));
     const presented = new Set(Object.values(preview.players).flatMap(({ zones }) =>

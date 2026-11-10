@@ -74,6 +74,14 @@ export interface PlayerView {
 
 export interface MatchLogEntry { id: number; turn: number; seat: Seat; text: string }
 
+export interface GigRoll {
+  dieId: string;
+  dieType: string;
+  result: number;
+  seat: Seat;
+  origin: 'gainGig' | 'reroll';
+}
+
 export interface MatchSnapshot {
   matchId: string;
   view: PlayerView;
@@ -81,6 +89,7 @@ export interface MatchSnapshot {
   knownLegends: { instanceId: string; seat: Seat }[];
   peeks: CardView[];
   log: MatchLogEntry[];
+  gigRolls: GigRoll[];
 }
 
 export type MatchAction =
