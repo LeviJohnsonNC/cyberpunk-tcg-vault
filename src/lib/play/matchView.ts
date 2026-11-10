@@ -55,7 +55,7 @@ export function describeAction(seat: Seat, command: Move, before: PlayerView, af
     case 'sellCard': return 'Sold a card for an Eddie.';
     case 'callLegend': return `Called ${name(args.legendId) ?? 'a Legend'}.`;
     case 'goSolo': return `${name(args.cardId) ?? 'A Legend'} went solo.`;
-    case 'attackRival': return `${name(args.attackerId) ?? 'A Unit'} attacked the rival.`;
+    case 'attackRival': return `${name(args.attackerId) ?? 'A Unit'} attacked ${seat === 'player' ? 'the rival’s Gigs' : 'your Gigs'}.`;
     case 'attackUnit': return `${name(args.attackerId) ?? 'A Unit'} attacked ${name(args.defenderId) ?? 'a Unit'}.`;
     case 'useBlocker': return `Blocked with ${name(args.blockerId) ?? 'a Unit'}.`;
     case 'activateAbility': return `Activated ${name(args.cardId) ?? 'a card'}.`;
