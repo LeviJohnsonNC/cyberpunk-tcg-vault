@@ -56,6 +56,19 @@ describe('completion', () => {
 });
 
 describe('validate', () => {
+  it('requires distinct Legend names across subtitles', () => {
+    const deck = deckFromRecommended('heist-reloaded')!;
+    const checked = validate({ ...deck, legends: ['jackie-welles-mama-s-favorite', 'jackie-welles-pour-one-out-for-me', 'v-corporate-exile'] });
+    expect(checked.issues).toContain('Needs exactly 3 different Legends by name (has 2)');
+  });
+
+  it('flags Legends outside the crew, including in imported lists', () => {
+    const deck = deckFromRecommended('heist-reloaded')!;
+    const [legend] = deck.legends;
+    const checked = validate({ ...deck, cards: { ...deck.cards, [legend]: 1 }, sideboard: { [legend]: 1 } });
+    expect(checked.issues).toContain(`Legends belong in the crew: ${BY_SLUG.get(legend)!.display}`);
+  });
+
   it('checks sideboard-only and combined copies against the same cap', () => {
     const deck = deckFromRecommended('heist-reloaded')!;
     const checked = validate({ ...deck, cards: { ...deck.cards, 'floor-it': 0 }, sideboard: { 'floor-it': 4, 'psycho-squad': 3 } });

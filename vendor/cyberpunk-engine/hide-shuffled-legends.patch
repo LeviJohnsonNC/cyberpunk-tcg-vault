@@ -1,0 +1,45 @@
+--- a/submodules/cyberpunk/packages/engine/src/state/initial-state.ts
++++ b/submodules/cyberpunk/packages/engine/src/state/initial-state.ts
+@@ -233,7 +233,14 @@
+     // Separate from the match stream so hiding Legends does not reshuffle
+     // the main deck or later die rolls.
+     const rng = new SeededRNG(`${state.ctx.seed}:legends:${playerId as string}`);
+-    player.zones.legendArea = rng.shuffle(player.zones.legendArea);
++    player.zones.legendArea = rng.shuffle(player.zones.legendArea).map((oldId, slot) => {
++      const card = state.G.cardIndex[oldId];
++      if (!card) throw new Error("Missing presented Legend");
++      const newId = createCardInstanceId(`hidden-crew:${playerId}:${slot}`);
++      delete state.G.cardIndex[oldId];
++      state.G.cardIndex[newId] = { ...card, instanceId: newId };
++      return newId;
++    });
+     events.push({ type: "legendsShuffled", playerId });
+   }
+   return events;
+--- a/submodules/cyberpunk/packages/engine/src/view/filter.ts
++++ b/submodules/cyberpunk/packages/engine/src/view/filter.ts
+@@ -386,7 +386,6 @@
+   zone: CardZone,
+   cardIds: readonly string[],
+   state: MatchState,
+-  isOwner: boolean,
+   viewerId: PlayerId,
+ ): FilteredCardView[] {
+   return cardIds
+@@ -394,7 +393,7 @@
+     .filter((c): c is CardInstance => c !== undefined)
+     .map((card) => {
+       if (card.meta.revealed) return toCardView(card, state, viewerId);
+-      if (zone === "legendArea" && card.meta.faceDown && !isOwner) {
++      if (zone === "legendArea" && card.meta.faceDown) {
+         return toFaceDownCardView(card, state);
+       }
+       if (zone === "eddieArea" && card.meta.faceDown) {
+@@ -447,6 +446,6 @@
+       } else if (zone === "hand" && !isOwner) {
+         zones[zone] = cardIds.length;
+       } else {
+-        zones[zone] = filterZoneCards(zone, cardIds, state, isOwner, playerId);
++        zones[zone] = filterZoneCards(zone, cardIds, state, playerId);
+       }
+     }

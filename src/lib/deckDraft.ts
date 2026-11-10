@@ -1,5 +1,5 @@
 import { BY_SLUG, CARDS, type Card } from './data';
-import { COPY_MAX } from './decks';
+import { COPY_MAX, legendNames } from './decks';
 import { newId, type Deck } from './store';
 
 export type DeckZone = 'cards' | 'sideboard';
@@ -11,7 +11,7 @@ export const newDeck = (): Deck => ({ id: newId(), name: 'New crew', legends: []
 export function addDeckCard(deck: Deck, card: Card, zone: DeckZone): { deck: Deck; destination: DeckZone | 'crew' } | { error: string } {
   if (card.legal !== 'legal') return { error: `${card.display} is not eligible for play` };
   if (card.type === 'Legend') {
-    if (deck.legends.includes(card.slug)) return { error: 'Legend already in crew' };
+    if (legendNames(deck.legends).has(card.name)) return { error: `${card.name} is already in the crew` };
     if (deck.legends.length >= 3) return { error: 'Crew already has 3 Legends. Remove one first.' };
     return { deck: { ...deck, legends: [...deck.legends, card.slug] }, destination: 'crew' };
   }

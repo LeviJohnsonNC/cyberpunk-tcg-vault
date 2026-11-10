@@ -17,18 +17,32 @@ export function deckFromRecommended(id: string): Deck | null {
   return { id: newId(), name: r.name, legends: [...r.legends], cards: { ...r.cards }, sideboard: {}, notes: r.summary, updatedAt: '' };
 }
 
+export function legendNames(slugs: string[]) {
+  const names = new Set<string>();
+  for (const slug of slugs) {
+    const card = BY_SLUG.get(slug);
+    if (card?.type === 'Legend') names.add(card.name);
+  }
+  return names;
+}
+
 export function validate(d: Pick<Deck, 'legends' | 'cards' | 'sideboard'>) {
   const lim = ramLimits(d.legends);
   const n = sum(d.cards);
   const side = sum(d.sideboard);
   const issues: string[] = [];
   const passes: string[] = [];
-  const legendsOk = d.legends.length === 3 && new Set(d.legends).size === 3 && d.legends.every((s) => BY_SLUG.get(s)?.type === 'Legend');
-  if (!legendsOk) issues.push(`Needs exactly 3 different Legends (has ${d.legends.length})`);
+  const names = legendNames(d.legends);
+  const legendsOk = d.legends.length === 3 && names.size === 3;
+  if (!legendsOk) issues.push(`Needs exactly 3 different Legends by name (has ${names.size})`);
   else passes.push('3 unique Legends');
   if (n < MAIN_MIN || n > MAIN_MAX) issues.push(`Main deck must be ${MAIN_MIN} to ${MAIN_MAX} cards (has ${n})`);
   else passes.push(`${n} card main deck`);
-  const slugs = Object.keys({ ...d.cards, ...d.sideboard });
+  const slugs = Object.keys({ ...d.cards, ...d.sideboard }).filter((s) => (d.cards[s] ?? 0) !== 0 || (d.sideboard[s] ?? 0) !== 0);
+  const misplaced = slugs.filter((s) => BY_SLUG.get(s)?.type === 'Legend');
+  if (misplaced.length) issues.push(`Legends belong in the crew: ${misplaced.map((s) => BY_SLUG.get(s)!.display).join(', ')}`);
+  const invalidCount = slugs.filter((s) => [d.cards[s], d.sideboard[s]].some((n) => n !== undefined && (!Number.isSafeInteger(n) || n < 0)));
+  if (invalidCount.length) issues.push(`Invalid copy counts: ${invalidCount.map((s) => BY_SLUG.get(s)?.display ?? s).join(', ')}`);
   const ineligible = [...new Set([...d.legends, ...slugs])].filter((slug) => {
     const card = BY_SLUG.get(slug);
     return card && card.legal !== 'legal';

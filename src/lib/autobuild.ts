@@ -2,7 +2,7 @@
 // Ratings + roles: src/curated/card-ratings.json. Rules: src/lib/decks.ts.
 import ratingsJson from '../curated/card-ratings.json';
 import { BY_SLUG, CARDS, acquireQuote, fitsRam, ramLimits, type AcquireQuote, type Card, type Color } from './data';
-import { COPY_MAX, MAIN_MIN, validate } from './decks';
+import { COPY_MAX, MAIN_MIN, legendNames, validate } from './decks';
 
 export type Role =
   | 'legend' | 'early' | 'body' | 'finisher' | 'removal' | 'quick' | 'draw' | 'tempo'
@@ -252,8 +252,9 @@ export function autobuild(owned: Map<string, number>, opts: BuildOptions = {}): 
   const ownedLegends = CARDS.filter(
     (c) => c.type === 'Legend' && c.ram != null && c.legal === 'legal' && (owned.get(c.slug) ?? 0) > 0 && (!allowed || allowed.has(c.color)),
   );
-  if (ownedLegends.length < 3) {
-    const suggestions = CARDS.filter((c) => c.type === 'Legend' && c.ram != null && (owned.get(c.slug) ?? 0) === 0 && (!allowed || allowed.has(c.color)))
+  const ownedNames = new Set(ownedLegends.map((c) => c.name));
+  if (ownedNames.size < 3) {
+    const suggestions = CARDS.filter((c) => c.type === 'Legend' && c.ram != null && c.legal === 'legal' && !ownedNames.has(c.name) && (!allowed || allowed.has(c.color)))
       .map((c) => ({ slug: c.slug, quote: acquireQuote(c.slug) }))
       // best power per dollar among priced Legends; unpriced ones can't be ranked on value, so they go last
       .map((x) => ({ ...x, v: x.quote ? rating(x.slug).power / Math.max(0.5, x.quote.cad) : -1 }))
@@ -263,12 +264,13 @@ export function autobuild(owned: Map<string, number>, opts: BuildOptions = {}): 
     return {
       ok: false,
       reason: 'need-legends',
-      message: `A deck needs 3 different Legends${allowed ? ' in your chosen colours' : ''}. You have ${ownedLegends.length}.`,
+      message: `A deck needs 3 different Legends${allowed ? ' in your chosen colours' : ''}. You have ${ownedNames.size}.`,
       suggestions,
     };
   }
 
-  const trios = combos(ownedLegends.map((c) => c.slug), 3).filter((t) => mustLegends.every((m) => t.includes(m)));
+  const trios = combos(ownedLegends.map((c) => c.slug), 3)
+    .filter((t) => mustLegends.every((m) => t.includes(m)) && legendNames(t).size === 3);
   const ownedCards = CARDS.filter((c) => c.type !== 'Legend' && c.legal === 'legal' && c.text && (owned.get(c.slug) ?? 0) > 0 && (!allowed || allowed.has(c.color)));
   let bestShortfall = Infinity;
   // Pass 1 (cheap): build each crew's legal pool and an optimistic score bound.
