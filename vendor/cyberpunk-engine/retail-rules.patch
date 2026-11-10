@@ -1,0 +1,408 @@
+--- a/submodules/cyberpunk/packages/engine/src/ability-executor.ts
++++ b/submodules/cyberpunk/packages/engine/src/ability-executor.ts
+@@ -67,5 +67,5 @@
+   state: MatchState,
+   operations: Operations,
+-  deferEffectConditions = false,
++  deferEffectConditions = true,
+ ): void {
+   for (const event of operations.event.getEmittedEvents().slice(eventsBeforeSpend)) {
+@@ -118,6 +118,18 @@
+   operations: Operations,
+   afterRollReplacement = false,
+-  deferEffectConditions = false,
++  deferEffectConditions = true,
+ ): void {
++  if (state.G.gameEnded) return;
++  if (event.type === "gigStolen") {
++    const dice = event.dieIds ?? [event.dieId];
++    event = {
++      ...event,
++      sourcePower: event.sourcePower ?? (event.sourceCardId ? getEffectivePower(state, event.sourceCardId) : undefined),
++      dieValues: event.dieValues ?? Object.fromEntries(dice.flatMap((id) => {
++        const die = state.G.gigDice[id];
++        return die ? [[id, die.faceValue]] : [];
++      })),
++    };
++  }
+   const matches = matchTriggers(event, state);
+   const hasRollReplacement =
+@@ -227,5 +239,5 @@
+
+       if (
+-        ability.conditions?.length &&
++        !deferEffectConditions && ability.conditions?.length &&
+         !ability.conditions.every((c) => evaluateCondition(c, ctx))
+       ) {
+@@ -272,8 +284,10 @@
+     event.type === "cardDefeated" ||
+     event.type === "cardPlayed" ||
+-    event.type === "attackDeclared"
++    event.type === "attackDeclared" ||
++    event.type === "gigStolen"
+   ) {
+-    const id = event.type === "attackDeclared" ? event.attackerId : event.cardId;
+-    const card = state.G.cardIndex[id];
++    const id = event.type === "attackDeclared" ? event.attackerId
++      : event.type === "gigStolen" ? event.sourceCardId : event.cardId;
++    const card = id ? state.G.cardIndex[id] : undefined;
+     state.G.turnMetadata.firstTimeEventsThisTurn.push({
+       event,
+@@ -288,5 +302,5 @@
+   if (state.G.turnMetadata.pendingChoice || state.G.turnMetadata.currentTrigger) return;
+
+-  while (!state.G.turnMetadata.pendingChoice && !state.G.turnMetadata.currentTrigger) {
++  while (!state.G.gameEnded && !state.G.turnMetadata.pendingChoice && !state.G.turnMetadata.currentTrigger) {
+     const queue = state.G.turnMetadata.triggerQueue;
+     if (queue.length === 0) {
+@@ -613,4 +627,10 @@
+   };
+
++  // CR 10.16.1.1: a triggered ability checks its conditions when it resolves.
++  if (!current.costsPaid && ability.conditions?.some((condition) => !evaluateCondition(condition, ctx))) {
++    state.G.turnMetadata.currentTrigger = undefined;
++    continueTriggerResolution(state, operations);
++    return;
++  }
+   if (!current.costsPaid && !canPayAbilityCosts(ability, ctx)) {
+     emitResolutionFailedLog(state, current, "its activation costs could not be paid", operations);
+@@ -1195,13 +1215,14 @@
+           if (!wanted.includes(die.dieType)) return false;
+         }
+-        if (filter.target.minValue !== undefined && die.faceValue < filter.target.minValue) {
++        const faceValue = event.dieValues?.[dieId] ?? die.faceValue;
++        if (filter.target.minValue !== undefined && faceValue < filter.target.minValue) {
+           return false;
+         }
+-        if (filter.target.maxValue !== undefined && die.faceValue > filter.target.maxValue) {
++        if (filter.target.maxValue !== undefined && faceValue > filter.target.maxValue) {
+           return false;
+         }
+         if (filter.target.valueParity !== undefined) {
+           const wantEven = filter.target.valueParity === "even";
+-          if ((die.faceValue % 2 === 0) !== wantEven) return false;
++          if ((faceValue % 2 === 0) !== wantEven) return false;
+         }
+         return true;
+@@ -1211,9 +1232,10 @@
+     if (filter.valueLessThanSourcePower) {
+       if (!event.sourceCardId) return false;
+-      const thiefPower = getEffectivePower(state, event.sourceCardId as string);
++      const thiefPower = event.sourcePower ?? getEffectivePower(state, event.sourceCardId as string);
+       if (
+         !stolenDieIds.some((dieId) => {
+           const stolen = state.G.gigDice[dieId as string];
+-          return stolen !== undefined && stolen.faceValue < thiefPower;
++          const value = event.dieValues?.[dieId] ?? stolen?.faceValue;
++          return value !== undefined && value < thiefPower;
+         })
+       ) {
+@@ -1366,5 +1388,5 @@
+ ): AbilityExecutionStatus {
+   if (!effects || effects.length === 0) return "resolved";
+-  for (let i = startIndex; i < effects.length; i++) {
++  for (let i = startIndex; i < effects.length && !ctx.state.G.gameEnded; i++) {
+     const effect = effects[i]!;
+     if (effect.conditions && effect.conditions.length > 0) {
+--- a/submodules/cyberpunk/packages/engine/src/command/processor.ts
++++ b/submodules/cyberpunk/packages/engine/src/command/processor.ts
+@@ -1,2 +1,3 @@
++import { finishStartPhase } from "../moves/pass-phase.ts";
+ import { automaticCombatActor, type CombatProgression } from "../flow/combat-progression.ts";
+ import { resolveAttackMove } from "../moves/resolve-attack.ts";
+@@ -107,4 +108,6 @@
+         operations: ops,
+       });
++
++      finishStartPhase(draft as MatchState, ops);
+
+       // Rebuild static active effects once per command, after the move completes.
+--- a/submodules/cyberpunk/packages/engine/src/effects/handlers/index.ts
++++ b/submodules/cyberpunk/packages/engine/src/effects/handlers/index.ts
+@@ -1819,6 +1819,5 @@
+   }
+   if (soldCardIds.length > 0) {
+-    // CR 11.9.2.2 — an effect that says to Sell counts as the Sell A Card action.
+-    ops.game.markSoldThisTurn(playerId);
++    // CR 5.8.2.3: effect sales do not use up Sell for Turn.
+     const sourceCard = ctx.state.G.cardIndex[ctx.sourceCardId as string];
+     ops.event.emit({
+--- a/submodules/cyberpunk/packages/engine/src/flow/index.ts
++++ b/submodules/cyberpunk/packages/engine/src/flow/index.ts
+@@ -56,10 +56,4 @@
+   }
+
+-  if (player.zones.deck.length === 0) {
+-    const opponentId = state.ctx.playerIds.find((id) => id !== playerId);
+-    if (opponentId) {
+-      return { winner: opponentId, reason: "deck_out_victory" };
+-    }
+-  }
+
+   return null;
+--- a/submodules/cyberpunk/packages/engine/src/moves/compute-effective-cost.ts
++++ b/submodules/cyberpunk/packages/engine/src/moves/compute-effective-cost.ts
+@@ -201,5 +201,5 @@
+     const count = resolveTarget(modifier.target, ctx).length;
+     const reduced = currentCost - count * modifier.reductionPerCount;
+-    const effectiveCost = Math.max(modifier.min, reduced);
++    const effectiveCost = Math.max(Math.min(currentCost, Math.max(1, modifier.min)), reduced);
+     return { effectiveCost, matchedCount: count };
+   }
+@@ -207,5 +207,5 @@
+   if (modifier.reducer === "flat") {
+     const reduced = currentCost - modifier.amount;
+-    const effectiveCost = Math.max(modifier.min, reduced);
++    const effectiveCost = Math.max(Math.min(currentCost, Math.max(1, modifier.min)), reduced);
+     return { effectiveCost, matchedCount: modifier.amount > 0 ? 1 : 0 };
+   }
+--- a/submodules/cyberpunk/packages/engine/src/moves/pass-phase.ts
++++ b/submodules/cyberpunk/packages/engine/src/moves/pass-phase.ts
+@@ -211,8 +211,7 @@
+   operations.game.cleanupEffectsExpiringAtTurnStart(opponentId);
+
+-  // The 7+ Gig/deck-out check fires at the turn-start boundary before card
+-  // triggers can draw or otherwise change the state used by the win check.
+-  // During overtime, majority decides the game instead.
+-  if (maybeEndForTurnStart(state, opponentId, playerId, operations, state.G.overtime)) {
++  // CR 8.6.1 checks Gig victory before Start effects. Deck-out is checked
++  // only at the attempted draw (CR 1.14 and 8.6.4.1).
++  if (maybeEndForTurnStart(state, opponentId, operations, state.G.overtime)) {
+     return;
+   }
+@@ -235,8 +234,15 @@
+     });
+   }
++  state.G.turnMetadata.awaitingStartEffects = true;
+   processEventTriggers(turnStartedEvent, state, operations);
+-
+-  // Start phase begins.
+-  // Step 1: READY SPENT CARDS.
++  finishStartPhase(state, operations);
++}
++
++/** Resume the Start Phase after all start-of-turn choices and effects settle. */
++export function finishStartPhase(state: MatchState, operations: Operations): void {
++  const turn = state.G.turnMetadata;
++  if (state.G.gameEnded || !turn.awaitingStartEffects || turn.pendingChoice || turn.currentTrigger || turn.triggerQueue.length) return;
++  delete turn.awaitingStartEffects;
++  const opponentId = turn.activePlayerId;
+   readySpentCards(state, operations, opponentId);
+
+@@ -275,5 +281,4 @@
+   state: MatchState,
+   playerId: PlayerIdType,
+-  previousPlayerId: PlayerIdType,
+   operations: Operations,
+   overtimeActive: boolean,
+@@ -300,8 +305,4 @@
+   }
+
+-  if (player.zones.deck.length === 0) {
+-    operations.game.endGame(previousPlayerId, "deck_out_victory");
+-    return true;
+-  }
+
+   return false;
+--- a/submodules/cyberpunk/packages/engine/src/moves/resolve-attack.ts
++++ b/submodules/cyberpunk/packages/engine/src/moves/resolve-attack.ts
+@@ -17,4 +17,5 @@
+   listSacrificialAttachedGear,
+   markDefeatAtEndOfTurnIfAttacked,
++  recomputeActiveEffects,
+ } from "../active-effects/index.ts";
+ import { availableEddies, canSpendSelectedEddies } from "./eddie-resources.ts";
+@@ -166,4 +167,20 @@
+   );
+
++  const protectedCardIds: CardInstanceId[] = [];
++  for (const effect of state.G.activeEffects.filter((entry) => entry.kind === "preventNextRivalFightDefeat")) {
++    const attacker = state.G.cardIndex[attack.attackerId as string];
++    const defender = state.G.cardIndex[attack.defenderId as string];
++    const protectedId = effect.playerId === attacker?.controllerId ? attack.attackerId
++      : effect.playerId === defender?.controllerId ? attack.defenderId : null;
++    if (!protectedId) continue;
++    protectedCardIds.push(protectedId);
++    const source = state.G.cardIndex[effect.sourceCardId as string];
++    if (source) {
++      const definition = getDefinitionFor(state.G, source.instanceId);
++      preventionSourceCardNames.push(definition.displayName || definition.name);
++    }
++    operations.game.removeActiveEffect(effect.id);
++  }
++
+   const resolvedAttack: AttackState = {
+     ...attack,
+@@ -174,11 +191,10 @@
+       attackerPower,
+       defenderPower,
+-      protectedCardIds: [],
++      protectedCardIds,
+       preventionSourceCardNames,
+       ...(preventedCardIds.length > 0 ? { preventedCardIds } : {}),
+     },
+   };
+-  // CR 9.18: store the determined result while fight triggers resolve. The
+-  // following mechanical step applies the result only after that window drains.
++  // CR 11.4.2: lock the result and register triggers before moving defeated cards.
+   operations.game.setAttackState(resolvedAttack);
+   const fightResolvedEvent = {
+@@ -193,7 +209,9 @@
+   };
+   operations.event.emit(fightResolvedEvent);
++  const queue = state.G.turnMetadata.triggerQueue;
++  const offset = queue.length;
+   enqueueEventTriggers(fightResolvedEvent, state, operations);
+   enqueueFightActiveEffects(state, operations, resolvedAttack, fightResolvedEvent);
+-  continueTriggerResolution(state, operations);
++  state.G.turnMetadata.pendingFightTriggers = queue.splice(offset);
+ }
+
+@@ -280,5 +298,5 @@
+   defeatedBy: CardInstanceId | null,
+   playerId: PlayerId,
+-  eventMode: "deferred" | "immediate" = "immediate",
++  eventMode: "deferred" | "queued" | "immediate" = "immediate",
+ ): void {
+   const snapshot = captureDefeatedCardSnapshot(state, gearId);
+@@ -296,4 +314,5 @@
+   operations.event.emit(gearEvent);
+   if (eventMode === "immediate") processEventTriggers(gearEvent, state, operations);
++  else if (eventMode === "queued") enqueueEventTriggers(gearEvent, state, operations);
+ }
+
+@@ -304,5 +323,5 @@
+   defeatedBy: import("../types/branded.ts").CardInstanceId | null,
+   playerId: PlayerId,
+-  eventMode: "deferred" | "immediate" = "immediate",
++  eventMode: "deferred" | "queued" | "immediate" = "immediate",
+ ): void {
+   const sacrificialGearId = findSacrificialAttachedGear(state, hostId as string);
+@@ -342,5 +361,5 @@
+   };
+   operations.event.emit(hostEvent);
+-  if (eventMode === "immediate") enqueueEventTriggers(hostEvent, state, operations);
++  if (eventMode !== "deferred") enqueueEventTriggers(hostEvent, state, operations);
+   removeFromGameIfLegendMovesToInvalidArea(state, operations, hostId);
+   if (eventMode === "immediate") continueTriggerResolution(state, operations);
+@@ -359,4 +378,5 @@
+     operations.event.emit(gearEvent);
+     if (eventMode === "immediate") processEventTriggers(gearEvent, state, operations);
++    else if (eventMode === "queued") enqueueEventTriggers(gearEvent, state, operations);
+   }
+ }
+@@ -435,5 +455,6 @@
+   resumingChoice = false,
+ ): void {
+-  const eventMode = continuation.kind === "effect" && !resumingChoice ? "deferred" : "immediate";
++  const eventMode = continuation.kind === "fight" ? "queued"
++    : continuation.kind === "effect" && !resumingChoice ? "deferred" : "immediate";
+   const remaining: CardInstanceId[] = [];
+   for (let i = 0; i < pendingDefeats.length; i++) {
+@@ -486,4 +507,9 @@
+   if (continuation.kind === "fight" && attack) {
+     operations.game.setAttackState(null);
++    const turn = state.G.turnMetadata;
++    turn.triggerQueue.push(...(turn.pendingFightTriggers ?? []));
++    delete turn.pendingFightTriggers;
++    recomputeActiveEffects(state);
++    continueTriggerResolution(state, operations);
+   }
+ }
+@@ -533,15 +559,5 @@
+   const { result, protectedCardIds } = resolution;
+   const defenderId = attack.defenderId;
+-  // CR 9.19 applies the result fixed at power comparison. A fight trigger can
+-  // remove the opposing Unit first; use its last valid fight power in that
+-  // case so its already determined result can still defeat a surviving loser.
+-  const attackerPower =
+-    state.G.cardIndex[attack.attackerId as string]?.zone === "field"
+-      ? getEffectivePower(state, attack.attackerId as string)
+-      : resolution.attackerPower;
+-  const defenderPower =
+-    defenderId && state.G.cardIndex[defenderId as string]?.zone === "field"
+-      ? getEffectivePower(state, defenderId as string)
+-      : resolution.defenderPower;
++  const { attackerPower, defenderPower } = resolution;
+   // CR 9.19.2 — a Unit with 0 power cannot defeat a Unit as the result of a fight.
+   const attackerCanDefeat = attackerPower > 0;
+@@ -672,5 +688,5 @@
+         defeatSourceFor(protectedCardId, continuation, attack),
+         replacementCard?.controllerId ?? playerId,
+-        "immediate",
++        continuation.kind === "fight" ? "queued" : "immediate",
+       );
+     } else {
+@@ -771,5 +787,5 @@
+       defeatedBy,
+       host?.controllerId ?? playerId,
+-      "immediate",
++      continuation.kind === "fight" ? "queued" : "immediate",
+     );
+     continuePendingDefeats(
+@@ -814,8 +830,4 @@
+           (id) => state.G.cardIndex[id as string]?.controllerId === effect.playerId,
+         );
+-      case "preventNextRivalFightDefeat":
+-        return (
+-          effect.playerId === attacker.controllerId || effect.playerId === defender.controllerId
+-        );
+       case "nextFightWinGigSteal":
+         return (
+@@ -847,10 +859,4 @@
+       abilityText =
+         "The next time a friendly Unit loses a fight this turn, defeat the opposing rival Unit.";
+-    } else if (effect.kind === "preventNextRivalFightDefeat") {
+-      const protectedCardId =
+-        effect.playerId === attacker.controllerId ? attack.attackerId : defenderId;
+-      resolution = { kind: "fightProtection", protectedCardId };
+-      abilityText =
+-        "The next time a rival Unit fights this turn, it doesn't defeat the opposing friendly Unit.";
+     } else if (effect.kind === "nextFightWinGigSteal") {
+       if (!winnerId) throw new Error("Fight-win effect requires a winner");
+@@ -1044,4 +1050,5 @@
+         dieId: gigIds[0],
+         dieIds: [...gigIds],
++        sourcePower: attackerPower,
+         fromPlayerId: attack.rivalId,
+         toPlayerId: playerId,
+--- a/submodules/cyberpunk/packages/engine/src/operations/index.ts
++++ b/submodules/cyberpunk/packages/engine/src/operations/index.ts
+@@ -505,4 +505,5 @@
+
+     setPhase(phase) {
++      if (G.gameEnded) return;
+       const prev = G.gamePhase;
+       G.gamePhase = phase;
+@@ -558,4 +559,5 @@
+
+     endGame(winnerId, reason) {
++      if (G.gameEnded) return;
+       G.gameEnded = true;
+       G.winnerId = winnerId;
+--- a/submodules/cyberpunk/packages/engine/src/types/game-events.ts
++++ b/submodules/cyberpunk/packages/engine/src/types/game-events.ts
+@@ -160,4 +160,7 @@
+   /** All Gigs stolen simultaneously by the same steal action. */
+   dieIds?: GigDieId[];
++  /** Values at the moment the steal qualified, before later effects can alter them. */
++  sourcePower?: number;
++  dieValues?: Record<string, number>;
+   fromPlayerId: PlayerId;
+   toPlayerId: PlayerId;
+--- a/submodules/cyberpunk/packages/engine/src/types/match-state.ts
++++ b/submodules/cyberpunk/packages/engine/src/types/match-state.ts
+@@ -189,4 +189,6 @@
+   playedCardTypesThisTurn: Partial<Record<string, CardType[]>>;
+   overtimeActive: boolean;
++  awaitingStartEffects?: true;
++  pendingFightTriggers?: QueuedTrigger[];
+   suspendedEndTurn?: {
+     playerId: PlayerId;
+@@ -197,5 +199,5 @@
+   /** First-event facts include actions taken before a listening source enters play. */
+   firstTimeEventsThisTurn: {
+-    event: Extract<GameEvent, { type: "cardDefeated" | "cardPlayed" | "attackDeclared" }>;
++    event: Extract<GameEvent, { type: "cardDefeated" | "cardPlayed" | "attackDeclared" | "gigStolen" }>;
+     card: CardInstance | undefined;
+   }[];

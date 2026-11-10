@@ -6,6 +6,7 @@ import { CARDS } from '../data';
 import { deckFromRecommended } from '../decks';
 import { botDecision, createEngineSession, engineCardId, initialEngineState, recordLegendPeeks } from './engineSession';
 import { prepareMatchDeck } from './matchDeck';
+import { hideConcealedTargets } from './matchView';
 import type { CardView, MatchSetup, Seat } from './protocol';
 import { createMatchController } from './workerController';
 
@@ -90,6 +91,114 @@ describe('play engine', () => {
     expect((engine.getFilteredView('player').players.player.zones.legendArea as CardView[])[0].definitionId).toBe('');
   });
 
+  it('retains Sell for Turn after Bootleg Black Sapphire Show sells a deck card', () => {
+    const { state, active } = rulesFixture();
+    const show = placeCard(state, active, 'bootleg-black-sapphire-show', 'hand');
+    const handSale = placeCard(state, active, 'floor-it', 'hand');
+    const account = state.G.players[active];
+    for (let i = 0; i < 6; i++) {
+      const id = placeCard(state, active, 'floor-it', 'eddieArea');
+      account.eddieCardIds.push(id);
+    }
+    account.eddies = 6;
+    const engine = new LocalEngine(state);
+    const previousDeck = engine.getFilteredView(active).players[active].zones.deck as number;
+    issue(engine, active, 'playCard', { cardId: show });
+    expect(engine.getFilteredView(active).players[active].zones.deck).toBe(previousDeck - 1);
+    expect(engine.getFilteredView(active).prompt.availableMoves.find(({ moveId }) => moveId === 'sellCard')?.inputSpec.candidates)
+      .toContain(handSale);
+    issue(engine, active, 'sellCard', { cardId: handSale });
+    expect(engine.getFilteredView(active).prompt.availableMoves.some(({ moveId }) => moveId === 'sellCard')).toBe(false);
+  });
+
+  it('checks deck-out at the draw rather than before the turn starts', () => {
+    const { state, active, other } = rulesFixture();
+    const zones = state.G.players[other].zones;
+    for (const id of zones.deck.splice(0)) {
+      state.G.cardIndex[id].zone = 'trash';
+      zones.trash.push(id);
+    }
+    const engine = new LocalEngine(state);
+    const result = issue(engine, active, 'passPhase');
+    const eventTypes = result.gameEvents.map(({ type }) => type as string);
+    expect(eventTypes).toContain('turnStarted');
+    expect(eventTypes.indexOf('gameEnded')).toBeGreaterThan(eventTypes.indexOf('turnStarted'));
+    expect(engine.getFilteredView(active)).toMatchObject({ gameEnded: true, winnerId: active, winReason: 'deck_out_victory' });
+  });
+
+  it('applies fight defeat before a fight-loss ability defeats the opposing Unit', () => {
+    const { state, active, other } = rulesFixture();
+    const attacker = placeCard(state, active, 'maelstrom-zealots', 'field');
+    const defender = placeCard(state, other, 'corpo-security', 'field', true);
+    for (const id of state.G.players[other].zones.legendArea) state.G.cardIndex[id].meta.spent = true;
+    state.G.players[other].zones.hand = [];
+    const engine = new LocalEngine(state);
+    const result = issue(engine, active, 'attackUnit', { attackerId: attacker, defenderId: defender });
+    const defeated = result.gameEvents.filter((event) => (event.type as string) === 'cardDefeated')
+      .map((event) => (event as unknown as { cardId: string }).cardId);
+    expect(defeated).toEqual([attacker, defender]);
+    expect(engine.getFilteredView(active).attackState).toBeNull();
+    expect(engine.getState().G.players[active].zones.trash).toContain(attacker);
+    expect(engine.getState().G.players[other].zones.trash).toContain(defender);
+  });
+
+  it('keeps the chosen Legend private through an actual Kiroshi Optics attack', () => {
+    const { state, active, other } = rulesFixture();
+    const attacker = placeCard(state, active, 'psycho-squad', 'field');
+    const gear = placeCard(state, active, 'kiroshi-optics', 'field');
+    state.G.cardIndex[attacker].meta.attachedGearIds.push(gear);
+    state.G.cardIndex[gear].meta.attachedToId = attacker;
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'attackRival', { attackerId: attacker });
+    const prompt = hideConcealedTargets(engine.getFilteredView(active)).prompt;
+    expect(prompt.choice).toMatchObject({ type: 'chooseTarget' });
+    const payload = prompt.choice?.payload as { eligibleIds: string[]; cards: CardView[] };
+    expect(payload.eligibleIds).toHaveLength(3);
+    expect(payload.cards.every((target) => target.definitionId === '')).toBe(true);
+    expect(engine.getFilteredView(other).prompt.choice).toBeNull();
+    const [slot] = payload.eligibleIds;
+    const result = issue(engine, active, 'resolveEffectTarget', { targetIds: [slot] });
+    const known = new Map<string, Set<Seat>>();
+    const peeks = recordLegendPeeks(result.state, result.gameEvents, known);
+    expect([...known.get(slot)!]).toEqual([active]);
+    expect(peeks.length).toBe(active === 'player' ? 1 : 0);
+    expect((engine.getFilteredView(other).players[active].zones.legendArea as CardView[]).find((card) => card.instanceId === slot)?.definitionId).toBe('');
+  });
+
+  it('does not give a later Rogue the first qualifying steal even if that die changes value', () => {
+    const { state, active, other } = rulesFixture();
+    const first = placeCard(state, active, 'psycho-squad', 'field');
+    const second = placeCard(state, active, 'psycho-squad', 'field');
+    for (const id of state.G.players[other].zones.legendArea) state.G.cardIndex[id].meta.spent = true;
+    state.G.players[other].zones.hand = [];
+    const rival = state.G.players[other];
+    const dice = rival.fixerArea.splice(0, 2);
+    for (const id of dice) {
+      state.G.gigDice[id].location = 'gigArea';
+      state.G.gigDice[id].faceValue = 1;
+      rival.gigArea.push(id);
+    }
+    const before = new LocalEngine(state);
+    issue(before, active, 'attackRival', { attackerId: first });
+    const choice = before.getFilteredView(active).prompt.choice?.payload as { eligibleDice: { dieId: string }[] };
+    const stolen = choice.eligibleDice[0].dieId;
+    issue(before, active, 'resolveStealGigs', { dieIds: [stolen] });
+
+    const after = structuredClone(before.getState()) as FixtureState;
+    after.G.gigDice[stolen].faceValue = 6;
+    placeCard(after, active, 'rogue-amendiares-queen-of-the-afterlife', 'field');
+    const account = after.G.players[active];
+    for (let i = 0; i < 2; i++) {
+      const id = placeCard(after, active, 'floor-it', 'eddieArea', true);
+      account.eddieCardIds.push(id);
+    }
+    account.spentEddies = 2;
+    const engine = new LocalEngine(after);
+    const eddies = engine.getFilteredView(active).players[active].eddies;
+    issue(engine, active, 'attackRival', { attackerId: second });
+    expect(engine.getFilteredView(active).players[active].eddies).toBe(eddies);
+  });
+
   it('rejects an invalid draft before creating an engine match', () => {
     const draft = deckFromRecommended('heist-reloaded')!;
     const invalid = { ...draft, cards: { ...draft.cards, [draft.legends[0]]: 1 } };
@@ -127,4 +236,35 @@ function changeHiddenCards(state: EngineState, rival: Seat) {
     for (let i = cards.length - 1; i > 0; i--) cards[i].definitionId = cards[i - 1].definitionId;
     cards[0].definitionId = last;
   }
+}
+
+
+type FixtureState = EngineState & { G: {
+  players: Record<Seat, { eddies: number; spentEddies: number; eddieCardIds: string[]; fixerArea: string[]; gigArea: string[] }>;
+  gigDice: Record<string, { location: string; faceValue: number }>;
+  cardIndex: Record<string, { zone: string; meta: { faceDown: boolean; spent: boolean; hasLag: boolean; attachedGearIds: string[]; attachedToId: string | null } }>;
+} };
+
+function rulesFixture() {
+  const { engine } = afterSetup(setup('chrome-syndicate'));
+  const active = engine.getFilteredView('player').activePlayerId;
+  const other: Seat = active === 'player' ? 'rival' : 'player';
+  return { state: structuredClone(engine.getState()) as FixtureState, active, other };
+}
+
+function placeCard(state: FixtureState, seat: Seat, slug: string, zone: string, spent = false) {
+  const { zones } = state.G.players[seat];
+  const id = zones.deck.shift()!;
+  const card = state.G.cardIndex[id];
+  card.definitionId = engineCardId(slug);
+  card.zone = zone;
+  Object.assign(card.meta, { faceDown: zone === 'eddieArea', spent, hasLag: false });
+  zones[zone].push(id);
+  return id;
+}
+
+function issue(engine: LocalEngine, seat: Seat, move: string, args: Record<string, unknown> = {}) {
+  const result = engine.processCommand({ commandID: move, move, input: { args } }, seat);
+  if (!result.success) throw new Error(result.error);
+  return result;
 }
