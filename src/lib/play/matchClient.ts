@@ -1,9 +1,9 @@
+import type { DeckDraft } from '../deckDraft';
 import type { Deck } from '../store';
 import { prepareMatchDeck } from './matchDeck';
 import type { MatchAction, MatchResponse, MatchSnapshot, Move } from './protocol';
 
-export async function openPlayMatch(player: Deck, rival: Deck) {
-  const setup = { player: prepareMatchDeck(player), rival: prepareMatchDeck(rival) };
+async function connectPlayMatch(scope: string, initialAction: MatchAction) {
   const worker = new Worker(new URL('./match.worker.ts', import.meta.url), { type: 'module' });
   const pending = new Map<number, { resolve: (snapshot: MatchSnapshot) => void; reject: (error: Error) => void }>();
   let requestId = 0;
@@ -32,7 +32,7 @@ export async function openPlayMatch(player: Deck, rival: Deck) {
       const id = ++requestId;
       pending.set(id, { resolve, reject });
       try {
-        worker.postMessage({ id, action });
+        worker.postMessage({ id, action, scope });
       } catch (error) {
         pending.delete(id);
         reject(error);
@@ -41,15 +41,24 @@ export async function openPlayMatch(player: Deck, rival: Deck) {
   }
 
   try {
-    const opening = await send({ type: 'start', setup });
+    const opening = await send(initialAction);
     return {
       opening,
       move: ({ matchId, view }: MatchSnapshot, move: Move) => send({ type: 'move', matchId, stateID: view.stateID, move }),
-      rematch: ({ matchId }: MatchSnapshot) => send({ type: 'rematch', matchId }),
+      rematch: ({ matchId, view }: MatchSnapshot) => send({ type: 'rematch', matchId, stateID: view.stateID }),
       close: () => close(),
     };
   } catch (error) {
     close();
     throw error;
   }
+}
+
+export function openPlayMatch(scope: string, draft: DeckDraft, rival: Deck, replaceMatchId?: string) {
+  const setup = { player: prepareMatchDeck(draft.deck), rival: prepareMatchDeck(rival) };
+  return connectPlayMatch(scope, { type: 'start', setup, draft, replaceMatchId });
+}
+
+export function resumePlayMatch(scope: string) {
+  return connectPlayMatch(scope, { type: 'resume' });
 }

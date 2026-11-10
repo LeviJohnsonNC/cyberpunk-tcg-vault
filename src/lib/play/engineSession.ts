@@ -60,18 +60,34 @@ export function recordLegendPeeks(state: EngineState, events: EngineEvent[], kno
   return peeks;
 }
 
+export interface EngineCheckpoint {
+  matchId: string;
+  state: EngineState;
+  botRng: { state: number };
+  known: Map<string, Set<Seat>>;
+  peeks: CardView[];
+  log: MatchLogEntry[];
+  commandNumber: number;
+}
+
 export function createEngineSession(
   setup: MatchSetup,
   seeds: { shuffle: string; bot: string } = { shuffle: crypto.randomUUID(), bot: crypto.randomUUID() },
+  checkpoint?: EngineCheckpoint,
 ) {
-  const matchId = crypto.randomUUID();
-  const engine = new LocalEngine(initialEngineState(setup, seeds.shuffle, matchId));
+  const matchId = checkpoint?.matchId ?? crypto.randomUUID();
+  // The pinned engine registers card definitions through match initialization.
+  const initial = initialEngineState(setup, seeds.shuffle, matchId);
+  const engine = new LocalEngine(checkpoint?.state ?? initial);
   const botRng = new SeededRNG(seeds.bot);
-  const known = new Map<string, Set<Seat>>();
-  let peeks: CardView[] = [];
-  const log: MatchLogEntry[] = [];
+  if (checkpoint) botRng.setState(checkpoint.botRng);
+  const known = checkpoint?.known ?? new Map<string, Set<Seat>>();
+  let peeks = checkpoint?.peeks ?? [];
+  const log = checkpoint?.log ?? [];
   let gigRolls: GigRoll[] = [];
-  let commandNumber = 0;
+  let commandNumber = checkpoint?.commandNumber ?? 0;
+  const names = { player: setup.player.name.trim() || 'Untitled deck', rival: setup.rival.name };
+  const isCurrent = (stateID: number) => engine.getState().ctx.stateID === stateID;
   let stalled = false;
 
   function apply(seat: Seat, command: Move) {
@@ -113,7 +129,7 @@ export function createEngineSession(
             return Array.isArray(legends) ? legends.filter((card) => card.faceDown).map((card) => card.instanceId) : [];
           }));
           const snapshot = {
-            matchId, view, peeks: [...peeks], log: [...log], gigRolls,
+            matchId, names, view, peeks: [...peeks], log: [...log], gigRolls,
             knownLegends: [...known].filter(([id]) => concealed.has(id))
               .flatMap(([instanceId, viewers]) => [...viewers].map(seat => ({ instanceId, seat }))),
           };
@@ -134,9 +150,13 @@ export function createEngineSession(
   return {
     matchId,
     start: advance,
+    checkpoint: (): EngineCheckpoint => ({
+      matchId, state: engine.getState(), botRng: botRng.getState(), known, peeks, log, commandNumber,
+    }),
+    isCurrent,
     move(stateID: number, move: Move) {
       if (stalled) throw new Error('This match is stalled. Start a rematch to try again.');
-      if (engine.getFilteredView('player').stateID !== stateID) throw new Error('That action is from an older turn state.');
+      if (!isCurrent(stateID)) throw new Error('That action is from an older turn state.');
       apply('player', move);
       return advance();
     },
