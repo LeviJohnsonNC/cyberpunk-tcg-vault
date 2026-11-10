@@ -17,3 +17,5 @@ npm run check
 The build reads the pinned revision from the local clone, applies the checked-in patches, and regenerates `engine.mjs`. Ordinary Vault builds use the generated module and require only the root dependencies. Review the engine's rule changes, the upstream type signatures used by `engine.d.mts`, and the current card coverage when updating the revision.
 
 The Program-resolution patch adds the public resolving area, finalizes Programs before older effects, and covers simultaneous end-of-turn effects and paid mass-defeat replacement. It also distinguishes ordinary Legend play from Go Solo and updates the reference fixtures affected by the Program zone change.
+
+The rules-boundaries patch validates Unit and Gig attack targets, resumes a suspended end of turn after a defeat replacement, and adds the Fight-step regression for Muamar's protection.
