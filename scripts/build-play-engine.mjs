@@ -27,7 +27,8 @@ try {
     'submodules/agnostic-simulator/packages/typescript-config',
   ], { maxBuffer: 64 * 1024 * 1024 });
   execFileSync('tar', ['-xf', '-', '-C', checkout], { input: archive });
-  execFileSync('git', ['apply', join(vendor, 'hide-shuffled-legends.patch')], { cwd: checkout });
+  const patches = ['hide-shuffled-legends.patch', 'retail-rules.patch'];
+  execFileSync('git', ['apply', ...patches.map(file => join(vendor, file))], { cwd: checkout });
 
   const engine = join(checkout, 'submodules/cyberpunk/packages/engine/src');
   const core = join(checkout, 'submodules/agnostic-simulator/packages/engine-core/src');
