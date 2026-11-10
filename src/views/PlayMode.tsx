@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { CardImg, Pip } from '../components/bits';
 import { ConfirmDialog, Masthead } from '../components/ui';
 import { BY_SLUG, RECOMMENDED } from '../lib/data';
@@ -36,6 +36,11 @@ export default function PlayMode({ deck, initialRival, rememberRival, onEdit }: 
   const locked = useRef(false);
   const rival = rivals.find(({ id }) => id === rivalId);
   const name = deck.name.trim() || 'Untitled deck';
+  const matchId = snapshot?.matchId;
+
+  useLayoutEffect(() => {
+    if (matchId) window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [matchId]);
 
   useEffect(() => () => {
     generation.current++;
@@ -95,18 +100,30 @@ export default function PlayMode({ deck, initialRival, rememberRival, onEdit }: 
   const live = snapshot && !snapshot.view.gameEnded;
   return (
     <section className="play-mode">
-      <Masthead eyebrow="The Afterlife / Practice table" title="Play Mode" sub={snapshot ? `${name} vs. ${rival?.list.name}` : 'Desktop preview ◆ Local best-of-one'}>
-        <div className="play-header-actions">
-          {live && <button type="button" className="btn quiet" disabled={busy} onClick={() => setConfirm('restart')}>Restart match</button>}
-          {live && <button type="button" className="btn danger-ghost" disabled={busy} onClick={() => setConfirm('concede')}>Concede</button>}
-          <button type="button" className="btn quiet" disabled={busy} onClick={edit}>Back to draft</button>
+      {snapshot && rival ? <>
+        <header className="play-match-header">
+          <div className="play-match-identity">
+            <p className="play-eyebrow">The Afterlife <span>/</span> Practice table</p>
+            <h1 title={`${name} vs. ${rival.list.name}`}>{name} <span>vs.</span> {rival.list.name}</h1>
+          </div>
+          <div className="play-header-actions">
+            {live && <button type="button" className="btn quiet" disabled={busy} onClick={() => setConfirm('restart')}>Restart match</button>}
+            {live && <button type="button" className="btn danger-ghost" disabled={busy} onClick={() => setConfirm('concede')}>Concede</button>}
+            <button type="button" className="btn quiet" disabled={busy} onClick={edit}>Back to draft</button>
+          </div>
+        </header>
+        <PlayTable key={snapshot.matchId} snapshot={snapshot} names={{ player: name, rival: rival.list.name }}
+          busy={busy} error={error} send={send} rematch={rematch} edit={onEdit} />
+      </> : <>
+        <div className="play-entrance">
+          <Masthead eyebrow="The Afterlife / Practice table" title="Play Mode" sub="Local practice ◆ Best of one">
+            <button type="button" className="btn quiet" disabled={busy} onClick={edit}>Back to draft</button>
+          </Masthead>
+          <p>Bring your deck to the back room and see how it holds up against a rival crew.</p>
         </div>
-      </Masthead>
-      {snapshot && rival ? <PlayTable key={`${snapshot.matchId}:${snapshot.view.stateID}`} snapshot={snapshot} names={{ player: name, rival: rival.list.name }}
-        busy={busy} error={error} send={send} rematch={rematch} edit={onEdit} />
-        : <div className="play-setup">
+        <div className="play-setup">
           <section className="panel play-rival-panel">
-            <div className="play-setup-title"><span className="play-eyebrow">Match setup</span><h2>Choose a rival</h2></div>
+            <div className="play-setup-title"><span className="play-eyebrow">01 / Matchup</span><h2>Choose a rival</h2></div>
             <fieldset className="play-rivals" disabled={busy}>
               <legend className="sr-only">Rival deck</legend>
               {rivals.map(({ id, list, style, note }) => <label key={id} className="play-rival" data-selected={id === rivalId}>
@@ -123,18 +140,24 @@ export default function PlayMode({ deck, initialRival, rememberRival, onEdit }: 
             </fieldset>
           </section>
           <aside className="panel play-loadout">
-            <div className="play-setup-title"><span className="play-eyebrow">Your loadout</span><h2>{name}</h2></div>
+            <div className="play-setup-title"><span className="play-eyebrow">02 / Your loadout</span><h2 title={name}>{name}</h2></div>
             <div className="play-loadout-crew">{deck.legends.map((slug) => {
               const card = BY_SLUG.get(slug);
               return <div key={slug}><CardImg slug={slug} alt="" priority /><span>{card?.name ?? slug}</span></div>;
             })}</div>
             <div className="play-loadout-metrics"><b>{deck.legends.length}</b> Legends <span>◆</span> <b>{Object.values(deck.cards).reduce((n, count) => n + count, 0)}</b> main deck</div>
-            <p>Play with a snapshot of your draft. The engine spends Eddies automatically.</p>
-            {rival && <div className="play-selected-rival"><span>Rival</span><strong>{rival.list.name}</strong><span>{rival.list.colors.map((color) => <Pip key={color} color={color} bare />)}</span></div>}
+            <p>Practice with a snapshot of your draft. Choose how to pay as you play.</p>
             {error && <p className="play-error" role="alert">{error}</p>}
-            <button type="button" className="btn play-start" disabled={busy || !rival} onClick={start}>{busy ? 'Dealing…' : 'Start match'}</button>
+            <div className="play-loadout-footer">
+              {rival && <div className="play-selected-rival">
+                <span>Rival</span><strong>{rival.list.name}</strong>
+                <span>{rival.list.colors.map((color) => <Pip key={color} color={color} bare />)}</span>
+              </div>}
+              <button type="button" className="btn play-start" disabled={busy || !rival} onClick={start}>{busy ? 'Dealing…' : 'Start match'}</button>
+            </div>
           </aside>
-        </div>}
+        </div>
+      </>}
       <ConfirmDialog open={!!confirm} title={confirm === 'concede' ? 'Concede this match?' : confirm === 'restart' ? 'Start a fresh match?' : 'Return to your draft?'}
         confirmLabel={confirm === 'concede' ? 'Concede match' : confirm === 'restart' ? 'Restart match' : 'Return to draft'} onCancel={() => setConfirm(undefined)}
         onConfirm={() => {
