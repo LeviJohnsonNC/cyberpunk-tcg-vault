@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { chooseMove, LocalEngine, SeededRNG } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import type { EngineState } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import starters from '../../curated/starter-decks.json';
@@ -132,15 +132,21 @@ describe('play engine', () => {
     expect(cards[eddie].meta.spent).toBe(false);
   });
 
-  it('requires Go Solo for crew deployment and honours its selected payment', () => {
+  it('distinguishes ordinary Legend play from Go Solo and honours selected payments', () => {
     const { state, active } = paymentFixture();
-    const solo = placeCard(state, active, 'jackie-welles-mama-s-favorite', 'legendArea');
-    const sources = Array.from({ length: 6 }, () => placeEddie(state, active));
+    const solo = placeCard(state, active, 'v-corporate-exile', 'legendArea', true);
+    const sources = Array.from({ length: 5 }, () => placeEddie(state, active));
+    const ordinary = new LocalEngine(structuredClone(state));
+    const ordinaryView = ordinary.getFilteredView(active);
+    const play = matchActions(ordinaryView).find(({ id }) => id === 'playCard')!;
+    const ordinaryPicks = { card: [solo], payment: sources };
+    expect(isReady(play.fields(ordinaryPicks), ordinaryPicks)).toBe(true);
+    const ordinaryMove = play.move(ordinaryPicks);
+    const ordinaryState = issue(ordinary, active, ordinaryMove.move, ordinaryMove.args).state as FixtureState;
+    expect(ordinaryState.G.cardIndex[solo]).toMatchObject({ zone: 'field', meta: { spent: true, hasLag: true } });
+
     const engine = new LocalEngine(state);
     const view = engine.getFilteredView(active);
-    expect(view.prompt.payment?.costs.playCard?.[solo]).toBeUndefined();
-    const bypass = engine.processCommand({ commandID: 'bad-play', move: 'playCard', input: { args: { cardId: solo } } }, active);
-    expect(bypass.success).toBe(false);
     const action = matchActions(view).find(({ id }) => id === 'goSolo')!;
     const picks = { card: [solo], payment: sources };
     expect(isReady(action.fields(picks), picks)).toBe(true);
@@ -206,10 +212,10 @@ describe('play engine', () => {
     expect(engine.getState().G.players[active].zones.deck.at(0)).toBe(next);
   });
 
-  it('resolves the Program played by Lizzy before returning to an older pending trigger', () => {
+  it.each(['hand', 'trash'])('resolves Lizzy’s Program from %s and bottom-decks it before the older trigger', (origin) => {
     const { state, active, other } = paymentFixture();
     const lizzy = placeCard(state, active, 'lizzy-wizzy-delicate-weapon', 'hand');
-    const program = placeCard(state, active, 'floor-it', 'hand');
+    const program = placeCard(state, active, 'floor-it', origin);
     const host = placeCard(state, active, 'jackie-welles-mama-s-favorite', 'legendArea');
     const gear = placeCard(state, active, 'tetratronic-rippler', 'legendArea');
     state.G.cardIndex[host].meta.attachedGearIds.push(gear);
@@ -223,8 +229,16 @@ describe('play engine', () => {
     expect(engine.getFilteredView(active).prompt.choice).toMatchObject({
       type: 'chooseTarget', payload: { eligibleIds: [target] },
     });
-    issue(engine, active, 'resolveEffectTarget', { targetIds: [target] });
+    for (const viewer of [active, other]) {
+      expect(engine.getFilteredView(viewer).players[active].zones.resolvingProgram).toMatchObject([{ instanceId: program }]);
+    }
+    expect(engine.getState().G.players[active].zones.trash).not.toContain(program);
+    const result = issue(engine, active, 'resolveEffectTarget', { targetIds: [target] });
+    expect(result.gameEvents).toContainEqual(expect.objectContaining({
+      type: 'cardMoved', cardId: program, fromZone: 'resolvingProgram', toZone: 'deck', deckPlacement: 'bottom',
+    }));
     expect(engine.getState().G.players[active].zones.hand).toContain(drawn);
+    expect(engine.getState().G.players[active].zones.deck.at(-1)).toBe(program);
     expect(engine.getFilteredView(active).prompt.choice).toMatchObject({
       type: 'scry', payload: { revealedCardIds: [next] },
     });
@@ -247,8 +261,12 @@ describe('play engine', () => {
     expect(isReady(action.fields(pay), pay)).toBe(true);
     const move = action.move(pay);
     issue(engine, other, move.move, move.args);
-    const paid = engine.getState() as FixtureState;
+    let paid = engine.getState() as FixtureState;
     expect(paid.G.cardIndex[source].meta.spent).toBe(true);
+    expect(paid.G.players[other].zones.resolvingProgram).toContain(program);
+    expect(paid.G.players[other].zones.trash).not.toContain(program);
+    issue(engine, other, 'resolveEffectTarget', { targetIds: [attacker] });
+    paid = engine.getState() as FixtureState;
     expect(paid.G.players[other].zones.trash).toContain(program);
   });
 
@@ -278,6 +296,30 @@ describe('play engine', () => {
     expect(paid.G.players[other].zones.removedFromGame).toContain(jackie);
   });
 
+  it('lets Jackie save the chosen Unit when he is also in a mass defeat', () => {
+    const { state, active, other } = paymentFixture();
+    state.G.manualPaymentPlayerId = other;
+    const jackie = placeCard(state, other, 'jackie-welles-mama-s-favorite', 'field');
+    const first = placeCard(state, other, 'corpo-security', 'field');
+    const second = placeCard(state, other, 'field-operator', 'field');
+    const source = placeEddie(state, other);
+    const smasher = placeCard(state, active, 'adam-smasher-metal-over-meat', 'hand');
+    for (let i = 0; i < 9; i++) placeEddie(state, active);
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'playCard', { cardId: smasher });
+    const view = engine.getFilteredView(other);
+    expect(view.prompt.choice).toMatchObject({ type: 'redirectDefeat', payload: { replacementCardId: jackie, protectedCardId: first } });
+    const protect = matchActions(view).find(({ label }) => label === 'Protect a Unit')!;
+    const picks = { protected: [second], payment: [source] };
+    expect(isReady(protect.fields(picks), picks)).toBe(true);
+    const move = protect.move(picks);
+    issue(engine, other, move.move, move.args);
+    const zones = engine.getState().G.players[other].zones;
+    expect(zones.field).toEqual([second]);
+    expect(zones.trash).toContain(first);
+    expect(zones.removedFromGame).toContain(jackie);
+  });
+
   it.each([
     'afterparty-at-lizzie-s', 'bonnie-and-clyde', 'industrial-assembly', 'memory-relapse', 'peace-offering', 'trust-no-one',
   ])('allows %s to be played with no target for its effect', (slug) => {
@@ -297,6 +339,162 @@ describe('play engine', () => {
     expect(engine.getFilteredView(active).prompt.choice).toBeNull();
   });
 
+  it.each(['player', 'rival'] as const)('requires a Three Mouths choice and hides the search from the other seat when %s plays it', (seat) => {
+    const { state, other } = rulesFixture(seat);
+    const program = placeCard(state, seat, 'three-mouths-one-desire', 'hand');
+    for (let i = 0; i < 2; i++) placeEddie(state, seat);
+    const [kept, ...rest] = state.G.players[seat].zones.deck.slice(0, 3);
+    const engine = new LocalEngine(state);
+    issue(engine, seat, 'playCard', { cardId: program });
+    const ownerView = engine.getFilteredView(seat);
+    const rivalView = engine.getFilteredView(other);
+    expect(ownerView.prompt.choice).toMatchObject({ type: 'scry', payload: { revealedCardIds: [kept, ...rest] } });
+    expect(rivalView.prompt.choice).toBeNull();
+    expect(rivalView.players[seat].zones.resolvingProgram).toMatchObject([{ instanceId: program }]);
+    for (const id of [kept, ...rest]) expect(JSON.stringify(rivalView)).not.toContain(id);
+    const search = matchActions(ownerView)[0];
+    expect(isReady(search.fields({}), {})).toBe(false);
+    const picks = { '0': [kept] };
+    const move = search.move(picks);
+    issue(engine, seat, move.move, move.args);
+    expect(engine.getState().G.players[seat].zones.hand).toContain(kept);
+    expect(engine.getState().G.players[seat].zones.deck.slice(-2).sort()).toEqual(rest.sort());
+    for (const id of [kept, ...rest]) expect(JSON.stringify(engine.getFilteredView(other))).not.toContain(id);
+  });
+
+  it('projects Three Mouths through the worker without exposing the rival’s search', () => {
+    const rival = prepareMatchDeck(deckFromRecommended('lowball-netrun-plus')!);
+    let sequence = 0;
+    const uuid = vi.spyOn(crypto, 'randomUUID').mockImplementation(
+      () => `worker-private-12-${sequence++}` as ReturnType<typeof crypto.randomUUID>,
+    );
+    try {
+      const respond = createMatchController();
+      let response = respond({ id: 0, action: { type: 'start', setup: { player: rival, rival } } });
+      const rng = new SeededRNG('worker-player');
+      let playerSearch = false;
+      let rivalSearch = false;
+      for (let id = 1; id <= 100 && !(playerSearch && rivalSearch); id++) {
+        if (!('snapshot' in response)) throw new Error(response.error);
+        const { view, log, matchId } = response.snapshot;
+        const payload = view.prompt.choice?.payload as { source?: { displayName?: string }; revealedCardIds?: string[] } | undefined;
+        expect(typeof view.players.rival.zones.hand).toBe('number');
+        expect(typeof view.players.rival.zones.deck).toBe('number');
+        if (view.prompt.choice?.type === 'scry' && payload?.source?.displayName?.includes('Three Mouths')) {
+          expect(payload.revealedCardIds).toHaveLength(3);
+          expect(view.prompt.choice.chooserId).toBe('player');
+          playerSearch = true;
+        }
+        rivalSearch ||= log.some(({ seat, text }) => seat === 'rival' && text.includes('Three Mouths'));
+        const move = chooseMove(view, () => rng.next(), 'player');
+        if (view.gameEnded || !move) break;
+        response = respond({ id, action: { type: 'move', matchId, stateID: view.stateID, move } });
+      }
+      expect({ playerSearch, rivalSearch }).toEqual({ playerSearch: true, rivalSearch: true });
+    } finally {
+      uuid.mockRestore();
+    }
+  });
+
+  it('lets Floor It select a Unit with zero power', () => {
+    const { state, active, other } = paymentFixture();
+    const program = placeCard(state, active, 'floor-it', 'hand');
+    const misty = placeCard(state, other, 'misty-olszewski-mender-of-broken-spirits', 'field');
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'playCard', { cardId: program });
+    expect(engine.getFilteredView(active).prompt.choice).toMatchObject({ type: 'chooseTarget', payload: { eligibleIds: [misty] } });
+    issue(engine, active, 'resolveEffectTarget', { targetIds: [misty] });
+    expect(engine.getState().G.players[active].zones.trash).toContain(program);
+  });
+
+  it('triggers Gorilla Arms once for a simultaneous two-Gig steal', () => {
+    const { state, active, other } = paymentFixture();
+    const unit = placeCard(state, active, 'modded-kusanagi', 'field');
+    const gear = placeCard(state, active, 'gorilla-arms', 'field');
+    state.G.cardIndex[unit].meta.attachedGearIds.push(gear);
+    state.G.cardIndex[gear].meta.attachedToId = unit;
+    const rival = state.G.players[other];
+    for (const id of rival.zones.legendArea) state.G.cardIndex[id].meta.spent = true;
+    rival.zones.hand = [];
+    const dice = rival.fixerArea.splice(0, 4);
+    for (const [index, id] of dice.entries()) {
+      state.G.gigDice[id].location = 'gigArea';
+      state.G.gigDice[id].faceValue = index + 1;
+      rival.gigArea.push(id);
+    }
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'attackRival', { attackerId: unit });
+    expect(engine.getFilteredView(active).prompt.choice).toMatchObject({ type: 'chooseGigsToSteal', payload: { count: 2 } });
+    issue(engine, active, 'resolveStealGigs', { dieIds: dice.slice(0, 2) });
+    const followup = engine.getFilteredView(active).prompt.choice;
+    expect(followup?.type).toBe('chooseTarget');
+    const { eligibleIds } = followup!.payload as { eligibleIds: string[] };
+    issue(engine, active, 'resolveEffectTarget', { targetIds: [eligibleIds[0]] });
+    expect(engine.getFilteredView(active).prompt.choice).toBeNull();
+    expect((engine.getState() as FixtureState).G.players[other].gigArea).toHaveLength(1);
+  });
+
+  it('keeps the Fixer d20 outside Over the Edge’s eligible Gigs', () => {
+    const { state, active, other } = paymentFixture();
+    const program = placeCard(state, active, 'over-the-edge', 'hand');
+    const target = placeCard(state, other, 'corpo-security', 'field');
+    const engine = new LocalEngine(state);
+    expect((engine.getFilteredView(active).players[active].zones.fixerArea as CardView[])
+      .some(({ definitionId }) => definitionId === 'd20')).toBe(true);
+    issue(engine, active, 'playCard', { cardId: program });
+    expect(engine.getFilteredView(active).prompt.choice).toBeNull();
+    expect(engine.getState().G.players[other].zones.field).toContain(target);
+  });
+
+  it('discounts Viktor’s first Cyberware payment without changing its printed cost', () => {
+    const { state, active } = paymentFixture();
+    const viktor = placeCard(state, active, 'viktor-vektor-drop-your-illusions', 'hand');
+    const gear = placeCard(state, active, 'zetatech-berserk', 'hand');
+    for (let i = 0; i < 8; i++) placeEddie(state, active);
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'playCard', { cardId: viktor });
+    const view = engine.getFilteredView(active);
+    expect(view.prompt.payment?.costs.playCard[gear]).toEqual({ amount: 3 });
+    expect((view.players[active].zones.hand as CardView[]).find(({ instanceId }) => instanceId === gear))
+      .toMatchObject({ cost: 6, effectiveCost: 3 });
+    issue(engine, active, 'playCard', { cardId: gear, attachToId: viktor });
+    expect((engine.getFilteredView(active).players[active].zones.field as CardView[]).find(({ instanceId }) => instanceId === gear)?.cost).toBe(6);
+  });
+
+  it.each(['return-first', 'defeat-first', 'fight-first'])('resolves Cyberpsychosis and Kusanagi in order %s', (order) => {
+    const { state, active, other } = paymentFixture();
+    const affected = order !== 'fight-first';
+    const unit = placeCard(state, active, affected ? 'modded-kusanagi' : 'field-operator', 'field');
+    const gear = placeCard(state, active, 'zetatech-berserk', 'field');
+    state.G.cardIndex[unit].meta.attachedGearIds.push(gear);
+    state.G.cardIndex[gear].meta.attachedToId = unit;
+    const defender = placeCard(state, other, 'corpo-security', 'field', true);
+    for (const id of state.G.players[other].zones.legendArea) state.G.cardIndex[id].meta.spent = true;
+    state.G.players[other].zones.hand = [];
+    const program = placeCard(state, active, 'cyberpsychosis', 'hand');
+    const engine = new LocalEngine(state);
+    const applyProgram = () => {
+      issue(engine, active, 'playCard', { cardId: program });
+      issue(engine, active, 'resolveEffectTarget', { targetIds: [unit] });
+    };
+    if (affected) applyProgram();
+    issue(engine, active, 'attackUnit', { attackerId: unit, defenderId: defender });
+    if (!affected) applyProgram();
+    issue(engine, active, 'passPhase');
+    if (affected) {
+      const choice = engine.getFilteredView(active).prompt.choice;
+      expect(choice?.type).toBe('chooseTrigger');
+      const { options } = choice!.payload as { options: { triggerId: string; sourceCardId: string }[] };
+      const first = options.find(({ sourceCardId }) => sourceCardId === (order === 'return-first' ? unit : program))!;
+      issue(engine, active, 'resolveTrigger', { triggerId: first.triggerId });
+      const zones = engine.getState().G.players[active].zones;
+      expect(order === 'return-first' ? zones.hand : zones.trash).toEqual(expect.arrayContaining([unit, gear]));
+    } else {
+      expect(engine.getState().G.players[active].zones.field).toContain(unit);
+      expect(engine.getState().G.players[active].zones.trash).not.toContain(unit);
+    }
+  });
+
   it('checks deck-out at the draw rather than before the turn starts', () => {
     const { state, active, other } = rulesFixture();
     const zones = state.G.players[other].zones;
@@ -310,6 +508,27 @@ describe('play engine', () => {
     expect(eventTypes).toContain('turnStarted');
     expect(eventTypes.indexOf('gameEnded')).toBeGreaterThan(eventTypes.indexOf('turnStarted'));
     expect(engine.getFilteredView(active)).toMatchObject({ gameEnded: true, winnerId: active, winReason: 'deck_out_victory' });
+  });
+
+  it('ends an attack when a pending Yorinobu draw would draw from an empty deck', () => {
+    const { state, active, other } = rulesFixture();
+    const legend = placeCard(state, active, 'yorinobu-arasaka-embracing-destruction', 'legendArea');
+    const attacker = placeCard(state, active, 'goro-takemura-losing-his-way', 'field');
+    const zones = state.G.players[active].zones;
+    for (const id of zones.deck.splice(0)) {
+      state.G.cardIndex[id].zone = 'trash';
+      zones.trash.push(id);
+    }
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'attackRival', { attackerId: attacker });
+    const choice = engine.getFilteredView(active).prompt.choice;
+    if (choice?.type === 'chooseTrigger') {
+      const { options } = choice.payload as { options: { triggerId: string; sourceCardId: string }[] };
+      const trigger = options.find(({ sourceCardId }) => sourceCardId === legend)!;
+      issue(engine, active, 'resolveTrigger', { triggerId: trigger.triggerId });
+    }
+    expect(engine.getFilteredView(active)).toMatchObject({ gameEnded: true, winnerId: other, winReason: 'deck_out_victory' });
+    expect(engine.getFilteredView(other).prompt.availableMoves).toHaveLength(0);
   });
 
   it('applies fight defeat before a fight-loss ability defeats the opposing Unit', () => {
@@ -427,16 +646,20 @@ function changeHiddenCards(state: EngineState, rival: Seat) {
 
 type FixtureState = EngineState & { G: {
   manualPaymentPlayerId?: Seat;
+  turnMetadata: { activePlayerId: Seat };
   players: Record<Seat, { eddies: number; spentEddies: number; eddieCardIds: string[]; fixerArea: string[]; gigArea: string[] }>;
   gigDice: Record<string, { location: string; faceValue: number }>;
   cardIndex: Record<string, { zone: string; meta: { faceDown: boolean; spent: boolean; hasLag: boolean; attachedGearIds: string[]; attachedToId: string | null } }>;
 } };
 
-function rulesFixture() {
+function rulesFixture(desiredSeat?: Seat) {
   const { engine } = afterSetup(setup('chrome-syndicate'));
   const active = engine.getFilteredView('player').activePlayerId;
   const other: Seat = active === 'player' ? 'rival' : 'player';
-  return { state: structuredClone(engine.getState()) as FixtureState, active, other };
+  const state = structuredClone(engine.getState()) as FixtureState;
+  if (!desiredSeat || desiredSeat === active) return { state, active, other };
+  state.G.turnMetadata.activePlayerId = desiredSeat;
+  return { state, active: desiredSeat, other: active };
 }
 
 function paymentFixture() {

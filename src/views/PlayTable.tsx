@@ -30,6 +30,7 @@ function SeatLane({ seat, snapshot, name, active, renderCard, onPick, targetIds,
   const fixer = zoneCards(view, 'fixerArea');
   const legends = zoneCards(view, 'legendArea');
   const field = zoneCards(view, 'field');
+  const resolving = zoneCards(view, 'resolvingProgram');
   const trash = zoneCards(view, 'trash');
   const removed = zoneCards(view, 'removedFromGame');
   return (
@@ -71,6 +72,10 @@ function SeatLane({ seat, snapshot, name, active, renderCard, onPick, targetIds,
             <div className="play-card-row">{field.length ? field.map((card) => renderCard(card)) : <span className="play-empty">Field is clear</span>}</div>
           </section>
         </div>
+        {resolving.length > 0 && <section aria-label="Resolving Programs">
+          <h3 className="play-eyebrow">Resolving</h3>
+          <div className="play-card-row">{resolving.map((card) => renderCard(card))}</div>
+        </section>}
         {(trash.length > 0 || removed.length > 0) && <details className="play-discard">
           <summary>Trash {trash.length}{removed.length ? ` · Removed ${removed.length}` : ''}</summary>
           <div className="play-card-row">{[...trash, ...removed].map((card) => renderCard(card))}</div>

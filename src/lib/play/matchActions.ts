@@ -197,8 +197,10 @@ export function matchActions(view: PlayerView): MatchActionForm[] {
         break;
       case 'redirectDefeat': {
         const id = 'resolveRedirectDefeat';
-        actions = [form(id, `Protect ${option(payload.protectedCardId as string).label}`,
-          () => paymentFields(id, 'action'), paymentArgs,
+        const eligible = payload.eligibleProtectedCardIds as string[] | undefined;
+        actions = [form(id, eligible ? 'Protect a Unit' : `Protect ${option(payload.protectedCardId as string).label}`,
+          () => [...(eligible ? [field('protected', 'Choose a Unit to protect', options(eligible))] : []), ...paymentFields(id, 'action')],
+          (p) => ({ ...paymentArgs(p), ...(eligible && { protectedCardId: one(p, 'protected') }) }),
           `Spend ${payload.cost} €$ and defeat ${option(payload.replacementCardId as string).label} instead.`), skip(id)];
         break;
       }
