@@ -12,7 +12,7 @@
 //   needs one, the option reports it and is never confirmed as within budget.
 import { BY_SLUG, CARDS, acquireQuote, fitsRam, ramLimits, type AcquireQuote, type Card } from './data';
 import { cardScore, compositionPenalty, rating, scoreDeck, synergy, type Style } from './autobuild';
-import { COPY_MAX, MAIN_MAX, MAIN_MIN, deckNeed, purchaseEstimate, validate, type PurchaseEstimate } from './decks';
+import { COPY_MAX, MAIN_MAX, MAIN_MIN, deckNeed, legendNames, purchaseEstimate, validate, type PurchaseEstimate } from './decks';
 import { money, toDisplay, type Currency } from './currency';
 
 export type Lens = 'strongest' | 'fewest' | 'value';
@@ -229,7 +229,7 @@ export function planUpgrades(input: PlanInput): Plan {
     legal: v0.legal,
     issues: v0.issues,
   };
-  if (legends.length !== 3 || new Set(legends).size !== 3)
+  if (legends.length !== 3 || legendNames(legends).size !== 3)
     return { ok: false, base, options: [], notes: ['Pick three different Legends in the Deck Builder first. The planner keeps Legends fixed.'] };
 
   const lim = ramLimits(legends);

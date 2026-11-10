@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "mutative": "1.3.0",
+    "zod": "4.4.3"
+  },
+  "name": "vault-cyberpunk-engine-build",
+  "private": true
+}
