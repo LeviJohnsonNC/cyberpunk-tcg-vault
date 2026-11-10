@@ -200,6 +200,12 @@ export function PlayTable({ snapshot, names, busy, error, send, rematch, edit }:
   const active = view.activePlayerId;
   const combat = view.attackState;
   const combatStep = combat && combatSteps[combat.step];
+  const hand = zoneCards(view.players.player, 'hand');
+  const handIds = new Set(hand.map((card) => card.instanceId));
+  const showPlayability = view.gamePhase === 'main' && view.prompt.status === 'action'
+    && (combat ? combat.step === 'react' : active === 'player');
+  const playOptions = actions.find((action) => action.id === 'playCard')?.fields({})[0]?.options ?? [];
+  const playableIds = new Set(playOptions.map((option) => option.id));
   const cards = visibleCards(view);
   const dice = new Map(cards.filter((card) => card.zone === 'gigArea' || card.zone === 'fixerArea').map((card) => [card.instanceId, card]));
   const attacker = cards.find((card) => card.instanceId === combat?.attackerId);
@@ -256,13 +262,16 @@ export function PlayTable({ snapshot, names, busy, error, send, rematch, edit }:
     const printing = vaultCard(card);
     const name = printing?.name ?? card.cardName ?? fallback;
     const target = targetIds.has(card.instanceId);
+    const unavailable = showPlayability && handIds.has(card.instanceId) && !playableIds.has(card.instanceId) && !target;
     const known = snapshot.knownLegends.some((legend) => legend.instanceId === card.instanceId);
     const combatRole = combat?.attackerId === card.instanceId ? 'Attacking' : combat?.defenderId === card.instanceId ? 'Defending' : undefined;
     const power = card.zone === 'field' && card.type !== 'gear' ? card.effectivePower : undefined;
     const state = [combatRole, card.spent && 'Spent', card.hasLag && 'Lag', known && 'Known', !!card.damage && `${card.damage} dmg`].filter(Boolean).join(' · ');
+    const status = [state, unavailable && 'Cannot play now'].filter(Boolean).join(' · ');
     return <button key={card.instanceId} type="button" className="play-card" data-card-id={card.instanceId} data-target={target}
+      data-unplayable={unavailable || undefined}
       data-spent={card.spent} data-combat={!!combatRole} data-color={printing?.color} aria-pressed={target ? chosenIds.has(card.instanceId) : undefined}
-      title={state ? `${name} · ${state}` : name} aria-label={[name, state, power != null && `power ${power}`, target && 'selectable'].filter(Boolean).join(', ')}
+      title={status ? `${name} · ${status}` : name} aria-label={[name, status, power != null && `power ${power}`, target && 'selectable'].filter(Boolean).join(', ')}
       onClick={() => { if (!pickOnBoard(card.instanceId)) setInspection({ state: view.stateID, card }); }}>
       <span className="play-card-art"><CardFace card={card} />
         {printing && <span className="play-art-fallback" aria-hidden="true">{printing.type}</span>}
@@ -275,7 +284,6 @@ export function PlayTable({ snapshot, names, busy, error, send, rematch, edit }:
 
   const log = snapshot.log;
   const latest = log.at(-1);
-  const hand = zoneCards(view.players.player, 'hand');
   const isSetup = view.gamePhase === 'setup';
   const choiceHelp = cards.some((card) => targetIds.has(card.instanceId))
     ? 'Choose a highlighted card or use the options below.'

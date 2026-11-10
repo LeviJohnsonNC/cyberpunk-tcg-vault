@@ -333,6 +333,7 @@
 }
 .play-mode .play-card .card-art { border-width: 2px; }
 .play-card[data-spent="true"] .play-card-art .card-art { opacity: .67; }
+.play-hand .play-card[data-unplayable]:not(:hover, :focus-visible) .card-art { opacity: .72; }
 .play-art-fallback { display: none; }
 .play-card[data-color] .play-card-art:has(img[src$="/card-back.webp"]) .play-art-fallback {
   display: block;
