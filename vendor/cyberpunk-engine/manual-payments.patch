@@ -1,0 +1,276 @@
+--- a/submodules/cyberpunk/packages/engine/src/ability-executor.ts
++++ b/submodules/cyberpunk/packages/engine/src/ability-executor.ts
+@@ -132,4 +132,6 @@
+     };
+   }
++  const queue = state.G.turnMetadata.triggerQueue;
++  const pendingBeforeProgram = event.type === "cardPlayed" && event.nestedProgram ? queue.length : 0;
+   const matches = matchTriggers(event, state);
+   const hasRollReplacement =
+@@ -279,4 +281,15 @@
+         playerId,
+       });
++    }
++  }
++  if (event.type === "cardPlayed" && pendingBeforeProgram > 0) {
++    // WeirdCo's Lizzy Wizzy ruling: a nested Program finishes resolving
++    // before a player may return to the original pending effects.
++    const programTriggers = queue.slice(pendingBeforeProgram)
++      .filter((trigger) => trigger.sourceCardId === event.cardId).map(({ id }) => id);
++    if (programTriggers.length) {
++      for (const trigger of queue.slice(0, pendingBeforeProgram)) {
++        trigger.waitForTriggerIds = [...(trigger.waitForTriggerIds ?? []), ...programTriggers];
++      }
+     }
+   }
+--- a/submodules/cyberpunk/packages/engine/src/effects/handlers/index.ts
++++ b/submodules/cyberpunk/packages/engine/src/effects/handlers/index.ts
+@@ -1464,5 +1464,8 @@
+     }
+     const playCost = effect.free ? 0 : computeEffectiveCost(ctx.state, cardId, ctx.sourcePlayerId);
+-    if (!effect.free && availableEddies(ctx.state, ctx.sourcePlayerId) < playCost) {
++    if (!effect.free && (
++      availableEddies(ctx.state, ctx.sourcePlayerId) < playCost ||
++      (playCost > 0 && ctx.state.G.manualPaymentPlayerId === ctx.sourcePlayerId)
++    )) {
+       ops.game.setPendingChoice({
+         type: "chooseCardToPlay",
+--- a/submodules/cyberpunk/packages/engine/src/moves/activate-ability.ts
++++ b/submodules/cyberpunk/packages/engine/src/moves/activate-ability.ts
+@@ -8,5 +8,11 @@
+ import { defOf, hasEffectiveCardType } from "../state/lookups.ts";
+ import { isReactStep } from "./is-react-step.ts";
+-import { availableEddiesAfterAbilityCosts, canPayAbilityEddieCosts } from "./eddie-resources.ts";
++import {
++  abilityEddieCost,
++  availableEddiesAfterAbilityCosts,
++  canPayAbilityEddieCosts,
++  canSpendSelectedEddies,
++  reservedLegendIdsForAbilityCosts,
++} from "./eddie-resources.ts";
+ import { computeEffectiveCost } from "./compute-effective-cost.ts";
+ import { hasValidGigCopyPair } from "../effects/gig-copy-selection.ts";
+@@ -117,4 +123,14 @@
+         errorCode: "INSUFFICIENT_EDDIES",
+       };
++    }
++
++    const selected = input.args.paymentSourceIds as CardInstanceId[] | undefined;
++    if (selected !== undefined) {
++      const cost = abilityEddieCost(ability, state, cardId as CardInstanceId, playerId);
++      const reserved = reservedLegendIdsForAbilityCosts(ability, state, cardId as CardInstanceId, playerId);
++      if (!canSpendSelectedEddies(state.G, playerId, cost, selected) ||
++        selected.some((id) => reserved.includes(id))) {
++        return { valid: false, error: "Invalid payment sources", errorCode: "INVALID_PAYMENT" };
++      }
+     }
+
+--- a/submodules/cyberpunk/packages/engine/src/moves/play-card.ts
++++ b/submodules/cyberpunk/packages/engine/src/moves/play-card.ts
+@@ -38,13 +38,5 @@
+     }
+
+-    return (
+-      player.zones.hand.length > 0 ||
+-      player.zones.legendArea.some((id) => {
+-        const card = state.G.cardIndex[id];
+-        return (
+-          card && defOf(card).type === "legend" && !card.meta.faceDown && defOf(card).cost !== null
+-        );
+-      })
+-    );
++    return player.zones.hand.length > 0;
+   },
+
+@@ -72,12 +64,5 @@
+     }
+
+-    const playsLegend =
+-      card &&
+-      card.zone === "legendArea" &&
+-      defOf(card).type === "legend" &&
+-      !card.meta.faceDown &&
+-      defOf(card).cost !== null &&
+-      player.zones.legendArea.includes(cardId as CardInstanceId);
+-    if (!player.zones.hand.includes(cardId as CardInstanceId) && !playsLegend) {
++    if (!player.zones.hand.includes(cardId as CardInstanceId)) {
+       return { valid: false, error: "Card not in hand", errorCode: "CARD_NOT_IN_HAND" };
+     }
+--- a/submodules/cyberpunk/packages/engine/src/moves/play-selected-card.ts
++++ b/submodules/cyberpunk/packages/engine/src/moves/play-selected-card.ts
+@@ -68,4 +68,5 @@
+     playerId,
+     cost,
++    ...(def.type === "program" && { nestedProgram: true }),
+   };
+   operations.event.emit(cardPlayedEvent);
+--- a/submodules/cyberpunk/packages/engine/src/moves/resolve-card-to-play.ts
++++ b/submodules/cyberpunk/packages/engine/src/moves/resolve-card-to-play.ts
+@@ -252,5 +252,5 @@
+ }
+
+-function pendingGearAttachHosts(
++export function pendingGearAttachHosts(
+   state: MatchState,
+   choice: ChooseCardToPlayPendingChoice,
+--- a/submodules/cyberpunk/packages/engine/src/state/initial-state.ts
++++ b/submodules/cyberpunk/packages/engine/src/state/initial-state.ts
+@@ -355,4 +355,5 @@
+
+ export interface CreateMatchStateOptions {
++  manualPaymentPlayerId?: string;
+   players: PlayerSetup[];
+   catalog: CardCatalog;
+@@ -418,4 +419,5 @@
+   const G = createInitialGameState();
+   G.turnMetadata.activePlayerId = firstPlayerChooserId;
++  if (options.manualPaymentPlayerId) G.manualPaymentPlayerId = createPlayerId(options.manualPaymentPlayerId);
+   if (options.setup?.blankEddiesForMissingLegends) G.blankEddiesForMissingLegends = true;
+
+--- a/submodules/cyberpunk/packages/engine/src/types/game-events.ts
++++ b/submodules/cyberpunk/packages/engine/src/types/game-events.ts
+@@ -77,4 +77,6 @@
+   playerId: PlayerId;
+   cost: number;
++  /** A Program played by another effect resolves before the old pending effects. */
++  nestedProgram?: boolean;
+ }
+
+--- a/submodules/cyberpunk/packages/engine/src/types/match-state.ts
++++ b/submodules/cyberpunk/packages/engine/src/types/match-state.ts
+@@ -563,4 +563,6 @@
+   /** Version 2 records every semantic card defeat in move logs. Absent in older replays. */
+   eventLogVersion?: 2;
++  /** Seat that chooses payment for effect-driven plays in the client. */
++  manualPaymentPlayerId?: PlayerId;
+   /**
+    * D.2.2 setup. Before opening hands, each missing Legend becomes one
+--- a/submodules/cyberpunk/packages/engine/src/view/player-prompt.ts
++++ b/submodules/cyberpunk/packages/engine/src/view/player-prompt.ts
+@@ -28,6 +28,13 @@
+ import { computeEffectiveCost } from "../moves/compute-effective-cost.ts";
+ import { goSoloCost } from "../moves/go-solo.ts";
++import { callLegendEddieCost } from "../moves/call-legend.ts";
++import { pendingGearAttachHosts } from "../moves/resolve-card-to-play.ts";
+ import { listLegalGearAttachHosts } from "../state/gear-attachment.ts";
+-import { abilityEddieCost, availableEddies } from "../moves/eddie-resources.ts";
++import {
++  abilityEddieCost,
++  availableEddies,
++  legendCanPayEddie,
++  reservedLegendIdsForAbilityCosts,
++} from "../moves/eddie-resources.ts";
+ import { resolveTarget, type ResolutionContext } from "../effects/target-resolver.ts";
+
+@@ -57,4 +64,18 @@
+   availableMoves: AvailableMove[];
+   choice: ChoicePrompt | null;
++  payment?: PaymentPrompt;
++}
++
++interface PaymentCost {
++  amount: number;
++  reservedLegendIds?: string[];
++}
++
++interface PaymentPrompt {
++  legendIds: string[];
++  eddieIds: string[];
++  eddies: number;
++  costs: Record<string, Record<string, PaymentCost>>;
++  effectGearHosts: Record<string, string[]>;
+ }
+
+@@ -410,4 +431,5 @@
+       availableMoves: moves,
+       choice: transformPendingChoice(pendingChoice, state),
++      payment: buildPaymentPrompt(state, playerId, moves),
+     };
+   }
+@@ -435,5 +457,71 @@
+     availableMoves: moves,
+     choice: null,
++    payment: hasMeaningfulMoves ? buildPaymentPrompt(state, playerId, moves) : undefined,
+   };
++}
++
++// Payable costs are computed with the same rules used by move validation.
++function buildPaymentPrompt(state: MatchState, playerId: PlayerId, moves: AvailableMove[]): PaymentPrompt | undefined {
++  if (state.G.manualPaymentPlayerId !== playerId) return undefined;
++  const player = state.G.players[playerId as string];
++  if (!player) return undefined;
++  const costs: PaymentPrompt["costs"] = {};
++  const effectGearHosts: PaymentPrompt["effectGearHosts"] = {};
++  for (const { moveId, inputSpec } of moves) {
++    switch (moveId) {
++      case "playCard":
++        if (inputSpec.type === "playCard") costs[moveId] = Object.fromEntries(
++          inputSpec.candidates.map(({ cardId }) => [cardId, {
++            amount: computeEffectiveCost(state, cardId as CardInstanceId, playerId),
++          }]),
++        );
++        break;
++      case "callLegend":
++        costs[moveId] = { action: { amount: callLegendEddieCost(state, playerId) } };
++        break;
++      case "goSolo":
++        if (inputSpec.type === "selectCard") costs[moveId] = Object.fromEntries(
++          inputSpec.candidates.map((id) => [id, { amount: goSoloCost(state, id as CardInstanceId, playerId) }]),
++        );
++        break;
++      case "activateAbility":
++        if (inputSpec.type === "selectAbility") costs[moveId] = Object.fromEntries(
++          inputSpec.candidates.map(({ cardId, abilityIndex, eddieCost }) => {
++            const ability = defOf(state.G.cardIndex[cardId]!).abilities[abilityIndex]!;
++            return [`${cardId}:${abilityIndex}`, {
++              amount: eddieCost,
++              reservedLegendIds: reservedLegendIdsForAbilityCosts(ability, state, cardId as CardInstanceId, playerId),
++            }];
++          }),
++        );
++        break;
++      case "resolveRedirectDefeat": {
++        const choice = state.G.turnMetadata.pendingChoice;
++        if (choice?.type === "redirectDefeat") costs[moveId] = { action: { amount: choice.payload.cost } };
++        break;
++      }
++      case "resolveCardToPlay": {
++        const choice = state.G.turnMetadata.pendingChoice;
++        if (choice?.type !== "chooseCardToPlay") break;
++        const entries: Record<string, PaymentCost> = {};
++        for (const id of choice.payload.cardIds) {
++          entries[id] = { amount: choice.payload.free ? 0 : computeEffectiveCost(state, id, playerId) };
++          const card = state.G.cardIndex[id as string];
++          if (!choice.payload.free && card && defOf(card).type === "gear" && !choice.payload.resolvedAttachToId) {
++            effectGearHosts[id] = pendingGearAttachHosts(state, choice, id, playerId);
++          }
++        }
++        costs[moveId] = entries;
++        break;
++      }
++    }
++  }
++  if (Object.keys(costs).length === 0) return undefined;
++  const legendIds = player.zones.legendArea.filter((id) => {
++    const card = state.G.cardIndex[id as string];
++    return card !== undefined && legendCanPayEddie(card);
++  });
++  const eddieIds = player.eddieCardIds.filter((id) => state.G.cardIndex[id as string]?.meta.spent === false);
++  return { legendIds, eddieIds, eddies: player.eddies, costs, effectGearHosts };
+ }
+
+@@ -560,13 +648,8 @@
+   const candidates: PlayCardCandidate[] = [];
+   const isDefending = isReactStep(state, playerId);
+-  for (const id of [...player.zones.hand, ...player.zones.legendArea]) {
++  for (const id of player.zones.hand) {
+     const card = state.G.cardIndex[id as string];
+     if (!card) continue;
+     const def = defOf(card);
+-    if (
+-      card.zone === "legendArea" &&
+-      (def.type !== "legend" || card.meta.faceDown || def.cost === null)
+-    )
+-      continue;
+     const cost = computeEffectiveCost(state, id, playerId);
+     if (cost > availableEddies(state, playerId)) continue;

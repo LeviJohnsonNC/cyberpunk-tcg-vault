@@ -26,7 +26,8 @@ const form = (
 export function isReady(fields: PickField[], picks: Picks) {
   return fields.every(({ id, min, max, options }) => {
     const selected = picks[id] ?? [];
-    return selected.length >= min && selected.length <= max && selected.every((value) => options.some((option) => option.id === value));
+    return selected.length >= min && selected.length <= max && new Set(selected).size === selected.length &&
+      selected.every((value) => options.some((option) => option.id === value));
   });
 }
 
@@ -52,6 +53,21 @@ export function matchActions(view: PlayerView): MatchActionForm[] {
     return { id, cardId: id, label: card?.cardName ?? (position >= 0 ? `Legend slot ${position + 1}` : hidden), note };
   };
   const options = (ids: string[]) => ids.map(option);
+  const payment = prompt.payment;
+  const poolOptions = payment ? [
+    ...payment.eddieIds.map((id, index) => pick(id, `Eddie ${index + 1}`)),
+    ...Array.from({ length: Math.max(0, payment.eddies - payment.eddieIds.length) },
+      (_, index) => pick(`pool:${index}`, `Eddie ${payment.eddieIds.length + index + 1}`)),
+  ] : [];
+  const paymentFields = (move: string, key?: string) => {
+    const cost = key ? payment?.costs[move]?.[key] : undefined;
+    if (!payment || !cost?.amount) return [];
+    const legends = payment.legendIds.filter((id) => !cost.reservedLegendIds?.includes(id));
+    return [field('payment', `Pay ${cost.amount} €$`, [...poolOptions, ...options(legends)], cost.amount)];
+  };
+  const paymentArgs = (p: Picks) => p.payment
+    ? { paymentSourceIds: p.payment.filter((id) => !id.startsWith('pool:')) }
+    : {};
   const select = (id: string, label: string, ids: string[], key: string, count = 1) =>
     form(id, label, () => [field('target', label, options(ids), count)], (p) => ({ [key]: count === 1 ? one(p, 'target') : p.target }), detail);
   const skip = (id: string, label = 'Decline') => direct(id, label, { pass: true });
@@ -154,17 +170,38 @@ export function matchActions(view: PlayerView): MatchActionForm[] {
       case 'chooseCardToMove': {
         const play = choice.type === 'chooseCardToPlay';
         const id = play ? 'resolveCardToPlay' : 'resolveCardToMove';
-        actions = [select(id, play ? 'Choose a card to play' : 'Choose a card to move', payload.cardIds as string[], 'cardId')];
+        const ids = payload.cardIds as string[];
+        if (play) {
+          const eligible = ids.filter((cardId) => {
+            const [cost] = paymentFields(id, cardId);
+            return (!cost || cost.options.length >= cost.min) && payment?.effectGearHosts[cardId]?.length !== 0;
+          });
+          const forced = eligible.length === 1 && payment?.costs[id]?.[eligible[0]]?.amount ? eligible[0] : undefined;
+          actions = eligible.length ? [form(id, forced ? `Pay to play ${option(forced).label}` : 'Choose a card to play', (p) => {
+            const cardId = forced ?? one(p, 'card');
+            const hosts = cardId ? payment?.effectGearHosts[cardId] : undefined;
+            return [
+              ...(forced ? [] : [field('card', 'Choose a card to play', options(eligible))]),
+              ...(hosts ? [field('host', 'Attach to', options(hosts))] : []),
+              ...paymentFields(id, cardId),
+            ];
+          }, (p) => ({ cardId: forced ?? one(p, 'card'), attachToId: one(p, 'host'), ...paymentArgs(p) }), detail)] : [];
+        } else {
+          actions = [select(id, 'Choose a card to move', ids, 'cardId')];
+        }
         if (payload.canDecline) actions.push(skip(id));
         break;
       }
       case 'chooseCardType':
         actions = (payload.cardTypes as string[]).map((cardType) => direct('resolveCardTypeChoice', cardType, { cardType }, detail));
         break;
-      case 'redirectDefeat':
-        actions = [direct('resolveRedirectDefeat', `Protect ${option(payload.protectedCardId as string).label}`, {},
-          `Spend ${payload.cost} €$ and defeat ${option(payload.replacementCardId as string).label} instead.`), skip('resolveRedirectDefeat')];
+      case 'redirectDefeat': {
+        const id = 'resolveRedirectDefeat';
+        actions = [form(id, `Protect ${option(payload.protectedCardId as string).label}`,
+          () => paymentFields(id, 'action'), paymentArgs,
+          `Spend ${payload.cost} €$ and defeat ${option(payload.replacementCardId as string).label} instead.`), skip(id)];
         break;
+      }
       case 'chooseSacrificialGear':
         actions = [select('resolveSacrificialGear', 'Choose Gear to sacrifice', payload.gearIds as string[], 'cardId')];
         break;
@@ -178,10 +215,12 @@ export function matchActions(view: PlayerView): MatchActionForm[] {
       case 'playCard': {
         const candidates = (spec.candidates as { cardId: string; attachTargets?: string[] }[]).filter((card) => card.attachTargets?.length !== 0);
         actions.push(form(id, 'Play card', (p) => {
-          const targets = candidates.find((card) => card.cardId === one(p, 'card'))?.attachTargets;
+          const cardId = one(p, 'card');
+          const targets = candidates.find((card) => card.cardId === cardId)?.attachTargets;
           return [field('card', 'Choose a card', options(candidates.map((card) => card.cardId))),
-            ...(targets ? [field('host', 'Attach to', options(targets))] : [])];
-        }, (p) => ({ cardId: one(p, 'card'), attachToId: one(p, 'host') })));
+            ...(targets ? [field('host', 'Attach to', options(targets))] : []),
+            ...paymentFields(id, cardId)];
+        }, (p) => ({ cardId: one(p, 'card'), attachToId: one(p, 'host'), ...paymentArgs(p) })));
         break;
       }
       case 'attackUnit': {
@@ -204,17 +243,28 @@ export function matchActions(view: PlayerView): MatchActionForm[] {
       }
       case 'activateAbility': {
         const abilities = spec.candidates as { cardId: string; abilityIndex: number; eddieCost: number; spendsCard: boolean }[];
-        actions.push(form(id, 'Activate ability', () => [field('ability', 'Choose an ability', abilities.map((ability, i) => ({
-          ...option(ability.cardId), id: String(i), note: `Ability ${ability.abilityIndex + 1} · ${ability.eddieCost} €$${ability.spendsCard ? ' · spends card' : ''}`,
-        })))], (p) => {
+        actions.push(form(id, 'Activate ability', (p) => {
+          const ability = abilities[Number(one(p, 'ability'))];
+          return [field('ability', 'Choose an ability', abilities.map((candidate, i) => ({
+            ...option(candidate.cardId), id: String(i), note: `Ability ${candidate.abilityIndex + 1} · ${candidate.eddieCost} €$${candidate.spendsCard ? ' · spends card' : ''}`,
+          }))), ...(ability ? paymentFields(id, `${ability.cardId}:${ability.abilityIndex}`) : [])];
+        }, (p) => {
           const { cardId, abilityIndex } = abilities[Number(one(p, 'ability'))];
-          return { cardId, abilityIndex };
+          return { cardId, abilityIndex, ...paymentArgs(p) };
         }));
         break;
       }
       case 'sellCard': actions.push(select(id, 'Sell for an Eddie', spec.candidates as string[], 'cardId')); break;
-      case 'callLegend': actions.push(select(id, 'Call a Legend', spec.candidates as string[], 'legendId')); break;
-      case 'goSolo': actions.push(select(id, 'Go solo', spec.candidates as string[], 'cardId')); break;
+      case 'callLegend':
+      case 'goSolo': {
+        const calling = id === 'callLegend';
+        const label = calling ? 'Call a Legend' : 'Go solo';
+        actions.push(form(id, label, (p) => [
+          field('card', label, options(spec.candidates as string[])),
+          ...(one(p, 'card') ? paymentFields(id, calling ? 'action' : one(p, 'card')) : []),
+        ], (p) => ({ [calling ? 'legendId' : 'cardId']: one(p, 'card'), ...paymentArgs(p) })));
+        break;
+      }
       case 'attackRival': actions.push(select(id, 'Attack the rival', spec.candidates as string[], 'attackerId')); break;
       case 'useBlocker': actions.push(select(id, 'Block the attack', spec.candidates as string[], 'blockerId')); break;
       case 'keepHand': actions.push(direct(id, 'Keep hand')); break;

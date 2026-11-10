@@ -31,7 +31,7 @@ export function initialEngineState(setup: MatchSetup, seed: string, matchId: str
       legends: setup[seat].legends.map(engineCardId),
       mainDeck: setup[seat].mainDeck.map(engineCardId),
     })),
-    catalog, seed, matchId,
+    catalog, seed, matchId, manualPaymentPlayerId: 'player',
   });
 }
 
