@@ -252,6 +252,7 @@ describe('play engine', () => {
     const attacker = placeCard(state, active, 'psycho-squad', 'field');
     const program = placeCard(state, other, 'floor-it', 'hand');
     const source = placeEddie(state, other);
+    giveGig(state, other);
     const engine = new LocalEngine(state);
     issue(engine, active, 'attackRival', { attackerId: attacker });
     const view = engine.getFilteredView(other);
@@ -318,6 +319,30 @@ describe('play engine', () => {
     expect(zones.field).toEqual([second]);
     expect(zones.trash).toContain(first);
     expect(zones.removedFromGame).toContain(jackie);
+  });
+
+  it('advances the turn after Jackie replaces Cyberpsychosis’s delayed defeat', () => {
+    const { state, active, other } = paymentFixture();
+    const jackie = placeCard(state, active, 'jackie-welles-mama-s-favorite', 'legendArea');
+    const nomad = placeCard(state, active, 'riding-nomad', 'field');
+    equipFixture(state, nomad, placeCard(state, active, 'mantis-blades', 'field'));
+    const target = placeCard(state, other, 'field-operator', 'field', true);
+    const program = placeCard(state, active, 'cyberpsychosis', 'hand');
+    for (const id of state.G.players[other].zones.legendArea) state.G.cardIndex[id].meta.spent = true;
+    state.G.players[other].zones.hand = [];
+    for (let i = 0; i < 4; i++) placeEddie(state, active);
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'playCard', { cardId: program });
+    issue(engine, active, 'resolveEffectTarget', { targetIds: [nomad] });
+    issue(engine, active, 'attackUnit', { attackerId: nomad, defenderId: target });
+    issue(engine, active, 'passPhase');
+    expect(engine.getFilteredView(active).prompt.choice).toMatchObject({
+      type: 'redirectDefeat', payload: { replacementCardId: jackie, protectedCardId: nomad },
+    });
+    issue(engine, active, 'resolveRedirectDefeat');
+    expect(engine.getFilteredView(active).activePlayerId).toBe(other);
+    expect(engine.getState().G.players[active].zones.field).toContain(nomad);
+    expect(engine.getState().G.players[active].zones.removedFromGame).toContain(jackie);
   });
 
   it.each([
@@ -519,6 +544,7 @@ describe('play engine', () => {
       state.G.cardIndex[id].zone = 'trash';
       zones.trash.push(id);
     }
+    giveGig(state, other);
     const engine = new LocalEngine(state);
     issue(engine, active, 'attackRival', { attackerId: attacker });
     const choice = engine.getFilteredView(active).prompt.choice;
@@ -529,6 +555,355 @@ describe('play engine', () => {
     }
     expect(engine.getFilteredView(active)).toMatchObject({ gameEnded: true, winnerId: other, winReason: 'deck_out_victory' });
     expect(engine.getFilteredView(other).prompt.availableMoves).toHaveLength(0);
+  });
+
+  it.each(['kerry-eurodyne-the-last-rockerboy', 'field-operator'])('stacks Johnny and Gunpoint on a newly played %s', (slug) => {
+    const { state, active, other } = paymentFixture();
+    state.G.players[active].zones.hand = [];
+    const johnny = placeCard(state, active, 'johnny-silverhand-rocking-renegade', 'legendArea');
+    const unit = placeCard(state, active, slug, 'hand');
+    const gunpoint = placeCard(state, active, 'gunpoint-diplomacy', 'hand');
+    const defender = placeCard(state, other, 'corpo-security', 'field');
+    const gear = placeCard(state, other, 'zetatech-berserk', 'field');
+    equipFixture(state, defender, gear);
+    equipFixture(state, johnny, placeCard(state, active, 'tetratronic-rippler', 'legendArea'));
+    for (let i = 0; i < 14; i++) placeEddie(state, active);
+    giveGig(state, other);
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'playCard', { cardId: unit });
+    issue(engine, active, 'activateAbility', { cardId: johnny, abilityIndex: 0 });
+    if (engine.getFilteredView(active).prompt.choice?.type === 'chooseTarget') {
+      issue(engine, active, 'resolveEffectTarget', { targetIds: [unit] });
+    }
+    expect((engine.getFilteredView(active).players[active].zones.field as CardView[])
+      .find(({ instanceId }) => instanceId === unit)?.grantedRules).toContain('canAttackOnPlayedTurnAgainstUnits');
+    expect(engine.getFilteredView(active).prompt.choice?.type).toBe('scry');
+    issue(engine, active, 'resolveScry', { destinations: [{ zone: 'trash', cardIds: [] }] });
+    expect(rejectedMove(engine, active, 'attackUnit', { attackerId: unit, defenderId: defender })).toBe(true);
+    issue(engine, active, 'playCard', { cardId: gunpoint });
+    if (engine.getFilteredView(active).prompt.choice?.type === 'chooseTarget') {
+      issue(engine, active, 'resolveEffectTarget', { targetIds: [unit] });
+    }
+    const effect = engine.getFilteredView(active).prompt.choice;
+    if (effect?.type === 'chooseEffect') {
+      const { options } = effect.payload as { options: { id: string }[] };
+      const ready = options.find(({ id }) => id === 'both' || id === 'ready-attack')!;
+      issue(engine, effect.chooserId as Seat, 'resolveChooseEffect', { optionId: ready.id });
+    }
+    const { prompt } = engine.getFilteredView(active);
+    const attack = prompt.availableMoves.find(({ moveId }) => moveId === 'attackUnit')!;
+    expect(attack.inputSpec.fromCandidates).toContain(unit);
+    expect(attack.inputSpec.toCandidates).toContain(defender);
+    expect(attack.inputSpec.toCandidates).not.toContain(gear);
+    expect(rejectedMove(engine, active, 'attackUnit', { attackerId: unit, defenderId: gear })).toBe(true);
+    expect(rejectedMove(engine, active, 'attackRival', { attackerId: unit })).toBe(true);
+    issue(engine, active, 'attackUnit', { attackerId: unit, defenderId: defender });
+    expect((engine.getFilteredView(active).players[active].zones.field as CardView[])
+      .find(({ instanceId }) => instanceId === unit)?.grantedRules).not.toContain('canAttackReadyUnits');
+  });
+
+  it('lets a pending Faceplate effect resolve after Panam moves the Gear', () => {
+    const { state, active } = paymentFixture();
+    const panam = placeCard(state, active, 'panam-palmer-nomad-cavalry', 'legendArea');
+    const faceplate = placeCard(state, active, 'zetatech-faceplate', 'legendArea');
+    const host = placeCard(state, active, 'field-operator', 'field', true);
+    equipFixture(state, panam, faceplate);
+    const [die] = state.G.players[active].gigArea;
+    state.G.gigDice[die].faceValue = 2;
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'activateAbility', { cardId: panam, abilityIndex: 0 });
+    expect(engine.getFilteredView(active).prompt.choice).toMatchObject({
+      type: 'chooseTarget', payload: { eligibleIds: [faceplate] },
+    });
+    issue(engine, active, 'resolveEffectTarget', { targetIds: [faceplate] });
+    const moved = engine.getState() as FixtureState;
+    expect(moved.G.cardIndex[faceplate].meta.attachedToId).toBe(host);
+    expect(moved.G.cardIndex[host].meta.spent).toBe(false);
+    expect(engine.getFilteredView(active).prompt.choice).toMatchObject({ type: 'chooseTarget' });
+    issue(engine, active, 'resolveAdjustGig', { kind: 'adjust', dieId: die, value: 3 });
+    expect((engine.getState() as FixtureState).G.gigDice[die].faceValue).toBe(3);
+  });
+
+  it('finishes the Overwatch activation before the Faceplate it triggered', () => {
+    const { state, active, other } = paymentFixture();
+    state.G.players[active].zones.hand = [];
+    const discard = placeCard(state, active, 'bonnie-and-clyde', 'hand');
+    const host = placeCard(state, active, 'field-operator', 'field');
+    const overwatch = placeCard(state, active, 'overwatch-panam-s-gift', 'field');
+    const faceplate = placeCard(state, active, 'zetatech-faceplate', 'field');
+    const defender = placeCard(state, other, 'corpo-security', 'field', true);
+    equipFixture(state, host, overwatch);
+    equipFixture(state, host, faceplate);
+    const [die] = state.G.players[active].gigArea;
+    state.G.gigDice[die].faceValue = 2;
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'activateAbility', { cardId: overwatch, abilityIndex: 1 });
+    let choice = engine.getFilteredView(active).prompt.choice;
+    if (choice?.type === 'chooseTarget' && (choice.payload as { eligibleIds?: string[] }).eligibleIds?.includes(discard)) {
+      issue(engine, active, 'resolveEffectTarget', { targetIds: [discard] });
+      choice = engine.getFilteredView(active).prompt.choice;
+    }
+    if (choice?.type === 'chooseTarget' && (choice.payload as { eligibleIds?: string[] }).eligibleIds?.includes(defender)) {
+      issue(engine, active, 'resolveEffectTarget', { targetIds: [defender] });
+    }
+    expect(engine.getState().G.players[active].zones.trash).toContain(discard);
+    expect(engine.getState().G.players[other].zones.trash).toContain(defender);
+    expect(engine.getFilteredView(active).prompt.availableMoves.some(({ moveId }) => moveId === 'resolveAdjustGig')).toBe(true);
+    issue(engine, active, 'resolveAdjustGig', { kind: 'adjust', dieId: die, value: 3 });
+    expect((engine.getState() as FixtureState).G.gigDice[die].faceValue).toBe(3);
+  });
+
+  it.each([false, true])('keeps Muamar’s fight protection separate from effect defeat (effect %s)', (effect) => {
+    const { state, active, other } = paymentFixture();
+    const muamar = placeCard(state, active, 'muamar-reyes-el-capita-n', 'legendArea');
+    state.G.cardIndex[muamar].meta.faceDown = true;
+    const unit = placeCard(state, active, effect ? 'field-operator' : 'offduty-malfini', 'field');
+    const defender = placeCard(state, other, effect ? 'maelstrom-zealots' : 'field-operator', 'field', true);
+    if (!effect) equipFixture(state, defender, placeCard(state, other, 'zetatech-berserk', 'field'));
+    for (const id of state.G.players[other].zones.legendArea) state.G.cardIndex[id].meta.spent = true;
+    state.G.players[other].zones.hand = [];
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'callLegend', { legendId: muamar });
+    issue(engine, active, 'resolveChooseEffect', { optionId: 'protect' });
+    issue(engine, active, 'resolveEffectTarget', { targetIds: [unit] });
+    expect((engine.getFilteredView(active).players[active].zones.field as CardView[])
+      .find(({ instanceId }) => instanceId === unit)?.grantedRules).toContain('cantBeDefeatedInFight');
+    issue(engine, active, 'attackUnit', { attackerId: unit, defenderId: defender });
+    expect(engine.getState().G.players[active].zones[effect ? 'trash' : 'field']).toContain(unit);
+  });
+
+  it.each(['up', 'down', 'none'])('evaluates Goro’s Legend condition once at resolution (%s)', (orientation) => {
+    const { state, active, other } = paymentFixture();
+    const account = state.G.players[active];
+    const goro = placeCard(state, active, 'goro-takemura-losing-his-way', 'field');
+    for (const id of account.zones.legendArea) state.G.cardIndex[id].meta.faceDown = orientation === 'down';
+    if (orientation === 'none') {
+      for (const id of account.zones.legendArea.splice(0)) {
+        state.G.cardIndex[id].zone = 'removedFromGame';
+        account.zones.removedFromGame.push(id);
+      }
+    }
+    giveGig(state, other);
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'attackRival', { attackerId: goro });
+    const expected = orientation === 'up' ? 9 : 4;
+    const power = (match: LocalEngine) => (match.getFilteredView(active).players[active].zones.field as CardView[])
+      .find(({ instanceId }) => instanceId === goro)?.effectivePower;
+    expect(power(engine)).toBe(expected);
+    const after = structuredClone(engine.getState()) as FixtureState;
+    for (const id of after.G.players[active].zones.legendArea) {
+      after.G.cardIndex[id].meta.faceDown = orientation === 'up';
+    }
+    expect(power(new LocalEngine(after))).toBe(expected);
+  });
+
+  it('lets Nadia attack when the Gig count changes after she was played', () => {
+    const { state, active, other } = paymentFixture();
+    const nadia = placeCard(state, active, 'nadia-fighting-through-grief', 'hand');
+    const sale = placeCard(state, active, 'floor-it', 'hand');
+    for (let i = 0; i < 6; i++) placeEddie(state, active);
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'playCard', { cardId: nadia });
+    expect(rejectedMove(engine, active, 'attackRival', { attackerId: nadia })).toBe(true);
+    const changed = structuredClone(engine.getState()) as FixtureState;
+    const [gig] = changed.G.players[active].gigArea.splice(0, 1);
+    changed.G.players[other].gigArea.push(gig);
+    changed.G.gigDice[gig].ownerId = other;
+    const later = new LocalEngine(changed);
+    issue(later, active, 'sellCard', { cardId: sale });
+    expect(later.getFilteredView(active).prompt.availableMoves.find(({ moveId }) => moveId === 'attackRival')
+      ?.inputSpec.candidates).toContain(nadia);
+    issue(later, active, 'attackRival', { attackerId: nadia });
+  });
+
+  it.each([0, 1])('readies five equipped friendlies for Panam, including %s Legend', (legendCount) => {
+    const { state, active } = paymentFixture();
+    const panam = placeCard(state, active, 'panam-palmer-nomad-cavalry', 'legendArea', true);
+    const units = Array.from({ length: 5 - legendCount }, () => placeCard(state, active, 'field-operator', 'field', true));
+    const hosts = legendCount ? [panam, ...units] : units;
+    for (const id of hosts) equipFixture(state, id, placeCard(state, active, 'zetatech-berserk', state.G.cardIndex[id].zone));
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'passPhase');
+    const after = engine.getState() as FixtureState;
+    expect(hosts.every((id) => !after.G.cardIndex[id].meta.spent)).toBe(true);
+  });
+
+  it('counts Panam’s face-up Legends in the crew and on the field', () => {
+    const { state, active, other } = paymentFixture();
+    state.G.players[active].zones.hand = [];
+    const panam = placeCard(state, active, 'panam-palmer-strength-through-family', 'field');
+    placeCard(state, active, 'v-corporate-exile', 'field');
+    placeCard(state, active, 'jackie-welles-mama-s-favorite', 'legendArea');
+    const discard = placeCard(state, active, 'floor-it', 'hand');
+    const [top, next, third] = state.G.players[active].zones.deck;
+    giveGig(state, other);
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'attackRival', { attackerId: panam });
+    const choice = engine.getFilteredView(active).prompt.choice;
+    if (choice?.type === 'chooseTarget') issue(engine, active, 'resolveDiscardFromHand', { cardIds: [discard] });
+    const zones = engine.getState().G.players[active].zones;
+    expect(zones.hand).toEqual([top, next]);
+    expect(zones.deck[0]).toBe(third);
+    expect(zones.trash).toContain(discard);
+  });
+
+  it('lets Rippler resolve before React and lets the player order it alongside an Attack effect', () => {
+    const { state, active, other } = paymentFixture();
+    const goro = placeCard(state, active, 'goro-takemura-losing-his-way', 'field');
+    const rippler = placeCard(state, active, 'tetratronic-rippler', 'field');
+    equipFixture(state, goro, rippler);
+    for (const id of state.G.players[active].zones.legendArea) state.G.cardIndex[id].meta.faceDown = false;
+    const [top] = state.G.players[active].zones.deck;
+    giveGig(state, other);
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'attackRival', { attackerId: goro });
+    const pending = engine.getFilteredView(active);
+    expect(pending.attackState?.step).toBe('attack');
+    expect(pending.prompt.choice?.type).toBe('chooseTrigger');
+    const { options } = pending.prompt.choice!.payload as { options: { triggerId: string; sourceCardId: string }[] };
+    expect(options.map(({ sourceCardId }) => sourceCardId)).toEqual(expect.arrayContaining([goro, rippler]));
+    const first = options.find(({ sourceCardId }) => sourceCardId === rippler)!;
+    issue(engine, active, 'resolveTrigger', { triggerId: first.triggerId });
+    expect(engine.getFilteredView(active).prompt.choice).toMatchObject({ type: 'scry', payload: { revealedCardIds: [top] } });
+    expect(engine.getFilteredView(other).prompt.choice).toBeNull();
+    expect(engine.getFilteredView(active).attackState?.step).toBe('attack');
+    issue(engine, active, 'resolveScry', { destinations: [{ zone: 'trash', cardIds: [top] }] });
+    expect(engine.getState().G.players[active].zones.trash).toContain(top);
+    expect((engine.getFilteredView(active).players[active].zones.field as CardView[])
+      .find(({ instanceId }) => instanceId === goro)?.effectivePower).toBe(10);
+  });
+
+  it('cannot force Misty to attack even when Mox Inciters marks her', () => {
+    const { state, active, other } = paymentFixture();
+    const misty = placeCard(state, other, 'misty-olszewski-mender-of-broken-spirits', 'field');
+    const mox = placeCard(state, active, 'mox-inciters', 'hand');
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'playCard', { cardId: mox });
+    if (engine.getFilteredView(active).prompt.choice?.type === 'chooseTarget') {
+      issue(engine, active, 'resolveEffectTarget', { targetIds: [misty] });
+    }
+    issue(engine, active, 'passPhase');
+    const gig = engine.getFilteredView(other).prompt.choice;
+    if (gig?.type === 'gainGig') {
+      const { allowedDieIds } = gig.payload as { allowedDieIds: string[] };
+      issue(engine, other, 'gainGig', { dieId: allowedDieIds[0] });
+    }
+    const view = engine.getFilteredView(other);
+    expect((view.players[other].zones.field as CardView[]).find(({ instanceId }) => instanceId === misty)?.grantedRules)
+      .toEqual(expect.arrayContaining(['mustAttack', 'cantAttack']));
+    expect(rejectedMove(engine, other, 'attackRival', { attackerId: misty })).toBe(true);
+    expect(view.prompt.availableMoves.some(({ moveId }) => moveId === 'passPhase')).toBe(true);
+  });
+
+  it('leaves an empty rival Gig area out of attack targets and must-attack obligations', () => {
+    const { state, active, other } = paymentFixture();
+    const unit = placeCard(state, other, 'field-operator', 'field');
+    const mox = placeCard(state, active, 'mox-inciters', 'hand');
+    const turn = new LocalEngine(state);
+    issue(turn, active, 'playCard', { cardId: mox });
+    if (turn.getFilteredView(active).prompt.choice?.type === 'chooseTarget') {
+      issue(turn, active, 'resolveEffectTarget', { targetIds: [unit] });
+    }
+    issue(turn, active, 'passPhase');
+    const gig = turn.getFilteredView(other).prompt.choice;
+    if (gig?.type === 'gainGig') {
+      const { allowedDieIds } = gig.payload as { allowedDieIds: string[] };
+      issue(turn, other, 'gainGig', { dieId: allowedDieIds[0] });
+    }
+    const noGigs = structuredClone(turn.getState()) as FixtureState;
+    const opponent = noGigs.G.players[active];
+    for (const id of opponent.gigArea.splice(0)) {
+      noGigs.G.gigDice[id].location = 'fixerArea';
+      opponent.fixerArea.push(id);
+    }
+    const engine = new LocalEngine(noGigs);
+    const { availableMoves } = engine.getFilteredView(other).prompt;
+    expect(availableMoves.some(({ moveId }) => moveId === 'attackRival')).toBe(false);
+    expect(availableMoves.some(({ moveId }) => moveId === 'passPhase')).toBe(true);
+    expect(rejectedMove(engine, other, 'attackRival', { attackerId: unit })).toBe(true);
+  });
+
+  it.each([
+    'adrenaline-converter', 'arasaka-emergency-radioport', 'deadman-transmitter',
+    'dying-night-v-s-pistol', 'mantis-blades', 'zetatech-berserk',
+  ])('keeps %s tags on the Gear when equipped to a Unit or Legend', (slug) => {
+    const { state, active } = paymentFixture();
+    const hosts = [
+      placeCard(state, active, 'field-operator', 'field'),
+      placeCard(state, active, 'v-corporate-exile', 'legendArea'),
+    ];
+    const gears = hosts.map(() => placeCard(state, active, slug, 'hand'));
+    for (let i = 0; i < 14; i++) placeEddie(state, active);
+    const engine = new LocalEngine(state);
+    const projected = () => Object.values(engine.getFilteredView(active).players[active].zones)
+      .flatMap((zone) => Array.isArray(zone) ? zone : []);
+    for (const [i, host] of hosts.entries()) {
+      const before = projected().find(({ instanceId }) => instanceId === host)! as CardView & { classifications: string[] };
+      const gear = projected().find(({ instanceId }) => instanceId === gears[i])! as CardView & { classifications: string[] };
+      expect(gear.classifications.some((tag) => !before.classifications.includes(tag))).toBe(true);
+      issue(engine, active, 'playCard', { cardId: gears[i], attachToId: host });
+      expect(projected().find(({ instanceId }) => instanceId === host)).toMatchObject({ classifications: before.classifications });
+      expect(projected().find(({ instanceId }) => instanceId === gears[i])).toMatchObject({
+        classifications: gear.classifications, attachedToId: host,
+      });
+    }
+  });
+
+  it.each(['rogue-amendiares-preem-solo', 'royce-psycho-on-the-edge'])('leaves Gear in trash when the defeated Legend %s is removed', (slug) => {
+    const { state, active, other } = paymentFixture();
+    const legend = placeCard(state, other, slug, 'field');
+    const gear = placeCard(state, other, 'zetatech-berserk', 'field');
+    equipFixture(state, legend, gear);
+    const smasher = placeCard(state, active, 'adam-smasher-metal-over-meat', 'hand');
+    for (let i = 0; i < 9; i++) placeEddie(state, active);
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'playCard', { cardId: smasher });
+    const after = engine.getState() as FixtureState;
+    expect(after.G.players[other].zones.removedFromGame).toContain(legend);
+    expect(after.G.players[other].zones.trash).toContain(gear);
+    expect(after.G.cardIndex[gear].meta.attachedToId).toBeNull();
+  });
+
+  it('lets a Voodoo Boy with Adrenaline attack after a Program once MaxTac leaves', () => {
+    const { state, active, other } = paymentFixture();
+    const boy = placeCard(state, active, 'jacked-in-voodoo-boy', 'hand');
+    const first = placeCard(state, active, 'bonnie-and-clyde', 'hand');
+    const defeat = placeCard(state, active, 'wild-in-the-streets', 'hand');
+    const converter = placeCard(state, active, 'adrenaline-converter', 'hand');
+    const maxTac = placeCard(state, other, 'maxtac-suppression-team', 'field', true);
+    const rival = state.G.players[other];
+    for (const id of rival.fixerArea.splice(0, 3)) {
+      state.G.gigDice[id].location = 'gigArea';
+      state.G.gigDice[id].faceValue = 1;
+      rival.gigArea.push(id);
+    }
+    for (let i = 0; i < 14; i++) placeEddie(state, active);
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'playCard', { cardId: first });
+    issue(engine, active, 'playCard', { cardId: boy });
+    issue(engine, active, 'playCard', { cardId: converter, attachToId: boy });
+    expect(rejectedMove(engine, active, 'attackRival', { attackerId: boy })).toBe(true);
+    issue(engine, active, 'playCard', { cardId: defeat });
+    if (engine.getFilteredView(active).prompt.choice?.type === 'chooseTarget') {
+      issue(engine, active, 'resolveEffectTarget', { targetIds: [maxTac] });
+    }
+    expect(engine.getState().G.players[other].zones.trash).toContain(maxTac);
+    issue(engine, active, 'attackRival', { attackerId: boy });
+  });
+
+  it.each(['oda', 'steel-dragon'])('allows played-turn Unit attacks only against spent targets for %s', (source) => {
+    const { state, active, other } = paymentFixture();
+    state.G.players[active].zones.hand = [];
+    const card = placeCard(state, active, source === 'oda' ? 'sandayu-oda-hanako-s-guardian' : 'yorinobu-arasaka-steel-dragon', 'hand');
+    const attacker = source === 'oda' ? card : placeCard(state, active, 'delamain-cab', 'hand');
+    const ready = placeCard(state, other, 'corpo-security', 'field');
+    const spent = placeCard(state, other, 'field-operator', 'field', true);
+    for (let i = 0; i < 7; i++) placeEddie(state, active);
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'playCard', { cardId: card });
+    if (source === 'steel-dragon') issue(engine, active, 'resolveEffectTarget', { targetIds: [attacker] });
+    expect(rejectedMove(engine, active, 'attackUnit', { attackerId: attacker, defenderId: ready })).toBe(true);
+    issue(engine, active, 'attackUnit', { attackerId: attacker, defenderId: spent });
   });
 
   it('applies fight defeat before a fight-loss ability defeats the opposing Unit', () => {
@@ -553,6 +928,7 @@ describe('play engine', () => {
     const gear = placeCard(state, active, 'kiroshi-optics', 'field');
     state.G.cardIndex[attacker].meta.attachedGearIds.push(gear);
     state.G.cardIndex[gear].meta.attachedToId = attacker;
+    giveGig(state, other);
     const engine = new LocalEngine(state);
     issue(engine, active, 'attackRival', { attackerId: attacker });
     const prompt = hideConcealedTargets(engine.getFilteredView(active)).prompt;
@@ -648,7 +1024,7 @@ type FixtureState = EngineState & { G: {
   manualPaymentPlayerId?: Seat;
   turnMetadata: { activePlayerId: Seat };
   players: Record<Seat, { eddies: number; spentEddies: number; eddieCardIds: string[]; fixerArea: string[]; gigArea: string[] }>;
-  gigDice: Record<string, { location: string; faceValue: number }>;
+  gigDice: Record<string, { location: string; faceValue: number; ownerId: Seat }>;
   cardIndex: Record<string, { zone: string; meta: { faceDown: boolean; spent: boolean; hasLag: boolean; attachedGearIds: string[]; attachedToId: string | null } }>;
 } };
 
@@ -675,6 +1051,22 @@ function placeEddie(state: FixtureState, seat: Seat) {
   state.G.players[seat].eddieCardIds.push(id);
   state.G.players[seat].eddies++;
   return id;
+}
+
+function equipFixture(state: FixtureState, host: string, gear: string) {
+  state.G.cardIndex[host].meta.attachedGearIds.push(gear);
+  state.G.cardIndex[gear].meta.attachedToId = host;
+}
+
+function giveGig(state: FixtureState, seat: Seat) {
+  const { fixerArea, gigArea } = state.G.players[seat];
+  const id = fixerArea.shift()!;
+  Object.assign(state.G.gigDice[id], { location: 'gigArea', faceValue: 1 });
+  gigArea.push(id);
+}
+
+function rejectedMove(engine: LocalEngine, seat: Seat, move: string, args: Record<string, unknown>) {
+  return !engine.processCommand({ commandID: `reject-${move}`, move, input: { args } }, seat).success;
 }
 
 function placeCard(state: FixtureState, seat: Seat, slug: string, zone: string, spent = false) {

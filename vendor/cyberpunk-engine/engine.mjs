@@ -877,72 +877,72 @@ var S = {
 function We(e, n, r) {
 	let i = n.decideChoice;
 	switch (e.type) {
-		case "scry": return Ge(i?.scry, S.scry)(e, r);
-		case "revealDestination": return Ge(i?.revealDestination, S.revealDestination)(e, r);
-		case "chooseTarget": return Ge(i?.chooseTarget, S.chooseTarget)(e, r);
-		case "chooseEffect": return Ge(i?.chooseEffect, S.chooseEffect)(e, r);
-		case "chooseTrigger": return Ge(i?.chooseTrigger, S.chooseTrigger)(e, r);
-		case "chooseGigsToSteal": return Ge(i?.chooseGigsToSteal, S.chooseGigsToSteal)(e, r);
-		case "preventGigSteal": return Ge(i?.preventGigSteal, S.preventGigSteal)(e, r);
-		case "chooseCardToPlay": return Ge(i?.chooseCardToPlay, S.chooseCardToPlay)(e, r);
-		case "chooseCardToMove": return Ge(i?.chooseCardToMove, S.chooseCardToMove)(e, r);
-		case "chooseCardType": return Ge(i?.chooseCardType, S.chooseCardType)(e, r);
-		case "gainGig": return Ge(i?.gainGig, S.gainGig)(e, r);
-		case "redirectDefeat": return Ge(i?.redirectDefeat, S.redirectDefeat)(e, r);
-		case "chooseSacrificialGear": return Ge(i?.chooseSacrificialGear, S.chooseSacrificialGear)(e, r);
-		case "chooseFirstPlayer": return Ge(i?.chooseFirstPlayer, S.chooseFirstPlayer)(e, r);
+		case "scry": return C(i?.scry, S.scry)(e, r);
+		case "revealDestination": return C(i?.revealDestination, S.revealDestination)(e, r);
+		case "chooseTarget": return C(i?.chooseTarget, S.chooseTarget)(e, r);
+		case "chooseEffect": return C(i?.chooseEffect, S.chooseEffect)(e, r);
+		case "chooseTrigger": return C(i?.chooseTrigger, S.chooseTrigger)(e, r);
+		case "chooseGigsToSteal": return C(i?.chooseGigsToSteal, S.chooseGigsToSteal)(e, r);
+		case "preventGigSteal": return C(i?.preventGigSteal, S.preventGigSteal)(e, r);
+		case "chooseCardToPlay": return C(i?.chooseCardToPlay, S.chooseCardToPlay)(e, r);
+		case "chooseCardToMove": return C(i?.chooseCardToMove, S.chooseCardToMove)(e, r);
+		case "chooseCardType": return C(i?.chooseCardType, S.chooseCardType)(e, r);
+		case "gainGig": return C(i?.gainGig, S.gainGig)(e, r);
+		case "redirectDefeat": return C(i?.redirectDefeat, S.redirectDefeat)(e, r);
+		case "chooseSacrificialGear": return C(i?.chooseSacrificialGear, S.chooseSacrificialGear)(e, r);
+		case "chooseFirstPlayer": return C(i?.chooseFirstPlayer, S.chooseFirstPlayer)(e, r);
 		default: return t(e, "ChoicePrompt");
 	}
 }
-function Ge(e, t) {
+function C(e, t) {
 	return e ?? t;
 }
 // upstream/submodules/cyberpunk/packages/engine/src/automation/util/attack-readiness.ts
-function Ke(e) {
+function Ge(e) {
 	return (e.type === "unit" || e.keywords.includes("goSolo") || e.grantedRules.includes("goSolo")) && !e.faceDown && !e.spent;
 }
+function Ke(e, t) {
+	return !Ge(e) || e.grantedRules.includes("cantAttack") || e.grantedRules.includes("requiresProgramPlayedThisTurn") && !t ? !1 : !e.hasLag || Ye(e, "adrenaline") || e.grantedRules.includes("canAttackOnPlayedTurnAgainstUnits") || e.grantedRules.includes("canAttackRivalOnPlayedTurn");
+}
 function qe(e, t) {
-	return !Ke(e) || e.grantedRules.includes("cantAttack") || e.grantedRules.includes("requiresProgramPlayedThisTurn") && !t ? !1 : !e.hasLag || Xe(e, "adrenaline") || e.grantedRules.includes("canAttackOnPlayedTurnAgainstUnits") || e.grantedRules.includes("canAttackRivalOnPlayedTurn");
+	return e.grantedRules.includes("cantAttackRival") || !Ke(e, t) ? !1 : !e.hasLag || Ye(e, "adrenaline") || e.grantedRules.includes("canAttackRivalOnPlayedTurn");
 }
-function Je(e, t) {
-	return e.grantedRules.includes("cantAttackRival") || !qe(e, t) ? !1 : !e.hasLag || Xe(e, "adrenaline") || e.grantedRules.includes("canAttackRivalOnPlayedTurn");
+function Je(e) {
+	return Ge(e) && Ye(e, "blocker");
 }
-function Ye(e) {
-	return Ke(e) && Xe(e, "blocker");
-}
-function Xe(e, t) {
+function Ye(e, t) {
 	return e.keywords.includes(t) || e.grantedRules.includes(t);
 }
 // upstream/submodules/cyberpunk/packages/engine/src/automation/util/board-presence.ts
-function Ze(e, t) {
+function Xe(e, t) {
 	let n = e.players[t]?.zones.field;
 	if (!Array.isArray(n)) return !1;
 	let r = e.playedCardTypesThisTurn[t]?.includes("program") === !0;
-	return n.filter((e) => Je(e, r)).length > Object.entries(e.players).filter(([e]) => e !== t).reduce((e, [, t]) => {
+	return n.filter((e) => qe(e, r)).length > Object.entries(e.players).filter(([e]) => e !== t).reduce((e, [, t]) => {
 		let n = t.zones.field;
-		return e + (Array.isArray(n) ? n.filter(Ye).length : 0);
+		return e + (Array.isArray(n) ? n.filter(Je).length : 0);
 	}, 0);
 }
 // upstream/submodules/cyberpunk/packages/engine/src/automation/deck-profile.ts
-function Qe(e, t, n) {
+function Ze(e, t, n) {
 	if (!n || !e || !t?.cardName) return "none";
 	let r = n.gearHosts?.[e], i = n.gearHostTypes?.[e], a = r?.includes(t.cardName) === !0, o = i ? t.type === i : !1;
 	return a && (o || !i) ? "preferred" : a ? "named" : o ? "typed" : "none";
 }
-function $e(e, t) {
+function Qe(e, t) {
 	return !t || !e ? !1 : t.coreCards.includes(e);
 }
-function et(e, t) {
+function $e(e, t) {
 	return !t?.preferSpendOverAttack?.length || !e?.cardName || e.type !== "unit" ? !1 : t.preferSpendOverAttack.includes(e.cardName);
 }
-function tt(e) {
+function et(e) {
 	let t = /* @__PURE__ */ new Set();
 	if (!e?.gearHosts) return t;
 	for (let [n, r] of Object.entries(e.gearHosts)) if (e.gearHostTypes?.[n] !== "unit") for (let e of r) t.add(e);
 	return t;
 }
 // upstream/submodules/cyberpunk/packages/engine/src/automation/strategies/move-args.ts
-function C(e, n) {
+function w(e, n) {
 	let { moveId: r, inputSpec: i } = e;
 	switch (r) {
 		case "playCard": {
@@ -954,7 +954,7 @@ function C(e, n) {
 				kind: "stuck",
 				reason: "playCard: no candidates"
 			};
-			let e = n.pickPlayCard ? n.pickPlayCard(i.candidates) : rt(i.candidates);
+			let e = n.pickPlayCard ? n.pickPlayCard(i.candidates) : nt(i.candidates);
 			if (!e) return {
 				kind: "stuck",
 				reason: "playCard: no playable candidate"
@@ -980,7 +980,7 @@ function C(e, n) {
 			return e ? {
 				kind: "command",
 				move: r,
-				args: nt(r, e)
+				args: tt(r, e)
 			} : {
 				kind: "stuck",
 				reason: `${r}: no candidates`
@@ -1103,7 +1103,7 @@ function C(e, n) {
 		default: return t(r, "MoveId in decisionFromMove");
 	}
 }
-function nt(e, t) {
+function tt(e, t) {
 	switch (e) {
 		case "sellCard": return { cardId: t };
 		case "callLegend": return { legendId: t };
@@ -1114,7 +1114,7 @@ function nt(e, t) {
 		default: return { cardId: t };
 	}
 }
-function rt(e) {
+function nt(e) {
 	for (let t of e) {
 		if (t.attachTargets === void 0) return { cardId: t.cardId };
 		let e = t.attachTargets[0];
@@ -1126,14 +1126,14 @@ function rt(e) {
 	return null;
 }
 // upstream/submodules/cyberpunk/packages/engine/src/automation/strategies/greedy.ts
-var it = {
+var rt = {
 	ownNearWinThreshold: 5,
 	rivalNearWinThreshold: 5,
 	mulliganMinCheapCards: 2,
 	mulliganCheapCostThreshold: 2,
 	mulliganMinSellable: 1,
 	fightMinMargin: 1,
-	defaultPriority: at([
+	defaultPriority: it([
 		"mulligan",
 		"keepHand",
 		"attackRival",
@@ -1146,7 +1146,7 @@ var it = {
 		"passPhase",
 		"resolveAttack"
 	]),
-	ownNearWinPriority: at([
+	ownNearWinPriority: it([
 		"attackRival",
 		"attackUnit",
 		"activateAbility",
@@ -1158,7 +1158,7 @@ var it = {
 		"sellCard",
 		"mulligan"
 	]),
-	rivalNearWinPriority: at([
+	rivalNearWinPriority: it([
 		"attackRival",
 		"attackUnit",
 		"activateAbility",
@@ -1171,29 +1171,29 @@ var it = {
 		"mulligan"
 	])
 };
-function at(e) {
+function it(e) {
 	let t = {};
 	for (let n = 0; n < e.length; n++) t[e[n]] = e.length - n;
 	return t;
 }
-function ot(e) {
+function at(e) {
 	let t = e;
 	return typeof t.greedyWeights == "object" && t.greedyWeights !== null;
 }
-function st(e, t) {
-	return !ot(e) || e.deckProfile === t ? e : ft(e.greedyWeights, e.name, t);
+function ot(e, t) {
+	return !at(e) || e.deckProfile === t ? e : dt(e.greedyWeights, e.name, t);
 }
-var ct = {
+var st = {
 	playCard: 10,
 	callLegend: 9,
 	attackRival: 8,
 	attackUnit: 7
 };
-function lt(e, t) {
-	let n = ut(e);
+function ct(e, t) {
+	let n = lt(e);
 	t?.pacing === "develop-first" && (n.defaultPriority = {
 		...n.defaultPriority,
-		...ct
+		...st
 	});
 	let r = t?.weights;
 	return r && (r.ownNearWinThreshold !== void 0 && (n.ownNearWinThreshold = r.ownNearWinThreshold), r.rivalNearWinThreshold !== void 0 && (n.rivalNearWinThreshold = r.rivalNearWinThreshold), r.mulliganMinCheapCards !== void 0 && (n.mulliganMinCheapCards = r.mulliganMinCheapCards), r.mulliganCheapCostThreshold !== void 0 && (n.mulliganCheapCostThreshold = r.mulliganCheapCostThreshold), r.mulliganMinSellable !== void 0 && (n.mulliganMinSellable = r.mulliganMinSellable), r.fightMinMargin !== void 0 && (n.fightMinMargin = r.fightMinMargin), r.defaultPriority && (n.defaultPriority = {
@@ -1207,7 +1207,7 @@ function lt(e, t) {
 		...r.rivalNearWinPriority
 	})), n;
 }
-function ut(e) {
+function lt(e) {
 	return {
 		...e,
 		defaultPriority: { ...e.defaultPriority },
@@ -1215,32 +1215,32 @@ function ut(e) {
 		rivalNearWinPriority: { ...e.rivalNearWinPriority }
 	};
 }
-function dt(e, t) {
+function ut(e, t) {
 	let n = (t) => t === "concede" ? -Infinity : e[t] ?? 0, r = t.map((e) => e.moveId);
 	return [...new Set(r)].sort((e, t) => {
 		let r = n(e), i = n(t);
 		return r === i ? e.localeCompare(t) : i - r;
 	});
 }
-function ft(e = it, t = "greedy", n) {
-	let r = lt(e, n);
+function dt(e = rt, t = "greedy", n) {
+	let r = ct(e, n);
 	return {
 		name: t,
 		greedyWeights: e,
 		deckProfile: n,
 		decideAction(e) {
-			let t = e.prompt.availableMoves.find((e) => e.moveId === "mulligan"), i = ht(e, r, n);
+			let t = e.prompt.availableMoves.find((e) => e.moveId === "mulligan"), i = mt(e, r, n);
 			if (t && i) return {
 				kind: "command",
 				move: "mulligan"
 			};
-			let a = vt(e, r, n);
+			let a = _t(e, r, n);
 			for (let t of a) {
 				if (t === "mulligan" && !i) continue;
 				let a = e.prompt.availableMoves.find((e) => e.moveId === t);
 				if (!a) continue;
-				let o = bt(a, e, r, n);
-				if (o.kind === "command") return mt(e, o, n) ?? o;
+				let o = yt(a, e, r, n);
+				if (o.kind === "command") return pt(e, o, n) ?? o;
 			}
 			return {
 				kind: "stuck",
@@ -1249,16 +1249,16 @@ function ft(e = it, t = "greedy", n) {
 		}
 	};
 }
-var pt = ft();
-function mt(e, t, n) {
+var ft = dt();
+function pt(e, t, n) {
 	if (t.move !== "attackRival" && t.move !== "attackUnit") return null;
 	let r = t.args?.attackerId;
 	if (typeof r != "string") return null;
 	let i = e.prompt.availableMoves.find((e) => e.moveId === "playCard");
 	if (i?.inputSpec.type !== "playCard") return null;
-	let a = Zt(i.inputSpec.candidates.filter((t) => {
-		let i = w(e.view, t.cardId);
-		return i?.type === "gear" && (i.effectivePower ?? 0) > 0 && t.attachTargets?.includes(r) && sn(t.attachTargets, e.view, t.cardId, n) === r;
+	let a = Xt(i.inputSpec.candidates.filter((t) => {
+		let i = T(e.view, t.cardId);
+		return i?.type === "gear" && (i.effectivePower ?? 0) > 0 && t.attachTargets?.includes(r) && on(t.attachTargets, e.view, t.cardId, n) === r;
 	}), e.view, e.playerId, n);
 	return a ? {
 		kind: "command",
@@ -1266,8 +1266,8 @@ function mt(e, t, n) {
 		args: { ...a }
 	} : null;
 }
-function ht(e, t = it, n) {
-	let r = gt(e);
+function mt(e, t = rt, n) {
+	let r = ht(e);
 	if (r.length === 0) return !1;
 	let i = n?.mulligan;
 	if (!i) {
@@ -1281,22 +1281,22 @@ function ht(e, t = it, n) {
 	let c = i.cheapUnitCost ?? t.mulliganCheapCostThreshold, l = a.filter((e) => e.type === "unit" && (e.cost ?? Infinity) <= c).length, u = i.minCheapUnits ?? t.mulliganMinCheapCards, d = (i.engineNames ?? []).some((e) => a.some((t) => t.cardName === e));
 	return l < Math.max(0, u - (d ? i.engineRelief ?? 0 : 0));
 }
-function gt(e) {
+function ht(e) {
 	let t = e.view.players?.[e.playerId];
 	if (!t) return [];
 	let n = t.zones.hand;
 	return Array.isArray(n) ? n : [];
 }
-function _t(e, t) {
+function gt(e, t) {
 	if (!t?.preferSpendOverAttack?.length) return !1;
 	let n = e.prompt.availableMoves.find((e) => e.moveId === "activateAbility");
-	return n?.inputSpec.type === "selectAbility" && n.inputSpec.candidates.some((n) => et(w(e.view, n.cardId), t));
+	return n?.inputSpec.type === "selectAbility" && n.inputSpec.candidates.some((n) => $e(T(e.view, n.cardId), t));
 }
-function vt(e, t, n) {
-	let { ownGigCount: r, rivalGigCount: i } = yt(e), a = r >= t.ownNearWinThreshold, o = i >= t.rivalNearWinThreshold, s = dt(a ? t.ownNearWinPriority : o ? t.rivalNearWinPriority : t.defaultPriority, e.prompt.availableMoves);
-	return r < 5 && _t(e, n) ? ["activateAbility", ...s.filter((e) => e !== "activateAbility")] : s;
+function _t(e, t, n) {
+	let { ownGigCount: r, rivalGigCount: i } = vt(e), a = r >= t.ownNearWinThreshold, o = i >= t.rivalNearWinThreshold, s = ut(a ? t.ownNearWinPriority : o ? t.rivalNearWinPriority : t.defaultPriority, e.prompt.availableMoves);
+	return r < 5 && gt(e, n) ? ["activateAbility", ...s.filter((e) => e !== "activateAbility")] : s;
 }
-function yt(e) {
+function vt(e) {
 	let t = e.playerId, n = e.view.players;
 	if (!n) return {
 		ownGigCount: 0,
@@ -1309,32 +1309,32 @@ function yt(e) {
 		rivalGigCount: i
 	};
 }
-function bt(e, n, r, i) {
+function yt(e, n, r, i) {
 	let { moveId: a, inputSpec: o } = e;
 	switch (a) {
 		case "playCard":
 			if (o.type !== "playCard") break;
-			return C(e, {
+			return w(e, {
 				pickFromCandidates: () => null,
 				pickPair: () => null,
-				pickPlayCard: (e) => Xt(e, n.view, n.playerId, i)
+				pickPlayCard: (e) => Yt(e, n.view, n.playerId, i)
 			});
 		case "sellCard":
 			if (o.type !== "selectCard") break;
-			return C(e, {
-				pickFromCandidates: (e) => Tt(e, n.view, n.playerId, i),
+			return w(e, {
+				pickFromCandidates: (e) => wt(e, n.view, n.playerId, i),
 				pickPair: () => null
 			});
 		case "attackUnit":
 			if (o.type !== "selectPair") break;
-			return C(e, {
+			return w(e, {
 				pickFromCandidates: () => null,
-				pickPair: (e, t) => Jt(e, t, n.view, n.playerId, r.fightMinMargin)
+				pickPair: (e, t) => qt(e, t, n.view, n.playerId, r.fightMinMargin)
 			});
 		case "attackRival":
 			if (o.type !== "selectCard") break;
-			return C(e, {
-				pickFromCandidates: (e) => jt(e, n.view, n.playerId),
+			return w(e, {
+				pickFromCandidates: (e) => At(e, n.view, n.playerId),
 				pickPair: () => null
 			});
 		case "useBlocker":
@@ -1342,27 +1342,27 @@ function bt(e, n, r, i) {
 			return n.view.attackState?.redirectedByBlocker ? {
 				kind: "stuck",
 				reason: "useBlocker: attack already redirected by blocker"
-			} : C(e, {
-				pickFromCandidates: (e) => qt(e, n.view, n.playerId, r, i),
+			} : w(e, {
+				pickFromCandidates: (e) => Kt(e, n.view, n.playerId, r, i),
 				pickPair: () => null
 			});
 		case "callLegend":
-		case "resolveCardToPlay": return C(e, {
+		case "resolveCardToPlay": return w(e, {
 			pickFromCandidates: (e) => e[0] ?? null,
 			pickPair: () => null
 		});
 		case "goSolo":
 			if (o.type !== "selectCard") break;
-			return C(e, {
-				pickFromCandidates: (e) => kt(e, n, r, i),
+			return w(e, {
+				pickFromCandidates: (e) => Ot(e, n, r, i),
 				pickPair: () => null
 			});
 		case "activateAbility":
 			if (o.type !== "selectAbility") break;
-			return C(e, {
+			return w(e, {
 				pickFromCandidates: () => null,
 				pickPair: () => null,
-				pickAbility: (e) => Dt(e, n, i)
+				pickAbility: (e) => Et(e, n, i)
 			});
 		case "passPhase":
 		case "concede":
@@ -1383,7 +1383,7 @@ function bt(e, n, r, i) {
 		case "resolveChooseEffect":
 		case "resolveRedirectDefeat":
 		case "resolveSacrificialGear":
-		case "resolveFirstPlayer": return C(e, {
+		case "resolveFirstPlayer": return w(e, {
 			pickFromCandidates: (e) => e[0] ?? null,
 			pickPair: () => null
 		});
@@ -1402,7 +1402,7 @@ function bt(e, n, r, i) {
 		reason: `greedy: unexpected inputSpec for ${a}`
 	};
 }
-function w(e, t) {
+function T(e, t) {
 	for (let n of Object.values(e.players)) for (let e of Object.values(n.zones)) {
 		if (!Array.isArray(e)) continue;
 		let n = e.find((e) => e.instanceId === t);
@@ -1410,16 +1410,16 @@ function w(e, t) {
 	}
 	return null;
 }
-function xt(e) {
+function bt(e) {
 	if (!e) return 0;
 	let t = e.effectivePower ?? 0, n = e.keywords.includes("blocker") || e.grantedRules.includes("blocker") ? 18 : 0, r = e.keywords.includes("adrenaline") || e.keywords.includes("goSolo") ? 8 : 0, i = e.type === "unit" ? 10 : e.type === "gear" ? 6 : 4;
 	return t * 3 + n + r + i + e.triggerHints.length * 5;
 }
-var St = 6;
-function Ct(e, t) {
+var xt = 6;
+function St(e, t) {
 	return !t || t.length === 0 || e === null ? !1 : e.cardName !== null && t.includes(e.cardName);
 }
-function wt(e, t, n) {
+function Ct(e, t, n) {
 	if (!n) return 0;
 	let r = e.players[t];
 	if (!r) return 0;
@@ -1427,19 +1427,19 @@ function wt(e, t, n) {
 	for (let e of [r.zones.field, r.zones.legendArea]) if (Array.isArray(e)) for (let t of e) t.cardName === n && (i += 1);
 	return i;
 }
-function Tt(e, t, n, r) {
-	let i = t.players[n]?.availableEddies ?? 0, a = e.filter((e) => !Ct(w(t, e), r?.coreCards)), o = e.filter((e) => {
-		let i = w(t, e);
-		return Ct(i, r?.coreCards) && wt(t, n, i?.cardName) > 0;
+function wt(e, t, n, r) {
+	let i = t.players[n]?.availableEddies ?? 0, a = e.filter((e) => !St(T(t, e), r?.coreCards)), o = e.filter((e) => {
+		let i = T(t, e);
+		return St(i, r?.coreCards) && Ct(t, n, i?.cardName) > 0;
 	}), s = a.length > 0 ? a : o.length > 0 ? o : null;
 	return s ? [...s].sort((e, n) => {
-		let r = w(t, e), a = w(t, n), o = (r?.cost ?? Infinity) <= i ? 8 : 0, s = (a?.cost ?? Infinity) <= i ? 8 : 0, c = xt(r) + o, l = xt(a) + s;
+		let r = T(t, e), a = T(t, n), o = (r?.cost ?? Infinity) <= i ? 8 : 0, s = (a?.cost ?? Infinity) <= i ? 8 : 0, c = bt(r) + o, l = bt(a) + s;
 		if (c !== l) return c - l;
 		let u = r?.cost ?? Infinity, d = a?.cost ?? Infinity;
 		return u === d ? e.localeCompare(n) : u - d;
 	})[0] ?? null : null;
 }
-var Et = {
+var Tt = {
 	stealGig: 40,
 	defeat: 30,
 	playCard: 24,
@@ -1454,21 +1454,21 @@ var Et = {
 	moveCard: 10,
 	scry: 8
 };
-function Dt(e, t, n) {
-	let { ownGigCount: r, rivalGigCount: i } = yt(t);
+function Et(e, t, n) {
+	let { ownGigCount: r, rivalGigCount: i } = vt(t);
 	return [...e].sort((e, a) => {
 		let o = (e) => {
-			let a = e.effectHints.reduce((e, t) => e + (Et[t] ?? 5), 0);
-			return r >= 5 && e.effectHints.includes("stealGig") && (a += 30), i >= 5 && e.effectHints.some((e) => e === "defeat" || e === "ready") && (a += 15), a -= e.eddieCost * 5, e.spendsCard && (a -= 3), et(w(t.view, e.cardId), n) && (a += 40), a;
+			let a = e.effectHints.reduce((e, t) => e + (Tt[t] ?? 5), 0);
+			return r >= 5 && e.effectHints.includes("stealGig") && (a += 30), i >= 5 && e.effectHints.some((e) => e === "defeat" || e === "ready") && (a += 15), a -= e.eddieCost * 5, e.spendsCard && (a -= 3), $e(T(t.view, e.cardId), n) && (a += 40), a;
 		}, s = o(e), c = o(a);
 		return s === c ? e.cardId === a.cardId ? e.abilityIndex - a.abilityIndex : e.cardId.localeCompare(a.cardId) : c - s;
 	})[0] ?? null;
 }
-function Ot(e, t) {
+function Dt(e, t) {
 	if (e.length === 0) return null;
 	let n = null;
 	for (let r of e) {
-		let e = w(t, r), i = e?.effectivePower ?? Infinity, a = e?.cost ?? Infinity;
+		let e = T(t, r), i = e?.effectivePower ?? Infinity, a = e?.cost ?? Infinity;
 		(!n || i < n.power || i === n.power && a < n.cost || i === n.power && a === n.cost && r < n.id) && (n = {
 			id: r,
 			power: i,
@@ -1477,18 +1477,18 @@ function Ot(e, t) {
 	}
 	return n?.id ?? e[0];
 }
-function kt(e, t, n, r) {
-	let i = tt(r);
-	return (Nt(t.view, t.playerId) >= n.ownNearWinThreshold || i.size === 0 ? e : e.filter((e) => {
-		let n = w(t.view, e)?.cardName;
+function Ot(e, t, n, r) {
+	let i = et(r);
+	return (Mt(t.view, t.playerId) >= n.ownNearWinThreshold || i.size === 0 ? e : e.filter((e) => {
+		let n = T(t.view, e)?.cardName;
 		return !n || !i.has(n);
 	}))[0] ?? null;
 }
-function At(e, t, n) {
+function kt(e, t, n) {
 	if (e.length === 0) return null;
 	let r = null;
 	for (let n of e) {
-		let e = w(t, n)?.effectivePower ?? 0;
+		let e = T(t, n)?.effectivePower ?? 0;
 		(!r || e > r.power || e === r.power && n < r.id) && (r = {
 			id: n,
 			power: e
@@ -1496,38 +1496,38 @@ function At(e, t, n) {
 	}
 	return r?.id ?? e[0];
 }
-function jt(e, t, n) {
+function At(e, t, n) {
 	if (e.length === 0) return null;
-	let r = Yt(e, t);
-	if (r.length > 0) return At(r, t, n);
-	if (Mt(t, n) === 0) return null;
-	let i = tn(t, n), a = i.reduce((e, t) => Math.max(e, t.effectivePower ?? 0), -Infinity), o = i.length === 0 ? e : e.filter((e) => (w(t, e)?.effectivePower ?? 0) > a);
-	return o.length > 0 ? At(o, t, n) : Ze(t, n) ? [...e].filter((e) => (w(t, e)?.effectivePower ?? 0) > 0).sort((e, n) => xt(w(t, e)) - xt(w(t, n)) || e.localeCompare(n))[0] ?? null : null;
+	let r = Jt(e, t);
+	if (r.length > 0) return kt(r, t, n);
+	if (jt(t, n) === 0) return null;
+	let i = en(t, n), a = i.reduce((e, t) => Math.max(e, t.effectivePower ?? 0), -Infinity), o = i.length === 0 ? e : e.filter((e) => (T(t, e)?.effectivePower ?? 0) > a);
+	return o.length > 0 ? kt(o, t, n) : Xe(t, n) ? [...e].filter((e) => (T(t, e)?.effectivePower ?? 0) > 0).sort((e, n) => bt(T(t, e)) - bt(T(t, n)) || e.localeCompare(n))[0] ?? null : null;
 }
-function Mt(e, t) {
+function jt(e, t) {
 	for (let [n, r] of Object.entries(e.players)) if (n !== t) return r.gigCount;
 	return 0;
 }
-function Nt(e, t) {
+function Mt(e, t) {
 	return e.players[t]?.gigCount ?? 0;
 }
-function Pt(e, t) {
+function Nt(e, t) {
 	for (let n of Object.keys(e.players)) if (n !== t) return n;
 	return null;
 }
-function Ft(e, t) {
+function Pt(e, t) {
 	let n = e.effectivePower ?? 0;
 	if (n <= 0 || t <= 0) return 0;
 	let r = 1 + Math.floor(n / 10), i = +!!e.grantedRules.includes("stealsOneFewerGig");
 	return Math.min(Math.max(0, r - i), t);
 }
-function It(e, t) {
+function Ft(e, t) {
 	return e.spent || e.faceDown || e.grantedRules.includes("cantAttack") || e.grantedRules.includes("requiresProgramPlayedThisTurn") && !t ? !1 : e.hasLag ? e.grantedRules.includes("adrenaline") || e.grantedRules.includes("canAttackRivalOnPlayedTurn") : e.type === "unit" || e.keywords.includes("goSolo");
 }
-function Lt(e, t) {
+function It(e, t) {
 	return e > t ? "survive" : e === t ? "trade" : "chump";
 }
-function Rt(e) {
+function Lt(e) {
 	switch (e) {
 		case "survive": return 0;
 		case "trade": return 1;
@@ -1535,78 +1535,78 @@ function Rt(e) {
 		default: return t(e, "BlockerOutcome in outcomeRank");
 	}
 }
-function zt(e, t) {
-	return e.triggerHints.includes("gigStolen") ? !0 : e.attachedGearIds.some((e) => w(t, e)?.triggerHints.includes("gigStolen") === !0);
+function Rt(e, t) {
+	return e.triggerHints.includes("gigStolen") ? !0 : e.attachedGearIds.some((e) => T(t, e)?.triggerHints.includes("gigStolen") === !0);
 }
-function Bt(e) {
+function zt(e) {
 	return e.triggerHints.includes("blockerActivated");
 }
-function Vt(e, t, n, r) {
-	let i = Nt(t, n), a = Mt(t, n), o = Ft(e, i);
-	return o <= 0 ? !1 : o >= 2 || i >= r.ownNearWinThreshold || a + o >= r.rivalNearWinThreshold || zt(e, t);
+function Bt(e, t, n, r) {
+	let i = Mt(t, n), a = jt(t, n), o = Pt(e, i);
+	return o <= 0 ? !1 : o >= 2 || i >= r.ownNearWinThreshold || a + o >= r.rivalNearWinThreshold || Rt(e, t);
 }
-function Ht(e, t, n) {
-	let r = w(t, e);
+function Vt(e, t, n) {
+	let r = T(t, e);
 	return r ? {
 		id: e,
-		outcome: Lt(r.effectivePower ?? 0, n),
+		outcome: It(r.effectivePower ?? 0, n),
 		power: r.effectivePower ?? 0,
 		cost: r.cost ?? Infinity,
-		blockerTrigger: Bt(r)
+		blockerTrigger: zt(r)
 	} : null;
 }
-function Ut(e, t) {
-	let n = Rt(e.outcome), r = Rt(t.outcome);
+function Ht(e, t) {
+	let n = Lt(e.outcome), r = Lt(t.outcome);
 	return n === r ? e.blockerTrigger === t.blockerTrigger ? e.power === t.power ? e.cost === t.cost ? e.id.localeCompare(t.id) : e.cost - t.cost : e.power - t.power : e.blockerTrigger ? -1 : 1 : n - r;
 }
-function Wt(e, t, n, r, i, a) {
-	let o = n.effectivePower ?? 0, s = Vt(n, t, r, i), c = Math.min(a?.blockDirectStealsAtLeast ?? 2, 2), l = Ft(n, Nt(t, r)) >= c;
-	return e.map((e) => Ht(e, t, o)).filter((e) => e !== null).filter((e) => e.outcome === "chump" ? !s && !l ? !1 : !Gt(e, t, r, n.instanceId, i) : !0).sort(Ut)[0]?.id ?? null;
+function Ut(e, t, n, r, i, a) {
+	let o = n.effectivePower ?? 0, s = Bt(n, t, r, i), c = Math.min(a?.blockDirectStealsAtLeast ?? 2, 2), l = Pt(n, Mt(t, r)) >= c;
+	return e.map((e) => Vt(e, t, o)).filter((e) => e !== null).filter((e) => e.outcome === "chump" ? !s && !l ? !1 : !Wt(e, t, r, n.instanceId, i) : !0).sort(Ht)[0]?.id ?? null;
 }
-function Gt(e, t, n, r, i) {
-	let a = Nt(t, n), o = Mt(t, n);
+function Wt(e, t, n, r, i) {
+	let a = Mt(t, n), o = jt(t, n);
 	if (a >= i.ownNearWinThreshold || o >= i.rivalNearWinThreshold) return !1;
-	let s = w(t, r), c = s ? Ft(s, a) : 0;
-	if (s && zt(s, t)) return !1;
-	let l = Pt(t, n);
+	let s = T(t, r), c = s ? Pt(s, a) : 0;
+	if (s && Rt(s, t)) return !1;
+	let l = Nt(t, n);
 	if (!l) return !1;
-	let u = t.playedCardTypesThisTurn?.[l]?.includes("program") === !0, d = $t(t, n).filter((e) => e.instanceId !== r && It(e, u)), f = d.filter((e) => e.grantedRules.includes("mustAttack")), p = f.length > 0 ? f : d, m = Math.max(0, a - c);
+	let u = t.playedCardTypesThisTurn?.[l]?.includes("program") === !0, d = Qt(t, n).filter((e) => e.instanceId !== r && Ft(e, u)), f = d.filter((e) => e.grantedRules.includes("mustAttack")), p = f.length > 0 ? f : d, m = Math.max(0, a - c);
 	return p.some((t) => {
-		let n = t.effectivePower ?? 0, r = Ft(t, m);
+		let n = t.effectivePower ?? 0, r = Pt(t, m);
 		return e.power > n && r > 0 && r >= c;
 	});
 }
-function Kt(e, t, n, r) {
+function Gt(e, t, n, r) {
 	let i = n.effectivePower ?? 0, a = r.effectivePower ?? 0;
 	if (a > i) return null;
 	let o = a + (r.cost ?? 0);
-	return e.map((e) => Ht(e, t, i)).filter((e) => {
+	return e.map((e) => Vt(e, t, i)).filter((e) => {
 		if (!e) return !1;
 		if (e.outcome !== "chump") return !0;
 		let t = e.power + (Number.isFinite(e.cost) ? e.cost : 0);
 		return o > t;
-	}).sort(Ut)[0]?.id ?? null;
+	}).sort(Ht)[0]?.id ?? null;
 }
-function qt(e, t, n, r, i) {
+function Kt(e, t, n, r, i) {
 	if (e.length === 0) return null;
 	let a = t.attackState;
-	if (!a || !a.attackerId) return Ot(e, t);
-	let o = w(t, a.attackerId);
+	if (!a || !a.attackerId) return Dt(e, t);
+	let o = T(t, a.attackerId);
 	if (!o) return null;
-	if (a.kind === "direct") return Wt(e, t, o, n, r, i);
+	if (a.kind === "direct") return Ut(e, t, o, n, r, i);
 	if (a.kind === "fight" && a.defenderId) {
-		let n = w(t, a.defenderId);
-		return n ? Kt(e, t, o, n) : null;
+		let n = T(t, a.defenderId);
+		return n ? Gt(e, t, o, n) : null;
 	}
 	return null;
 }
-function Jt(e, t, n, r, i) {
+function qt(e, t, n, r, i) {
 	if (e.length === 0 || t.length === 0) return null;
-	let a = Yt(e, n), o = a.length > 0 ? a : e, s = null;
+	let a = Jt(e, n), o = a.length > 0 ? a : e, s = null;
 	for (let e of o) for (let r of t) {
-		let t = w(n, e), o = w(n, r), c = (t?.effectivePower ?? 0) - (o?.effectivePower ?? 0);
+		let t = T(n, e), o = T(n, r), c = (t?.effectivePower ?? 0) - (o?.effectivePower ?? 0);
 		if (a.length === 0 && c < i) continue;
-		let l = xt(o) + (o?.attachedGearIds.length ?? 0) * 8, u = xt(t), d = l * 10 - u + Math.min(c, 5);
+		let l = bt(o) + (o?.attachedGearIds.length ?? 0) * 8, u = bt(t), d = l * 10 - u + Math.min(c, 5);
 		(!s || d > s.score || d === s.score && `${e}:${r}` < `${s.from}:${s.to}`) && (s = {
 			from: e,
 			to: r,
@@ -1619,31 +1619,31 @@ function Jt(e, t, n, r, i) {
 		to: s.to
 	} : null;
 }
-function Yt(e, t) {
-	return e.filter((e) => w(t, e)?.grantedRules.includes("mustAttack") === !0);
+function Jt(e, t) {
+	return e.filter((e) => T(t, e)?.grantedRules.includes("mustAttack") === !0);
+}
+function Yt(e, t, n, r) {
+	if (e.length === 0) return null;
+	if (Zt(t, n)) {
+		let n = nn(e, t);
+		if (n) return rn(n, t, e, r);
+	}
+	return Xt(e, t, n, r);
 }
 function Xt(e, t, n, r) {
-	if (e.length === 0) return null;
-	if (Qt(t, n)) {
-		let n = rn(e, t);
-		if (n) return an(n, t, e, r);
-	}
-	return Zt(e, t, n, r);
-}
-function Zt(e, t, n, r) {
-	let i = Nt(t, n) >= 5, a = [...e].sort((e, n) => {
+	let i = Mt(t, n) >= 5, a = [...e].sort((e, n) => {
 		let a = (e) => {
-			let n = w(t, e.cardId), a = xt(n) + (n?.cost ?? 0);
-			return Ct(n, r?.coreCards) && (a += St), i && (n?.keywords.includes("adrenaline") || n?.keywords.includes("goSolo")) && (a += 20), e.attachTargets?.length && (a += Math.max(...e.attachTargets.map((e) => w(t, e)?.effectivePower ?? 0))), a;
+			let n = T(t, e.cardId), a = bt(n) + (n?.cost ?? 0);
+			return St(n, r?.coreCards) && (a += xt), i && (n?.keywords.includes("adrenaline") || n?.keywords.includes("goSolo")) && (a += 20), e.attachTargets?.length && (a += Math.max(...e.attachTargets.map((e) => T(t, e)?.effectivePower ?? 0))), a;
 		}, o = a(e), s = a(n);
 		return o === s ? e.cardId.localeCompare(n.cardId) : s - o;
 	});
-	return a[0] ? an(a[0], t, e, r) : null;
+	return a[0] ? rn(a[0], t, e, r) : null;
+}
+function Zt(e, t) {
+	return Qt(e, t).length !== 0 && $t(e, t).length === 0;
 }
 function Qt(e, t) {
-	return $t(e, t).length !== 0 && en(e, t).length === 0;
-}
-function $t(e, t) {
 	let n = [];
 	for (let [r, i] of Object.entries(e.players)) {
 		if (r === t) continue;
@@ -1652,28 +1652,28 @@ function $t(e, t) {
 	}
 	return n;
 }
-function en(e, t) {
+function $t(e, t) {
 	let n = e.players[t];
 	if (!n) return [];
 	let r = n.zones.field;
-	return Array.isArray(r) ? r.filter((e) => nn(e)) : [];
+	return Array.isArray(r) ? r.filter((e) => tn(e)) : [];
 }
-function tn(e, t) {
+function en(e, t) {
 	let n = [];
 	for (let [r, i] of Object.entries(e.players)) {
 		if (r === t) continue;
 		let e = i.zones.field;
-		Array.isArray(e) && n.push(...e.filter((e) => nn(e)));
+		Array.isArray(e) && n.push(...e.filter((e) => tn(e)));
 	}
 	return n;
 }
-function nn(e) {
+function tn(e) {
 	return e.type === "unit" && !e.spent && !e.faceDown && (e.keywords.includes("blocker") || e.grantedRules.includes("blocker"));
 }
-function rn(e, t) {
+function nn(e, t) {
 	return e.map((e) => ({
 		cand: e,
-		card: w(t, e.cardId)
+		card: T(t, e.cardId)
 	})).filter(({ card: e }) => e?.keywords.includes("blocker")).sort((e, t) => {
 		let n = e.card?.effectivePower ?? 0, r = t.card?.effectivePower ?? 0;
 		if (n !== r) return r - n;
@@ -1681,26 +1681,26 @@ function rn(e, t) {
 		return i === a ? e.cand.cardId.localeCompare(t.cand.cardId) : a - i;
 	})[0]?.cand ?? null;
 }
-function an(e, t, n, r) {
+function rn(e, t, n, r) {
 	if (e.attachTargets === void 0) return { cardId: e.cardId };
 	if (e.attachTargets.length === 0) return null;
-	let i = sn(e.attachTargets, t, e.cardId, r);
+	let i = on(e.attachTargets, t, e.cardId, r);
 	return i ? {
 		cardId: e.cardId,
 		attachToId: i
 	} : null;
 }
-var on = {
+var an = {
 	preferred: 0,
 	typed: 1,
 	named: 2,
 	none: 3
 };
-function sn(e, t, n, r) {
+function on(e, t, n, r) {
 	if (e.length === 0) return null;
-	let i = w(t, n)?.cardName, a = i == null ? void 0 : r?.gearHosts?.[i];
+	let i = T(t, n)?.cardName, a = i == null ? void 0 : r?.gearHosts?.[i];
 	return [...e].sort((e, n) => {
-		let o = w(t, e), s = w(t, n), c = on[Qe(i, o, r)], l = on[Qe(i, s, r)];
+		let o = T(t, e), s = T(t, n), c = an[Ze(i, o, r)], l = an[Ze(i, s, r)];
 		if (c !== l) return c - l;
 		let u = o?.cardName && a ? a.indexOf(o.cardName) : 2 ** 53 - 1, d = s?.cardName && a ? a.indexOf(s.cardName) : 2 ** 53 - 1, f = u >= 0 ? u : 2 ** 53 - 1, p = d >= 0 ? d : 2 ** 53 - 1;
 		if (f !== p) return f - p;
@@ -1709,7 +1709,7 @@ function sn(e, t, n, r) {
 	})[0] ?? null;
 }
 // upstream/submodules/cyberpunk/packages/cards/src/card-metadata.ts
-var cn = {
+var sn = {
 	"lucyna-kushinada": {
 		canonicalSetCode: "promo",
 		printings: [{
@@ -6712,33 +6712,33 @@ var cn = {
 		],
 		selectedPrintingId: "79cdc9a5-d94d-4df4-9f88-aa02fb0357b3"
 	}
-}, ln = /* @__PURE__ */ new Set([
+}, cn = /* @__PURE__ */ new Set([
 	"play",
 	"attack",
 	"flip",
 	"call",
 	"defeated"
 ]);
-function un(e) {
+function ln(e) {
 	let t = [];
 	for (let n of e) {
 		let e = n.trigger?.trigger;
-		if (e && ln.has(e)) {
+		if (e && cn.has(e)) {
 			let n = e;
 			t.includes(n) || t.push(n);
 		}
 	}
 	return t;
 }
-function dn(e) {
+function un(e) {
 	let t = [];
 	for (let n of e) n.kind === "keyword" && n.keyword && !t.includes(n.keyword) && t.push(n.keyword);
 	return t;
 }
-function fn(e) {
+function dn(e) {
 	return e.slug;
 }
-function pn(e) {
+function fn(e) {
 	let t = e.artId ?? e.id;
 	return {
 		id: e.id,
@@ -6749,8 +6749,8 @@ function pn(e) {
 		imageUrl: e.imageUrl ?? ""
 	};
 }
-function T(e, t) {
-	let n = cn[fn(e)];
+function E(e, t) {
+	let n = sn[dn(e)];
 	if (!n) throw Error(`Missing Cyberpunk card metadata for ${e.slug}`);
 	if (n.canonicalSetCode !== e.set.code) throw Error(`Cyberpunk card ${e.slug} is authored under set "${e.set.code}" but canonical metadata owns it under "${n.canonicalSetCode}". Only the canonical set may author the card file; other set versions are printings on the same card.`);
 	let r = e.abilities ?? [], i = t.en, a = e.selectedPrintingId ?? n.selectedPrintingId ?? n.printings[0]?.id;
@@ -6764,22 +6764,22 @@ function T(e, t) {
 		...i.description ? { description: i.description } : {},
 		...i.youtubeUrl ? { youtubeUrl: i.youtubeUrl } : {},
 		...i.sourceUrl ? { sourceUrl: i.sourceUrl } : {},
-		printings: (e.printings ?? n.printings).map(pn),
+		printings: (e.printings ?? n.printings).map(fn),
 		...a ? { selectedPrintingId: a } : {},
 		cost: e.cost ?? null,
 		power: e.power ?? null,
 		ram: e.ram ?? null,
 		rarity: e.rarity ?? null,
 		classifications: e.classifications ?? [],
-		timingTriggers: e.timingTriggers ?? un(r),
-		keywords: e.keywords ?? dn(r),
+		timingTriggers: e.timingTriggers ?? ln(r),
+		keywords: e.keywords ?? un(r),
 		abilities: r,
 		attachment: e.attachment ?? null,
 		reminderText: e.reminderText ?? []
 	};
 }
 // upstream/submodules/cyberpunk/packages/cards/src/cards/legends/lucyna-kushinada.ts
-var mn = T({
+var pn = E({
 	id: "3f2e5d58-dea3-4090-8fe7-0f5f4af2d333",
 	slug: "lucyna-kushinada",
 	canonicalId: "lucyna-kushinada",
@@ -6802,7 +6802,7 @@ var mn = T({
 }, { en: {
 	name: "Lucyna Kushinada",
 	displayName: "Lucyna Kushinada"
-} }), hn = T({
+} }), mn = E({
 	id: "4acee220-f0ae-4bdc-85c9-f8e70ba99673",
 	canonicalId: "rebecca-having-a-moment",
 	slug: "rebecca-having-a-moment",
@@ -6825,7 +6825,7 @@ var mn = T({
 	name: "Rebecca",
 	subname: "Having a Moment",
 	displayName: "Rebecca: Having a Moment"
-} }), gn = T({
+} }), hn = E({
 	id: "40502c1f-78a2-426a-a706-c60ebd4b31e3",
 	slug: "jackie-welles-pour-one-out-for-me",
 	canonicalId: "jackie-welles-pour-one-out-for-me",
@@ -6906,7 +6906,7 @@ var mn = T({
 	subname: "Pour One Out For Me",
 	displayName: "Jackie Welles: Pour One Out For Me",
 	rulesText: "The first time you play a Blue Unit or Blue Gear each turn, you may decrease a friendly Gig by up to 2. If it becomes a min Gig, draw 1."
-} }), _n = T({
+} }), gn = E({
 	id: "627186b3-cffb-4228-aed4-b3ee35235fb6",
 	slug: "v-corporate-exile",
 	canonicalId: "v-corporate-exile",
@@ -6933,7 +6933,7 @@ var mn = T({
 	subname: "Corporate Exile",
 	displayName: "V: Corporate Exile",
 	rulesText: "{Go Solo} (Pay this Legend's cost to play it as a ready Unit. It can attack this turn. When it leaves the field, remove it from the game.)"
-} }), vn = T({
+} }), _n = E({
 	id: "f090dc44-d7f0-4aec-a19e-9213155a6611",
 	slug: "viktor-vektor-sit-down-and-relax",
 	canonicalId: "viktor-vektor-sit-down-and-relax",
@@ -6987,7 +6987,7 @@ var mn = T({
 	subname: "Sit Down and Relax",
 	displayName: "Viktor Vektor: Sit Down and Relax",
 	rulesText: "{Call} Search the top 5 cards of your deck. Reveal up to 2 Gears with cost 2 or less and add them to your hand. Bottom-deck the rest in a random order."
-} }), yn = T({
+} }), vn = E({
 	id: "72358c7d-9f29-4ef6-a682-f5bfc72c7714",
 	canonicalId: "goro-takemura-hands-unclean",
 	slug: "goro-takemura-hands-unclean",
@@ -7014,7 +7014,7 @@ var mn = T({
 	subname: "Hands Unclean",
 	displayName: "Goro Takemura: Hands Unclean",
 	rulesText: "{Go Solo} (Pay this Legend's cost to play it as a ready Unit. It can attack this turn. If it leaves the field, remove it from the game.)\n{Blocker} (You may spend this Unit to redirect a rival Unit's attack to it instead.)"
-} }), bn = T({
+} }), yn = E({
 	id: "cf50fa24-bf94-4c35-bcc1-c6d56a6f68d8",
 	canonicalId: "saburo-arasaka-stubborn-patriarch",
 	slug: "saburo-arasaka-stubborn-patriarch",
@@ -7061,7 +7061,7 @@ var mn = T({
 	subname: "Stubborn Patriarch",
 	displayName: "Saburo Arasaka: Stubborn Patriarch",
 	rulesText: "Friendly ARASAKA Units have +1 power while attacking.\n(Units steal an extra Gig for every 10 power.)"
-} }), xn = T({
+} }), bn = E({
 	id: "31fa5825-946a-4ca2-afa8-8f07b9898d6a",
 	canonicalId: "yorinobu-arasaka-embracing-destruction",
 	slug: "yorinobu-arasaka-embracing-destruction",
@@ -7121,7 +7121,7 @@ var mn = T({
 	subname: "Embracing Destruction",
 	displayName: "Yorinobu Arasaka: Embracing Destruction",
 	rulesText: "The first time a friendly ARASAKA Unit attacks each turn, draw 1. Then, if you have less than 20 ☆ (Street Cred), discard 1."
-} }), Sn = T({
+} }), xn = E({
 	id: "eff41c12-b872-4101-9779-00e691532893",
 	slug: "adam-smasher-ender-of-legends",
 	canonicalId: "adam-smasher-ender-of-legends",
@@ -7174,7 +7174,7 @@ var mn = T({
 	subname: "Ender of Legends",
 	displayName: "Adam Smasher: Ender of Legends",
 	rulesText: "{Go Solo} (Pay this Legend's cost to play it as a ready Unit. It can attack this turn. If it leaves the field, remove it from the game.)\n{Play} Defeat a rival Unit."
-} }), Cn = T({
+} }), Sn = E({
 	id: "12475e77-0e16-420e-a935-65eb74290de8",
 	slug: "alt-cunningham-soulkiller-architect",
 	canonicalId: "alt-cunningham-soulkiller-architect",
@@ -7266,7 +7266,7 @@ var mn = T({
 	subname: "Soulkiller Architect",
 	displayName: "Alt Cunningham: Soulkiller Architect",
 	rulesText: "{Spend} Your next Program this turn plays for -1 €$ for each friendly min Gig, to a minimum of 1 €$.\n1 €$, {Spend} Play a Program from your trash. Bottom-deck it after you play it. (You still pay its cost.)"
-} }), wn = T({
+} }), Cn = E({
 	id: "91df478a-91d5-4d42-a624-4c20ec61121c",
 	canonicalId: "dexter-deshawn-off-the-grid",
 	slug: "dexter-deshawn-off-the-grid",
@@ -7358,7 +7358,7 @@ var mn = T({
 	subname: "Off the Grid",
 	displayName: "Dexter DeShawn: Off the Grid",
 	rulesText: "{Call} Choose one effect.\nGive a friendly Unit +2 power this turn. // Draw 1.\n{Spend}: Increase a Gig by up to 2."
-} }), Tn = T({
+} }), wn = E({
 	id: "3b3f941d-aa58-4337-99dc-4af3fd3ccd47",
 	slug: "dum-dum-maelstrom-triggerman",
 	canonicalId: "dum-dum-maelstrom-triggerman",
@@ -7471,7 +7471,7 @@ var mn = T({
 	subname: "Maelstrom Triggerman",
 	displayName: "Dum Dum: Maelstrom Triggerman",
 	rulesText: "{Call} You may defeat a friendly Gear. If you do, draw 2. Otherwise, draw 1.\n{Quick} 1 €$, {Spend} Give a friendly Unit +1 power this turn for each of its equipped Gear."
-} }), En = T({
+} }), Tn = E({
 	id: "55807eb7-8a8e-44a9-97a2-c8ac993e7b43",
 	slug: "evelyn-parker-beautiful-enigma",
 	canonicalId: "evelyn-parker-beautiful-enigma",
@@ -7559,7 +7559,7 @@ var mn = T({
 	subname: "Beautiful Enigma",
 	displayName: "Evelyn Parker: Beautiful Enigma",
 	rulesText: "When a friendly CORPO or GANGER Unit steals 1 or more Gigs, ready 1 Eddie.\n1 €$, {Spend} A rival Unit must attack next turn if it can."
-} }), Dn = T({
+} }), En = E({
 	id: "424c9c0f-cc01-40ec-8404-75957985c7f8",
 	slug: "goro-takemura-vengeful-bodyguard",
 	canonicalId: "goro-takemura-vengeful-bodyguard",
@@ -7669,7 +7669,7 @@ var mn = T({
 	subname: "Vengeful Bodyguard",
 	displayName: "Goro Takemura: Vengeful Bodyguard",
 	rulesText: "{Quick} 1 €$, {Spend} Give a friendly Unit with cost 4 or less {Blocker} this turn. If you control a value-pair of Gigs, also give it +1 power this turn.\nWhen a friendly Unit uses {Blocker}, you may discard 1. If you do, draw 1."
-} }), On = T({
+} }), Dn = E({
 	id: "380b5e52-2651-4cde-8222-1db2ae6469e2",
 	canonicalId: "hanako-arasaka-daughter-of-the-emperor",
 	slug: "hanako-arasaka-daughter-of-the-emperor",
@@ -7761,7 +7761,7 @@ var mn = T({
 	subname: "Daughter of the Emperor",
 	displayName: "Hanako Arasaka: Daughter of the Emperor",
 	rulesText: "{Spend} Swap a friendly Gig with a rival Gig.\nAt the start of your turn, draw 1 for each friendly value-pair of Gigs."
-} }), kn = T({
+} }), On = E({
 	id: "04a82ebf-eba1-4888-a95d-f01b9bbd0167",
 	canonicalId: "jackie-welles-mama-s-favorite",
 	slug: "jackie-welles-mama-s-favorite",
@@ -7797,7 +7797,7 @@ var mn = T({
 	subname: "Mama's Favorite",
 	displayName: "Jackie Welles: Mama's Favorite",
 	rulesText: "{Go Solo} (Pay this Legend's cost to play it as a ready Unit. It can attack this turn. If it leaves the field, remove it from the game.)\nIf a friendly Unit would be defeated, you may spend 1 €$ to defeat this Legend instead. (Remove it from the game.)"
-} }), An = T({
+} }), kn = E({
 	id: "56947a14-0b1e-4c3d-89e0-17839bcf4280",
 	canonicalId: "johnny-silverhand-rocking-renegade",
 	slug: "johnny-silverhand-rocking-renegade",
@@ -7886,7 +7886,7 @@ var mn = T({
 	subname: "Rocking Renegade",
 	displayName: "Johnny Silverhand: Rocking Renegade",
 	rulesText: "2 €$, {Spend} A friendly Unit can attack spent rival Units the turn it's played. If it's a ROCKER Unit, also give it +2 power this turn. This effect costs -1 €$ for each friendly Gig with 8+ value."
-} }), jn = T({
+} }), An = E({
 	id: "4560f3d0-5f63-466b-93b7-fc9d822a556e",
 	canonicalId: "judy-alvarez-braindance-maestro",
 	slug: "judy-alvarez-braindance-maestro",
@@ -7971,7 +7971,7 @@ var mn = T({
 	subname: "Braindance Maestro",
 	displayName: "Judy Álvarez: Braindance Maestro",
 	rulesText: "When you play a BRAINDANCE Program, give a friendly Unit +1 power this turn.\n{Spend} Trash the top card of your deck. If it's a Program, you may add it to your hand."
-} }), Mn = T({
+} }), jn = E({
 	id: "5a441989-2997-40a2-a72e-08ca1442a7f3",
 	canonicalId: "kerry-eurodyne-axe-attitude-audience",
 	slug: "kerry-eurodyne-axe-attitude-audience",
@@ -8115,7 +8115,7 @@ var mn = T({
 	subname: "Axe, Attitude, Audience",
 	displayName: "Kerry Eurodyne: Axe, Attitude, Audience",
 	rulesText: "When you roll in a Gig from your fixer area, you may ignore the result and reroll it once.\nWhen you roll a min or max value on a Gig, draw 1. If it's a d20, draw 3 instead."
-} }), Nn = T({
+} }), Mn = E({
 	id: "fc516d53-5fd8-43dd-8349-9e60f0606efa",
 	canonicalId: "muamar-reyes-el-capitan",
 	slug: "muamar-reyes-el-capitan",
@@ -8206,7 +8206,7 @@ var mn = T({
 	subname: "El Capitán",
 	displayName: "Muamar Reyes: El Capitán",
 	rulesText: "{Call} Choose one effect.\nA friendly Unit can't be defeated in a fight this turn. // Draw 1.\n{Spend} Adjust a Gig by 1."
-} }), Pn = T({
+} }), Nn = E({
 	id: "501a3796-9983-400f-86e4-97ffac5d5451",
 	canonicalId: "padre-man-of-the-cross",
 	slug: "padre-man-of-the-cross",
@@ -8304,12 +8304,12 @@ var mn = T({
 	subname: "Man of the Cross",
 	displayName: "Padre: Man of the Cross",
 	rulesText: "{Call} Choose one effect.\nSpend a rival Unit. // Draw 1.\n{Spend} Set a player's Gig to the same value as another player's Gig."
-} }), Fn = { en: {
+} }), Pn = { en: {
 	name: "Panam Palmer",
 	subname: "Nomad Cavalry",
 	displayName: "Panam Palmer: Nomad Cavalry",
 	rulesText: "2 €$, {Spend} Move a Gear from this Legend to an unequipped friendly Unit. If you do, ready that Unit.\nAt the end of your turn, if 5 or more friendly Units and/or Legends are equipped, ready them."
-} }, In = T({
+} }, Fn = E({
 	id: "950f045c-f5a4-4318-9907-b630d64de754",
 	slug: "panam-palmer-nomad-cavalry",
 	canonicalId: "panam-palmer-nomad-cavalry",
@@ -8414,12 +8414,13 @@ var mn = T({
 			}]
 		}]
 	}]
-}, Fn), Ln = { en: {
+}, Pn), In = { en: {
 	name: "River Ward",
 	subname: "Detective on the Hunt",
 	displayName: "River Ward: Detective on the Hunt",
 	rulesText: "{Quick} {Spend} Play a Gear with cost 2 or less from your hand for free.\nWhen a friendly equipped Unit is defeated, search the top 2 cards of your deck and trash 1."
-} }, Rn = [
+} }, Ln = [
+	pn,
 	mn,
 	hn,
 	gn,
@@ -8440,9 +8441,8 @@ var mn = T({
 	jn,
 	Mn,
 	Nn,
-	Pn,
-	In,
-	T({
+	Fn,
+	E({
 		id: "e64e2978-695b-4fc5-b17b-62c710a11c47",
 		slug: "river-ward-detective-on-the-hunt",
 		canonicalId: "river-ward-detective-on-the-hunt",
@@ -8552,8 +8552,8 @@ var mn = T({
 				}]
 			}
 		]
-	}, Ln),
-	T({
+	}, In),
+	E({
 		id: "012b0300-6af1-417e-86a2-dc208a60ac15",
 		canonicalId: "rogue-amendiares-preem-solo",
 		slug: "rogue-amendiares-preem-solo",
@@ -8631,7 +8631,7 @@ var mn = T({
 		displayName: "Rogue Amendiares: Preem Solo",
 		rulesText: "{Go Solo} (Pay this Legend's cost to play it as a ready Unit. It can attack this turn. If it leaves the field, remove it from the game.)\nWhen a friendly Legend steals a Gig, if its value is even, draw 1. If its value is odd, a Rival discards 1."
 	} }),
-	T({
+	E({
 		id: "9e681d3e-cbfd-4c7b-a69a-72a83dc8b847",
 		slug: "royce-psycho-on-the-edge",
 		canonicalId: "royce-psycho-on-the-edge",
@@ -8682,7 +8682,7 @@ var mn = T({
 		displayName: "Royce: Psycho on the Edge",
 		rulesText: "{Go Solo} (Pay this Legend's cost to play it as a ready Unit. It can attack this turn. If it leaves the field, remove it from the game.)\nDuring your turn, this Legend has +2 power for each of its equipped Gear."
 	} }),
-	T({
+	E({
 		id: "e2dc863c-5bc9-4ad7-9138-2d5b966ed901",
 		canonicalId: "sasha-yakovleva-won-t-let-you-down",
 		slug: "sasha-yakovleva-won-t-let-you-down",
@@ -8739,7 +8739,7 @@ var mn = T({
 		displayName: "Sasha Yakovleva: Won't Let You Down",
 		rulesText: "{Go Solo}\n{Attack} Reveal the top card of your deck and add it to your hand. This Unit gains power equal to that card's cost this turn.\n{Defeated} A Rival discards 1."
 	} }),
-	T({
+	E({
 		id: "81a8dec7-9541-4020-93e1-7d798a57dcbc",
 		slug: "v-streetkid",
 		canonicalId: "v-streetkid",
@@ -8793,7 +8793,7 @@ var mn = T({
 		displayName: "V: Streetkid",
 		rulesText: "{Call} Trash 3. Then, add 1 BRAINDANCE Program from your trash to your hand.\n{Go Solo} (Pay this Legend's cost to play it as a ready Unit. It can attack this turn. If it leaves the field, remove it from the game.)"
 	} }),
-	T({
+	E({
 		id: "99f5e311-8dfd-42a9-abd0-2e50ac68679e",
 		canonicalId: "wakako-okada-peace-and-harmony",
 		slug: "wakako-okada-peace-and-harmony",
@@ -8886,7 +8886,7 @@ var mn = T({
 		displayName: "Wakako Okada: Peace and Harmony",
 		rulesText: "{Call} Choose one effect.\nGive a rival Unit -2 power this turn. // Draw 1.\n{Spend}: Decrease a Gig by up to 2."
 	} })
-], zn = T({
+], Rn = E({
 	id: "f61b944a-32e3-4085-894b-7bd498325156",
 	canonicalId: "dexter-deshawn-one-last-chance",
 	slug: "dexter-deshawn-one-last-chance",
@@ -8992,11 +8992,11 @@ var mn = T({
 	subname: "One Last Chance",
 	displayName: "Dexter DeShawn: One Last Chance",
 	rulesText: "{Play} {Attack} Adjust a Gig by up to 1.\n{Defeated} If your ☆ (Street Cred) differs from a Rival's by 10+, draw 2."
-} }), Bn = { en: {
+} }), zn = { en: {
 	name: "MT0D12 Flathead",
 	displayName: "MT0D12 Flathead",
 	rulesText: "If you have less ☆ (Street Cred) than a Rival, this Unit can't be blocked."
-} }, E = {
+} }, D = {
 	self: () => ({ selector: "self" }),
 	host: () => ({ selector: "host" }),
 	bound: (e, t) => ({
@@ -9017,7 +9017,7 @@ var mn = T({
 		amount: 1,
 		...e
 	})
-}, D = {
+}, Bn = {
 	defeat: (e) => ({
 		effect: "defeat",
 		...e
@@ -9261,7 +9261,7 @@ var Un = class {
 	triggered() {
 		return new Kn();
 	}
-}, Jn = T({
+}, Jn = E({
 	id: "619429c9-132f-496e-8aa0-414e850c87ec",
 	slug: "mt0d12-flathead",
 	canonicalId: "mt0d12-flathead",
@@ -9281,8 +9281,8 @@ var Un = class {
 	type: "unit",
 	cost: 5,
 	power: 7,
-	abilities: [qn.static().text("If you have less ☆ (Street Cred) than a Rival, this Unit can't be blocked.").effect(D.grantRule({
-		target: E.self(),
+	abilities: [qn.static().text("If you have less ☆ (Street Cred) than a Rival, this Unit can't be blocked.").effect(Bn.grantRule({
+		target: D.self(),
 		rule: "cantBeBlocked",
 		duration: "continuous",
 		conditions: [{
@@ -9292,7 +9292,7 @@ var Un = class {
 			other: "rival"
 		}]
 	})).build()]
-}, Bn), Yn = T({
+}, zn), Yn = E({
 	id: "08e6a687-56b7-4ac1-982f-8a8d6d0c0bc5",
 	canonicalId: "goro-takemura-losing-his-way",
 	slug: "goro-takemura-losing-his-way",
@@ -9331,7 +9331,7 @@ var Un = class {
 	subname: "Losing His Way",
 	displayName: "Goro Takemura: Losing His Way",
 	rulesText: "{Attack} If all friendly Legends are face-up, this Unit has +5 power this turn."
-} }), Xn = T({
+} }), Xn = E({
 	id: "066641c5-acc2-45f4-ba67-16a8d20cce73",
 	slug: "minotaur",
 	canonicalId: "minotaur",
@@ -9387,7 +9387,7 @@ var Un = class {
 	name: "Minotaur",
 	displayName: "Minotaur",
 	rulesText: "{Play} If you have more ☆ (Street Cred) than a Rival, defeat a rival Unit with power 5 or less."
-} }), Zn = T({
+} }), Zn = E({
 	id: "e48c9d39-ef27-4b8f-8690-d75c3a4807b0",
 	slug: "6th-street-recruits",
 	canonicalId: "6th-street-recruits",
@@ -9455,7 +9455,7 @@ var Un = class {
 	name: "6th Street Recruits",
 	displayName: "6th Street Recruits",
 	rulesText: "When a friendly Unit steals a d6, increase a Gig by up to 6."
-} }), Qn = T({
+} }), Qn = E({
 	id: "a2ad9c2f-bfb7-473b-9408-91af142d269d",
 	slug: "adam-smasher-metal-over-meat",
 	canonicalId: "adam-smasher-metal-over-meat",
@@ -9501,7 +9501,7 @@ var Un = class {
 	subname: "Mother of Daemons",
 	displayName: "Alt Cunningham: Mother of Daemons",
 	rulesText: "When a friendly equipped Unit or Legend is spent, draw 1.\nWhen a rival Unit would steal a Gig, you may discard 1 with cost equal to that Gig's value. If you do, the Gig isn't stolen."
-} }, er = T({
+} }, er = E({
 	id: "858e95f5-2efb-460e-b890-e8a5140e11c9",
 	canonicalId: "alt-cunningham-mother-of-daemons",
 	slug: "alt-cunningham-mother-of-daemons",
@@ -9551,7 +9551,7 @@ var Un = class {
 	type: "unit",
 	cost: 7,
 	power: 8
-}, $n), tr = T({
+}, $n), tr = E({
 	id: "e8aa7757-e5e3-4137-8970-4fa546b9bed9",
 	canonicalId: "animals-wrecker",
 	slug: "animals-wrecker",
@@ -9575,7 +9575,7 @@ var Un = class {
 	name: "Animals Wrecker",
 	displayName: "Animals Wrecker",
 	rulesText: "[Flavour Text] Takes a lot of juice to break bones like they do."
-} }), nr = T({
+} }), nr = E({
 	id: "ce45cb9d-430a-4ccf-bb4b-acf0b76120e0",
 	canonicalId: "augmented-negotiators",
 	slug: "augmented-negotiators",
@@ -9618,7 +9618,7 @@ var Un = class {
 	name: "Augmented Negotiators",
 	displayName: "Augmented Negotiators",
 	rulesText: "{Blocker} (You may spend this Unit to redirect a rival Unit's attack to it instead.)\nWhen this Unit uses {Blocker}, a Rival discards 1."
-} }), rr = T({
+} }), rr = E({
 	id: "0273f402-94fb-4b59-90ec-a1057c2d1284",
 	slug: "caliber-totentanz-s-top-dog",
 	canonicalId: "caliber-totentanz-s-top-dog",
@@ -9688,7 +9688,7 @@ var Un = class {
 	subname: "Totentanz's Top Dog",
 	displayName: "Caliber: Totentanz's Top Dog",
 	rulesText: "{Play} Defeat a rival Unit with cost 2 or less.\n{Defeated} A Rival discards 1. If the card's cost equals the value of a friendly Gig, that Rival discards 1 more."
-} }), ir = T({
+} }), ir = E({
 	id: "3c4cf61f-c469-4ad6-a209-67e715f9d45b",
 	canonicalId: "chrome-fang",
 	slug: "chrome-fang",
@@ -9729,7 +9729,7 @@ var Un = class {
 	name: "Chrome Fang",
 	displayName: "Chrome Fang",
 	rulesText: "{Play} Until your next turn, rival Units can't steal friendly Gigs with value higher than their power."
-} }), ar = T({
+} }), ar = E({
 	id: "71652e73-984a-4630-be47-af947f87d5c1",
 	slug: "corpo-security",
 	canonicalId: "corpo-security",
@@ -9764,7 +9764,7 @@ var Un = class {
 	name: "Corpo Security",
 	displayName: "Corpo Security",
 	rulesText: "This Unit can't attack.\n{Blocker} (You may spend this Unit to redirect a rival Unit's attack to it instead.)"
-} }), or = T({
+} }), or = E({
 	id: "a1e60653-5e28-49ee-9798-d16520b553c3",
 	canonicalId: "delamain-cab",
 	slug: "delamain-cab",
@@ -9809,7 +9809,7 @@ var Un = class {
 	name: "Delamain Cab",
 	displayName: "Delamain Cab",
 	rulesText: "At the end of your turn, if this Unit stole a Gig this turn, ready 1 Eddie."
-} }), sr = T({
+} }), sr = E({
 	id: "3bb1f191-927e-45b3-86ca-cb30baabfe0d",
 	canonicalId: "delamain-rideshare-ai",
 	slug: "delamain-rideshare-ai",
@@ -9847,7 +9847,7 @@ var Un = class {
 	subname: "Rideshare AI",
 	displayName: "Delamain: Rideshare AI",
 	rulesText: "{Play} Draw 2.\n(Units with power 0 don't steal Gigs.)"
-} }), cr = T({
+} }), cr = E({
 	id: "c688ca08-b3b7-441d-b161-78b9a63a8a9e",
 	slug: "el-sombreron-la-venganza-lenta",
 	canonicalId: "el-sombreron-la-venganza-lenta",
@@ -9909,7 +9909,7 @@ var Un = class {
 	subname: "La Venganza Lenta",
 	displayName: "El Sombrerón: La Venganza Lenta",
 	rulesText: "{Attack} You may pay 2 €$. If you do, this Unit gains power equal to a friendly max Gig this turn."
-} }), lr = T({
+} }), lr = E({
 	id: "917e6515-ed23-4a1d-baaa-474d879bdabc",
 	slug: "emergency-atlus",
 	canonicalId: "emergency-atlus",
@@ -9937,7 +9937,7 @@ var Un = class {
 	name: "Emergency Atlus",
 	displayName: "Emergency Atlus",
 	rulesText: "\"Grab the policyholder, leave the rest for the city meatwagon.\""
-} }), ur = T({
+} }), ur = E({
 	id: "a3cc3d15-8e6a-4684-b2ca-c843b4a854e2",
 	slug: "evelyn-parker-scheming-siren",
 	canonicalId: "evelyn-parker-scheming-siren",
@@ -9958,10 +9958,10 @@ var Un = class {
 	type: "unit",
 	cost: 2,
 	power: 0,
-	abilities: [qn.triggered().text("ATTACK Draw 1. Then, if you have more ☆ (Street Cred) than a Rival, discard 1.").onAttack().source(E.self()).effect(D.draw({
+	abilities: [qn.triggered().text("ATTACK Draw 1. Then, if you have more ☆ (Street Cred) than a Rival, discard 1.").onAttack().source(D.self()).effect(Bn.draw({
 		player: "friendly",
 		amount: 1
-	})).effect(D.discardFromHand({
+	})).effect(Bn.discardFromHand({
 		player: "friendly",
 		amount: 1,
 		conditions: [{
@@ -9977,7 +9977,7 @@ var Un = class {
 	subname: "Scheming Siren",
 	displayName: "Evelyn Parker: Scheming Siren",
 	rulesText: "{Attack} Draw 1. Then, if you have more ☆ (Street Cred) than a Rival, discard 1.\n(Units with power 0 don't steal Gigs.)"
-} }), dr = T({
+} }), dr = E({
 	id: "4a8dfe3f-980d-4370-ac10-6bd989042cdf",
 	canonicalId: "field-operator",
 	slug: "field-operator",
@@ -10022,7 +10022,7 @@ var Un = class {
 	name: "Field Operator",
 	displayName: "Field Operator",
 	rulesText: "{Play} If your ☆ (Street Cred) is an even number, draw 1."
-} }), fr = T({
+} }), fr = E({
 	id: "0901652d-99c9-46c7-9821-ca3e8208fb4d",
 	slug: "gilded-maton",
 	canonicalId: "gilded-maton",
@@ -10082,7 +10082,7 @@ var Un = class {
 	name: "Gilded Matón",
 	displayName: "Gilded Matón",
 	rulesText: "{Play} You may defeat a friendly Gear. If you do, defeat a rival Unit with cost 3 or less."
-} }), pr = T({
+} }), pr = E({
 	id: "d2a9bcb0-a5e1-4413-8140-8b808258a753",
 	canonicalId: "hacked-corpo",
 	slug: "hacked-corpo",
@@ -10132,7 +10132,7 @@ var Un = class {
 	name: "Hacked Corpo",
 	displayName: "Hacked Corpo",
 	rulesText: "{Play} Trash 3. Add a Program from among them to your hand."
-} }), mr = T({
+} }), mr = E({
 	id: "2902da45-ec28-4971-a731-ea1eda4c6ba1",
 	slug: "hanako-arasaka-in-a-gilded-cage",
 	canonicalId: "hanako-arasaka-in-a-gilded-cage",
@@ -10193,7 +10193,7 @@ var Un = class {
 	subname: "In a Gilded Cage",
 	displayName: "Hanako Arasaka: In a Gilded Cage",
 	rulesText: "{Play} Search the top 4 cards of your deck. Reveal any number of cards with cost equal to any friendly Gig values and add them to your hand. Bottom-deck the rest."
-} }), hr = T({
+} }), hr = E({
 	id: "2a9deb43-bf9a-41db-9a05-bb0d357bb08e",
 	canonicalId: "heywood-ripperdoc",
 	slug: "heywood-ripperdoc",
@@ -10257,7 +10257,7 @@ var Un = class {
 	name: "Heywood Ripperdoc",
 	displayName: "Heywood Ripperdoc",
 	rulesText: "{Play} You may defeat a Gear. If its cost equals the value of a friendly Gig, draw 1."
-} }), gr = T({
+} }), gr = E({
 	id: "b0453570-7ed8-4031-9562-cb73d7a979e5",
 	canonicalId: "jacked-in-voodoo-boy",
 	slug: "jacked-in-voodoo-boy",
@@ -10291,7 +10291,7 @@ var Un = class {
 	name: "Jacked-In Voodoo Boy",
 	displayName: "Jacked-In Voodoo Boy",
 	rulesText: "This Unit can't attack unless you played a Program this turn."
-} }), _r = T({
+} }), _r = E({
 	id: "b665e103-456b-4c51-9551-95b0bc87212a",
 	slug: "jackie-welles-ride-or-die-choom",
 	canonicalId: "jackie-welles-ride-or-die-choom",
@@ -10311,8 +10311,8 @@ var Un = class {
 	type: "unit",
 	cost: 6,
 	power: 8,
-	abilities: [qn.triggered().text("ATTACK Give this Unit +2 power this turn for each friendly Gig with an even value.").onAttack().source(E.self()).effect(D.modifyPower({
-		target: E.self(),
+	abilities: [qn.triggered().text("ATTACK Give this Unit +2 power this turn for each friendly Gig with an even value.").onAttack().source(D.self()).effect(Bn.modifyPower({
+		target: D.self(),
 		value: {
 			type: "perCount",
 			multiplier: 2,
@@ -10324,7 +10324,7 @@ var Un = class {
 			}
 		},
 		duration: "turn"
-	})).build(), qn.triggered().text("DEFEATED Draw 1 for each friendly Gig with an odd value.").onDefeated().source(E.self()).effect(D.draw({
+	})).build(), qn.triggered().text("DEFEATED Draw 1 for each friendly Gig with an odd value.").onDefeated().source(D.self()).effect(Bn.draw({
 		player: "friendly",
 		amount: {
 			type: "perCount",
@@ -10342,7 +10342,7 @@ var Un = class {
 	subname: "Ride or Die Choom",
 	displayName: "Jackie Welles: Ride or Die Choom",
 	rulesText: "{Attack} Give this Unit +2 power this turn for each friendly Gig with an even value.\n{Defeated} Draw 1 for each friendly Gig with an odd value."
-} }), vr = T({
+} }), vr = E({
 	id: "e8b0432c-4d2d-4464-9a00-f3626917a7f0",
 	canonicalId: "japantown-jonin",
 	slug: "japantown-jonin",
@@ -10397,10 +10397,10 @@ var Un = class {
 	rulesText: "The first time this Unit wins a fight each turn, ready it.\nThis Unit wins all fights against CORPO Units."
 } }, br = qn.triggered().text("The first time this Unit wins a fight each turn, ready it.").onFightResolved({
 	player: "any",
-	winner: E.self()
-}).source(E.self()).effect(D.ready({ target: E.self() })).build();
+	winner: D.self()
+}).source(D.self()).effect(Bn.ready({ target: D.self() })).build();
 br.limits = ["firstTimeEachTurn"];
-var xr = T({
+var xr = E({
 	id: "9a4002b0-0f0b-4c9a-a198-691d058b6dcc",
 	canonicalId: "johnny-silverhand-never-stop-fighting",
 	slug: "johnny-silverhand-never-stop-fighting",
@@ -10434,7 +10434,7 @@ var xr = T({
 	type: "unit",
 	cost: 6,
 	power: 8
-}, yr), Sr = T({
+}, yr), Sr = E({
 	id: "cb7f8d05-87cc-4606-ad71-a9283f2f4b20",
 	canonicalId: "judy-alvarez-nothing-to-doubt",
 	slug: "judy-alvarez-nothing-to-doubt",
@@ -10498,7 +10498,7 @@ var xr = T({
 	subname: "Nothing to Doubt",
 	displayName: "Judy Álvarez: Nothing to Doubt",
 	rulesText: "1 €$, {Spend} Reveal the top card of your deck. You may play it for free. Otherwise, add it to your hand."
-} }), Cr = T({
+} }), Cr = E({
 	id: "5c4d4058-9185-4305-9e8f-7eca41cf6674",
 	slug: "kerry-eurodyne-the-last-rockerboy",
 	canonicalId: "kerry-eurodyne-the-last-rockerboy",
@@ -10549,7 +10549,7 @@ var xr = T({
 	subname: "The Last Rockerboy",
 	displayName: "Kerry Eurodyne: The Last Rockerboy",
 	rulesText: "{Spend} If you control a Gig with 8+ value, draw 2."
-} }), wr = T({
+} }), wr = E({
 	id: "1b516742-cdf3-4597-8ba1-be787240ab3b",
 	canonicalId: "la-llorona-ghost-of-the-past",
 	slug: "la-llorona-ghost-of-the-past",
@@ -10603,7 +10603,7 @@ var xr = T({
 	subname: "Ghost of the Past",
 	displayName: "La Llorona: Ghost of the Past",
 	rulesText: "{Blocker} (You may spend this Unit to redirect a rival Unit's attack to it instead.)\nWhen this Unit uses {Blocker}, increase a Gig by up to 3."
-} }), Tr = T({
+} }), Tr = E({
 	id: "6b078eff-4cef-4beb-a299-ed388a72ce45",
 	slug: "lizzy-wizzy-delicate-weapon",
 	canonicalId: "lizzy-wizzy-delicate-weapon",
@@ -10666,7 +10666,7 @@ var xr = T({
 	subname: "Delicate Weapon",
 	displayName: "Lizzy Wizzy: Delicate Weapon",
 	rulesText: "{Play} You may play a Program with cost 3 or less from your hand or trash for free. Bottom-deck it after you play it.\n{Blocker}"
-} }), Er = T({
+} }), Er = E({
 	id: "f57094f7-0720-4ba5-9a71-aafbc714d65a",
 	canonicalId: "maelstrom-goons",
 	slug: "maelstrom-goons",
@@ -10724,7 +10724,7 @@ var xr = T({
 	name: "Maelstrom Goons",
 	displayName: "Maelstrom Goons",
 	rulesText: "When this Unit steals a Gig, if it's equipped, a Rival discards 1."
-} }), Dr = T({
+} }), Dr = E({
 	id: "35c1fda3-60f9-4779-b690-30b283d52297",
 	canonicalId: "maelstrom-zealots",
 	slug: "maelstrom-zealots",
@@ -10823,7 +10823,7 @@ var xr = T({
 	name: "Maelstrom Zealots",
 	displayName: "Maelstrom Zealots",
 	rulesText: "When this Unit loses a fight, defeat the opposing rival Unit.\n(Units with power 0 don't steal Gigs.)"
-} }), Or = T({
+} }), Or = E({
 	id: "5380dea3-4d21-445b-af02-487b45d40395",
 	slug: "maman-brigitte-spirit-of-death",
 	canonicalId: "maman-brigitte-spirit-of-death",
@@ -10890,7 +10890,7 @@ var xr = T({
 	subname: "Spirit of Death",
 	displayName: "Maman Brigitte: Spirit of Death",
 	rulesText: "{Play} You may discard 2 Programs. If you do, bottom-deck a rival unequipped Unit."
-} }), kr = T({
+} }), kr = E({
 	id: "d6f16c44-6d56-48ff-8130-154eea5540ca",
 	canonicalId: "maxtac-av",
 	slug: "maxtac-av",
@@ -10958,7 +10958,7 @@ var xr = T({
 	name: "MaxTac AV",
 	displayName: "MaxTac AV",
 	rulesText: "{Play} You may swap a friendly Gig with a rival Gig."
-} }), Ar = T({
+} }), Ar = E({
 	id: "78fee308-5d4e-491c-9596-423dc20da5e3",
 	canonicalId: "maxtac-heavy",
 	slug: "maxtac-heavy",
@@ -10998,7 +10998,7 @@ var xr = T({
 	displayName: "MaxTac Squadron",
 	rulesText: "At the end of your turn, if this Unit is spent, ready a friendly face-up Legend."
 } }, Mr = [
-	zn,
+	Rn,
 	Jn,
 	Yn,
 	Xn,
@@ -11033,7 +11033,7 @@ var xr = T({
 	Or,
 	kr,
 	Ar,
-	T({
+	E({
 		id: "2a8802d3-598c-4ce3-9051-59ecf965ffbf",
 		canonicalId: "maxtac-squadron",
 		slug: "maxtac-squadron",
@@ -11083,7 +11083,7 @@ var xr = T({
 		cost: 3,
 		power: 4
 	}, jr),
-	T({
+	E({
 		id: "95840ebd-d00a-49ff-b4e5-e2064cfc13a9",
 		canonicalId: "maxtac-suppression-team",
 		slug: "maxtac-suppression-team",
@@ -11124,7 +11124,7 @@ var xr = T({
 		displayName: "MaxTac Suppression Team",
 		rulesText: "Rival Units can't attack the turn they're played."
 	} }),
-	T({
+	E({
 		id: "21f68be2-c664-4ae0-a7ef-965a3a5a14c8",
 		slug: "meredith-stout-stone-cold-corpo",
 		canonicalId: "meredith-stout-stone-cold-corpo",
@@ -11236,7 +11236,7 @@ var xr = T({
 		displayName: "Meredith Stout: Stone Cold Corpo",
 		rulesText: "{Blocker}\nThis Unit has +2 power while fighting a Legend.\nWhen a Rival adjusts or swaps 1 or more friendly Gigs, you may add a card from your trash to your hand."
 	} }),
-	T({
+	E({
 		id: "383abfb4-eedb-47c1-87f0-3ae4973c3619",
 		canonicalId: "misty-olszewski-mender-of-broken-spirits",
 		slug: "misty-olszewski-mender-of-broken-spirits",
@@ -11293,7 +11293,7 @@ var xr = T({
 		displayName: "Misty Olszewski: Mender of Broken Spirits",
 		rulesText: "This Unit can't attack.\nAt the end of your turn, choose a card type. Then, reveal the top card of your deck. If it's the chosen type, add it to your hand and ready 1 Eddie. Otherwise, trash it.\n(Card types include Unit, Gear, and Program.)"
 	} }),
-	T({
+	E({
 		id: "920cabc9-f350-4f61-96c6-69e649271456",
 		slug: "modded-kusanagi",
 		canonicalId: "modded-kusanagi",
@@ -11339,7 +11339,7 @@ var xr = T({
 		displayName: "Modded Kusanagi",
 		rulesText: "{Adrenaline} (This Unit can attack the turn it's played.)\nAt the end of your turn, return this Unit to its owner's hand."
 	} }),
-	T({
+	E({
 		id: "08b52bdb-be1e-4931-90c4-4354eea5b145",
 		canonicalId: "modded-muramasa",
 		slug: "modded-muramasa",
@@ -11386,7 +11386,7 @@ var xr = T({
 		displayName: "Modded Muramasa",
 		rulesText: "At the end of your turn, if you have less ☆ (Street Cred) than a Rival, ready this Unit."
 	} }),
-	T({
+	E({
 		id: "ef77dd1f-3abd-4ce2-becc-97dd768a5022",
 		canonicalId: "mox-inciters",
 		slug: "mox-inciters",
@@ -11435,7 +11435,7 @@ var xr = T({
 		displayName: "Mox Inciters",
 		rulesText: "{Play} A rival Unit must attack next turn if it can.\n{Blocker} (You may spend this Unit to redirect a rival Unit's attack to it instead.)"
 	} }),
-	T({
+	E({
 		id: "3c144d6a-0c1a-43e9-bd35-85d6fc46adef",
 		canonicalId: "nadia-fighting-through-grief",
 		slug: "nadia-fighting-through-grief",
@@ -11480,7 +11480,7 @@ var xr = T({
 		displayName: "Nadia: Fighting Through Grief",
 		rulesText: "If a Rival controls more Gigs than you, this Unit can attack their Gig area the turn it's played."
 	} }),
-	T({
+	E({
 		id: "4c098450-e3ae-47e5-98d4-d51a2ab132ce",
 		canonicalId: "octant",
 		slug: "octant",
@@ -11520,7 +11520,7 @@ var xr = T({
 		displayName: "Octant",
 		rulesText: "Play this Unit for -1 €$ for each friendly Gig with 8+ value, to a minimum of 1 €$."
 	} }),
-	T({
+	E({
 		id: "3ce6b982-7bba-46f1-8832-8867ec3588d4",
 		slug: "offduty-malfini",
 		canonicalId: "offduty-malfini",
@@ -11541,7 +11541,7 @@ var xr = T({
 		type: "unit",
 		cost: 4,
 		power: 5,
-		abilities: [qn.triggered().text("PLAY Spend this Unit and a rival Unit.").onPlay().source(E.self()).effect(D.spend({ target: E.self() })).effect(D.spend({ target: E.card({
+		abilities: [qn.triggered().text("PLAY Spend this Unit and a rival Unit.").onPlay().source(D.self()).effect(Bn.spend({ target: D.self() })).effect(Bn.spend({ target: D.card({
 			controller: "rival",
 			zones: ["field"],
 			cardTypes: ["unit"],
@@ -11556,7 +11556,7 @@ var xr = T({
 		displayName: "Offduty Malfini",
 		rulesText: "{Play} Spend this Unit and a rival Unit."
 	} }),
-	T({
+	E({
 		id: "c4ef7be4-4817-4fae-9016-582e999d4996",
 		canonicalId: "pacifica-netrunner",
 		slug: "pacifica-netrunner",
@@ -11616,7 +11616,7 @@ var xr = T({
 		displayName: "Pacifica Netrunner",
 		rulesText: "{Play} If your ☆ (Street Cred) is an even number, a rival Unit can't ready until your next turn."
 	} }),
-	T({
+	E({
 		id: "34774f04-4f16-40eb-8ee4-999144e572ab",
 		canonicalId: "panam-palmer-strength-through-family",
 		slug: "panam-palmer-strength-through-family",
@@ -11683,7 +11683,7 @@ var xr = T({
 		displayName: "Panam Palmer: Strength Through Family",
 		rulesText: "During your turn, you may Call a Legend for free.\n{Attack} Discard 1. If you do, draw 1 for each friendly face-up Legend."
 	} }),
-	T({
+	E({
 		id: "0974a7af-dcd7-44d9-b57a-b6a4719afcd6",
 		canonicalId: "pepe-najarro-working-doubles",
 		slug: "pepe-najarro-working-doubles",
@@ -11736,7 +11736,7 @@ var xr = T({
 		displayName: "Pepe Najarro: Working Doubles",
 		rulesText: "{Attack} If you control a value-pair of Gigs, ready up to 2 MERC Legends in your Legends area."
 	} }),
-	T({
+	E({
 		id: "783a9082-b79c-4b45-bf66-48728ff9b92d",
 		slug: "placide-voodoo-sentinel",
 		canonicalId: "placide-voodoo-sentinel",
@@ -11838,7 +11838,7 @@ var xr = T({
 		displayName: "Placide: Voodoo Sentinel",
 		rulesText: "{Play} {Attack} You may discard 1 Program. If you do, bottom-deck a rival Unit."
 	} }),
-	T({
+	E({
 		id: "14d87f2a-8bd7-424f-b65b-3659156cef81",
 		slug: "psycho-squad",
 		canonicalId: "psycho-squad",
@@ -11863,7 +11863,7 @@ var xr = T({
 		displayName: "Psycho Squad",
 		rulesText: "[Flavour] Their protocol stops at “shoot first.”"
 	} }),
-	T({
+	E({
 		id: "20bcc767-29f0-4aa0-b842-4d4e546ed36e",
 		slug: "riding-nomad",
 		canonicalId: "riding-nomad",
@@ -11890,7 +11890,7 @@ var xr = T({
 		displayName: "Riding Nomad",
 		rulesText: "{Adrenaline} (This Unit can attack the turn it's played.)"
 	} }),
-	T({
+	E({
 		id: "65a14367-da52-4578-8162-3c4bac11007d",
 		canonicalId: "rita-wheeler-no-stupid-questions",
 		slug: "rita-wheeler-no-stupid-questions",
@@ -11945,7 +11945,7 @@ var xr = T({
 		displayName: "Rita Wheeler: No Stupid Questions",
 		rulesText: "{Blocker} (You may spend this Unit to redirect a rival Unit's attack to it instead.)\nThe first time this Unit is spent each turn, draw 1, then discard 1."
 	} }),
-	T({
+	E({
 		id: "7ea6eecc-e55e-4634-93eb-b2b46e79635d",
 		canonicalId: "rockn-rockerboy",
 		slug: "rockn-rockerboy",
@@ -11970,7 +11970,7 @@ var xr = T({
 		displayName: "Rockn' Rockerboy",
 		rulesText: "[Flavor] Scream your throat raw for something. Anything."
 	} }),
-	T({
+	E({
 		id: "9d994a42-4a63-44ad-ad7a-edead6af06a2",
 		canonicalId: "rogue-amendiares-queen-of-the-afterlife",
 		slug: "rogue-amendiares-queen-of-the-afterlife",
@@ -12064,7 +12064,7 @@ var xr = T({
 		displayName: "Rogue Amendiares: Queen of the Afterlife",
 		rulesText: "The first time another friendly Unit steals a Gig with value less than its power each turn, ready 2 Eddies.\n{Quick} 2 €$,  {Spend} A rival Unit loses power equal to this Unit's power this turn."
 	} }),
-	T({
+	E({
 		id: "9e465b11-9743-4275-a71d-d701b059eef0",
 		slug: "royce-don-t-call-me-simon",
 		canonicalId: "royce-don-t-call-me-simon",
@@ -12138,7 +12138,7 @@ var xr = T({
 		displayName: "Royce: Don't Call Me Simon",
 		rulesText: "{Play} Defeat a rival Unit with power 2 or less. If you have more ☆ (Street Cred) than a Rival, defeat a rival Unit with power 3 or less instead."
 	} }),
-	T({
+	E({
 		id: "fee335a7-2546-48a5-9bb8-b0886014ce66",
 		canonicalId: "ruthless-lowlife",
 		slug: "ruthless-lowlife",
@@ -12173,7 +12173,7 @@ var xr = T({
 		displayName: "Ruthless Lowlife",
 		rulesText: "This Unit can only attack rival Units. (It can't attack Gig areas.)"
 	} }),
-	T({
+	E({
 		id: "9611a3ba-d365-453f-89ed-c986a1948edc",
 		slug: "sandayu-oda-hanako-s-guardian",
 		canonicalId: "sandayu-oda-hanako-s-guardian",
@@ -12236,7 +12236,7 @@ var xr = T({
 		displayName: "Sandayu Oda: Hanako's Guardian",
 		rulesText: "{Play} Spend a rival Unit for each friendly value-pair of Gigs.\nThis Unit can attack rival Units the turn it's played."
 	} }),
-	T({
+	E({
 		id: "a29490bb-2836-48b6-a4f9-a44b25c8bfa2",
 		canonicalId: "saul-bright-stormrider",
 		slug: "saul-bright-stormrider",
@@ -12308,7 +12308,7 @@ var xr = T({
 		displayName: "Saul Bright: Stormrider",
 		rulesText: "Other friendly Units have +2 power while attacking.\nAt the end of your turn, ready up to 3 friendly Units."
 	} }),
-	T({
+	E({
 		id: "7a62beca-ac54-4c0d-847d-ed85838c5093",
 		canonicalId: "screw-lovelorn-fool",
 		slug: "screw-lovelorn-fool",
@@ -12356,7 +12356,7 @@ var xr = T({
 		displayName: "Screw: Lovelorn Fool",
 		rulesText: "{Defeated} Add another Unit from your trash to your hand."
 	} }),
-	T({
+	E({
 		id: "b05cb065-309e-45a3-bbe0-20f4b6ea71aa",
 		slug: "secondhand-bombus",
 		canonicalId: "secondhand-bombus",
@@ -12384,7 +12384,7 @@ var xr = T({
 		displayName: "Secondhand Bombus",
 		rulesText: "{Blocker} (You may spend this Unit to redirect a rival Unit's attack to it instead.)\n(Units with power 0 don't steal Gigs.)"
 	} }),
-	T({
+	E({
 		id: "b3b40c68-705b-41ff-ae10-4132497c4a39",
 		slug: "sketchy-ripper",
 		canonicalId: "sketchy-ripper",
@@ -12442,7 +12442,7 @@ var xr = T({
 		displayName: "Sketchy Ripper",
 		rulesText: "{Attack} Search the top 3 cards of your deck. Reveal a Gear and add it to your hand. Bottom-deck the rest.\n(Units with power 0 don't steal Gigs.)"
 	} }),
-	T({
+	E({
 		id: "3c4e7fcb-933d-4712-9ce7-6052a14f8e94",
 		slug: "swordwise-huscle",
 		canonicalId: "swordwise-huscle",
@@ -12463,12 +12463,12 @@ var xr = T({
 		type: "unit",
 		cost: 3,
 		power: 3,
-		abilities: [qn.triggered().text("{Attack} If this Unit has power 5+, draw 1.").onAttack().source(E.self()).effect(D.draw({
+		abilities: [qn.triggered().text("{Attack} If this Unit has power 5+, draw 1.").onAttack().source(D.self()).effect(Bn.draw({
 			player: "friendly",
 			amount: 1,
 			conditions: [{
 				condition: "cardStat",
-				target: E.self(),
+				target: D.self(),
 				property: "power",
 				comparison: "gte",
 				value: 5
@@ -12479,7 +12479,7 @@ var xr = T({
 		displayName: "Swordwise Huscle",
 		rulesText: "{Attack} If this Unit has power 5+, draw 1."
 	} }),
-	T({
+	E({
 		id: "5a5a177c-6ed8-4bd9-8b11-13c2b64414e2",
 		slug: "t-bug-amateur-philosopher",
 		canonicalId: "t-bug-amateur-philosopher",
@@ -12540,7 +12540,7 @@ var xr = T({
 		displayName: "T-Bug: Amateur Philosopher",
 		rulesText: "{Defeated} Look at all friendly face-down Legends. Then, you may Call a Legend for free. (You can only Call a Legend once per turn.)"
 	} }),
-	T({
+	E({
 		id: "2a4a1f1a-9888-403e-90a9-4021c3f52674",
 		canonicalId: "trauma-team-operatives",
 		slug: "trauma-team-operatives",
@@ -12576,7 +12576,7 @@ var xr = T({
 		displayName: "Trauma Team Operatives",
 		rulesText: "Play this Unit for -1 €$ for each Unit in your trash, to a minimum of 1 €$."
 	} }),
-	T({
+	E({
 		id: "31e5b986-1e67-439c-81fc-49f8938bd002",
 		canonicalId: "tyger-s-whisper",
 		slug: "tyger-s-whisper",
@@ -12627,7 +12627,7 @@ var xr = T({
 		displayName: "Tyger's Whisper",
 		rulesText: "{Play} You may Call a Legend for free. (You can only Call a Legend once per turn.)\n(Units with power 0 don't steal Gigs.)"
 	} }),
-	T({
+	E({
 		id: "9ed58d18-df78-4689-b28f-77260243c522",
 		canonicalId: "v-roamer-of-the-badlands",
 		slug: "v-roamer-of-the-badlands",
@@ -12706,7 +12706,7 @@ var xr = T({
 		displayName: "V: Roamer of the Badlands",
 		rulesText: "When this Unit steals a Gig, increase it by up to 5.\nAt the end of your turn, if you control 2 or more Gigs with 8+ value, draw 1."
 	} }),
-	T({
+	E({
 		id: "5cf0c12a-814e-4801-8171-7fe8c09fad21",
 		canonicalId: "valentino-guerrera",
 		slug: "valentino-guerrera",
@@ -12747,7 +12747,7 @@ var xr = T({
 		displayName: "Valentino Guerrera",
 		rulesText: "If you have more ☆ (Street Cred) than a Rival, this Unit can attack ready Units with {Blocker}."
 	} }),
-	T({
+	E({
 		id: "5d6afeed-1532-4a01-bb40-a011030a7785",
 		canonicalId: "valentino-street-racer",
 		slug: "valentino-street-racer",
@@ -12797,7 +12797,7 @@ var xr = T({
 		displayName: "Valentino Street Racer",
 		rulesText: "{Play} Give another friendly Unit with cost 5 or less {Adrenaline} this turn. (A Unit with Adrenaline can attack the turn it's played.)"
 	} }),
-	T({
+	E({
 		id: "92d23553-8b0d-49cd-8cbe-6f00b3377298",
 		canonicalId: "viktor-vektor-drop-your-illusions",
 		slug: "viktor-vektor-drop-your-illusions",
@@ -12845,7 +12845,7 @@ var xr = T({
 		displayName: "Viktor Vektor: Drop Your Illusions",
 		rulesText: "Play your first CYBERWARE Gear each turn for -3 €$, to a minimum of 1 €$."
 	} }),
-	T({
+	E({
 		id: "647bb074-197f-4059-bac5-251b47c98287",
 		canonicalId: "viktor-vektor-you-might-feel-a-little-pinch",
 		slug: "viktor-vektor-you-might-feel-a-little-pinch",
@@ -12920,7 +12920,7 @@ var xr = T({
 		displayName: "Viktor Vektor: You Might Feel a Little Pinch",
 		rulesText: "{Play} Play a CYBERWARE Gear with cost 2 or less from your trash for free. Equip it only to another friendly Unit."
 	} }),
-	T({
+	E({
 		id: "b7a94000-c026-433e-82fa-901bf22db54e",
 		canonicalId: "westbrook-netrunner",
 		slug: "westbrook-netrunner",
@@ -12958,7 +12958,7 @@ var xr = T({
 		displayName: "Westbrook Netrunner",
 		rulesText: "{Play} Until your next turn, rival Legends can't steal friendly Gigs with value less than their power."
 	} }),
-	T({
+	E({
 		id: "67b47cff-2237-4765-86fb-9b2b3abecbb1",
 		slug: "wraith-marauders",
 		canonicalId: "wraith-marauders",
@@ -13025,7 +13025,7 @@ var xr = T({
 		displayName: "Wraith Marauders",
 		rulesText: "When this Unit steals a Gig, ready another friendly Unit with power equal to the Gig's value."
 	} }),
-	T({
+	E({
 		id: "6cf6456d-d020-4c6c-9041-66d503a01a0a",
 		canonicalId: "yorinobu-arasaka-steel-dragon",
 		slug: "yorinobu-arasaka-steel-dragon",
@@ -13112,7 +13112,7 @@ var xr = T({
 		rulesText: "{Play} You may play a Unit with cost 4 or less from your hand or trash for free. It can attack rival Units this turn.\nThe first time an ARASAKA Unit is defeated each turn, draw 1."
 	} })
 ], Nr = [
-	T({
+	E({
 		id: "6a5a1e34-fdd3-42de-b6bd-4b2553d6df39",
 		canonicalId: "adrenaline-converter",
 		slug: "adrenaline-converter",
@@ -13160,7 +13160,7 @@ var xr = T({
 		displayName: "Adrenaline Converter",
 		rulesText: "(Equip to a friendly Unit or face-up Legend.)\nIf a Rival controls at least 2 more Gigs than you, this Unit has {Adrenaline}. (This Unit can attack the turn it's played.)"
 	} }),
-	T({
+	E({
 		id: "5233bacc-f39f-4383-8e25-57ef634735ca",
 		canonicalId: "arasaka-emergency-radioport",
 		slug: "arasaka-emergency-radioport",
@@ -13258,7 +13258,7 @@ var xr = T({
 		displayName: "Arasaka Emergency Radioport",
 		rulesText: "(Equip to a friendly Unit or face-up Legend.)\nWhen this Unit or Legend is spent, you may look at a friendly face-down Legend. If that Legend is ARASAKA or has {Go Solo}, you may Call it for free. (You may only Call a Legend once per turn.)"
 	} }),
-	T({
+	E({
 		id: "1d8f611c-dd08-48d1-82eb-451d56dcf651",
 		canonicalId: "deadman-transmitter",
 		slug: "deadman-transmitter",
@@ -13298,7 +13298,7 @@ var xr = T({
 		displayName: "Deadman Transmitter",
 		rulesText: "(Equip to a friendly Unit or face-up Legend.)\nIf this Unit would be defeated, defeat its \"DEADMAN TRANSMITTER\" instead."
 	} }),
-	T({
+	E({
 		id: "df06b6e2-1675-48a3-bfe2-d0bc4c5f35eb",
 		slug: "dying-night-v-s-pistol",
 		canonicalId: "dying-night-v-s-pistol",
@@ -13319,24 +13319,24 @@ var xr = T({
 		type: "gear",
 		cost: 2,
 		power: 2,
-		abilities: [qn.triggered().text("ATTACK Decrease a Gig by up to 2.").onAttack().source(E.host()).bind("selectedGig", E.gig({
+		abilities: [qn.triggered().text("ATTACK Decrease a Gig by up to 2.").onAttack().source(D.host()).bind("selectedGig", D.gig({
 			amount: 1,
 			selection: {
 				mode: "choose",
 				min: 1,
 				max: 1
 			}
-		})).effect(D.adjustGig({
-			target: E.bound("selectedGig"),
+		})).effect(Bn.adjustGig({
+			target: D.bound("selectedGig"),
 			maxAmount: 2,
 			direction: "decrease",
 			chooseUpTo: !0
-		})).build(), qn.triggered().text("At the end of your turn, if this Unit is named \"V\", ready 2 Eddies.").onTurnEnded({ player: "friendly" }).source(E.host()).effect(D.readyEddies({
+		})).build(), qn.triggered().text("At the end of your turn, if this Unit is named \"V\", ready 2 Eddies.").onTurnEnded({ player: "friendly" }).source(D.host()).effect(Bn.readyEddies({
 			player: "friendly",
 			amount: 2,
 			conditions: [{
 				condition: "cardName",
-				target: E.host(),
+				target: D.host(),
 				name: "V"
 			}]
 		})).build()],
@@ -13350,7 +13350,7 @@ var xr = T({
 		displayName: "Dying Night: V's Pistol",
 		rulesText: "(Equip to a friendly Unit or face-up Legend.)\n{Attack} Decrease a Gig by up to 2. At the end of your turn, if this Unit is named \"V\", ready 2 Eddies."
 	} }),
-	T({
+	E({
 		id: "500ae9b9-0afa-4b82-87ed-61c72583139c",
 		slug: "gorilla-arms",
 		canonicalId: "gorilla-arms",
@@ -13415,7 +13415,7 @@ var xr = T({
 		displayName: "Gorilla Arms",
 		rulesText: "(Equip to a friendly Unit or face-up Legend.)\nThe first time this Unit steals 1 or more Gigs each turn, steal a rival Gig with a value not shared by a friendly Gig."
 	} }),
-	T({
+	E({
 		id: "654f2289-5d75-4f8b-bd35-702031fbb214",
 		slug: "kiroshi-optics",
 		canonicalId: "kiroshi-optics",
@@ -13436,8 +13436,8 @@ var xr = T({
 		type: "gear",
 		cost: 1,
 		power: 1,
-		abilities: [qn.triggered().text("ATTACK Look at a friendly face-down Legend. (Don't reveal it.)").onAttack().source(E.host()).effect(D.lookAt({
-			target: E.card({
+		abilities: [qn.triggered().text("ATTACK Look at a friendly face-down Legend. (Don't reveal it.)").onAttack().source(D.host()).effect(Bn.lookAt({
+			target: D.card({
 				controller: "friendly",
 				zones: ["legendArea"],
 				cardTypes: ["legend"],
@@ -13459,7 +13459,7 @@ var xr = T({
 		displayName: "Kiroshi Optics",
 		rulesText: "(Equip to a friendly Unit or face-up Legend.)\n{Attack} Look at a friendly face-down Legend. (Don't reveal it.)"
 	} }),
-	T({
+	E({
 		id: "6720e7fd-d1e8-4c8a-9ff2-f51f62241902",
 		slug: "mandibular-upgrade",
 		canonicalId: "mandibular-upgrade",
@@ -13490,7 +13490,7 @@ var xr = T({
 		displayName: "Mandibular Upgrade",
 		rulesText: "(Equip to a friendly Unit or face-up Legend.)\n{Blocker} (You may spend this Unit to redirect a rival Unit's attack to it instead.)"
 	} }),
-	T({
+	E({
 		id: "28198e04-60e2-4f81-9786-903a9a947d7a",
 		slug: "mantis-blades",
 		canonicalId: "mantis-blades",
@@ -13519,7 +13519,7 @@ var xr = T({
 		displayName: "Mantis Blades",
 		rulesText: "(Equip to a friendly Unit or face-up Legend.)\n\"One cut, one kill.\""
 	} }),
-	T({
+	E({
 		id: "40c98fdc-45d0-458d-be2c-2697dc337ca5",
 		canonicalId: "netwatch-netdriver",
 		slug: "netwatch-netdriver",
@@ -13570,7 +13570,7 @@ var xr = T({
 		displayName: "NetWatch Netdriver",
 		rulesText: "(Equip to a friendly Unit or face-up Legend.)\nWhen this Unit or Legend is spent, draw 1."
 	} }),
-	T({
+	E({
 		id: "78ea68b3-1260-416b-9f88-d6be4586232b",
 		canonicalId: "overwatch-panam-s-gift",
 		slug: "overwatch-panam-s-gift",
@@ -13656,7 +13656,7 @@ var xr = T({
 		displayName: "Overwatch: Panam's Gift",
 		rulesText: "{Quick} 1 €$, {Spend} Discard 1. Defeat a spent rival Unit with cost equal to or less than the discarded card's cost."
 	} }),
-	T({
+	E({
 		id: "7da95cf0-f749-439f-b40a-9d3057d2c995",
 		canonicalId: "riot-shield",
 		slug: "riot-shield",
@@ -13696,7 +13696,7 @@ var xr = T({
 		displayName: "Riot Shield",
 		rulesText: "(Equip to a friendly Unit or face-up Legend.)\n{Blocker} (You may spend this Unit to redirect a rival Unit's attack to it instead.)\nRivals must pay +2 €$ to use {Go Solo}."
 	} }),
-	T({
+	E({
 		id: "55153b49-c3a7-4208-a47b-0a91fa7e3b5c",
 		slug: "sandevistan",
 		canonicalId: "sandevistan",
@@ -13716,7 +13716,7 @@ var xr = T({
 		type: "gear",
 		cost: 3,
 		power: 2,
-		abilities: [qn.triggered().text("At the end of your turn, ready this Unit or Legend.").onTurnEnded({ player: "friendly" }).source(E.host()).effect(D.ready({ target: E.host() })).build()],
+		abilities: [qn.triggered().text("At the end of your turn, ready this Unit or Legend.").onTurnEnded({ player: "friendly" }).source(D.host()).effect(Bn.ready({ target: D.host() })).build()],
 		attachment: {
 			text: "Equip to a unit or face-up legend.",
 			target: i("friendly", "faceUp")
@@ -13726,7 +13726,7 @@ var xr = T({
 		displayName: "Sandevistan",
 		rulesText: "(Equip to a friendly Unit or face-up Legend.)\nAt the end of your turn, ready this Unit or Legend."
 	} }),
-	T({
+	E({
 		id: "4670d02b-b97a-4771-bb7e-65bdc012530e",
 		slug: "satori-sword-of-saburo",
 		canonicalId: "satori-sword-of-saburo",
@@ -13748,8 +13748,8 @@ var xr = T({
 		power: 2,
 		abilities: [qn.triggered().text("When this Unit wins a fight against a rival Unit, draw 1.").onFightResolved({
 			player: "any",
-			winner: E.host()
-		}).source(E.host()).effect(D.draw({
+			winner: D.host()
+		}).source(D.host()).effect(Bn.draw({
 			player: "friendly",
 			amount: 1
 		})).build()],
@@ -13763,7 +13763,7 @@ var xr = T({
 		displayName: "Satori: Sword of Saburo",
 		rulesText: "(Equip to a friendly Unit or face-up Legend.)\nWhen this Unit wins a fight against a rival Unit, draw 1."
 	} }),
-	T({
+	E({
 		id: "39665784-d2f1-43e8-a958-894bac716d71",
 		canonicalId: "tetratronic-rippler",
 		slug: "tetratronic-rippler",
@@ -13823,7 +13823,7 @@ var xr = T({
 		displayName: "Tetratronic Rippler",
 		rulesText: "(Equip to a friendly Unit or face-up Legend.)\nWhen this Unit or Legend is spent, search the top card of your deck. You may trash it. (Otherwise, keep it on the top of your deck.)"
 	} }),
-	T({
+	E({
 		id: "1263e2bf-bc15-4550-ad07-b028602d1354",
 		canonicalId: "the-relic-experimental-biochip",
 		slug: "the-relic-experimental-biochip",
@@ -13887,7 +13887,7 @@ var xr = T({
 		displayName: "The Relic: Experimental Biochip",
 		rulesText: "{Defeated} Play another Unit with cost 9 or less from your trash for free. Then, bottom-deck this Unit."
 	} }),
-	T({
+	E({
 		id: "1d7f3d02-27b5-4ab8-af99-f8f2e0fd62cf",
 		canonicalId: "zetatech-berserk",
 		slug: "zetatech-berserk",
@@ -13922,7 +13922,7 @@ var xr = T({
 		displayName: "Zetatech Berserk",
 		rulesText: "Play this Gear for -1 €$ for each friendly face-up Legend, to a minimum of 1 €$."
 	} }),
-	T({
+	E({
 		id: "eead1bba-f247-423e-a4f5-b330945887b0",
 		slug: "zetatech-faceplate",
 		canonicalId: "zetatech-faceplate",
@@ -13995,7 +13995,7 @@ var xr = T({
 		displayName: "Zetatech Faceplate",
 		rulesText: "(Equip to a friendly Unit or face-up Legend.)\nWhen this Unit or Legend is spent, adjust a Gig by up to 1. Then, if you control 3 or more Gigs with different values, draw 1."
 	} })
-], Pr = T({
+], Pr = E({
 	id: "d039e4b3-9b83-40da-8d8f-b1dfb1f172f1",
 	slug: "afterparty-at-lizzie-s",
 	canonicalId: "afterparty-at-lizzie-s",
@@ -14058,7 +14058,7 @@ var xr = T({
 	name: "Afterparty at Lizzie's",
 	displayName: "Afterparty at Lizzie's",
 	rulesText: "Adjust a Gig by up to 1. If you control 2 or more Gigs with different values, draw 1."
-} }), Fr = T({
+} }), Fr = E({
 	id: "1f969c27-dddb-4971-9ab5-bd728c3e3e52",
 	slug: "all-is-lost",
 	canonicalId: "all-is-lost",
@@ -14109,7 +14109,7 @@ var xr = T({
 	name: "All is Lost",
 	displayName: "All is Lost",
 	rulesText: "Trash 3. Add a Unit from among them to your hand."
-} }), Ir = T({
+} }), Ir = E({
 	id: "59ddecca-1501-492a-b8b1-d4b38d4486c9",
 	canonicalId: "appetite-for-destruction",
 	slug: "appetite-for-destruction",
@@ -14144,7 +14144,7 @@ var xr = T({
 	name: "Appetite for Destruction",
 	displayName: "Appetite for Destruction",
 	rulesText: "The next time a friendly Unit wins a fight by 3+ power this turn, it also steals a Gig."
-} }), Lr = T({
+} }), Lr = E({
 	id: "3eb0f8bf-afb9-42a7-a4fa-710e2eb5c89c",
 	slug: "bonnie-and-clyde",
 	canonicalId: "bonnie-and-clyde",
@@ -14219,7 +14219,7 @@ var xr = T({
 	name: "Bonnie and Clyde",
 	displayName: "Bonnie and Clyde",
 	rulesText: "Defeat a rival Unit with power 4 or less. You may defeat 2 instead if a Rival controls at least 2 Gigs more than you."
-} }), Rr = T({
+} }), Rr = E({
 	id: "84561b4c-67f0-4b2e-80ac-6b9c0a2396e3",
 	slug: "bootleg-black-sapphire-show",
 	canonicalId: "bootleg-black-sapphire-show",
@@ -14264,7 +14264,7 @@ var xr = T({
 	name: "Bootleg Black Sapphire Show",
 	displayName: "Bootleg Black Sapphire Show",
 	rulesText: "Sell the top card of your deck.\nIf you control a Gig with an even value and a Gig with an odd value, draw 2."
-} }), zr = T({
+} }), zr = E({
 	id: "81fb66ee-b054-4f78-b0c9-7d2c9ff53435",
 	slug: "carnage-at-the-colosseum",
 	canonicalId: "carnage-at-the-colosseum",
@@ -14327,7 +14327,7 @@ var xr = T({
 	name: "Carnage at the Colosseum",
 	displayName: "Carnage at the Colosseum",
 	rulesText: "Play this Program for -1 €$ for each friendly Gig with 8+ value, to a minimum of 1 €$.\nDefeat a rival Unit with less power than a friendly Unit."
-} }), Br = T({
+} }), Br = E({
 	id: "a5e0cd15-861f-46ac-b6e9-db5e30acfc82",
 	slug: "chrome-reverie",
 	canonicalId: "chrome-reverie",
@@ -14396,7 +14396,7 @@ var xr = T({
 	name: "Chrome Reverie",
 	displayName: "Chrome Reverie",
 	rulesText: "A rival Unit can't attack until your next turn. If you control a min Gig, you may Call a Legend for free. (You can only Call a Legend once per turn.)"
-} }), Vr = T({
+} }), Vr = E({
 	id: "71fb410b-b56e-42b2-a793-4c49e935b9f1",
 	slug: "corporate-surveillance",
 	canonicalId: "corporate-surveillance",
@@ -14443,7 +14443,7 @@ var xr = T({
 	name: "Corporate Surveillance",
 	displayName: "Corporate Surveillance",
 	rulesText: "Spend a rival Unit with cost 4 or less."
-} }), Hr = T({
+} }), Hr = E({
 	id: "d0991502-57e5-42e2-b37b-64b425f4f1b5",
 	slug: "cyberpsychosis",
 	canonicalId: "cyberpsychosis",
@@ -14516,7 +14516,7 @@ var xr = T({
 	name: "Cyberpsychosis",
 	displayName: "Cyberpsychosis",
 	rulesText: "{Quick} Give an equipped Unit +3 power this turn for each of its equipped Gears. If that Unit steals or fights, defeat it at the end of this turn."
-} }), Ur = T({
+} }), Ur = E({
 	id: "2697ed9d-72fc-4658-9c94-977668911a67",
 	canonicalId: "detonate",
 	slug: "detonate",
@@ -14563,7 +14563,7 @@ var xr = T({
 	name: "Detonate",
 	displayName: "Detonate",
 	rulesText: "{Quick} Defeat a rival Gear with power 2 or less."
-} }), Wr = T({
+} }), Wr = E({
 	id: "17a80b46-c583-4867-97ac-7855494363a9",
 	canonicalId: "don-t-fear-the-reaper",
 	slug: "don-t-fear-the-reaper",
@@ -14616,7 +14616,7 @@ var xr = T({
 	name: "(Don't Fear) The Reaper",
 	displayName: "(Don't Fear) The Reaper",
 	rulesText: "Spend all rival Units. Then, defeat a spent Unit."
-} }), Gr = T({
+} }), Gr = E({
 	id: "0cd37c43-e722-48eb-91ef-4c1bd1645215",
 	slug: "floor-it",
 	canonicalId: "floor-it",
@@ -14669,7 +14669,7 @@ var xr = T({
 	name: "Floor It",
 	displayName: "Floor It",
 	rulesText: "{Quick} Give a rival Unit -1 power this turn. Draw 1."
-} }), Kr = T({
+} }), Kr = E({
 	id: "c5d2fed1-1470-4ac5-9f84-bf66705901ce",
 	slug: "fool-on-the-hill",
 	canonicalId: "fool-on-the-hill",
@@ -14712,7 +14712,7 @@ var xr = T({
 	name: "Fool on the Hill",
 	displayName: "Fool on the Hill",
 	rulesText: "Reveal the top 2 cards of your deck. A Rival chooses whether you add them to your hand or trash them. If you trash them, draw 2."
-} }), qr = T({
+} }), qr = E({
 	id: "27c01b18-2a9c-4d66-ad21-b75869fba666",
 	canonicalId: "gunpoint-diplomacy",
 	slug: "gunpoint-diplomacy",
@@ -14833,7 +14833,7 @@ var xr = T({
 	name: "Gunpoint Diplomacy",
 	displayName: "Gunpoint Diplomacy",
 	rulesText: "Give a friendly Unit these effects. If you have less ☆ (Street Cred) than a Rival, they instead choose one effect for you.\nThe next time this Unit attacks this turn, it may attack ready Units. // Give this Unit +3 power this turn."
-} }), Jr = T({
+} }), Jr = E({
 	id: "a708461f-1f91-4789-bb0d-96e3de5fcf44",
 	canonicalId: "industrial-assembly",
 	slug: "industrial-assembly",
@@ -14899,7 +14899,7 @@ var xr = T({
 	name: "Industrial Assembly",
 	displayName: "Industrial Assembly",
 	rulesText: "Increase a Gig by up to 4. If you control a Gig with 8+ value, draw 1."
-} }), Yr = T({
+} }), Yr = E({
 	id: "c29aefc5-c8dd-4188-95d9-e46c5ee289eb",
 	canonicalId: "les-elemens",
 	slug: "les-elemens",
@@ -14947,7 +14947,7 @@ var xr = T({
 	name: "Les Élémens",
 	displayName: "Les Élémens",
 	rulesText: "Bottom-deck a Rival's lowest-power Unit. (If there are multiple, choose 1.)"
-} }), Xr = T({
+} }), Xr = E({
 	id: "793d9650-0a59-4c89-9d85-05a9d6873d2e",
 	canonicalId: "live-with-the-aftermath",
 	slug: "live-with-the-aftermath",
@@ -15020,7 +15020,7 @@ var xr = T({
 	name: "Live with the Aftermath",
 	displayName: "Live with the Aftermath",
 	rulesText: "Each player defeats one of their Units."
-} }), Zr = T({
+} }), Zr = E({
 	id: "0f7c1c54-0e2e-44a5-ac7f-5263fbab21d3",
 	canonicalId: "memory-relapse",
 	slug: "memory-relapse",
@@ -15094,7 +15094,7 @@ var xr = T({
 	name: "Memory Relapse",
 	displayName: "Memory Relapse",
 	rulesText: "Spend a rival Unit. It can't ready until your next turn. If your ☆ (Street Cred) is an even number, draw 1."
-} }), Qr = T({
+} }), Qr = E({
 	id: "e4af26f0-e25d-4e30-8bac-6701f54f3e97",
 	canonicalId: "nocturne-op55-n1",
 	slug: "nocturne-op55-n1",
@@ -15189,7 +15189,7 @@ var xr = T({
 	name: "Nocturne OP55 N1",
 	displayName: "Nocturne OP55 N1",
 	rulesText: "If your fixer area is empty, play this Program for 1 €$. Choose one effect.\nDraw 2. // A Unit can't attack until your next turn. // A friendly Legend may use {Go Solo} for -2 €$ this turn, to a minimum of 1 €$."
-} }), $r = T({
+} }), $r = E({
 	id: "144c3559-3518-4c01-b9e6-af42b7166661",
 	canonicalId: "over-the-edge",
 	slug: "over-the-edge",
@@ -15239,7 +15239,7 @@ var xr = T({
 	name: "Over the Edge",
 	displayName: "Over the Edge",
 	rulesText: "Defeat a Unit with power equal to or less than the value of a friendly d20."
-} }), ei = T({
+} }), ei = E({
 	id: "3b30f02d-84dd-402c-ab4b-87a2ec3badce",
 	slug: "peace-offering",
 	canonicalId: "peace-offering",
@@ -15350,7 +15350,7 @@ var xr = T({
 		sides: "d4",
 		maxValue: 1
 	}
-}, ai = T({
+}, ai = E({
 	id: "7977a175-0516-478e-b166-3edb035849a4",
 	canonicalId: "pyramid-song",
 	slug: "pyramid-song",
@@ -15406,7 +15406,7 @@ var xr = T({
 	reminderText: ["Discard programs after they resolve."],
 	type: "program",
 	cost: 3
-}, ti), oi = T({
+}, ti), oi = E({
 	id: "ad13a7bc-c49d-4166-8a9c-965e7bfa9b8f",
 	canonicalId: "reboot-optics",
 	slug: "reboot-optics",
@@ -15443,7 +15443,7 @@ var xr = T({
 	name: "Reboot Optics",
 	displayName: "Reboot Optics",
 	rulesText: "{Quick} The next time a rival Unit fights this turn, it doesn't defeat the opposing friendly Unit."
-} }), si = T({
+} }), si = E({
 	id: "b4cba235-816d-4888-a308-1c397b9288e7",
 	canonicalId: "safety-override",
 	slug: "safety-override",
@@ -15478,7 +15478,7 @@ var xr = T({
 	name: "Safety Override",
 	displayName: "Safety Override",
 	rulesText: "{Quick} The next time a friendly Unit loses a fight this turn, defeat the opposing rival Unit."
-} }), ci = T({
+} }), ci = E({
 	id: "050d0502-94b0-4bee-a7e6-a9b00f31b4ae",
 	canonicalId: "shattered-memories",
 	slug: "shattered-memories",
@@ -15564,7 +15564,7 @@ var xr = T({
 	name: "Shattered Memories",
 	displayName: "Shattered Memories",
 	rulesText: "Each player discards their hand and may draw 5.\nIf the total number of discarded cards equals the value of a friendly Gig, draw 2."
-} }), li = T({
+} }), li = E({
 	id: "f3ba5ef7-5e91-4956-a887-b88a4b854867",
 	canonicalId: "synapse-burnout",
 	slug: "synapse-burnout",
@@ -15624,7 +15624,7 @@ var xr = T({
 	name: "Synapse Burnout",
 	displayName: "Synapse Burnout",
 	rulesText: "{Quick} A friendly Unit has +1 power for each friendly face-up Legend while fighting rival Units this turn."
-} }), ui = T({
+} }), ui = E({
 	id: "1535c19d-54e5-4289-9cb7-15ab429c0092",
 	slug: "take-control",
 	canonicalId: "take-control",
@@ -15716,7 +15716,7 @@ var xr = T({
 	ci,
 	li,
 	ui,
-	T({
+	E({
 		id: "5ea00b3a-7e85-4c7d-91ad-90e0cf370c27",
 		slug: "the-heist",
 		canonicalId: "the-heist",
@@ -15793,7 +15793,7 @@ var xr = T({
 		}],
 		reminderText: ["Discard programs after they resolve."]
 	}, di),
-	T({
+	E({
 		id: "2993d637-d44d-4add-8473-26d67c0d1bc0",
 		canonicalId: "three-mouths-one-desire",
 		slug: "three-mouths-one-desire",
@@ -15858,7 +15858,7 @@ var xr = T({
 		displayName: "Three Mouths, One Desire",
 		rulesText: "Search the top 3 cards of your deck. Add 1 to your hand. You may add 1 more for each friendly min Gig. Bottom-deck the rest."
 	} }),
-	T({
+	E({
 		id: "9a0fd5a3-a00b-425c-a251-755eeab12bfe",
 		canonicalId: "towerfall",
 		slug: "towerfall",
@@ -15974,7 +15974,7 @@ var xr = T({
 		displayName: "Towerfall",
 		rulesText: "Choose one effect. If you have less ☆ (Street Cred) than a Rival, choose both instead.\nGive all rival Units -5 power this turn. // Bottom-deck all rival Units with power 0."
 	} }),
-	T({
+	E({
 		id: "ec857ab0-995e-4c32-84b6-7ba57b2f6137",
 		canonicalId: "trust-no-one",
 		slug: "trust-no-one",
@@ -16036,7 +16036,7 @@ var xr = T({
 		displayName: "Trust No One",
 		rulesText: "Decrease a Gig by up to 3. Then, if you control a min Gig, draw 1."
 	} }),
-	T({
+	E({
 		id: "5b8f8d4f-c62e-4bde-a086-2ce15bd9449d",
 		canonicalId: "unlikely-bond",
 		slug: "unlikely-bond",
@@ -16103,7 +16103,7 @@ var xr = T({
 		displayName: "Unlikely Bond",
 		rulesText: "Bottom-deck a ready friendly Unit. If you do, bottom-deck a spent rival Unit."
 	} }),
-	T({
+	E({
 		id: "404748b4-f30e-4bf1-8991-5ad449da755a",
 		canonicalId: "we-gotta-live-together",
 		slug: "we-gotta-live-together",
@@ -16169,7 +16169,7 @@ var xr = T({
 		displayName: "We Gotta Live Together",
 		rulesText: "If a Rival controls at least 2 more Gigs than you, play this Program for 3 €$.\nPlay up to 2 Units with cost 3 or less from your trash for free."
 	} }),
-	T({
+	E({
 		id: "3126fa21-ea19-4096-8233-d63797bb9fe4",
 		canonicalId: "wild-in-the-streets",
 		slug: "wild-in-the-streets",
@@ -16216,7 +16216,7 @@ var xr = T({
 		rulesText: "Defeat a spent Unit."
 	} })
 ], pi = [
-	...Rn,
+	...Ln,
 	...Mr,
 	...Nr,
 	...fi
@@ -20704,7 +20704,7 @@ var Yo = {
 	}
 };
 function Xo(e, t, n) {
-	e.kind === "fight" || t.G.turnMetadata.pendingChoice || (e.kind === "effect" ? V(t, n) : W(t, n));
+	e.kind === "fight" || t.G.turnMetadata.pendingChoice || (e.kind === "effect" && V(t, n), W(t, n));
 }
 var Zo = {
 	handlesPendingChoice: !0,
@@ -23808,11 +23808,11 @@ function Tl(e, t) {
 		if (!r || r.meta.spent) return !1;
 		let i = j(e, n);
 		if (!i.includes("mustAttack") || i.includes("cantAttack") || i.includes("requiresProgramPlayedThisTurn") && !wl(e, t)) return !1;
-		let a = k(r), o = !i.includes("cantAttackRival") && (!r.meta.hasLag || i.includes("adrenaline") || i.includes("canAttackRivalOnPlayedTurn")), s = !r.meta.hasLag || i.includes("adrenaline") || i.includes("canAttackOnPlayedTurnAgainstUnits"), c = e.ctx.playerIds.find((e) => e !== t), l = s && c !== void 0 && e.G.players[c]?.zones.field.some((t) => {
+		let a = k(r), o = e.ctx.playerIds.find((e) => e !== t), s = o !== void 0 && !!e.G.players[o]?.gigArea.length && !i.includes("cantAttackRival") && (!r.meta.hasLag || i.includes("adrenaline") || i.includes("canAttackRivalOnPlayedTurn")), c = (!r.meta.hasLag || i.includes("adrenaline") || i.includes("canAttackOnPlayedTurnAgainstUnits")) && o !== void 0 && e.G.players[o]?.zones.field.some((t) => {
 			let n = e.G.cardIndex[t];
 			return !n || k(n).type !== "unit" && k(n).type !== "legend" ? !1 : n.meta.spent || i.includes("canAttackReadyUnits") || i.includes("canAttackReadyBlockers") && j(e, t).includes("blocker");
 		});
-		return !o && !l ? !1 : a.type === "unit" || a.keywords.includes("goSolo");
+		return !s && !c ? !1 : a.type === "unit" || a.keywords.includes("goSolo");
 	}) : [];
 }
 function El(e, t, n) {
@@ -24389,6 +24389,11 @@ var zl = {
 			error: "Attacker not on your field",
 			errorCode: "NOT_ON_FIELD"
 		};
+		if (!Sa(o, "unit")) return {
+			valid: !1,
+			error: "Only Units can attack",
+			errorCode: "NOT_UNIT"
+		};
 		if (o.meta.spent) return {
 			valid: !1,
 			error: "Attacker is spent",
@@ -24427,6 +24432,11 @@ var zl = {
 			error: "Defender not on opponent's field",
 			errorCode: "NOT_ON_FIELD"
 		};
+		if (!Sa(c, "unit")) return {
+			valid: !1,
+			error: "Only Units can be attacked",
+			errorCode: "TARGET_NOT_UNIT"
+		};
 		let u = j(e, i);
 		return !c.meta.spent && !s.includes("canAttackReadyUnits") && !(s.includes("canAttackReadyBlockers") && u.includes("blocker")) ? {
 			valid: !1,
@@ -24464,7 +24474,7 @@ var zl = {
 	}
 }, Vl = {
 	available({ state: e, playerId: t }) {
-		if (e.G.gamePhase !== "main" || e.G.turnMetadata.activePlayerId !== t || e.G.attackState) return !1;
+		if (e.G.gamePhase !== "main" || e.G.turnMetadata.activePlayerId !== t || e.G.attackState || !e.G.players[va(e, t)]?.gigArea.length) return !1;
 		let n = e.G.players[t];
 		return n ? n.zones.field.some((n) => {
 			let r = e.G.cardIndex[n];
@@ -24508,6 +24518,11 @@ var zl = {
 			error: "Attacker not on your field",
 			errorCode: "NOT_ON_FIELD"
 		};
+		if (!Sa(a, "unit")) return {
+			valid: !1,
+			error: "Only Units can attack",
+			errorCode: "NOT_UNIT"
+		};
 		if (a.meta.spent) return {
 			valid: !1,
 			error: "Attacker is spent",
@@ -24534,7 +24549,11 @@ var zl = {
 			valid: !1,
 			error: "Attacker requires a Program played this turn",
 			errorCode: "PROGRAM_NOT_PLAYED_THIS_TURN"
-		} : El(e, t, r) ? { valid: !0 } : {
+		} : El(e, t, r) ? e.G.players[va(e, t)]?.gigArea.length ? { valid: !0 } : {
+			valid: !1,
+			error: "The rival has no Gigs to attack",
+			errorCode: "NO_TARGET_GIGS"
+		} : {
 			valid: !1,
 			error: "A different unit must attack if it can",
 			errorCode: "MUST_ATTACK"
@@ -27649,7 +27668,7 @@ function Cd(e, t) {
 	let n = va(e, t), r = e.G.players[n];
 	return r ? r.zones.field.filter((t) => {
 		let n = e.G.cardIndex[t];
-		return n && n.meta.spent;
+		return n && n.meta.spent && Sa(n, "unit");
 	}).map((e) => e) : [];
 }
 function wd(e, t) {
@@ -27664,7 +27683,7 @@ function Ed(e, t) {
 	let n = va(e, t), r = e.G.players[n];
 	return r ? r.zones.field.filter((t) => {
 		let n = e.G.cardIndex[t];
-		return !(!n || n.meta.spent);
+		return !!(n && !n.meta.spent && Sa(n, "unit"));
 	}).map((e) => e) : [];
 }
 function Dd(e, t) {
@@ -30302,11 +30321,11 @@ function dp(e, t, n, r) {
 			spent: !1,
 			hasLag: !1
 		} : n;
-		if (!e && !Je(t, i)) continue;
-		let c = Math.max(0, n.effectivePower), l = c === 0 ? 0 : Math.max(0, 1 + Math.floor(c / 10) - +!!Xe(n, "stealsOneFewerGig"));
-		Xe(n, "cantBeBlocked") || e && a?.step === "steal" ? o += l : s.push(l);
+		if (!e && !qe(t, i)) continue;
+		let c = Math.max(0, n.effectivePower), l = c === 0 ? 0 : Math.max(0, 1 + Math.floor(c / 10) - +!!Ye(n, "stealsOneFewerGig"));
+		Ye(n, "cantBeBlocked") || e && a?.step === "steal" ? o += l : s.push(l);
 	}
-	let c = up(e, n).filter(Ye).length;
+	let c = up(e, n).filter(Je).length;
 	return s.sort((e, t) => t - e), Math.min(e.players[n]?.gigCount ?? 0, o + s.slice(c).reduce((e, t) => e + t, 0));
 }
 function fp(e) {
@@ -30352,7 +30371,7 @@ function gp(e, t, n = mp) {
 function _p(e, t) {
 	let n = e.players[t];
 	if (!n) return Tp();
-	let r = Cp(n.zones.field), i = Cp(n.zones.legendArea).filter((e) => !e.faceDown), a = e.playedCardTypesThisTurn[t]?.includes("program") === !0, o = r.filter((e) => qe(e, a)), s = r.filter((e) => Je(e, a)), c = r.filter(Ye), l = n.gigCount;
+	let r = Cp(n.zones.field), i = Cp(n.zones.legendArea).filter((e) => !e.faceDown), a = e.playedCardTypesThisTurn[t]?.includes("program") === !0, o = r.filter((e) => Ke(e, a)), s = r.filter((e) => qe(e, a)), c = r.filter(Je), l = n.gigCount;
 	return {
 		gigRace: bp(l),
 		streetCred: n.streetCred,
@@ -30377,7 +30396,7 @@ function bp(e) {
 	return t + (t >= 6 ? 8 : t >= 5 ? 4 : t >= 4 ? 2 : 0);
 }
 function xp(e) {
-	let t = Math.max(0, e.effectivePower), n = Math.max(0, e.cost ?? 0), r = e.attachedGearIds.length * 2, i = Xe(e, "blocker") ? 3 : 0, a = e.keywords.includes("adrenaline") || e.keywords.includes("goSolo") ? 2 : 0, o = Math.min(3, e.triggerHints.length);
+	let t = Math.max(0, e.effectivePower), n = Math.max(0, e.cost ?? 0), r = e.attachedGearIds.length * 2, i = Ye(e, "blocker") ? 3 : 0, a = e.keywords.includes("adrenaline") || e.keywords.includes("goSolo") ? 2 : 0, o = Math.min(3, e.triggerHints.length);
 	return t + n * 1.5 + r + i + a + o;
 }
 function Sp(e) {
@@ -30410,7 +30429,7 @@ function Ep(e) {
 	if (t.length === 0) {
 		let n = e.availableMoves.find((e) => e.moveId === "concede");
 		if (n) {
-			let e = C(n, Np());
+			let e = w(n, Np());
 			e.kind === "command" && t.push(e);
 		}
 	}
@@ -30508,33 +30527,33 @@ function jp(e) {
 	let t = [];
 	switch (e.inputSpec.type) {
 		case "none": {
-			let n = C(e, Np());
+			let n = w(e, Np());
 			return n.kind === "command" && t.push(n), t;
 		}
 		case "selectCard":
 			for (let n of e.inputSpec.candidates) {
-				let r = C(e, Pp(n));
+				let r = w(e, Pp(n));
 				r.kind === "command" && t.push(r);
 			}
 			return t;
 		case "selectPair":
 			for (let n of e.inputSpec.fromCandidates) for (let r of e.inputSpec.toCandidates) {
-				let i = C(e, Fp(n, r));
+				let i = w(e, Fp(n, r));
 				i.kind === "command" && t.push(i);
 			}
 			return t;
 		case "selectAbility":
 			for (let n of e.inputSpec.candidates) {
-				let r = C(e, Ip(n));
+				let r = w(e, Ip(n));
 				r.kind === "command" && t.push(r);
 			}
 			return t;
 		case "playCard":
 			for (let n of e.inputSpec.candidates) if (n.attachTargets === void 0) {
-				let r = C(e, Lp({ cardId: n.cardId }));
+				let r = w(e, Lp({ cardId: n.cardId }));
 				r.kind === "command" && t.push(r);
 			} else for (let r of n.attachTargets) {
-				let i = C(e, Lp({
+				let i = w(e, Lp({
 					cardId: n.cardId,
 					attachToId: r
 				}));
@@ -30546,7 +30565,7 @@ function jp(e) {
 function Mp(e) {
 	let t = e.availableMoves.find((e) => e.moveId === "passPhase");
 	if (!t) return null;
-	let n = C(t, Np());
+	let n = w(t, Np());
 	return n.kind === "command" ? n : null;
 }
 function Np() {
@@ -30692,7 +30711,7 @@ function Kp(e) {
 	if (e.prompt.choice) {
 		let t = Op(e.prompt.choice);
 		if (t.length) return t;
-		let n = We(e.prompt.choice, pt, e);
+		let n = We(e.prompt.choice, ft, e);
 		return n.kind === "command" ? [n] : [];
 	}
 	return Ep(e.prompt);
@@ -30724,7 +30743,7 @@ function Yp(e = {}) {
 			reason: "Expert requires a full-information practice engine."
 		};
 		let t = new Hp(e.engine), c = e.playerId, l = Gp(t, c);
-		if (l.prompt.availableMoves.some((e) => e.moveId === "mulligan")) return pt.decideAction(l);
+		if (l.prompt.availableMoves.some((e) => e.moveId === "mulligan")) return ft.decideAction(l);
 		let u = s.get(e.engine);
 		u || (u = /* @__PURE__ */ new Map(), s.set(e.engine, u));
 		let d = `${l.view.turnNumber}/${l.view.activePlayerId}`, f = u.get(c);
@@ -30843,7 +30862,7 @@ function Yp(e = {}) {
 				scoreGap: se[1] ? ce.score - se[1].score : null,
 				cutoffReason: m >= g ? "node-budget" : h >= r ? "depth" : "complete"
 			}
-		} : l.prompt.choice ? We(l.prompt.choice, pt, l) : pt.decideAction(l);
+		} : l.prompt.choice ? We(l.prompt.choice, ft, l) : ft.decideAction(l);
 	};
 	return {
 		name: "expert-oracle",
@@ -30886,7 +30905,7 @@ var Qp = {
 			reason: "no actionable moves"
 		};
 		let n = t.filter((e) => e.moveId !== "concede" && e.moveId !== "passPhase"), r = t.find((e) => e.moveId === "passPhase"), i = t.find((e) => e.moveId === "concede");
-		return C(n[0] ?? r ?? i ?? t[0], {
+		return w(n[0] ?? r ?? i ?? t[0], {
 			pickFromCandidates: (e) => e[0] ?? null,
 			pickPair: (e, t) => {
 				let n = e[0], r = t[0];
@@ -30911,7 +30930,7 @@ function em(e) {
 	};
 	let n = t.filter((e) => e.moveId !== "concede"), r = tm(n.length > 0 ? n : t, e.rng);
 	for (let t of r) {
-		let n = C(t, {
+		let n = w(t, {
 			pickFromCandidates: (t) => t.length === 0 ? null : t[Math.floor(e.rng() * t.length)],
 			pickPair: (t, n) => t.length === 0 || n.length === 0 ? null : {
 				from: t[Math.floor(e.rng() * t.length)],
@@ -30967,7 +30986,7 @@ function im(e) {
 	return null;
 }
 function am(e) {
-	return C(e, {
+	return w(e, {
 		pickFromCandidates: (e) => e[0] ?? null,
 		pickPair: (e, t) => {
 			let n = e[0], r = t[0];
@@ -31032,7 +31051,7 @@ var cm = sm("pass-only", ["passPhase", "keepHand"]), lm = sm("attack-unit-only",
 	"resolveFirstPlayer"
 ]);
 function gm(e = {}) {
-	let t = e.maxDepth ?? 3, n = e.maxNodes ?? 48, r = e.branchLimit ?? 12, i = e.deckProfile, a = e.fallbackStrategy ?? (i ? st(pt, i) : pt), o = {
+	let t = e.maxDepth ?? 3, n = e.maxNodes ?? 48, r = e.branchLimit ?? 12, i = e.deckProfile, a = e.fallbackStrategy ?? (i ? ot(ft, i) : ft), o = {
 		abilityAware: e.abilityAware === !0,
 		disabled: new Set(e.disabledHeuristics ?? [])
 	}, s = (e, s = 0) => {
@@ -31189,7 +31208,7 @@ function Sm(e, t, n, r, i, a, o, s, c, l, u) {
 		prompt: ee,
 		rng: () => .5,
 		engine: e
-	}, v = Em(_ === t ? ee : Sh(ee, d), te, _ === t ? o : pt, s);
+	}, v = Em(_ === t ? ee : Sh(ee, d), te, _ === t ? o : ft, s);
 	if (v.length === 0) return _ === t ? -9e5 : (a.cutoffReason = "hidden-information", Dh(d, t, _));
 	if (v.length === 1) {
 		let l = v[0], u = e.getFilteredView(t), d = Tm(e, _, l, a);
@@ -31247,10 +31266,10 @@ function Em(e, t, n, r) {
 			}];
 		}
 		if (Fh(e.choice.type)) return gh(e, t, n);
-		let r = Km(Op(e.choice), t), i = ot(n) ? n.deckProfile : void 0, a = Hm(r.length > 0 ? r : gh(e, t, n), t, i);
+		let r = Km(Op(e.choice), t), i = at(n) ? n.deckProfile : void 0, a = Hm(r.length > 0 ? r : gh(e, t, n), t, i);
 		return a.length > 0 ? a : gh(e, t, n);
 	}
-	let i = ot(n) ? n.deckProfile : void 0, a = Ep(e), o = Mm(a, t, i);
+	let i = at(n) ? n.deckProfile : void 0, a = Ep(e), o = Mm(a, t, i);
 	if (o) return o;
 	let s = ih(a, t, i, r);
 	return s = Hm(s, t, i), s = ch(s, t, i), s = lh(s, t, i), s = sh(s, t, i), s = oh(s, t, i), s = dh(s, t, n), s = Rm(s, t, i), s = Vm(s, t, i), s = Bm(s, t, i), s = Nm(s, t, i), fh(s, t, n, r);
@@ -31392,7 +31411,7 @@ function Rm(e, t, n) {
 	let r = t.view.players[t.playerId], i = r?.zones.hand;
 	if (!Array.isArray(i) || !i.some((e) => e.cardName != null && n.gearHostTypes?.[e.cardName] === "unit")) return e;
 	let a = r?.zones.field;
-	if (Array.isArray(a) && a.some((e) => e.type === "unit") || !e.some((e) => e.move === "sellCard" && !$e(Q(t.view, $(e.args?.cardId))?.cardName, n))) return e;
+	if (Array.isArray(a) && a.some((e) => e.type === "unit") || !e.some((e) => e.move === "sellCard" && !Qe(Q(t.view, $(e.args?.cardId))?.cardName, n))) return e;
 	let o = e.filter((e) => e.move !== "passPhase");
 	return o.length > 0 ? o : e;
 }
@@ -31608,20 +31627,20 @@ function ih(e, t, n, r) {
 			if (i.move !== "playCard") continue;
 			let a = $(i.args?.cardId), o = $(i.args?.attachToId);
 			if (!a || !o) continue;
-			let s = e[Qe(Q(t.view, a)?.cardName, Q(t.view, o), n)], c = r.get(a);
+			let s = e[Ze(Q(t.view, a)?.cardName, Q(t.view, o), n)], c = r.get(a);
 			(c === void 0 || s < c) && r.set(a, s);
 		}
 		if (r.size > 0) {
 			a = a.filter((i) => {
 				if (i.move !== "playCard") return !0;
 				let a = $(i.args?.cardId), o = $(i.args?.attachToId);
-				return !a || !o || !r.has(a) || e[Qe(Q(t.view, a)?.cardName, Q(t.view, o), n)] === r.get(a);
+				return !a || !o || !r.has(a) || e[Ze(Q(t.view, a)?.cardName, Q(t.view, o), n)] === r.get(a);
 			});
 			let i = a.filter((e) => {
 				if (e.move !== "playCard") return !0;
 				let r = Q(t.view, $(e.args?.cardId))?.cardName;
 				if (!r || n.gearHostTypes?.[r] !== "unit") return !0;
-				let i = Qe(r, Q(t.view, $(e.args?.attachToId)), n);
+				let i = Ze(r, Q(t.view, $(e.args?.attachToId)), n);
 				return i === "preferred" || i === "typed";
 			});
 			i.length > 0 && (a = i);
@@ -31634,7 +31653,7 @@ function ih(e, t, n, r) {
 		if (!i || !r) return !0;
 		let a = Q(t.view, $(e.args?.attachToId));
 		if (!a || a.zone !== "legendArea" || a.faceDown || a.keywords.includes("goSolo") || a.grantedRules.includes("goSolo") || ah(r)) return !0;
-		let o = Qe(i, a, n);
+		let o = Ze(i, a, n);
 		return o === "preferred" || o === "named";
 	});
 	return o.length > 0 ? o : a;
@@ -31643,12 +31662,12 @@ function ah(e) {
 	return e.abilityHints.length > 0 || e.triggerHints.length > 0;
 }
 function oh(e, t, n) {
-	if (!n?.preferSpendOverAttack?.length || (t.view.players[t.playerId]?.gigCount ?? 0) >= 5 || !e.some((e) => e.move === "activateAbility" && et(Q(t.view, $(e.args?.cardId)), n))) return e;
-	let r = e.filter((e) => e.move === "activateAbility" && et(Q(t.view, $(e.args?.cardId)), n));
+	if (!n?.preferSpendOverAttack?.length || (t.view.players[t.playerId]?.gigCount ?? 0) >= 5 || !e.some((e) => e.move === "activateAbility" && $e(Q(t.view, $(e.args?.cardId)), n))) return e;
+	let r = e.filter((e) => e.move === "activateAbility" && $e(Q(t.view, $(e.args?.cardId)), n));
 	return r.length > 0 ? r : e;
 }
 function sh(e, t, n) {
-	let r = tt(n);
+	let r = et(n);
 	if (r.size === 0 || (t.view.players[t.playerId]?.gigCount ?? 0) >= 5) return e;
 	let i = e.filter((e) => {
 		let n = Q(t.view, $(e.args?.cardId));
@@ -31657,14 +31676,14 @@ function sh(e, t, n) {
 	return i.length > 0 ? i : e;
 }
 function ch(e, t, n) {
-	return !n || n.coreCards.length === 0 || !e.some((e) => e.move === "sellCard" && !$e(Q(t.view, $(e.args?.cardId))?.cardName, n)) ? e : e.filter((e) => e.move !== "sellCard" || !$e(Q(t.view, $(e.args?.cardId))?.cardName, n));
+	return !n || n.coreCards.length === 0 || !e.some((e) => e.move === "sellCard" && !Qe(Q(t.view, $(e.args?.cardId))?.cardName, n)) ? e : e.filter((e) => e.move !== "sellCard" || !Qe(Q(t.view, $(e.args?.cardId))?.cardName, n));
 }
 function lh(e, t, n) {
 	if (!n || n.coreCards.length === 0) return e;
 	let r = e.filter((e) => {
 		if (e.move !== "sellCard") return !0;
 		let r = Q(t.view, $(e.args?.cardId));
-		return !$e(r?.cardName, n) || !r?.cardName || uh(t.view, t.playerId, r.cardName) > 0;
+		return !Qe(r?.cardName, n) || !r?.cardName || uh(t.view, t.playerId, r.cardName) > 0;
 	});
 	return r.length > 0 ? r : e;
 }
@@ -31722,7 +31741,7 @@ function ph(e, t, n) {
 function mh(e, t, n, r) {
 	let i = e.filter((e) => e.move === "attackRival");
 	if (i.length === 0) return e;
-	let a = Object.entries(t.players).find(([e]) => e !== n)?.[1], o = a?.gigCount ?? 0, s = a ? hh(a.zones.field) : [], c = s.reduce((e, t) => Math.max(e, t.effectivePower), -Infinity), l = i.filter((e) => Q(t, $(e.args?.attackerId))?.grantedRules.includes("mustAttack")), u = Ze(t, n), d = l.length > 0 ? l : i.filter((e) => {
+	let a = Object.entries(t.players).find(([e]) => e !== n)?.[1], o = a?.gigCount ?? 0, s = a ? hh(a.zones.field) : [], c = s.reduce((e, t) => Math.max(e, t.effectivePower), -Infinity), l = i.filter((e) => Q(t, $(e.args?.attackerId))?.grantedRules.includes("mustAttack")), u = Xe(t, n), d = l.length > 0 ? l : i.filter((e) => {
 		let n = Q(t, $(e.args?.attackerId));
 		return o > 0 && (n?.effectivePower ?? 0) > 0 && (u || (n?.effectivePower ?? 0) > c);
 	}), f = [...d].sort((e, n) => {
@@ -31867,16 +31886,16 @@ function Mh(e, t, n, r, i) {
 			return Math.min(i, a > 0 ? 1 + Math.floor(a / 10) : 0) * 40;
 		}
 		case "attackUnit": return 12;
-		case "activateAbility": return et(Q(t, $(e.args?.cardId)), r) ? 50 : 8;
+		case "activateAbility": return $e(Q(t, $(e.args?.cardId)), r) ? 50 : 8;
 		case "playCard": {
 			let a = Q(t, $(e.args?.cardId));
 			if (!a) return 0;
 			let o = Math.max(0, a.effectivePower) * 2 + (a.cost ?? 0);
-			$e(a.cardName, r) && (o += 8), r?.pacing === "develop-first" && $e(a.cardName, r) && (t.players[n]?.gigCount ?? 0) < 5 && (o += a.type === "unit" ? 150 : 40);
+			Qe(a.cardName, r) && (o += 8), r?.pacing === "develop-first" && Qe(a.cardName, r) && (t.players[n]?.gigCount ?? 0) < 5 && (o += a.type === "unit" ? 150 : 40);
 			let s = Q(t, $(e.args?.attachToId));
-			return o += kh[Qe(a.cardName, s, r)], o += Ah(a, s, t, n, i), o;
+			return o += kh[Ze(a.cardName, s, r)], o += Ah(a, s, t, n, i), o;
 		}
-		case "sellCard": return $e(Q(t, $(e.args?.cardId))?.cardName, r) ? -20 : 4;
+		case "sellCard": return Qe(Q(t, $(e.args?.cardId))?.cardName, r) ? -20 : 4;
 		default: return 0;
 	}
 }
@@ -32018,7 +32037,7 @@ var Xh = {
 		id: "greedy",
 		label: "Greedy",
 		description: "Priority-list heuristic exposed for direct simulator and comparison runs.",
-		strategy: pt,
+		strategy: ft,
 		informationPolicy: "public",
 		testOnly: !0
 	},
@@ -32104,7 +32123,7 @@ function $h(e) {
 		id: e.promotedStrategyId,
 		label: `${e.promotedStrategyId} (promoted)`,
 		description: "Promoted greedy strategy reconstructed from its audited bot-lab weights.",
-		strategy: ft(t, e.promotedStrategyId),
+		strategy: dt(t, e.promotedStrategyId),
 		informationPolicy: e.informationPolicy
 	}, ...Zh] : Zh;
 }
@@ -32145,7 +32164,7 @@ function eg(e = {}) {
 		}
 	};
 }
-eg(), eg({ rolloutStrategy: pt });
+eg(), eg({ rolloutStrategy: ft });
 function tg(e, t, n, r, i, a, o) {
 	let s = e.fork(), c = {
 		commandID: `mc-probe-${ng(t)}`,
@@ -32218,7 +32237,7 @@ function ig(e = {}) {
 		}
 	};
 }
-ig(), ig({ rolloutStrategy: pt });
+ig(), ig({ rolloutStrategy: ft });
 function ag(e, t) {
 	if (e.children.length === 0) return null;
 	let n = e.playerToMove ? e.playerToMove : null, r = Math.log(Math.max(1, e.visits)), i = null;
@@ -32268,7 +32287,7 @@ function cg(e, t) {
 	return null;
 }
 // vendor/cyberpunk-engine/entry.ts
-var lg = ft();
+var lg = dt();
 function ug(e, t, n) {
 	let { prompt: r } = e, i = {
 		view: e,

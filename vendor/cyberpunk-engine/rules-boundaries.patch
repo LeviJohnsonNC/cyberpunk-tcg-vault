@@ -1,0 +1,146 @@
+--- a/submodules/cyberpunk/packages/engine/src/cards/legends/muamar-reyes-el-capitan.test.ts
++++ b/submodules/cyberpunk/packages/engine/src/cards/legends/muamar-reyes-el-capitan.test.ts
+@@ -7,4 +7,7 @@
+ } from "@tcg/cyberpunk-cards";
+ import { getEffectiveRules } from "../../active-effects/index.ts";
++import { resolveEffectDefeats } from "../../moves/resolve-attack.ts";
++import { createOperations } from "../../operations/index.ts";
++import type { GameEvent } from "../../types/game-events.ts";
+ import { CyberpunkTestEngine, P1, P2 } from "../../testing/index.ts";
+
+@@ -126,4 +129,31 @@
+   });
+
++  it("does not protect against an effect defeat during the Fight step", () => {
++    const engine = CyberpunkTestEngine.createWithFixture(
++      {
++        legendArea: [{ card: muamar, faceDown: true }],
++        field: [{ card: welcomeToNightCityRetailFieldOperator, spent: false }],
++        eddies: 1,
++      },
++      { field: [{ card: welcomeToNightCityRetailRidingNomad, spent: true }] },
++    );
++    engine.callLegend(muamar, { as: P1 });
++    engine.resolveChooseEffect("protect", { as: P1 });
++    engine.resolveEffectTarget(welcomeToNightCityRetailFieldOperator, { as: P1 });
++    engine.attackUnit(welcomeToNightCityRetailFieldOperator, welcomeToNightCityRetailRidingNomad, { as: P1 });
++    engine.resolveAttack({ as: P1 });
++    engine.resolveAttack({ as: P2, pass: true });
++
++    const state = structuredClone(engine.getState());
++    const unit = engine.findCardId(welcomeToNightCityRetailFieldOperator, "field", P1);
++    const source = engine.findCardId(welcomeToNightCityRetailRidingNomad, "field", P2);
++    expect(state.G.attackState?.step).toBe("fight");
++    expect(getEffectiveRules(state, unit)).toContain("cantBeDefeatedInFight");
++    const events: GameEvent[] = [];
++    resolveEffectDefeats(state, createOperations(state.G, events, []), [unit], source);
++    expect(state.G.players[P1]!.zones.trash).toContain(unit);
++    expect(events).toContainEqual(expect.objectContaining({ type: "cardDefeated", cardId: unit, defeatedBy: source }));
++  });
++
+   it("expires the fight protection when the Call turn ends", () => {
+     const engine = CyberpunkTestEngine.createWithFixture(
+--- a/submodules/cyberpunk/packages/engine/src/moves/attack-requirements.ts
++++ b/submodules/cyberpunk/packages/engine/src/moves/attack-requirements.ts
+@@ -26,5 +26,8 @@
+     }
+     const def = defOf(card);
++    const opponentId = state.ctx.playerIds.find((id) => id !== playerId);
+     const canAttackGigArea =
++      opponentId !== undefined &&
++      Boolean(state.G.players[opponentId]?.gigArea.length) &&
+       !rules.includes("cantAttackRival") &&
+       (!card.meta.hasLag ||
+@@ -35,5 +38,4 @@
+       rules.includes("adrenaline") ||
+       rules.includes("canAttackOnPlayedTurnAgainstUnits");
+-    const opponentId = state.ctx.playerIds.find((id) => id !== playerId);
+     const hasUnitTarget =
+       canAttackUnits &&
+--- a/submodules/cyberpunk/packages/engine/src/moves/attack-rival.ts
++++ b/submodules/cyberpunk/packages/engine/src/moves/attack-rival.ts
+@@ -3,5 +3,6 @@
+ import { processAttackDeclarationTriggers } from "../ability-executor.ts";
+ import { consumeRuleUse, getEffectiveRules } from "../active-effects/index.ts";
+-import { defOf, getDefinitionFor } from "../state/lookups.ts";
++import { defOf, getDefinitionFor, hasEffectiveCardType } from "../state/lookups.ts";
++import { getOpponentId } from "../state/initial-state.ts";
+ import { hasPlayedProgramThisTurn, satisfiesMustAttackRequirement } from "./attack-requirements.ts";
+
+@@ -17,4 +18,5 @@
+     if (state.G.turnMetadata.activePlayerId !== playerId) return false;
+     if (state.G.attackState) return false;
++    if (!state.G.players[getOpponentId(state, playerId)]?.gigArea.length) return false;
+
+     const player = state.G.players[playerId as string];
+@@ -65,4 +67,6 @@
+       return { valid: false, error: "Attacker not on your field", errorCode: "NOT_ON_FIELD" };
+     }
++    if (!hasEffectiveCardType(attacker, "unit"))
++      return { valid: false, error: "Only Units can attack", errorCode: "NOT_UNIT" };
+     if (attacker.meta.spent)
+       return { valid: false, error: "Attacker is spent", errorCode: "CARD_SPENT" };
+@@ -122,4 +126,8 @@
+     }
+
++
++    if (!state.G.players[getOpponentId(state, playerId)]?.gigArea.length) {
++      return { valid: false, error: "The rival has no Gigs to attack", errorCode: "NO_TARGET_GIGS" };
++    }
+     return { valid: true };
+   },
+--- a/submodules/cyberpunk/packages/engine/src/moves/attack-unit.ts
++++ b/submodules/cyberpunk/packages/engine/src/moves/attack-unit.ts
+@@ -3,5 +3,5 @@
+ import { processAttackDeclarationTriggers } from "../ability-executor.ts";
+ import { consumeRuleUse, getEffectiveRules } from "../active-effects/index.ts";
+-import { defOf, getDefinitionFor } from "../state/lookups.ts";
++import { defOf, getDefinitionFor, hasEffectiveCardType } from "../state/lookups.ts";
+ import { hasPlayedProgramThisTurn, satisfiesMustAttackRequirement } from "./attack-requirements.ts";
+
+@@ -63,4 +63,6 @@
+       return { valid: false, error: "Attacker not on your field", errorCode: "NOT_ON_FIELD" };
+     }
++    if (!hasEffectiveCardType(attacker, "unit"))
++      return { valid: false, error: "Only Units can attack", errorCode: "NOT_UNIT" };
+     if (attacker.meta.spent)
+       return { valid: false, error: "Attacker is spent", errorCode: "CARD_SPENT" };
+@@ -118,4 +120,6 @@
+       return { valid: false, error: "Defender not on opponent's field", errorCode: "NOT_ON_FIELD" };
+     }
++    if (!hasEffectiveCardType(defender, "unit"))
++      return { valid: false, error: "Only Units can be attacked", errorCode: "TARGET_NOT_UNIT" };
+     const defenderRules = getEffectiveRules(
+       state as import("../types/match-state.ts").MatchState,
+--- a/submodules/cyberpunk/packages/engine/src/moves/resolve-attack.ts
++++ b/submodules/cyberpunk/packages/engine/src/moves/resolve-attack.ts
+@@ -737,5 +737,5 @@
+   if (continuation.kind === "fight" || state.G.turnMetadata.pendingChoice) return;
+   if (continuation.kind === "effect") resumeCurrentTrigger(state, operations);
+-  else resumeSuspendedEndTurn(state, operations);
++  resumeSuspendedEndTurn(state, operations);
+ }
+
+--- a/submodules/cyberpunk/packages/engine/src/view/player-prompt.ts
++++ b/submodules/cyberpunk/packages/engine/src/view/player-prompt.ts
+@@ -21,5 +21,5 @@
+ import { getMustAttackCardIds, hasPlayedProgramThisTurn } from "../moves/attack-requirements.ts";
+ import { getOpponentId } from "../state/initial-state.ts";
+-import { defOf } from "../state/lookups.ts";
++import { defOf, hasEffectiveCardType } from "../state/lookups.ts";
+ import { projectRevealedCardView, type FilteredCardView } from "./filter.ts";
+ import { DIE_MAX_VALUES } from "@tcg/cyberpunk-types";
+@@ -750,5 +750,5 @@
+     .filter((id) => {
+       const card = state.G.cardIndex[id as string];
+-      return card && card.meta.spent;
++      return card && card.meta.spent && hasEffectiveCardType(card, "unit");
+     })
+     .map((id) => id as string);
+@@ -781,5 +781,5 @@
+     .filter((id) => {
+       const card = state.G.cardIndex[id as string];
+-      return Boolean(card && !card.meta.spent);
++      return Boolean(card && !card.meta.spent && hasEffectiveCardType(card, "unit"));
+     })
+     .map((id) => id as string);
