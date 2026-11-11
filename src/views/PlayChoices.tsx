@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Rules } from '../components/bits';
 import { isReady, type MatchActionForm, type PickField, type Picks } from '../lib/play/matchActions';
 import { commitLabel } from '../lib/play/matchInteraction';
 import type { CardView, PlayerView } from '../lib/play/protocol';
@@ -32,7 +33,7 @@ export function PlayChoices({ view, action, picks, fields, active, cards, busy, 
             {die && <DieFace type={card.definitionId} value={card.zone === 'gigArea' ? card.power : undefined} />}
             {artwork && <CardFace card={card} />}
             <span>{active.ordered && rank >= 0 ? `${rank + 1}. ` : ''}{option.label}</span>
-            {option.note && <small>{option.note}</small>}
+            {option.note && <small><Rules text={option.note} /></small>}
           </button>{artwork && <button type="button" className="play-choice-details" aria-label={`Details for ${option.label}`} onClick={(event) => inspect(card, event.currentTarget)}>Details</button>}</div>;
         })}{!active.options.length && <p className="play-empty">No eligible options. Choose an earlier step to change your selection.</p>}</div>
       </fieldset>;
@@ -49,7 +50,7 @@ export function PlayChoices({ view, action, picks, fields, active, cards, busy, 
           {alternatives}
         </div>
       </div>
-      {action.detail && <p className="play-choice-detail">{action.detail}</p>}
+      {action.detail && <p className="play-choice-detail"><Rules text={action.detail} /></p>}
       {payment && <div className="play-payment-receipt" aria-label="Payment preview" aria-live="polite">
         <strong>Pay {payment.amount} €$</strong><span>{payment.ready ? payment.reserved.length ? `${payment.afterCosts} €$ after costs` : `${payment.afterPayment} €$ after payment` : 'Choose payment sources'}</span>
         {payment.reserved.length > 0 && <span>Also spends {payment.reserved.join(', ')}</span>}

@@ -51,8 +51,12 @@ export function CardInspection({ card, cards = [], hostName, shortcuts, onClose 
             </dl>
             {power && <div className="play-power-breakdown"><p>{power.text}</p>
               {!power.exact && <small>Additional or conditional modifiers are included in current power.</small>}
-              {power.gear.length > 0 && <ul>{power.gear.map((gear) => <li key={gear.instanceId}>{gear.cardName} <b>{gear.power >= 0 ? '+' : ''}{gear.power}</b></li>)}</ul>}
+              {power.gear.length > 0 && <div className="play-equipment-list" aria-label="Attached Gear">{power.gear.map((gear) => <details key={gear.instanceId}>
+                <summary>{gear.cardName} {gear.power !== 0 && <b>{gear.power > 0 ? '+' : ''}{gear.power} power</b>}</summary>
+                {vaultCard(gear) && <p><Rules text={vaultCard(gear)!.text} /></p>}
+              </details>)}</div>}
             </div>}
+            {!!card.grantedRules?.length && <p className="play-current-rules"><strong>Current abilities</strong>{card.grantedRules.map((rule) => <span key={rule}>{rule.replace(/([A-Z])/g, ' $1')}</span>)}</p>}
             {(card.spent || card.hasLag || hostName) && <p className="play-inspect-status">{[
               card.spent && 'Spent', card.hasLag && 'Lag', hostName && `Attached to ${hostName}`,
             ].filter(Boolean).join(' · ')}</p>}

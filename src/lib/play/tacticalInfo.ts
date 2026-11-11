@@ -64,7 +64,8 @@ export function paymentPreview(view: PlayerView, action: MatchActionForm, picks:
 export interface PreviewRect { left: number; top: number; width: number; height: number }
 /** Find a readable close-up that does not cover the hand, decision controls or eligible targets. */
 export function previewPosition(anchor: PreviewRect, viewport: { width: number; height: number }, blocked: PreviewRect[]) {
-  for (const { width, height, landscape } of [{ width: 286, height: 464, landscape: false }, { width: 440, height: 360, landscape: true }]) {
+  if (viewport.height < 480) return;
+  for (const { width, height, landscape } of [{ width: 286, height: 464, landscape: false }, { width: 440, height: 330, landscape: true }]) {
     const margin = 12;
     const clampX = (x: number) => Math.max(margin, Math.min(viewport.width - width - margin, x));
     const clampY = (y: number) => Math.max(margin, Math.min(viewport.height - height - margin, y));

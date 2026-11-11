@@ -59,6 +59,7 @@ export interface SeatView {
   availableEddies: number;
   gigCount: number;
   streetCred: number;
+  activeEffects?: CardEffectView[];
 }
 
 export interface Move {

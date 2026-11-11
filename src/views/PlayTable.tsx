@@ -76,7 +76,7 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
   const [preview, setPreview] = useState<Preview>();
   const [arrow, setArrow] = useState<{ state: string; x1: number; y1: number; x2: number; y2: number }>();
   const [notice, setNotice] = useState('');
-  const [panel, setPanel] = useState<'log' | 'actions'>();
+  const [panel, setPanel] = useState<'log' | 'actions' | 'effects'>();
   const panelId = useId();
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const grid = useRef<HTMLDivElement>(null);
@@ -102,6 +102,7 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
   const chosenIds = new Set(step?.options.filter((option) => picks[step.id]?.includes(option.id)).flatMap((option) => option.cardId ? [option.cardId] : []) ?? []);
   const reveal = choice?.payload as { revealedCards?: CardView[]; cards?: CardView[]; source?: { cardId?: string } } | undefined;
   const cards = [...visibleCards(view), ...(reveal?.revealedCards ?? reveal?.cards ?? []), ...snapshot.peeks];
+  const tableEffects = (['player', 'rival'] as const).flatMap((seat) => (view.players[seat].activeEffects ?? []).map((effect) => ({ seat, effect })));
   const hand = zoneCards(view.players.player, 'hand');
   const handIds = new Set(hand.map((card) => card.instanceId));
   const combat = view.attackState;
@@ -237,7 +238,7 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
     }
     const rect = element.getBoundingClientRect();
     // Read during a decision too, but never hide its controls, targets or the hand.
-    const blocked = [...(grid.current?.querySelectorAll<HTMLElement>('.play-hand, .play-command-inner, [data-target="true"]') ?? [])]
+    const blocked = [...(grid.current?.querySelectorAll<HTMLElement>('.play-hand, .play-command-inner, .play-drawer, [data-target="true"]') ?? [])]
       .map((node) => node.getBoundingClientRect()).filter((box) => box.width && box.height);
     const position = previewPosition(rect, { width: innerWidth, height: innerHeight }, blocked);
     if (position) hoverTimer.current = setTimeout(() => setPreview({ state: stateKey, card, ...position }), 400);
@@ -314,12 +315,22 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
         <h1 title={`${names.player} vs. ${names.rival}`}>{names.player} <span>vs.</span> {names.rival}</h1>
       </div>
       <div className="play-header-actions">
+        {tableEffects.length > 0 && <button type="button" className="btn quiet" aria-expanded={panel === 'effects'} aria-controls={`${panelId}-effects`} onClick={() => setPanel(panel === 'effects' ? undefined : 'effects')}>Effects <b>{tableEffects.length}</b></button>}
         <button type="button" className="btn quiet" aria-expanded={panel === 'log'} aria-controls={`${panelId}-log`} onClick={() => setPanel(panel === 'log' ? undefined : 'log')}>Log <b>{log.length}</b></button>
         {!view.gameEnded && <button type="button" className="btn quiet play-all-toggle" aria-expanded={panel === 'actions'} aria-controls={`${panelId}-actions`} disabled={!!playback}
           onClick={() => setPanel(panel === 'actions' ? undefined : 'actions')}>All actions</button>}
         {controls}
       </div>
     </header>
+    {panel === 'effects' && <section id={`${panelId}-effects`} className="play-drawer play-table-effects" aria-label="Table effects">
+      <div className="play-drawer-head"><h3>Table effects</h3>{closePanel}</div>
+      {tableEffects.length ? tableEffects.map(({ seat, effect }, index) => {
+        const source = cards.find((card) => card.instanceId === effect.sourceCardId && card.definitionId);
+        const printing = source && vaultCard(source);
+        return <article key={`${seat}:${effect.id}:${index}`}><h4>{effect.sourceName}</h4><p className="play-effect-scope">{seat === 'player' ? 'Your side' : 'Rival side'} · {effect.durationLabel ?? 'While active'}</p>
+          <p>{effect.detail}</p>{printing && <details><summary>Source card rules</summary><p><Rules text={printing.text} /></p></details>}</article>;
+      }) : <p className="play-empty">No table effects remain.</p>}
+    </section>}
     {panel === 'actions' && !playback && !view.gameEnded && <section id={`${panelId}-actions`} className="play-drawer" aria-label="All actions">
       <div className="play-drawer-head"><h3>All actions</h3>{closePanel}</div>
       {actions.length ? <div className="play-actions play-moves">{actions.map((_, index) => actionButton(index))}</div> : <p className="play-empty">No actions are available right now.</p>}
@@ -350,7 +361,7 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
                 cancel={() => { setChoice(choice ? defaultSelection : undefined, {}); clearHover(); }}
                 inspect={inspect} alternatives={choice ? special.map(({ index }) => actionButton(index)) : null} /></div>
             : choice || setup ? <div className="play-opening-choices">{combat && <CombatBanner view={view} watching={false} compact inspect={inspect} />}<h3>{decisionTitle}</h3>{actions.map((_, index) => actionButton(index, undefined, setup && actions.length === 2 && index === 1 ? 'btn' : 'btn quiet'))}
-              {choice && actions[0]?.detail && <p className="play-choice-detail">{actions[0].detail}</p>}</div>
+              {choice && actions[0]?.detail && <p className="play-choice-detail"><Rules text={actions[0].detail} /></p>}</div>
             : combat ? <CombatBanner view={view} watching={false} inspect={inspect} controls={resolveButtons} />
             : <><div className="play-command-lead"><strong>{decisionTitle}</strong>
               <p role="status">{feedback && !busy ? <><b>{feedback.seat === 'player' ? 'You' : 'Rival'}</b> {feedback.text}</> : hint}</p></div>{turnButtons}</>}
