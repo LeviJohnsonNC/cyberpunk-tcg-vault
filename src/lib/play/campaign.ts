@@ -79,7 +79,15 @@ export function encounterDeck(run: CampaignRun): Deck {
   if (info.rival === 'other-starter') return makeStarterDeck(run.starter === 'the-heist' ? 'embracing-power' : 'the-heist');
   const item = recommended.find(deck => deck.id === info.rival);
   if (!item) throw new Error('This opponent is not available.');
-  return { id: `campaign-rival:${item.id}`, name: item.name, legends: [...item.legends], cards: Object.fromEntries(Object.entries(item.cards).filter((entry): entry is [string, number] => typeof entry[1] === 'number')), sideboard: {}, notes: item.summary, updatedAt: '' };
+  const cards = Object.fromEntries(Object.entries(item.cards).filter((entry): entry is [string, number] => typeof entry[1] === 'number'));
+  if (run.encounter === 8) {
+    // The public Arasaka 9s concept is top-heavy. This fixed campaign variant keeps
+    // its signature 9-power finishers while giving the boss early plays and sellables.
+    Object.assign(cards, { minotaur: 2, 'yorinobu-arasaka-steel-dragon': 2, 'sandayu-oda-hanako-s-guardian': 1,
+      'emergency-atlus': 1, 'field-operator': 2, 'valentino-street-racer': 1, 'meredith-stout-stone-cold-corpo': 2,
+      'all-is-lost': 3, detonate: 2, 'take-control': 2, 'peace-offering': 1 });
+  }
+  return { id: `campaign-rival:${item.id}`, name: run.encounter === 8 ? 'Arasaka 9s · House List' : item.name, legends: [...item.legends], cards, sideboard: {}, notes: item.summary, updatedAt: '' };
 }
 
 // Rewards have their own seed. A loss changes match shuffle, never the pack waiting behind it.

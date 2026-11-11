@@ -101,8 +101,8 @@ export function CircuitHub({ progress, draft, savedDecks, initialRival, initialO
     <div className="circuit-standing"><ReputationBar rep={progress.rep} /><dl><div><dt>Contracts</dt><dd>{clears}<small>/6</small></dd></div><div><dt>Marks</dt><dd>{marks}<small>/18</small></dd></div><div><dt>Wins</dt><dd>{progress.wins}</dd></div><div><dt>Win streak</dt><dd>{progress.streak}</dd></div></dl></div>
     <ViewTabs id="circuit-hub" label="Play Mode" tabs={tabs} value={tab} onChange={setTab} />
     {error && <p className="play-error" role="alert">{error}</p>}
-    <div id={`circuit-hub-panel-${tab}`} role="tabpanel" aria-labelledby={`circuit-hub-tab-${tab}`}>
-      {tab === 'circuit' && <div className="circuit-board">
+    <div id={`circuit-hub-panel-${tab}`} role="tabpanel" aria-labelledby={tab === 'circuit' ? undefined : `circuit-hub-tab-${tab}`} aria-label={tab === 'circuit' ? 'Classic Circuit' : undefined}>
+      {tab === 'circuit' && <><button className="btn quiet" onClick={() => setTab('record')}>← Match record</button><div className="circuit-board">
         <section className="circuit-route" aria-label="Contracts">
           <div className="circuit-section-heading"><div><p className="play-eyebrow">The house list</p><h2>{clears === 6 ? 'The room is yours.' : 'Your next move.'}</h2></div><span>{clears === 6 ? `${18 - marks} marks left to master` : 'Clear a job to open the next.'}</span></div>
           <div className="circuit-acts">{[0, 1, 2].map(act => <section className="circuit-act" key={act}><h3>{CIRCUIT_CONTRACTS[act * 2].act}</h3>{CIRCUIT_CONTRACTS.slice(act * 2, act * 2 + 2).map((item, i) => {
@@ -128,10 +128,10 @@ export function CircuitHub({ progress, draft, savedDecks, initialRival, initialO
           <div className="circuit-bonus"><span>◆ Bonus mark</span><p>{contract.bonus}</p></div>
           <details className="circuit-briefing"><summary>Read the briefing</summary><p>{contract.briefing}</p><p>All rival levels play from public information. Standard rules, best of one. No card or stat bonuses.</p></details>
         </aside>
-      </div>}
+      </div></>}
       {tab === 'practice' && <PlaySetup draft={draft} savedDecks={savedDecks} initialRival={initialRival} initialOpponent={initialOpponent} busy={busy} onStart={onStart} />}
       {tab === 'locker' && <Locker progress={progress} busy={busy} equip={equip} />}
-      {tab === 'record' && <Record progress={progress} />}
+      {tab === 'record' && <><Record progress={progress} /><div className="circuit-legacy-entry"><p>The original six-contract Circuit and its marks are still here.</p><button className="btn quiet" onClick={() => setTab('circuit')}>Open classic contracts</button></div></>}
     </div>
     <p className="circuit-local-note">Circuit progress is saved in this browser, separately for each Vault. It is not cloud-synced. Clearing browser data removes it.</p>
   </div>;

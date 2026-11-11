@@ -1,0 +1,735 @@
+{
+  "description": "A Sharp reference player against the campaign skill settings. Synthetic swap policies; seeds are not human win rates.",
+  "seeds": 10,
+  "policies": [
+    "starter",
+    "three-swaps"
+  ],
+  "encounters": [
+    1,
+    9
+  ],
+  "finalRival": "campaign default",
+  "results": [
+    {
+      "starter": "the-heist",
+      "policy": "starter",
+      "seed": 0,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 15
+    },
+    {
+      "starter": "the-heist",
+      "policy": "starter",
+      "seed": 0,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "rival",
+      "turns": 11
+    },
+    {
+      "starter": "the-heist",
+      "policy": "starter",
+      "seed": 1,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 12
+    },
+    {
+      "starter": "the-heist",
+      "policy": "starter",
+      "seed": 1,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "rival",
+      "turns": 12
+    },
+    {
+      "starter": "the-heist",
+      "policy": "starter",
+      "seed": 2,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "rival",
+      "turns": 13
+    },
+    {
+      "starter": "the-heist",
+      "policy": "starter",
+      "seed": 2,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "rival",
+      "turns": 10
+    },
+    {
+      "starter": "the-heist",
+      "policy": "starter",
+      "seed": 3,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 15
+    },
+    {
+      "starter": "the-heist",
+      "policy": "starter",
+      "seed": 3,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "rival",
+      "turns": 13
+    },
+    {
+      "starter": "the-heist",
+      "policy": "starter",
+      "seed": 4,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 15
+    },
+    {
+      "starter": "the-heist",
+      "policy": "starter",
+      "seed": 4,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "rival",
+      "turns": 13
+    },
+    {
+      "starter": "the-heist",
+      "policy": "starter",
+      "seed": 5,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 15
+    },
+    {
+      "starter": "the-heist",
+      "policy": "starter",
+      "seed": 5,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 13
+    },
+    {
+      "starter": "the-heist",
+      "policy": "starter",
+      "seed": 6,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 15
+    },
+    {
+      "starter": "the-heist",
+      "policy": "starter",
+      "seed": 6,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "rival",
+      "turns": 13
+    },
+    {
+      "starter": "the-heist",
+      "policy": "starter",
+      "seed": 7,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "rival",
+      "turns": 11
+    },
+    {
+      "starter": "the-heist",
+      "policy": "starter",
+      "seed": 7,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "rival",
+      "turns": 15
+    },
+    {
+      "starter": "the-heist",
+      "policy": "starter",
+      "seed": 8,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "rival",
+      "turns": 9
+    },
+    {
+      "starter": "the-heist",
+      "policy": "starter",
+      "seed": 8,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 11
+    },
+    {
+      "starter": "the-heist",
+      "policy": "starter",
+      "seed": 9,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 14
+    },
+    {
+      "starter": "the-heist",
+      "policy": "starter",
+      "seed": 9,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "rival",
+      "turns": 11
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 0,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 15
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 0,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "rival",
+      "turns": 11
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 1,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 12
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 1,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 13
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 2,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "rival",
+      "turns": 13
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 2,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 13
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 3,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 15
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 3,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "rival",
+      "turns": 13
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 4,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 15
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 4,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 12
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 5,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 15
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 5,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 9
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 6,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 15
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 6,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "rival",
+      "turns": 23
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 7,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "rival",
+      "turns": 11
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 7,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 15
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 8,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "rival",
+      "turns": 9
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 8,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 13
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 9,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 14
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 9,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "rival",
+      "turns": 15
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "starter",
+      "seed": 0,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "rival",
+      "turns": 13
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "starter",
+      "seed": 0,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 11
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "starter",
+      "seed": 1,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 10
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "starter",
+      "seed": 1,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "rival",
+      "turns": 13
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "starter",
+      "seed": 2,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 14
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "starter",
+      "seed": 2,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 15
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "starter",
+      "seed": 3,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "rival",
+      "turns": 11
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "starter",
+      "seed": 3,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "rival",
+      "turns": 15
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "starter",
+      "seed": 4,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 10
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "starter",
+      "seed": 4,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "rival",
+      "turns": 13
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "starter",
+      "seed": 5,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 12
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "starter",
+      "seed": 5,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 9
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "starter",
+      "seed": 6,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 14
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "starter",
+      "seed": 6,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 13
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "starter",
+      "seed": 7,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 12
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "starter",
+      "seed": 7,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "rival",
+      "turns": 15
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "starter",
+      "seed": 8,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 15
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "starter",
+      "seed": 8,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 15
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "starter",
+      "seed": 9,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "rival",
+      "turns": 13
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "starter",
+      "seed": 9,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 13
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 0,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "rival",
+      "turns": 13
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 0,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 13
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 1,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 10
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 1,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 14
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 2,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 14
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 2,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 10
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 3,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "rival",
+      "turns": 11
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 3,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 10
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 4,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 10
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 4,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 12
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 5,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 12
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 5,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 11
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 6,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 14
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 6,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "rival",
+      "turns": 12
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 7,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 12
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 7,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "rival",
+      "turns": 10
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 8,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 15
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 8,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 15
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 9,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "rival",
+      "turns": 13
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 9,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 11
+    }
+  ]
+}

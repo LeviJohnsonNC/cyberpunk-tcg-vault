@@ -129,4 +129,37 @@ describe('starter campaign', () => {
     expect(third.profile.history?.at(-1)?.completed).toBe(false);
     expect(third.profile.history?.at(-1)?.deck).toEqual(second.run.deck);
   });
+
+  it('persists an entire nine-table reward path and never puts earned cards into the ordinary Vault', async () => {
+    const scope = 'campaign-complete-path';
+    await startCampaign(scope, 'embracing-power');
+    for (let encounter = 0; encounter < 9; encounter++) {
+      const before = (await readCampaign(scope)).run!;
+      expect(before.encounter).toBe(encounter);
+      expect(campaignDeckIssues(before, before.deck)).toEqual([]);
+      const controller = createMatchController();
+      const response = controller.respond({ id: 1, action: { type: 'start', setup: { player: prepareMatchDeck(before.deck), rival: prepareMatchDeck(encounterDeck(before)) } } });
+      if (!('snapshot' in response)) throw new Error(response.error);
+      const match = controller.save(response.snapshot);
+      match.summary.ended = true;
+      const result = grantVictory({ ...before, phase: 'inMatch', rewards: encounter < 8 ? { ...before.rewards, [encounter]: generateReward(before) } : before.rewards },
+        (await readCampaign(scope)).profile, match, 'player');
+      await updateCampaign(scope, () => ({ ...result, value: null }));
+      if (encounter < 8) {
+        expect((await readCampaign(scope)).run?.phase).toBe('rewardPending');
+        const revealed = await revealCampaignPack(scope, result.run.revision, 7);
+        const chosen = await chooseReward(scope, revealed.run.revision, revealed.run.rewards[encounter].offers[0]);
+        expect(chosen.run.phase).toBe('upgrading');
+        expect(chosen.run.encounter).toBe(encounter + 1);
+        expect(chosen.run.rewards[encounter].choice).toBeDefined();
+      }
+    }
+    const finish = await readCampaign(scope);
+    expect(finish.run?.phase).toBe('claimingFinish');
+    expect(finish.profile.completions['embracing-power']).toBe(1);
+    await expect(startCampaign(scope, 'the-heist', true)).rejects.toThrow('Choose your earned room');
+    const room = await claimEnvironment(scope, finish.run!.revision, 'rooftop');
+    expect(room.run.phase).toBe('completed');
+    expect((await readCampaign(scope)).profile.equipped).toBe('rooftop');
+  }, 30000);
 });

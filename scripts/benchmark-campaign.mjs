@@ -8,19 +8,26 @@ try {
   const { botDecision, initialEngineState } = await vite.ssrLoadModule('/src/lib/play/engineSession.ts');
   const { prepareMatchDeck, matchDeckIssues } = await vite.ssrLoadModule('/src/lib/play/matchDeck.ts');
   const { newCampaign, ENCOUNTERS, encounterDeck, generateReward } = await vite.ssrLoadModule('/src/lib/play/campaign.ts');
+  const recommended = (await vite.ssrLoadModule('/src/data/decks.json')).default;
   const { BY_SLUG, fitsRam, ramLimits } = await vite.ssrLoadModule('/src/lib/data.ts');
   const { rating, synergy } = await vite.ssrLoadModule('/src/lib/autobuild.ts');
   const { validate } = await vite.ssrLoadModule('/src/lib/decks.ts');
   const seeds = Number(process.env.CAMPAIGN_SEEDS ?? 6);
   const policies = (process.env.CAMPAIGN_POLICIES ?? 'starter,one-swap,three-swaps').split(',');
   const encounters = (process.env.CAMPAIGN_ENCOUNTERS ?? '1,2,3,4,5,6,7,8,9').split(',').map(Number);
+  const finalRival = process.env.CAMPAIGN_FINAL_RIVAL;
   const results = [];
   for (const starter of ['the-heist', 'embracing-power']) for (const policy of policies) for (let seed = 0; seed < seeds; seed++) {
     const run = newCampaign(starter, `${starter}:${policy}:${seed}`, `campaign-benchmark:${seed}`);
+    if (finalRival) {
+      const selected = recommended.find(deck => deck.id === finalRival);
+      if (!selected) throw new Error(`Unknown candidate: ${finalRival}`);
+      run.opponents[8] = { id: `candidate:${finalRival}`, name: selected.name, legends: selected.legends, cards: selected.cards, sideboard: {}, notes: selected.summary, updatedAt: '' };
+    }
     for (let encounter = 0; encounter < ENCOUNTERS.length; encounter++) {
       run.encounter = encounter;
       const opponent = ENCOUNTERS[encounter];
-      const key = `${starter}:${policy}:${seed}:${encounter}`;
+      const key = `${starter}:${seed}:${encounter}`;
       if (encounters.includes(encounter + 1)) {
         const setup = { player: prepareMatchDeck(run.deck), rival: prepareMatchDeck(encounterDeck(run)) };
         const engine = new LocalEngine(initialEngineState(setup, key, key));
@@ -60,7 +67,7 @@ try {
       }
     }
   }
-  const report = { description: 'A Sharp reference player against the campaign skill settings. Synthetic swap policies; seeds are not human win rates.', seeds, policies, encounters, results };
+  const report = { description: 'A Sharp reference player against the campaign skill settings. Synthetic swap policies; seeds are not human win rates.', seeds, policies, encounters, finalRival: finalRival ?? 'campaign default', results };
   if (process.argv[2]) writeFileSync(process.argv[2], JSON.stringify(report, null, 2) + '\n');
   for (const index of ENCOUNTERS.keys()) {
     const played = results.filter(result => result.encounter === index + 1);

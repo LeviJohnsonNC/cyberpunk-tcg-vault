@@ -1,0 +1,183 @@
+{
+  "description": "A Sharp reference player against the campaign skill settings. Synthetic swap policies; seeds are not human win rates.",
+  "seeds": 1,
+  "policies": [
+    "three-swaps"
+  ],
+  "encounters": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "finalRival": "campaign default",
+  "results": [
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 0,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "player",
+      "turns": 15
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 0,
+      "encounter": 2,
+      "opponent": "chrome-debt",
+      "winner": "player",
+      "turns": 10
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 0,
+      "encounter": 3,
+      "opponent": "dead-drop",
+      "winner": "player",
+      "turns": 12
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 0,
+      "encounter": 4,
+      "opponent": "night-drive",
+      "winner": "player",
+      "turns": 12
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 0,
+      "encounter": 5,
+      "opponent": "dead-air",
+      "winner": "rival",
+      "turns": 12
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 0,
+      "encounter": 6,
+      "opponent": "red-line",
+      "winner": "rival",
+      "turns": 11
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 0,
+      "encounter": 7,
+      "opponent": "mosh-pit",
+      "winner": "rival",
+      "turns": 13
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 0,
+      "encounter": 8,
+      "opponent": "hostile-takeover",
+      "winner": "rival",
+      "turns": 15
+    },
+    {
+      "starter": "the-heist",
+      "policy": "three-swaps",
+      "seed": 0,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "rival",
+      "turns": 11
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 0,
+      "encounter": 1,
+      "opponent": "first-call",
+      "winner": "rival",
+      "turns": 13
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 0,
+      "encounter": 2,
+      "opponent": "chrome-debt",
+      "winner": "player",
+      "turns": 10
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 0,
+      "encounter": 3,
+      "opponent": "dead-drop",
+      "winner": "player",
+      "turns": 15
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 0,
+      "encounter": 4,
+      "opponent": "night-drive",
+      "winner": "player",
+      "turns": 10
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 0,
+      "encounter": 5,
+      "opponent": "dead-air",
+      "winner": "player",
+      "turns": 12
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 0,
+      "encounter": 6,
+      "opponent": "red-line",
+      "winner": "player",
+      "turns": 15
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 0,
+      "encounter": 7,
+      "opponent": "mosh-pit",
+      "winner": "player",
+      "turns": 13
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 0,
+      "encounter": 8,
+      "opponent": "hostile-takeover",
+      "winner": "player",
+      "turns": 10
+    },
+    {
+      "starter": "embracing-power",
+      "policy": "three-swaps",
+      "seed": 0,
+      "encounter": 9,
+      "opponent": "last-call",
+      "winner": "player",
+      "turns": 13
+    }
+  ]
+}

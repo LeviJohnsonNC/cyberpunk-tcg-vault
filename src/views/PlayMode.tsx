@@ -30,11 +30,16 @@ type Props = {
 };
 
 export default function PlayMode(props: Props) {
+  const handoff = !!(props.draft || props.initialOpponent);
   const [mode, setMode] = useState<'campaign' | 'free'>(() => {
-    if (props.draft || props.initialOpponent || props.initialRival) return 'free';
-    try { return localStorage.getItem(`cptv.playMode:${props.scope}`) === 'free' ? 'free' : 'campaign'; }
-    catch { return 'campaign'; }
+    if (handoff) return 'free';
+    try {
+      const remembered = localStorage.getItem(`cptv.playMode:${props.scope}`);
+      if (remembered === 'free' || remembered === 'campaign') return remembered;
+    } catch { /* Use the current saved match when preferences are unavailable. */ }
+    return props.saved && !props.saved.ended ? 'free' : 'campaign';
   });
+  useEffect(() => { if (handoff) try { localStorage.setItem(`cptv.playMode:${props.scope}`, 'free'); } catch { /* optional preference */ } }, [handoff, props.scope]);
   const choose = (next: 'campaign' | 'free') => {
     setMode(next);
     try { localStorage.setItem(`cptv.playMode:${props.scope}`, next); } catch { /* optional preference */ }

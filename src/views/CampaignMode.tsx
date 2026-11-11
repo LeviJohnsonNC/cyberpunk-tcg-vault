@@ -166,13 +166,14 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
       {error && <div className="play-error" role="alert">{error} <button className="btn quiet" onClick={reloadSavedState}>Reload campaign</button></div>}
       {busy && !profile && <p role="status">Opening the table…</p>}
       {!busy && profile && !run && <div className="campaign-starters">{STARTERS.map(starter => <article key={starter.key}>
-        <div className="campaign-crew-art">{starter.legends.map(slug => <CardImg key={slug} slug={slug} alt="" />)}</div>
+        <div className="campaign-crew-art">{starter.legends.map(slug => <CardImg key={slug} slug={slug} alt="" priority />)}</div>
         <p className="play-eyebrow">Official starter / {starter.colors.join(' + ')}</p><h2>{starter.name}</h2>
         <p>{starter.key === 'the-heist' ? 'Blue and Yellow. Gear, tempo and a crew that knows how to improvise.' : 'Green and Red. Arasaka power and the patience to hit back harder.'}</p>
         <button className="btn" disabled={busy} onClick={() => create(starter.key)}>Start with {starter.name}</button>
       </article>)}</div>}
       {run && profile && <>
         <div className="campaign-progress"><span>ACT {Math.floor(run.encounter / 3) + 1} / 3</span><strong>{campaignStatus(run)}</strong><span>{Math.min(run.encounter + 1, 9)} / 9</span></div>
+        <ol className="campaign-route" aria-label="Nine campaign contracts">{ENCOUNTERS.map((item, index) => <li key={item.id} data-state={index < run.encounter || ['claimingFinish', 'completed'].includes(run.phase) ? 'cleared' : index === run.encounter ? 'current' : 'locked'} title={`${index + 1}. ${item.title}`} aria-label={`Contract ${index + 1}, ${item.title}: ${index < run.encounter || ['claimingFinish', 'completed'].includes(run.phase) ? 'cleared' : index === run.encounter ? run.phase === 'rewardPending' ? 'pack ready' : 'current' : 'upcoming'}`}><span>{String(index + 1).padStart(2, '0')}</span></li>)}</ol>
         {run.phase === 'rewardPending' && reward && <section className="campaign-reward panel hot">
           <p className="play-eyebrow">Contract cleared / Pack {run.encounter + 1}</p><h2>Your take from the table</h2>
           <p>Seven cards are yours. Reveal them, then pick one more.</p>
@@ -193,7 +194,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
             <small>Wins unlock the next table. Losses keep your cards{run.attempts > 1 ? ' · Review your reserve and try another legal swap.' : '.'}</small>
           </section>
           <section className="campaign-workshop panel"><div className="campaign-section-heading"><div><p className="play-eyebrow">Your campaign deck</p><h2>Make the next move.</h2></div><span>{totalCopies(run.deck.cards)} cards · {run.deck.legends.length} Legends</span></div>
-            <div className="campaign-crew-art campaign-active-crew">{run.deck.legends.map(slug => <div key={slug}><CardImg slug={slug} alt={BY_SLUG.get(slug)?.display ?? slug} /><strong>{BY_SLUG.get(slug)?.name}</strong></div>)}</div>
+            <div className="campaign-crew-art campaign-active-crew">{run.deck.legends.map(slug => <div key={slug}><CardImg slug={slug} alt={BY_SLUG.get(slug)?.display ?? slug} priority /><strong>{BY_SLUG.get(slug)?.name}</strong></div>)}</div>
             {run.phase !== 'inMatch' && <><div className="campaign-workshop-actions"><button className="btn quiet" disabled={!undo || busy} onClick={() => undo && edit(undo)}>Undo last edit</button><button className="btn quiet" disabled={busy} onClick={() => edit(structuredClone(run.lastLegal))}>Restore last legal deck</button></div>
               <p>Cards in reserve are always yours. Choose a card to inspect it in full art, then add or swap copies below.</p>
               <div className="campaign-inventory">{inventory?.map(card => <article key={card.slug} data-new={!!run.rewards[run.encounter - 1]?.cards.includes(card.slug) || run.rewards[run.encounter - 1]?.choice === card.slug}>
@@ -206,13 +207,13 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
         </div>}
         {!!profile.environments.length && <section className="campaign-locker"><h2>Your rooms</h2>{ENVIRONMENTS.filter(item => profile.environments.includes(item.id)).map(item => <button key={item.id} className="btn quiet" disabled={busy || profile.equipped === item.id} onClick={() => void apply(() => equipEnvironment(scope, item.id), value => setProfile(value.profile))}>{profile.equipped === item.id ? 'On your table: ' : 'Equip '}{item.name}</button>)}</section>}
         {!!profile.history?.length && <details className="campaign-history panel"><summary>Previous runs · {profile.history.length}</summary><div>{[...profile.history].reverse().map(item => <article key={item.id}><span>{item.completed ? 'Cleared all nine tables' : `Stopped after ${item.cleared} wins`} · {STARTERS.find(starter => starter.key === item.starter)?.name}</span>{item.completed && <button className="btn quiet" onClick={() => openInBuilder(item.deck)}>Open finished deck as draft</button>}</article>)}</div></details>}
-        {run.phase !== 'completed' && <div className="campaign-restart"><button className="btn danger-ghost" disabled={busy} onClick={() => create(run.starter === 'the-heist' ? 'embracing-power' : 'the-heist')}>Start with a different starter</button></div>}
+        {!['completed', 'claimingFinish'].includes(run.phase) && <div className="campaign-restart"><button className="btn danger-ghost" disabled={busy} onClick={() => create(run.starter === 'the-heist' ? 'embracing-power' : 'the-heist')}>Start with a different starter</button></div>}
       </>}
       <button className="btn quiet campaign-free-link" onClick={exit}>Free Play · Any deck, any opponent</button>
     </div>}
     <dialog ref={inspection} className="campaign-inspection" onClose={() => setInspected(undefined)} aria-label={inspected ? BY_SLUG.get(inspected)?.display : 'Card details'}>
       <button className="btn quiet" onClick={() => setInspected(undefined)}>Close card</button>
-      {inspected && <div><CardImg slug={inspected} alt={BY_SLUG.get(inspected)?.display ?? inspected} /><section><h2>{BY_SLUG.get(inspected)?.display}</h2><p>{BY_SLUG.get(inspected)?.text}</p><p>Earned {run?.inventory[inspected] ?? 0} · In deck {run?.deck.cards[inspected] ?? 0}</p></section></div>}
+      {inspected && <div><CardImg slug={inspected} alt={BY_SLUG.get(inspected)?.display ?? inspected} /><section><h2>{BY_SLUG.get(inspected)?.display}</h2><p>{BY_SLUG.get(inspected)?.text}</p>{!!run?.inventory[inspected] && <p>Earned {run.inventory[inspected]} · In deck {run.deck.cards[inspected] ?? (run.deck.legends.includes(inspected) ? 1 : 0)}</p>}</section></div>}
     </dialog>
     <ConfirmDialog open={!!replace} title="Start a new campaign?" confirmLabel="Abandon current run" onCancel={() => setReplace(undefined)} onConfirm={() => { const starter = replace; setReplace(undefined); if (starter) create(starter, true); }}><p>Your current run and its cards will be replaced. Earned environments stay yours.</p></ConfirmDialog>
   </section>;

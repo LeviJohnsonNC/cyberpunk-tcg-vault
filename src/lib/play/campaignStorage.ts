@@ -58,6 +58,7 @@ export async function updateCampaign<T>(scope: string, change: (run: CampaignRun
 
 export function startCampaign(scope: string, starter: StarterKey, replace = false) {
   return updateCampaign(scope, (old, profile) => {
+    if (old?.phase === 'claimingFinish') throw new Error('Choose your earned room before starting another campaign.');
     if (old && old.phase !== 'completed' && !replace) throw new Error('Finish or abandon your current campaign first.');
     const run = newCampaign(starter, crypto.randomUUID(), crypto.randomUUID());
     const nextProfile = old ? { ...profile, history: [...(profile.history ?? []), {
