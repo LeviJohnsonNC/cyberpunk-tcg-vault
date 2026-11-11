@@ -65,10 +65,18 @@ export function updatePick(action: MatchActionForm, picks: Picks, fieldId: strin
   return result;
 }
 
-export function intentLabel(action: MatchActionForm, picks: Picks) {
+export function reorderPick(action: MatchActionForm, picks: Picks, fieldId: string, order: string[]): Picks | undefined {
+  const field = action.fields(picks).find((candidate) => candidate.id === fieldId);
+  const previous = picks[fieldId] ?? [];
+  if (!field?.ordered || order.length !== previous.length || new Set(order).size !== order.length
+    || !order.every((id) => previous.includes(id) && field.options.some((option) => option.id === id))) return;
+  return { ...picks, [fieldId]: order };
+}
+
+export function intentLabel(action: MatchActionForm, picks: Picks, source?: CardView) {
   const payment = action.fields(picks).find((field) => field.id === 'payment');
   const ability = action.fields(picks)[0]?.options.find((option) => picks.ability?.includes(option.id));
-  return [action.label, ability?.note, payment && `${payment.min} €$`].filter(Boolean).join(' · ');
+  return [action.id === 'playCard' && source?.zone === 'legendArea' ? 'Play normally' : action.label, ability?.note, payment && !ability && `${payment.min} €$`].filter(Boolean).join(' · ');
 }
 
 export function commitLabel(action: MatchActionForm, picks: Picks) {

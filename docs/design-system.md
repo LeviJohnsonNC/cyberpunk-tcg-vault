@@ -111,3 +111,13 @@ Fonts are self-hosted via `@fontsource` packages (imported in `theme.css`), so t
 - Missing art: text fallback, never a broken image
 - Long names: wrap or line-clamp; never overflow the layout
 - Keyboard: every interactive element reachable, with a visible focus ring
+
+## Play Mode interactions
+
+Desktop practice matches use the mirrored mat as their working surface. Click a card for legal contextual actions, drag it to a highlighted destination, or use the complete action-list fallback. Card art enlarges on hover; a visible inspection control and the I key open details. Inspection never reveals a concealed identity.
+
+All paths use the same action forms and engine commands. Spatial gestures express intent, not new rules. Ambiguous Legend entries offer ordinary play and Go solo separately. Payment sources are chosen explicitly from ready Eddies and eligible Legends. Only the active decision step highlights targets; do not combine unrelated host, payment, and effect targets.
+
+Ordinary decisions use a compact strip on the mat. Revealed cards, branching effects, ordering and placement reviews use an expanded temporary tray. Cancel before committing; after commitment, only clear unsubmitted selections or decline where the engine permits it. Ready/Spent state follows engine results.
+
+Keep the hand reachable, use stable slots and restrained motion, respect reduced motion, and preserve valid pending selections after refresh. Hover previews yield to dragging and decisions. Keyboard focus follows user actions and never jumps repeatedly to the side rail.
