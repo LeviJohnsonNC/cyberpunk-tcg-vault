@@ -4,7 +4,7 @@ import { zoneCards, zoneCount } from '../lib/play/matchView';
 import type { CardView, MatchSnapshot, Seat } from '../lib/play/protocol';
 import { DieFace } from './PlayDice';
 
-type Targeting = { targetIds: Set<string>; chosenIds: Set<string>; onPick: (id: string) => void };
+type Targeting = { dropZones?: Set<string>; dropOver?: string; targetIds: Set<string>; chosenIds: Set<string>; onPick: (id: string) => void };
 type CardTile = (card: CardView, label?: string) => ReactNode;
 
 function MatDie({ card, fixer = false, targetIds, chosenIds, onPick }: Targeting & { card: CardView; fixer?: boolean }) {
@@ -22,7 +22,7 @@ export function GigZones({ snapshot, ...targeting }: Targeting & { snapshot: Mat
   return <div className="play-gig-zones">{(['rival', 'player'] as const).map((seat) => {
     const view = snapshot.view.players[seat];
     const gigs = zoneCards(view, 'gigArea');
-    return <section key={seat} className="play-gigs" data-seat={seat} aria-label={seat === 'player' ? 'Your Gigs' : 'Rival Gigs'}>
+    return <section key={seat} className="play-gigs" data-seat={seat} data-drop-zone={`gigs:${seat}`} data-drop-available={targeting.dropZones?.has(`gigs:${seat}`)} data-drop-over={targeting.dropOver === `gigs:${seat}`} aria-label={seat === 'player' ? 'Your Gigs' : 'Rival Gigs'}>
       <h3 className="play-eyebrow">{seat === 'player' ? 'Your Gigs' : 'Rival Gigs'} <span>{view.gigCount}</span></h3>
       <div className="play-dice">{gigs.length ? gigs.map((card) => <MatDie key={card.instanceId} card={card} {...targeting} />) : <span className="play-empty">No Gigs yet</span>}</div>
       <span className="play-gig-cred" title="Street Cred is the total value of these Gig dice">Cred <b>{view.streetCred}</b></span>
@@ -61,8 +61,8 @@ function MatTrash({ own, trash, removed, renderCard, renderFace }: {
   </div>;
 }
 
-export function PlayMat({ seat, snapshot, name, active, renderCard, renderFace, ...targeting }: Targeting & {
-  seat: Seat; snapshot: MatchSnapshot; name: string; active: boolean; renderCard: CardTile; renderFace: (card: CardView) => ReactNode;
+export function PlayMat({ seat, snapshot, name, active, renderCard, renderFace, fieldControls, ...targeting }: Targeting & {
+  seat: Seat; snapshot: MatchSnapshot; name: string; active: boolean; renderCard: CardTile; renderFace: (card: CardView) => ReactNode; fieldControls?: ReactNode;
 }) {
   const view = snapshot.view.players[seat];
   const own = seat === 'player';
@@ -104,9 +104,10 @@ export function PlayMat({ seat, snapshot, name, active, renderCard, renderFace, 
         <h3 className="play-eyebrow">Fixer</h3>
         <div className="play-dice">{(own ? fixer : fixer.slice().reverse()).map((card) => <MatDie key={card.instanceId} card={card} fixer {...targeting} />)}</div>
       </section>
-      <div className="play-mat-field" data-resolving={resolving.length > 0}>
+      <div className="play-mat-field" data-drop-zone={`field:${seat}`} data-drop-available={targeting.dropZones?.has(`field:${seat}`)} data-drop-over={targeting.dropOver === `field:${seat}`} data-resolving={resolving.length > 0}>
         <section className="play-field" aria-label="Field">
           <h3 className="play-eyebrow">Field <span>{field.length - attached.filter((card) => legends.some((legend) => legend.instanceId === card.attachedToId)).length}</span></h3>
+          {fieldControls && <div className="play-field-controls">{fieldControls}</div>}
           <div className="play-card-row">{fieldCards.length ? fieldCards.map((card) => withGear(card)) : <span className="play-empty">Field is clear</span>}</div>
         </section>
         {resolving.length > 0 && <section className="play-resolving" aria-label="Resolving Programs">
@@ -119,7 +120,7 @@ export function PlayMat({ seat, snapshot, name, active, renderCard, renderFace, 
           {Array.from({ length: Math.max(0, 3 - legends.length) }, (_, index) => <span key={`empty:${index}`} className="play-empty-legend" aria-label="Empty Legend slot" />)}
         </div>
       </section>
-      <section className="play-eddies" aria-label={own ? 'Your Eddies' : 'Rival Eddies'}>
+      <section className="play-eddies" data-drop-zone={`eddies:${seat}`} data-drop-available={targeting.dropZones?.has(`eddies:${seat}`)} data-drop-over={targeting.dropOver === `eddies:${seat}`} aria-label={own ? 'Your Eddies' : 'Rival Eddies'}>
         <div className="play-eddies-heading"><h3 className="play-eyebrow">Eddies</h3><span>{view.eddies} ready <span>·</span> {spent} spent <span>·</span> +{legendEddies} from Legends</span></div>
         <div className="play-eddie-row">{[...eddies, ...pool].map((card, index) => {
           const target = targeting.targetIds.has(card.instanceId) && (own || !card.instanceId.startsWith('pool:'));
