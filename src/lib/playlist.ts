@@ -17,4 +17,9 @@ export const PLAYLIST: Track[] = [
   { title: 'In the Blackout', src: '/music/in-the-blackout.mp3' },
   { title: 'Looks Like Trouble', src: '/music/looks-like-trouble.mp3' },
   { title: 'Make It Feel Real', src: '/music/make-it-feel-real.mp3' },
+  { title: 'Not Yours to Keep', src: '/music/not-yours-to-keep.mp3' },
+  { title: 'Ours Until Morning', src: '/music/ours-until-morning.mp3' },
+  { title: 'The City Can Wait', src: '/music/the-city-can-wait.mp3' },
+  { title: 'The Night Wants Us', src: '/music/the-night-wants-us.mp3' },
+  { title: 'Touch Without a Trace', src: '/music/touch-without-a-trace.mp3' },
 ];
