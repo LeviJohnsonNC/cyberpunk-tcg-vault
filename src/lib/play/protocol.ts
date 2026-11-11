@@ -71,7 +71,7 @@ export interface PlayerView {
   winReason: string | null;
   stateID: number;
   prompt: Prompt;
-  attackState?: { attackerId: string; defenderId?: string; step: string } | null;
+  attackState?: { attackerId: string; defenderId?: string; step: string; rivalId?: Seat } | null;
 }
 
 export interface MatchLogEntry { id: number; turn: number; seat: Seat; text: string }
@@ -84,15 +84,37 @@ export interface GigRoll {
   origin: 'gainGig' | 'reroll';
 }
 
-export interface MatchSnapshot {
-  matchId: string;
-  names: Record<Seat, string>;
+export interface MatchFrame {
   view: PlayerView;
-  /** Slots a seat has legally peeked at. Identity is only in the transient peek. */
+  /** Only identities legally revealed to this viewer may enter a frame. */
   knownLegends: { instanceId: string; seat: Seat }[];
   peeks: CardView[];
   log: MatchLogEntry[];
   gigRolls: GigRoll[];
+}
+
+export interface MatchChange {
+  kind: 'played' | 'called' | 'moved' | 'defeated' | 'power' | 'gigs' | 'cred' | 'eddies';
+  seat: Seat;
+  label: string;
+  card?: CardView;
+  amount?: number;
+}
+
+export interface MatchBeat extends MatchFrame {
+  id: number;
+  seat: Seat;
+  text: string;
+  source?: CardView;
+  targetIds: string[];
+  changes: MatchChange[];
+}
+
+export interface MatchSnapshot extends MatchFrame {
+  matchId: string;
+  names: Record<Seat, string>;
+  /** Transient public presentation. Never saved in the engine checkpoint. */
+  presentation?: { beats: MatchBeat[]; feedback?: MatchBeat };
 }
 
 export type MatchAction =

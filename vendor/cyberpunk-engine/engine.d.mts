@@ -18,6 +18,7 @@ export interface EngineState {
 }
 
 export type EngineEvent =
+  | { type: 'cardDefeated'; cardId: string }
   | { type: 'cardsRevealed'; cardIds: string[]; fromZone: string; audience: 'private' | 'public'; playerId: Seat; viewers?: Seat[] }
   | { type: 'gigDieRolled'; dieId: string; dieType: string; result: number; playerId: Seat; origin: 'gainGig' | 'reroll' }
   | { type: 'other' };

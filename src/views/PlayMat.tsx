@@ -4,14 +4,14 @@ import { zoneCards, zoneCount } from '../lib/play/matchView';
 import type { CardView, MatchSnapshot, Seat } from '../lib/play/protocol';
 import { DieFace } from './PlayDice';
 
-type Targeting = { dropZones?: Set<string>; dropOver?: string; targetIds: Set<string>; chosenIds: Set<string>; onPick: (id: string) => void };
+type Targeting = { effectIds?: Set<string>; dropZones?: Set<string>; dropOver?: string; targetIds: Set<string>; chosenIds: Set<string>; onPick: (id: string) => void };
 type CardTile = (card: CardView, label?: string) => ReactNode;
 
-function MatDie({ card, fixer = false, targetIds, chosenIds, onPick }: Targeting & { card: CardView; fixer?: boolean }) {
+function MatDie({ card, fixer = false, effectIds, targetIds, chosenIds, onPick }: Targeting & { card: CardView; fixer?: boolean }) {
   const target = targetIds.has(card.instanceId);
   const label = fixer ? `Roll ${card.definitionId}` : `${card.definitionId} Gig · ${card.power}`;
   return <button type="button" className={`play-die${fixer ? ' play-die-fixer' : ''}`} aria-label={label} title={label}
-    data-card-id={card.instanceId} data-target={target} disabled={!target}
+    data-card-id={card.instanceId} data-result={effectIds?.has(card.instanceId)} data-target={target} disabled={!target}
     aria-pressed={target ? chosenIds.has(card.instanceId) : undefined} onClick={() => onPick(card.instanceId)}>
     <DieFace type={card.definitionId} value={fixer ? undefined : card.power} />
     {!fixer && <small>{card.definitionId}</small>}

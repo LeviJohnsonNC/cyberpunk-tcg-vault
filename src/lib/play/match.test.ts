@@ -77,6 +77,36 @@ describe('play engine', () => {
     expect(seats).toEqual(new Set(['player', 'rival']));
   });
 
+  it('delivers chronological read-only rival frames once without saving presentation in checkpoints', () => {
+    const session = createEngineSession(setup('chrome-syndicate'), { shuffle: 'public-rival-presentation', bot: 'public-rival-presentation' });
+    let snapshot = session.start();
+    let count = 0;
+    for (let i = 0; i < 60 && !snapshot.view.gameEnded; i++) {
+      const move = chooseMove(snapshot.view, () => 0.3, 'player')!;
+      snapshot = session.move(snapshot.view.stateID, move);
+      const frames = snapshot.presentation?.beats ?? [];
+      count += frames.length;
+      expect([...(snapshot.presentation?.feedback?.gigRolls ?? []), ...frames.flatMap((beat) => beat.gigRolls)]).toEqual(snapshot.gigRolls);
+      for (const [index, beat] of frames.entries()) {
+        expect(beat.seat).toBe('rival');
+        expect(beat.view.stateID).toBeLessThanOrEqual(snapshot.view.stateID);
+        if (index) expect(beat.view.stateID).toBeGreaterThan(frames[index - 1].view.stateID);
+        expect(beat.log.every((entry) => entry.id <= beat.id)).toBe(true);
+        expect(beat.view.prompt).toEqual({ status: 'waiting', availableMoves: [], choice: null });
+        expect(typeof beat.view.players.rival.zones.hand).toBe('number');
+        for (const seat of ['player', 'rival'] as const) {
+          expect(typeof beat.view.players[seat].zones.deck).toBe('number');
+          expect((beat.view.players[seat].zones.legendArea as CardView[]).filter((card) => card.faceDown)
+            .every((card) => !card.definitionId && card.cardName === null)).toBe(true);
+          expect((beat.view.players[seat].zones.eddieArea as CardView[]).every((card) => !card.definitionId && card.cardName === null)).toBe(true);
+        }
+      }
+      expect(session.checkpoint()).not.toHaveProperty('presentation');
+      expect(session.start().presentation).toBeUndefined();
+    }
+    expect(count).toBeGreaterThan(10);
+  });
+
   it('keeps hidden card identities and pre-shuffle Legend IDs out of both seat projections', () => {
     const { engine, preview } = afterSetup(setup('chrome-syndicate'));
     const presented = new Set(Object.values(preview.players).flatMap(({ zones }) =>
@@ -1041,9 +1071,9 @@ describe('play engine', () => {
     const original = result.snapshot;
     expect(original.gigRolls.some((roll) => roll.seat === 'player')).toBe(true);
     const restored = createMatchController(structuredClone(live.save(original)));
-    expect(restored.respond({ id: 13, action: { type: 'resume' } })).toEqual({
-      id: 13, snapshot: { ...original, gigRolls: [] },
-    });
+    const resumed = { ...original, gigRolls: [] };
+    delete resumed.presentation;
+    expect(restored.respond({ id: 13, action: { type: 'resume' } })).toEqual({ id: 13, snapshot: resumed });
 
     let view = original.view;
     for (let i = 14; i < 25; i++) {

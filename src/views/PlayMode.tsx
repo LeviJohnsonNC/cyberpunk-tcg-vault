@@ -7,6 +7,7 @@ import { deckFromRecommended } from '../lib/decks';
 import { openPlayMatch, resumePlayMatch } from '../lib/play/matchClient';
 import type { MatchSnapshot, MatchSummary, Move } from '../lib/play/protocol';
 import { PlayTable } from './PlayTable';
+import { useMatchPresentation } from './useMatchPresentation';
 import './play-mode.css';
 
 const rivalPlans = [
@@ -41,6 +42,7 @@ export default function PlayMode({ scope, draft, saved, initialRival, rememberRi
   const deck = draft?.deck;
   const name = deck?.name.trim() || 'Untitled deck';
   const matchId = snapshot?.matchId;
+  const presentation = useMatchPresentation(snapshot);
 
   useLayoutEffect(() => {
     if (matchId) window.scrollTo({ top: 0, behavior: 'instant' });
@@ -112,7 +114,7 @@ export default function PlayMode({ scope, draft, saved, initialRival, rememberRi
 
   function send(move: Move) {
     const current = client.current;
-    if (current && snapshot) void run(() => current.move(snapshot, move));
+    if (current && snapshot && !presentation.playing) void run(() => current.move(snapshot, move));
   }
 
   function rematch() {
@@ -120,7 +122,7 @@ export default function PlayMode({ scope, draft, saved, initialRival, rememberRi
     if (current && snapshot) void run(() => current.rematch(snapshot));
   }
 
-  const live = snapshot && !snapshot.view.gameEnded;
+  const live = snapshot && !(presentation.displayed ?? snapshot).view.gameEnded;
   return (
     <section className="play-mode">
       {snapshot ? <>
@@ -130,13 +132,14 @@ export default function PlayMode({ scope, draft, saved, initialRival, rememberRi
             <h1 title={`${snapshot.names.player} vs. ${snapshot.names.rival}`}>{snapshot.names.player} <span>vs.</span> {snapshot.names.rival}</h1>
           </div>
           <div className="play-header-actions">
-            {live && <button type="button" className="btn quiet" disabled={busy} onClick={() => setConfirm('restart')}>Restart match</button>}
-            {live && <button type="button" className="btn danger-ghost" disabled={busy} onClick={() => setConfirm('concede')}>Concede</button>}
-            <button type="button" className="btn quiet" disabled={busy} onClick={onEdit}>Back to draft</button>
+            {live && <button type="button" className="btn quiet" disabled={busy || presentation.playing} onClick={() => setConfirm('restart')}>Restart match</button>}
+            {live && <button type="button" className="btn danger-ghost" disabled={busy || presentation.playing} onClick={() => setConfirm('concede')}>Concede</button>}
+            <button type="button" className="btn quiet" disabled={busy} onClick={() => { presentation.playback?.skip(); onEdit(); }}>Back to draft</button>
           </div>
         </header>
-        <PlayTable key={snapshot.matchId} scope={scope} snapshot={snapshot} names={snapshot.names}
-          busy={busy} error={error} send={send} rematch={rematch} edit={onEdit} />
+        <PlayTable key={snapshot.matchId} scope={scope} snapshot={presentation.displayed ?? snapshot} names={snapshot.names}
+          playback={presentation.playback} feedback={presentation.feedback}
+          busy={busy || presentation.playing} error={error} send={send} rematch={rematch} edit={onEdit} />
       </> : deck ? <>
         <div className="play-entrance">
           <Masthead eyebrow="The Afterlife / Practice table" title="Play Mode" sub="Local practice ◆ Best of one">

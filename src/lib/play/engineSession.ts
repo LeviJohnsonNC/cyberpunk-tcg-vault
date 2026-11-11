@@ -1,7 +1,8 @@
 import { chooseMove, createCardCatalog, createMatchState, LocalEngine, projectRevealedCardView, SeededRNG } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import type { EngineEvent, EngineState } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import { describeAction, hideConcealedTargets } from './matchView';
-import type { CardView, GigRoll, MatchLogEntry, MatchSetup, MatchSnapshot, Move, Seat } from './protocol';
+import { describeBeat, describeRolls, presentationView } from './matchPresentation';
+import type { CardView, GigRoll, MatchBeat, MatchFrame, MatchLogEntry, MatchSetup, MatchSnapshot, Move, Seat } from './protocol';
 
 const catalog = createCardCatalog();
 const cardAliases: Record<string, string> = {
@@ -89,33 +90,56 @@ export function createEngineSession(
   const names = { player: setup.player.name.trim() || 'Untitled deck', rival: setup.rival.name };
   const isCurrent = (stateID: number) => engine.getState().ctx.stateID === stateID;
   let stalled = false;
+  let beats: MatchBeat[] = [];
+  let feedback: MatchBeat | undefined;
+
+  function frame(view: MatchFrame['view'], rolls: GigRoll[]): MatchFrame {
+    const concealed = new Set(Object.values(view.players).flatMap(({ zones }) => {
+      const legends = zones.legendArea;
+      return Array.isArray(legends) ? legends.filter((card) => card.faceDown).map((card) => card.instanceId) : [];
+    }));
+    return { view, peeks: [...peeks], log: [...log], gigRolls: rolls,
+      knownLegends: [...known].filter(([id]) => concealed.has(id))
+        .flatMap(([instanceId, viewers]) => [...viewers].map(seat => ({ instanceId, seat }))),
+    };
+  }
 
   function apply(seat: Seat, command: Move) {
     const prompt = engine.getFilteredView(seat).prompt;
     if (!prompt.availableMoves.some(({ moveId }) => moveId === command.move)) {
       throw new Error('That action is no longer available.');
     }
-    const before = engine.getFilteredView('player');
+    const before = hideConcealedTargets(engine.getFilteredView('player'));
     const result = engine.processCommand({
       commandID: String(++commandNumber),
       move: command.move,
       input: command.args ? { args: command.args } : undefined,
     }, seat);
     if (!result.success) throw new Error(result.error);
-    const after = engine.getFilteredView('player');
-    const text = describeAction(seat, command, before, after);
+    const after = hideConcealedTargets(engine.getFilteredView('player'));
+    if (seat === 'player') peeks = [];
+    peeks.push(...recordLegendPeeks(result.state, result.gameEvents, known));
+    const rolls: GigRoll[] = result.gameEvents.flatMap((event) => event.type === 'gigDieRolled' ? [{
+      dieId: event.dieId, dieType: event.dieType, result: event.result, seat: event.playerId, origin: event.origin,
+    }] : []);
+    gigRolls.push(...rolls);
+    const main = before.gamePhase !== 'setup' && after.gamePhase !== 'setup';
+    const defeated = new Set(result.gameEvents.flatMap((event) => event.type === 'cardDefeated' ? [event.cardId] : []));
+    const described = main ? describeBeat(seat, command, before, after, defeated) : undefined;
+    const beatText = described?.text || describeRolls(rolls, seat);
+    const text = describeAction(seat, command, before, after)
+      ?? (described?.changes.length || rolls.length ? beatText : undefined);
     if (text) {
       log.push({ id: commandNumber, turn: before.turnNumber, seat, text });
       if (log.length > 80) log.shift();
     }
-    if (seat === 'player') peeks = [];
-    peeks.push(...recordLegendPeeks(result.state, result.gameEvents, known));
-    for (const event of result.gameEvents) {
-      if (event.type === 'gigDieRolled') {
-        gigRolls.push({
-          dieId: event.dieId, dieType: event.dieType, result: event.result, seat: event.playerId, origin: event.origin,
-        });
-      }
+    if (described && beatText) {
+      // Only the viewer's contemporary filtered state enters the transient queue.
+      // Even a reroll that lands on the same face must retain its roll receipt.
+      const beat: MatchBeat = structuredClone({ ...frame(presentationView(after), rolls),
+        ...described, text: beatText, id: commandNumber, seat });
+      if (seat === 'rival') beats.push(beat);
+      else feedback = beat;
     }
   }
 
@@ -124,16 +148,12 @@ export function createEngineSession(
       for (let actions = 0; actions < 200; actions++) {
         const view = hideConcealedTargets(engine.getFilteredView('player'));
         if (view.gameEnded || view.prompt.status === 'action' || view.prompt.status === 'choice') {
-          const concealed = new Set(Object.values(view.players).flatMap(({ zones }) => {
-            const legends = zones.legendArea;
-            return Array.isArray(legends) ? legends.filter((card) => card.faceDown).map((card) => card.instanceId) : [];
-          }));
-          const snapshot = {
-            matchId, names, view, peeks: [...peeks], log: [...log], gigRolls,
-            knownLegends: [...known].filter(([id]) => concealed.has(id))
-              .flatMap(([instanceId, viewers]) => [...viewers].map(seat => ({ instanceId, seat }))),
+          const snapshot: MatchSnapshot = { matchId, names, ...frame(view, gigRolls),
+            ...(beats.length || feedback ? { presentation: { beats, feedback } } : {}),
           };
           gigRolls = [];
+          beats = [];
+          feedback = undefined;
           return snapshot;
         }
         const command = botDecision(engine, 'rival', () => botRng.next());

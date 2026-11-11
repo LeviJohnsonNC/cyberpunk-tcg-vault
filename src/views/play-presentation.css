@@ -1,0 +1,49 @@
+.play-move-receipt { padding: 10px; border: 1px solid var(--play-edge); border-top: 2px solid var(--color-ticket); border-radius: 4px; background: var(--color-surface); }
+.play-move-receipt-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.play-move-receipt .btn { min-height: 28px; padding: 4px 7px; font-size: 11px; }
+.play-receipt-art { display: block; width: min(100%, 130px); margin: 10px auto; }
+.play-receipt-art .card-art { width: 100%; aspect-ratio: 5/7; display: block; object-fit: contain; border-radius: 4px; transform: none; box-shadow: none; }
+.play-move-receipt p { font-size: 12px; line-height: 1.5; margin: 8px 0; overflow-wrap: anywhere; }
+.play-move-receipt p b { color: var(--color-ticket); }
+.play-move-receipt ul { padding: 0; margin: 8px 0 0; list-style: none; display: grid; gap: 4px; }
+.play-move-receipt li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 3px 6px; font-size: 11px; padding: 5px 0; border-top: 1px solid var(--color-divider); }
+.play-move-receipt li > span { color: var(--color-text-muted); }
+.play-move-receipt li strong { color: var(--color-ticket); font-weight: 500; }
+.play-move-receipt li[data-change=defeated] strong { color: var(--color-danger); }
+.play-playback-progress { height: 2px; background: var(--color-divider); margin-top: 9px; }
+.play-playback-progress > span { display: block; height: 100%; background: var(--color-accent); }
+.play-direct .play-card[data-feedback] { border-color: var(--color-ticket); }
+.play-direct .play-card[data-combat-role=attacking] { border-color: var(--color-accent); box-shadow: 0 0 0 1px var(--color-accent); }
+.play-direct .play-card[data-combat-role=defending] { border-color: var(--color-ticket); box-shadow: 0 0 0 1px var(--color-ticket); }
+.play-direct .play-card[data-combat-role] > small { font-size: 9px; max-width: calc(100% - 4px); color: var(--color-ticket); }
+.play-combat-banner { position: relative; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 6px 12px; flex-wrap: wrap; padding: 5px 8px; margin-block: 4px; border: 1px solid var(--color-ticket); border-left: 3px solid var(--color-accent); border-radius: 3px; background: var(--color-surface); }
+.play-combat-banner h3 { display: inline; margin: 0 8px 0 0; color: var(--color-ticket); font: 700 17px/1.15 var(--font-display); }
+.play-combat-banner p { display: inline; margin: 0; color: var(--color-text); font: 500 11px/1.4 var(--font-ui); overflow-wrap: anywhere; }
+.play-combat-banner[data-responding=true] { background: color-mix(in srgb, var(--color-accent) 9%, var(--color-surface)); }
+.play-combat-banner[data-responding=true] h3 { color: var(--color-accent); }
+.play-combat-instruction { flex: 1 1 140px; color: var(--color-text-muted); font: 400 10px/1.4 var(--font-ui); }
+.play-combat-controls { display: flex; flex-wrap: wrap; gap: 5px; }
+.play-combat-controls .btn { min-height: 28px; font-size: 11px; padding: 4px 8px; }
+.play-combat-arrow { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 2; overflow: visible; pointer-events: none; filter: drop-shadow(0 1px 2px var(--color-canvas-deep)); }
+.play-combat-arrow > path { fill: none; stroke: var(--color-accent); stroke-width: 3px; stroke-dasharray: 7 5; opacity: .85; }
+.play-combat-arrow marker path { fill: var(--color-accent); }
+.play-combat-arrow circle { fill: var(--color-ticket); stroke: var(--color-canvas-deep); stroke-width: 2px; }
+@media (prefers-reduced-motion: no-preference) {
+  .play-direct .play-card[data-feedback] { animation: play-result-pulse 650ms ease-out; }
+  @keyframes play-result-pulse { 30% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-ticket) 45%, transparent); } }
+}
+.play-direct[data-playback=true] .play-card:disabled { opacity: 1; cursor: default; }
+
+.play-direct .play-gig-zones { position: relative; z-index: 3; }
+.play-direct .play-card-shell:has([data-combat-role]) { z-index: 3; }
+
+.play-direct .play-card[data-effect-source=true] { border-color: var(--color-accent); }
+.play-direct .play-card[data-effect-target=true], .play-direct .play-die[data-result=true] { border-color: var(--color-ticket); box-shadow: 0 0 0 1px var(--color-ticket); opacity: 1; }
+
+.play-move-receipt ul { max-height: 210px; overflow: auto; scrollbar-width: thin; }
+.play-private-peek { padding: 10px; border: 1px dashed var(--color-accent); border-radius: 4px; background: var(--color-surface); }
+.play-private-peek h3 { margin: 0; color: var(--color-accent); font: 700 19px/1.2 var(--font-display); }
+.play-private-peek p { font-size: 11px; color: var(--color-text-muted); margin: 4px 0 8px; }
+.play-private-peek .btn { display: flex; gap: 8px; align-items: center; width: 100%; text-align: left; white-space: normal; font-size: 11px; }
+.play-private-peek .card-art { width: 48px; aspect-ratio: 5/7; object-fit: contain; border-radius: 3px; box-shadow: none; transform: none; }
+.play-private-peek strong, .play-private-peek small { display: block; margin-top: 3px; }
