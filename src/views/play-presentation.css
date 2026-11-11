@@ -24,6 +24,24 @@
 .play-card-shell:has(> [data-in-flight]) > .play-details, .play-card-shell:has(> [data-in-flight]) > .play-float { opacity: 0; }
 .play-card-shell:has(> [data-striking]) { z-index: 30; }
 
+/* Foil catches the light once at touchdown. Corner marks give called Legends a distinct signature. */
+.play-accent { position: absolute; overflow: hidden; border-radius: 6px; color: var(--color-ticket); pointer-events: none; contain: layout paint; }
+.play-accent[data-seat="rival"] { color: var(--color-accent); }
+.play-accent[data-kind="legend"] { box-shadow: 0 0 22px color-mix(in srgb, currentColor 38%, transparent); overflow: visible; contain: layout; }
+.play-foil-window { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; }
+.play-foil { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(110deg, transparent 24%, color-mix(in srgb, var(--color-ticket) 12%, transparent) 36%, color-mix(in srgb, var(--color-text) 48%, transparent) 49%, color-mix(in srgb, var(--color-accent) 20%, transparent) 56%, transparent 70%); }
+.play-accent[data-kind="legend"] .play-foil-window { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; }
+.play-foil { clip-path: inset(0 round 6px); }
+.play-accent i { position: absolute; width: 12%; height: 9%; border: 2px solid currentColor; }
+.play-accent i:nth-of-type(1) { inset: 0 auto auto 0; border-right: 0; border-bottom: 0; }
+.play-accent i:nth-of-type(2) { inset: 0 0 auto auto; border-left: 0; border-bottom: 0; }
+.play-accent i:nth-of-type(3) { inset: auto 0 0 auto; border-left: 0; border-top: 0; }
+.play-accent i:nth-of-type(4) { inset: auto auto 0 0; border-right: 0; border-top: 0; }
+.play-accent[data-kind="legend"] i { width: 24%; height: 18%; border-width: 3px; filter: drop-shadow(0 0 4px currentColor); }
+.play-accent[data-kind="cash"] { overflow: visible; contain: layout; border-top: 2px solid currentColor; }
+.play-cash-stamp { position: absolute; inset: auto 0 100% auto; padding: 1px 5px; color: var(--color-ticket-ink); background: var(--color-ticket); font: 600 12px/1.3 var(--font-mono); clip-path: polygon(5px 0, 100% 0, 100% 100%, 0 100%, 0 5px); }
+@media (prefers-reduced-motion: reduce) { .play-accent { display: none; } }
+
 .play-impact {
   position: absolute;
   width: 170px;

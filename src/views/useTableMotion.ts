@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
 import { CARD_BACK } from '../components/bits';
-import { planMotion } from '../lib/play/matchMotion';
+import { planMotion, tableAccents } from '../lib/play/matchMotion';
 import type { MatchBeat, PlayerView } from '../lib/play/protocol';
 import type { TableCue } from '../lib/play/tableSound';
 
@@ -37,6 +37,24 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
   const played = useRef<string | undefined>(undefined);
   useLayoutEffect(() => { live.current = cue; });
 
+  // Presentation can be interrupted at any point without leaving a hidden card or a late flourish.
+  useLayoutEffect(() => {
+    if (cue.enabled) return;
+    for (const finish of [...running.current]) finish();
+    for (const stop of sounds.current.splice(0)) stop();
+  }, [cue.enabled]);
+
+  useEffect(() => {
+    const settle = () => {
+      for (const finish of [...running.current]) finish();
+      for (const stop of sounds.current.splice(0)) stop();
+      if (root.current) pieces.current = measure(root.current);
+    };
+    document.addEventListener('visibilitychange', settle);
+    window.addEventListener('resize', settle);
+    return () => { document.removeEventListener('visibilitychange', settle); window.removeEventListener('resize', settle); };
+  }, [root]);
+
   // Resting positions change with the window. Re-measure quietly so the next move starts from the truth.
   useEffect(() => {
     const table = root.current;
@@ -66,7 +84,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
     const next = measure(table);
     pieces.current = next;
     lastView.current = view;
-    if (!enabled) return;
+    if (!enabled || document.hidden) return;
     const layer = flightLayer(table);
     const anchor = (key?: string) => {
       const el = key ? table.querySelector<HTMLElement>(`[data-anchor="${key}"]`) : null;
@@ -95,7 +113,9 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       if (stop) sounds.current.push(stop);
     };
 
+    const arrivals = new Map<string, number>();
     function fly(piece: Piece, from: Spot, options: { delay?: number; faceDown?: boolean; showcase?: boolean; duration?: number; cue?: TableCue } = {}) {
+      if (piece.el.dataset.cardId) arrivals.set(piece.el.dataset.cardId, (options.delay ?? 0) + time(options.showcase ? 1080 : options.duration ?? 420));
       if (options.cue) say(options.cue, (options.delay ?? 0) + (options.cue === 'draw' ? 0 : time(options.showcase ? 1080 : (options.duration ?? 420) * .8)));
       const to = piece.spot;
       const wrap = document.createElement('div');
@@ -173,6 +193,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
     const settingUp = previousView.gamePhase === 'setup' || view.gamePhase === 'setup';
     const moves = (zone: string) => !settingUp || zone === 'hand:player';
     const plan = planMotion(previousView, view, beat);
+    const accents = tableAccents(previousView, view);
     // A Gig die being rolled has its own journey across the table.
     const rolled = new Set(beat?.gigRolls.map((roll) => roll.dieId));
     const strike = plan.strike;
@@ -188,6 +209,10 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       if (!moves(piece.zone) || rolled.has(id)) continue;
       const earlier = before.get(id);
       if (earlier) {
+        if (accents.some((accent) => accent.kind === 'legend' && accent.cardId === id)) {
+          fly(piece, piece.spot, { faceDown: true, duration: 400, cue: 'play' });
+          continue;
+        }
         const moved = Math.hypot(earlier.spot.x - piece.spot.x, earlier.spot.y - piece.spot.y);
         if (earlier.zone !== piece.zone || earlier.el !== piece.el) {
           const arriving = piece.zone.split(':')[0];
@@ -206,6 +231,55 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       if (from) fly(piece, from, { delay: 70 * entered++, faceDown: kind !== 'eddies', showcase: plan.showcase.includes(id),
         cue: kind === 'hand' ? 'draw' : kind === 'eddies' ? 'eddie' : 'play' });
       else track([piece.el.animate([{ transform: 'scale(.6)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: time(260), easing: EASE })], () => undefined);
+    }
+
+    // Short, local finishes ride alongside the existing journey. They never extend a beat or own input.
+    for (const accent of accents) {
+      const piece = next.get(accent.cardId);
+      if (!piece) continue;
+      const cash = accent.kind === 'cash';
+      const target = cash ? table.querySelector<HTMLElement>(`[data-zone="eddies:${accent.seat}"] .play-eddies-total`) : piece.el;
+      const spot = cash ? spotOf(target, table) : piece.spot;
+      if (!spot) continue;
+      const delay = arrivals.get(accent.cardId) ?? time(120);
+      const finish = document.createElement('div');
+      finish.className = 'play-accent';
+      finish.dataset.kind = accent.kind;
+      finish.dataset.seat = accent.seat;
+      finish.style.cssText = `left:${spot.x - spot.w / 2}px;top:${spot.y - spot.h / 2}px;width:${spot.w}px;height:${spot.h}px;`;
+      if (cash) {
+        const stamp = document.createElement('span');
+        stamp.className = 'play-cash-stamp';
+        stamp.textContent = '€$';
+        finish.append(stamp);
+      } else {
+        const foil = document.createElement('span');
+        foil.className = 'play-foil';
+        const window = document.createElement('span');
+        window.className = 'play-foil-window';
+        window.append(foil);
+        finish.append(window);
+        for (let i = 0; i < 4; i++) {
+          const corner = document.createElement('i');
+          finish.append(corner);
+        }
+      }
+      layer.append(finish);
+      const duration = time(accent.kind === 'legend' ? 650 : 480);
+      const animations = [finish.animate([
+        { opacity: 0, transform: 'scale(.94)' },
+        { opacity: 1, transform: 'scale(1.025)', offset: .18 },
+        { opacity: .75, transform: 'scale(1)', offset: .55 },
+        { opacity: 0, transform: cash ? 'translateY(-9px) scale(1)' : 'scale(1.04)' },
+      ], { duration, delay, fill: 'both', easing: EASE })];
+      const foil = finish.querySelector('.play-foil');
+      if (foil) animations.push(foil.animate([
+        { transform: 'translateX(-110%) skewX(-18deg)' }, { transform: 'translateX(110%) skewX(-18deg)' },
+      ], { duration, delay, fill: 'both', easing: 'cubic-bezier(.3, 0, .25, 1)' }));
+      if (target) animations.push(target.animate([
+        { scale: '1' }, { scale: cash ? '1.14' : '1.045', offset: .2 }, { scale: '1' },
+      ], { duration: time(240), delay, easing: EASE }));
+      track(animations, () => finish.remove());
     }
 
     const ghosts = new Map<string, HTMLElement>();
