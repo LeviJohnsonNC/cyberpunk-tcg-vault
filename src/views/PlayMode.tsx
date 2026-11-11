@@ -132,7 +132,6 @@ export default function PlayMode({ scope, draft, saved, initialRival, initialOpp
           <Masthead eyebrow="The Afterlife / Practice table" title="Pick your matchup" sub="Local practice ◆ Best of one">
             <button type="button" className="btn quiet" disabled={busy} onClick={onEdit}>Back to draft</button>
           </Masthead>
-          <p>Bring your deck to the back room and see how it holds up against a rival crew.</p>
         </div>
         <PlaySetup draft={draft!} savedDecks={savedDecks} initialRival={initialRival} initialOpponent={initialOpponent} busy={busy} error={error}
           onStart={(draft, rival, skill, key) => { pendingStart.current = { draft, rival, skill, key }; start(); }} />

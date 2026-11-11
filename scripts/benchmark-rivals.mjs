@@ -10,6 +10,8 @@ try {
   const { RECOMMENDED } = await vite.ssrLoadModule('/src/lib/data.ts');
   const results = [];
   for (const skill of ['standard', 'sharp', 'masterful']) for (const [index, list] of RECOMMENDED.entries()) for (const side of ['player', 'rival']) {
+    if (process.env.BENCH_DECK && list.id !== process.env.BENCH_DECK) continue;
+    if (process.env.BENCH_SKILL && skill !== process.env.BENCH_SKILL) continue;
     const other = RECOMMENDED[(index + 5) % RECOMMENDED.length];
     const names = side === 'player' ? [list, other] : [other, list];
     const seed = `vault-roster-v1:${index}:${side}`;

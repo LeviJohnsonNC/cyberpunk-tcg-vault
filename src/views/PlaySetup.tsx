@@ -87,10 +87,10 @@ export function PlaySetup({ draft, savedDecks, initialRival, initialOpponent, bu
       <div className="opponent-versus"><span>VS</span><i /></div>
       {rival ? <><div className="opponent-selected-heading"><span className="play-eyebrow">{selected === 'mirror' ? 'Mirror match' : selected === 'import' ? 'Imported rival' : 'Rival deck'}</span><h2>{rival.name}</h2></div><Crew deck={rival} /><p className="opponent-size">{deckSize(rival)}</p><ListDetails deck={rival} /></> : <p className="muted">Choose a rival or preview an imported list.</p>}
       {!!issues.length && <div className="opponent-errors" role="alert"><strong>Resolve these before playing</strong><ul>{issues.map(issue => <li key={issue}>{issue}</li>)}</ul></div>}
-      <fieldset className="opponent-skills" disabled={busy}><legend>Rival skill</legend>{skills.map(option => <label key={option.id} data-selected={skill === option.id}><input type="radio" name="rival-skill" checked={skill === option.id} onChange={() => { setSkill(option.id); try { localStorage.setItem(skillKey, option.id); } catch { /* Optional. */ } }} /><span><strong>{option.label}</strong><small>{option.note}</small></span></label>)}</fieldset>
-      <p className="opponent-fair">Every level plays from public information and its own hand. No access to your hand or deck order.</p>
+      <fieldset className="opponent-skills" disabled={busy}><legend>Rival skill</legend><div className="opponent-skill-options">{skills.map(option => <label key={option.id} data-selected={skill === option.id}><input type="radio" name="rival-skill" checked={skill === option.id} onChange={() => { setSkill(option.id); try { localStorage.setItem(skillKey, option.id); } catch { /* Optional. */ } }} /><strong>{option.label}</strong></label>)}</div><p className="opponent-skill-note">{skills.find(option => option.id === skill)?.note}</p></fieldset>
       {error && <p className="play-error" role="alert">{error}</p>}
       <button type="button" className="btn opponent-start" disabled={!canStart} onClick={() => { if (yourDeck && rival) onStart({ deck: structuredClone(yourDeck), dirty: playerKey === 'current' ? draft.dirty : false }, structuredClone(rival), skill, selected); }}>{busy ? 'Dealing…' : selected === 'mirror' ? 'Start mirror match' : 'Play against this deck'}</button>
+      <p className="opponent-fair">All levels play fair: no peeking at your hand or deck order.</p>
       <p className="opponent-footnote">Best of one · Sideboards stay out of play.</p>
     </aside>
   </div>;

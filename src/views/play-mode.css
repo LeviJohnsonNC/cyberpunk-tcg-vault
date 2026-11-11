@@ -50,69 +50,6 @@
 .play-entrance .al-masthead-aside { position: absolute; inset: var(--space-4) var(--space-4) auto auto; }
 .play-entrance .al-masthead-aside .btn { background: var(--color-canvas-deep); }
 .play-entrance > p { max-width: 35ch; margin: var(--space-3) 0 0; font-size: 14px; }
-.play-setup { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr); gap: var(--space-4); align-items: start; }
-.play-rival-panel, .play-loadout { padding: clamp(16px, 1.8vw, 24px); }
-.play-setup-title { margin-block-end: var(--space-4); }
-.play-setup-title .play-eyebrow { color: var(--color-accent); }
-.play-setup-title h2 {
-  font: 800 clamp(27px, 3vw, 39px)/1 var(--font-display);
-  text-transform: uppercase;
-  margin: 4px 0 0;
-  overflow-wrap: anywhere;
-}
-
-.play-rivals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; padding: 0; margin: 0; border: 0; gap: var(--space-3); }
-.play-rival {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 76px;
-  gap: var(--space-2);
-  align-items: center;
-  min-height: 116px;
-  padding: var(--space-3);
-  background: var(--color-canvas);
-  border: 1px solid var(--color-divider);
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.play-rival:hover { background: var(--color-surface-raised); }
-.play-rival[data-selected="true"] {
-  background: color-mix(in srgb, var(--color-accent) 7%, var(--color-canvas));
-  border-color: var(--color-accent);
-  box-shadow: inset 3px 0 var(--color-accent);
-}
-.play-rival:focus-within { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-.play-rival input { accent-color: var(--color-accent); margin: 0; }
-.play-rival-copy { min-width: 0; display: grid; gap: 5px; }
-.play-rival-copy strong { font: 800 25px/.98 var(--font-display); }
-.play-rival-copy > :last-child, .play-loadout > p { color: var(--color-text-muted); font-size: 13px; }
-.play-rival-art { display: flex; justify-content: center; align-items: center; }
-.play-mode .play-rival-art .card-art { width: 47px; aspect-ratio: 5/7; border-radius: 4px; box-shadow: 0 2px 8px var(--color-canvas-deep); transform: rotate(-8deg); object-fit: contain; }
-.play-mode .play-rival-art .card-art + .card-art { margin-inline-start: -18px; transform: rotate(8deg); }
-.play-skills { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); min-width: 0; margin: var(--space-4) 0 0; padding: 0; border: 0; }
-.play-skills legend { margin-block-end: var(--space-2); padding: 0; color: var(--color-accent); }
-.play-skill { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px var(--space-2); align-items: center; padding: var(--space-2) var(--space-3); background: var(--color-canvas); border: 1px solid var(--color-divider); border-radius: 6px; cursor: pointer; }
-.play-skill:hover { background: var(--color-surface-raised); }
-.play-skill[data-selected="true"] { background: color-mix(in srgb, var(--color-accent) 7%, var(--color-canvas)); border-color: var(--color-accent); box-shadow: inset 3px 0 var(--color-accent); }
-.play-skill:focus-within { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-.play-skill input { margin: 0; accent-color: var(--color-accent); }
-.play-skill strong { font: 800 20px/1 var(--font-display); }
-.play-skill span { grid-column: 1 / -1; color: var(--color-text-muted); font-size: 12px; line-height: 1.4; }
-.play-skills > p { grid-column: 1 / -1; margin: 0; color: var(--color-text-faint); font-size: 12px; line-height: 1.4; }
-.play-selected-rival em { color: var(--color-accent); font: 500 11px/1 var(--font-mono); font-style: normal; text-transform: uppercase; }
-.play-loadout { border-block-start: 3px solid var(--color-ticket); }
-.play-loadout .play-setup-title h2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.play-loadout-crew { display: flex; gap: var(--space-3); }
-.play-loadout-crew > div { width: 77px; display: grid; gap: 5px; align-content: start; font-size: 11px; line-height: 1.25; }
-.play-mode .play-loadout-crew .card-art { width: 100%; aspect-ratio: 5/7; border-radius: 5px; box-shadow: none; transform: none; object-fit: contain; }
-.play-loadout-metrics { margin-block-start: var(--space-3); padding-block-start: var(--space-2); border-block-start: 1px solid var(--color-divider); font: 500 12px/1.4 var(--font-mono); }
-.play-loadout-metrics > span { color: var(--color-accent); margin: 0 6px; }
-.play-loadout-footer { display: flex; gap: var(--space-3); flex-wrap: wrap; justify-content: space-between; align-items: center; border-block-start: 1px solid var(--color-divider); padding-block-start: var(--space-3); }
-.play-selected-rival { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; }
-.play-selected-rival > :first-child { color: var(--color-text-muted); font: 500 11px/1 var(--font-mono); text-transform: uppercase; }
-.play-selected-rival > :last-child { margin-inline-start: auto; display: flex; gap: 3px; }
-.play-start { flex: 1 0 auto; min-height: 42px; }
-
 .play-match-header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: 34px; margin-block-end: 6px; }
 .play-match-identity { display: flex; align-items: baseline; gap: var(--space-3); min-width: 0; }
 .play-match-identity .play-eyebrow { order: 2; flex: none; color: var(--color-accent); white-space: nowrap; }
@@ -224,12 +161,10 @@
 
 @media (max-width: 1100px) { .play-rival { grid-template-columns: auto minmax(0, 1fr) 62px; } }
 @media (max-width: 960px) {
-  .play-skills { grid-template-columns: minmax(0, 1fr); }
   .play-rival { grid-template-columns: auto minmax(0, 1fr); }
   .play-rival-art { display: none; }
 }
 @media (max-width: 900px) {
-  .play-setup { grid-template-columns: minmax(0, 1fr); }
   .play-match-header { flex-wrap: wrap; }
 }
 
