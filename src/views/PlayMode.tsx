@@ -1,54 +1,26 @@
 import { ReactiveRoom } from './ReactiveRoom';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { CardImg, Pip } from '../components/bits';
 import { ConfirmDialog, Masthead } from '../components/ui';
-import { BY_SLUG, RECOMMENDED } from '../lib/data';
 import type { DeckDraft } from '../lib/deckDraft';
-import { deckFromRecommended } from '../lib/decks';
+import type { Deck } from '../lib/store';
+import { PlaySetup } from './PlaySetup';
 import { openPlayMatch, resumePlayMatch } from '../lib/play/matchClient';
 import type { MatchSnapshot, MatchSummary, Move, RivalSkill } from '../lib/play/protocol';
 import { visibleCards } from '../lib/play/matchView';
-import { preloadArt, preloadFaces } from '../lib/play/cardArt';
+import { preloadFaces } from '../lib/play/cardArt';
 import { PlayTable } from './PlayTable';
 import { useTableSound } from './useTableSound';
 import { useMatchPresentation } from './useMatchPresentation';
 import './play-mode.css';
 
-const rivalPlans = [
-  { id: 'smasher-surge', style: 'Aggro', note: 'Fast pressure that punishes a slow start.' },
-  { id: 'chrome-syndicate', style: 'Midrange', note: 'Value and pressure from an equipped board.' },
-  { id: 'lowball-netrun-plus', style: 'Tempo', note: 'Cheap Programs and fast follow-up plays.' },
-  { id: 'nomad-convoy', style: 'Board control', note: 'Builds a field and trades its way ahead.' },
-];
-// How the rival thinks, weakest first. Every level decides from what a player could see.
-const skills: { id: RivalSkill; label: string; note: string }[] = [
-  { id: 'standard', label: 'Standard', note: 'Follows a fixed order of priorities. A forgiving first opponent.' },
-  { id: 'sharp', label: 'Sharp', note: 'Looks a few moves ahead and weighs your likely replies.' },
-  { id: 'masterful', label: 'Masterful', note: 'Plans ahead and also reads card abilities and timing.' },
-];
-const skillPreference = 'cptv.play.rival-skill.v1';
-function savedSkill(): RivalSkill {
-  try {
-    const saved = localStorage.getItem(skillPreference);
-    if (skills.some(({ id }) => id === saved)) return saved as RivalSkill;
-  } catch { /* Use the default for this visit. */ }
-  return 'sharp';
-}
-const rivals = rivalPlans.flatMap((plan) => {
-  const list = RECOMMENDED.find(({ id }) => id === plan.id);
-  return list ? [{ ...plan, list }] : [];
-});
-
 type Client = Awaited<ReturnType<typeof openPlayMatch>>;
 type Confirm = 'replace' | 'restart' | 'concede';
 
-export default function PlayMode({ scope, draft, saved, initialRival, rememberRival, onCheckpoint, onEdit }: {
-  scope: string; draft?: DeckDraft; saved?: MatchSummary; initialRival?: string; rememberRival: (id: string) => void;
-  onCheckpoint: (snapshot: MatchSnapshot) => void; onEdit: () => void;
+export default function PlayMode({ scope, draft, saved, initialRival, initialOpponent, savedDecks, rememberRival, onCheckpoint, onEdit }: {
+  scope: string; draft?: DeckDraft; saved?: MatchSummary; initialRival?: string; initialOpponent?: Deck; savedDecks: Deck[]; rememberRival: (id: string) => void;
+  onCheckpoint: (snapshot: MatchSnapshot, draft?: DeckDraft) => void; onEdit: () => void;
 }) {
-  const [rivalId, setRivalId] = useState(() => rivals.some(({ id }) => id === initialRival) ? initialRival : rivals[0]?.id);
   const [resume] = useState(!draft);
-  const [skill, setSkill] = useState(savedSkill);
   const [resumeAttempt, setResumeAttempt] = useState(0);
   const [snapshot, setSnapshot] = useState<MatchSnapshot>();
   const [busy, setBusy] = useState(resume);
@@ -57,9 +29,8 @@ export default function PlayMode({ scope, draft, saved, initialRival, rememberRi
   const client = useRef<Client | null>(null);
   const generation = useRef(0);
   const locked = useRef(false);
-  const rival = rivals.find(({ id }) => id === rivalId);
   const deck = draft?.deck;
-  const name = deck?.name.trim() || 'Untitled deck';
+  const pendingStart = useRef<{ draft: DeckDraft; rival: Deck; skill: RivalSkill; key: string } | undefined>(undefined);
   const matchId = snapshot?.matchId;
   const presentation = useMatchPresentation(snapshot);
   const sound = useTableSound();
@@ -68,10 +39,6 @@ export default function PlayMode({ scope, draft, saved, initialRival, rememberRi
     if (matchId) window.scrollTo({ top: 0, behavior: 'instant' });
   }, [matchId]);
 
-  // Both lists are known at the door. Fetch their art while the player picks a rival.
-  useEffect(() => {
-    if (deck && !snapshot) preloadArt([...deck.legends, ...Object.keys(deck.cards), ...(rival ? [...rival.list.legends, ...Object.keys(rival.list.cards)] : [])]);
-  }, [deck, rival, snapshot]);
   // The whole rival turn arrives at once. Warm its art before the moves play.
   useEffect(() => {
     if (snapshot) preloadFaces([snapshot.view, ...(snapshot.presentation?.beats ?? []).map((beat) => beat.view)].flatMap(visibleCards));
@@ -100,7 +67,7 @@ export default function PlayMode({ scope, draft, saved, initialRival, rememberRi
     return () => { active = false; };
   }, [resume, resumeAttempt, scope]);
 
-  async function run(action: (isCurrent: () => boolean) => Promise<MatchSnapshot>) {
+  async function run(action: (isCurrent: () => boolean) => Promise<MatchSnapshot>, startedDraft?: DeckDraft) {
     if (locked.current) return;
     const current = generation.current;
     const isCurrent = () => current === generation.current;
@@ -111,7 +78,7 @@ export default function PlayMode({ scope, draft, saved, initialRival, rememberRi
       const next = await action(isCurrent);
       if (isCurrent()) {
         setSnapshot(next);
-        onCheckpoint(next);
+        onCheckpoint(next, startedDraft);
       }
     } catch (cause) {
       if (isCurrent()) setError(cause instanceof Error ? cause.message : 'The match could not continue.');
@@ -124,21 +91,15 @@ export default function PlayMode({ scope, draft, saved, initialRival, rememberRi
   }
 
   function start(replace = false) {
-    if (!rival || !draft) return;
-    if (saved && !saved.ended && !replace) {
-      setConfirm('replace');
-      return;
-    }
-    const rivalDeck = deckFromRecommended(rival.id);
-    if (!rivalDeck) return;
+    const pending = pendingStart.current;
+    if (!pending) return;
+    if (saved && !saved.ended && !replace) { setConfirm('replace'); return; }
     void run(async (isCurrent) => {
-      const next = await openPlayMatch(scope, draft, rivalDeck, saved?.matchId, skill);
-      if (isCurrent()) {
-        client.current = next;
-        rememberRival(rival.id);
-      } else next.close();
+      const next = await openPlayMatch(scope, pending.draft, pending.rival, saved?.matchId, pending.skill);
+      if (isCurrent()) { client.current = next; rememberRival(pending.key); }
+      else next.close();
       return next.opening;
-    });
+    }, pending.draft);
   }
 
   function send(move: Move) {
@@ -168,58 +129,12 @@ export default function PlayMode({ scope, draft, saved, initialRival, rememberRi
           </>} />
       </> : deck ? <>
         <div className="play-entrance">
-          <Masthead eyebrow="The Afterlife / Practice table" title="Play Mode" sub="Local practice ◆ Best of one">
+          <Masthead eyebrow="The Afterlife / Practice table" title="Pick your matchup" sub="Local practice ◆ Best of one">
             <button type="button" className="btn quiet" disabled={busy} onClick={onEdit}>Back to draft</button>
           </Masthead>
-          <p>Bring your deck to the back room and see how it holds up against a rival crew.</p>
         </div>
-        <div className="play-setup">
-          <section className="panel play-rival-panel">
-            <div className="play-setup-title"><span className="play-eyebrow">01 / Matchup</span><h2>Choose a rival</h2></div>
-            <fieldset className="play-rivals" disabled={busy}>
-              <legend className="sr-only">Rival deck</legend>
-              {rivals.map(({ id, list, style, note }) => <label key={id} className="play-rival" data-selected={id === rivalId}>
-                <input type="radio" name="play-rival" checked={id === rivalId} onChange={() => setRivalId(id)} />
-                <span className="play-rival-copy">
-                  <span className="play-eyebrow">{style} <span aria-hidden="true">◆</span> Vault list</span>
-                  <strong>{list.name}</strong>
-                  <span>{note}</span>
-                </span>
-                <span className="play-rival-art" aria-hidden="true">
-                  {list.legends.slice(0, 2).map((slug) => <CardImg key={slug} slug={slug} alt="" priority />)}
-                </span>
-              </label>)}
-            </fieldset>
-            <fieldset className="play-skills" disabled={busy}>
-              <legend className="play-eyebrow">Rival skill</legend>
-              {skills.map(({ id, label, note }) => <label key={id} className="play-skill" data-selected={id === skill}>
-                <input type="radio" name="play-skill" checked={id === skill} onChange={() => {
-                  setSkill(id);
-                  try { localStorage.setItem(skillPreference, id); } catch { /* Keep the choice for this visit. */ }
-                }} />
-                <strong>{label}</strong><span>{note}</span>
-              </label>)}
-              <p>Every level plays from what a player could see. None of them reads your hand or the decks.</p>
-            </fieldset>
-          </section>
-          <aside className="panel play-loadout">
-            <div className="play-setup-title"><span className="play-eyebrow">02 / Your loadout</span><h2 title={name}>{name}</h2></div>
-            <div className="play-loadout-crew">{deck.legends.map((slug) => {
-              const card = BY_SLUG.get(slug);
-              return <div key={slug}><CardImg slug={slug} alt="" priority /><span>{card?.name ?? slug}</span></div>;
-            })}</div>
-            <div className="play-loadout-metrics"><b>{deck.legends.length}</b> Legends <span>◆</span> <b>{Object.values(deck.cards).reduce((n, count) => n + count, 0)}</b> main deck</div>
-            <p>Practice with a snapshot of your draft. Choose how to pay as you play.</p>
-            {error && <p className="play-error" role="alert">{error}</p>}
-            <div className="play-loadout-footer">
-              {rival && <div className="play-selected-rival">
-                <span>Rival</span><strong>{rival.list.name}</strong><em>{skills.find(({ id }) => id === skill)?.label}</em>
-                <span>{rival.list.colors.map((color) => <Pip key={color} color={color} bare />)}</span>
-              </div>}
-              <button type="button" className="btn play-start" disabled={busy || !rival} onClick={() => start()}>{busy ? 'Dealing…' : 'Start match'}</button>
-            </div>
-          </aside>
-        </div>
+        <PlaySetup draft={draft!} savedDecks={savedDecks} initialRival={initialRival} initialOpponent={initialOpponent} busy={busy} error={error}
+          onStart={(draft, rival, skill, key) => { pendingStart.current = { draft, rival, skill, key }; start(); }} />
       </> : <div className="panel">
         <h1 className="panel-title">Saved match</h1>
         {busy ? <p role="status">Restoring the table…</p> : <>

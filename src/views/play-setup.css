@@ -1,0 +1,66 @@
+.play-entrance:has(+ .opponent-workbench) { min-height: 126px; padding: var(--space-3) var(--space-5); }
+.play-entrance:has(+ .opponent-workbench) .al-title { font-size: clamp(40px, 4vw, 60px); }
+.opponent-workbench { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(340px, .9fr); gap: var(--space-4); align-items: start; }
+.opponent-library, .opponent-matchup { min-width: 0; padding: var(--space-4); }
+.opponent-section-head { display: flex; gap: var(--space-3); align-items: center; justify-content: space-between; margin-bottom: var(--space-4); }
+.opponent-section-head h2, .opponent-selected-heading h2 { margin: 4px 0 0; font: 800 32px/1 var(--font-display); text-transform: uppercase; overflow-wrap: anywhere; }
+.opponent-search { width: 100%; margin-top: var(--space-3); }
+.opponent-result-count, .opponent-size, .opponent-footnote { font: 400 11px/1.5 var(--font-mono); color: var(--color-text-muted); }
+.opponent-rows { display: grid; gap: 8px; min-width: 0; margin: 0; padding: 4px; border: 0; max-height: min(600px, 60vh); overflow-y: auto; scrollbar-color: var(--color-divider) transparent; }
+.opponent-row { display: grid; grid-template-columns: auto 75px minmax(0, 1fr) auto; gap: var(--space-3); align-items: center; padding: var(--space-3); border: 1px solid var(--color-divider); background: var(--color-canvas); border-radius: var(--radius-sm); cursor: pointer; min-height: 88px; }
+.opponent-row:hover { background: var(--color-surface-raised); }
+.opponent-row[data-selected="true"] { border-color: var(--color-accent); box-shadow: inset 3px 0 var(--color-accent); background: color-mix(in srgb, var(--color-accent) 7%, var(--color-canvas)); }
+.opponent-row:focus-within { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+.opponent-row input, .opponent-skills input { accent-color: var(--color-accent); }
+.opponent-row-art { display: flex; align-items: center; }
+.opponent-row-art .card-art { width: 46px; aspect-ratio: 5/7; object-fit: contain; transform: none; box-shadow: none; border-radius: 3px; }
+.opponent-row-art .card-art + .card-art { margin-left: -16px; }
+.opponent-row-copy { display: grid; gap: 4px; min-width: 0; }
+.opponent-row-copy strong { font: 700 23px/1.1 var(--font-display); }
+.opponent-row-copy small { color: var(--color-accent); font: 400 9px/1.4 var(--font-mono); text-transform: uppercase; }
+.opponent-row-copy > span, .opponent-row-meta small { color: var(--color-text-muted); font-size: 11px; }
+.opponent-row-meta { display: grid; gap: 6px; justify-items: end; }
+.opponent-row-meta > span { display: flex; gap: 3px; }
+.opponent-matchup { border-top: 3px solid var(--color-ticket); position: sticky; top: 12px; }
+.opponent-label { display: block; margin: 8px 0 6px; font-weight: 600; }
+.opponent-selected-heading .play-eyebrow { color: var(--color-accent); }
+.opponent-crew { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
+.opponent-crew > div { width: 64px; min-width: 0; display: grid; gap: 4px; font-size: 10px; line-height: 1.3; }
+.opponent-crew .card-art { width: 100%; aspect-ratio: 5/7; object-fit: contain; transform: none; box-shadow: none; border-radius: 4px; }
+.opponent-list { border-block: 1px solid var(--color-divider); margin: 10px 0; padding: 6px 0; font-size: 12px; }
+.opponent-list summary { cursor: pointer; color: var(--color-accent); }
+.opponent-list ul { max-height: 240px; overflow-y: auto; list-style: none; padding: 0; }
+.opponent-list li { padding: 5px 0; border-bottom: 1px solid var(--color-divider); }
+.opponent-list li b { display: inline-block; min-width: 2ch; color: var(--color-ticket); }
+.opponent-list li small { color: var(--color-text-faint); }
+.opponent-skills { border: 0; padding: 0; margin: var(--space-3) 0 0; display: grid; gap: 6px; }
+.opponent-skills legend { margin-bottom: 8px; font-weight: 600; }
+.opponent-skills label { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border: 1px solid var(--color-divider); border-radius: 3px; cursor: pointer; }
+.opponent-skills label[data-selected="true"] { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 7%, var(--color-canvas)); }
+.opponent-skills label span { display: grid; gap: 2px; }
+.opponent-skills small, .opponent-fair, .opponent-import p, .opponent-empty p { color: var(--color-text-muted); font-size: 12px; line-height: 1.5; }
+.opponent-start { width: 100%; min-height: 44px; }
+.opponent-footnote { text-align: center; margin-bottom: 0; }
+.opponent-errors { color: var(--color-danger); font-size: 12px; padding: var(--space-3); border-left: 2px solid var(--color-danger); background: var(--color-canvas); margin-block: var(--space-3); max-height: 220px; overflow-y: auto; overflow-wrap: anywhere; }
+.opponent-errors ul { padding-left: 17px; margin-bottom: 0; }
+.opponent-errors li + li { margin-top: 5px; }
+.opponent-import { padding-top: var(--space-4); }
+.opponent-import > label { font-weight: 600; }
+.opponent-import textarea { width: 100%; resize: vertical; font: 400 12px/1.6 var(--font-mono); margin-bottom: var(--space-3); }
+.opponent-empty { padding: var(--space-5) var(--space-3); text-align: center; }
+@media (max-width: 1100px) { .opponent-workbench { grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; } .opponent-row { gap: 8px; grid-template-columns: auto minmax(0, 1fr) auto; } .opponent-row-art { display: none; } }
+@media (max-width: 800px) { .opponent-workbench { grid-template-columns: minmax(0,1fr); } .opponent-matchup { position: static; } }
+
+.opponent-matchup .vault-select-trigger { width: 100%; }
+.opponent-skill-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.opponent-skills .opponent-skill-options label { justify-content: center; padding: 9px 6px; font-size: 12px; min-height: 40px; }
+.opponent-skill-note { font-size: 12px; color: var(--color-text-muted); margin: 2px 0 12px; min-height: 1.5em; }
+.opponent-fair { margin: 10px 0 0; text-align: center; font-size: 11px; }
+
+.opponent-own-label { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 8px; }
+.opponent-own-label .opponent-label { margin-top: 0; }
+.opponent-own-label .opponent-size { text-align: right; }
+.opponent-selected-heading { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--color-divider); }
+.opponent-opened { width: 100%; margin-bottom: 12px; justify-content: start; text-align: left; overflow-wrap: anywhere; }
+.opponent-opened[aria-pressed="true"] { border-color: var(--color-accent); }
+.opponent-skills label:focus-within { outline: 2px solid var(--color-accent); outline-offset: 2px; }

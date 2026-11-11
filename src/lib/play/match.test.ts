@@ -78,6 +78,77 @@ describe('play engine', () => {
     expect([again.winnerId, again.turnNumber, again.stateID]).toEqual([first.winnerId, first.turnNumber, first.stateID]);
   }, 60_000);
 
+  it.each(['sharp', 'masterful'] as const)('%s keeps its decision unchanged when concealed cards change', skill => {
+    const { engine } = afterSetup(setup('chrome-syndicate'));
+    const active = engine.getFilteredView('player').activePlayerId;
+    const other: Seat = active === 'player' ? 'rival' : 'player';
+    const altered = structuredClone(engine.getState());
+    changeHiddenCards(altered, other);
+    const alternate = new LocalEngine(altered);
+    expect(hideConcealedTargets(alternate.getFilteredView(active))).toEqual(hideConcealedTargets(engine.getFilteredView(active)));
+    expect(botDecision(alternate, active, () => .3, skill)).toEqual(botDecision(engine, active, () => .3, skill));
+  });
+
+  it.each(['sharp', 'masterful'] as const)('%s cannot peek at future cards while evaluating a deck-reveal ability', skill => {
+    const { state, active } = rulesFixture();
+    state.G.players[active].zones.hand = [];
+    for (const id of state.G.players[active].zones.legendArea) { state.G.cardIndex[id].meta.spent = true; state.G.cardIndex[id].meta.faceDown = false; }
+    placeEddie(state, active); placeEddie(state, active);
+    placeCard(state, active, 'judy-a-lvarez-nothing-to-doubt', 'field');
+    const original = new LocalEngine(state), alternateState = structuredClone(state);
+    alternateState.G.players[active].zones.deck.reverse();
+    const alternate = new LocalEngine(alternateState);
+    expect(hideConcealedTargets(original.getFilteredView(active))).toEqual(hideConcealedTargets(alternate.getFilteredView(active)));
+    expect(botDecision(original, active, () => .3, skill)).toEqual(botDecision(alternate, active, () => .3, skill));
+    expect(original.getState()).toEqual(state);
+  });
+
+  it.each(['sharp', 'masterful'] as const)('%s makes fair decisions in sampled midgame positions', skill => {
+    const { engine } = afterSetup(setup('chrome-syndicate'));
+    for (let step = 0; step < 30 && !engine.getFilteredView('player').gameEnded; step++) {
+      const seat = (['player','rival'] as const).find(s => ['action','choice'].includes(engine.getFilteredView(s).prompt.status))!;
+      const view = hideConcealedTargets(engine.getFilteredView(seat));
+      if (view.prompt.status === 'action') {
+        const before = structuredClone(engine.getState());
+        const altered = structuredClone(before);
+        changeHiddenCards(altered, seat === 'player' ? 'rival' : 'player');
+        const alternate = new LocalEngine(altered);
+        expect(hideConcealedTargets(alternate.getFilteredView(seat))).toEqual(view);
+        expect(botDecision(alternate, seat, () => .3, skill)).toEqual(botDecision(engine, seat, () => .3, skill));
+        expect(engine.getState()).toEqual(before);
+      }
+      const move = botDecision(engine, seat, () => .3)!;
+      expect(engine.processCommand({ commandID: `fairness-${step}`, move: move.move, input: move.args ? { args: move.args } : undefined }, seat).success).toBe(true);
+    }
+  }, 60_000);
+
+  it.each(['sharp', 'masterful'] as const)('%s takes a seventh Gig instead of a low-value Unit fight', skill => {
+    const { state, active, other } = rulesFixture();
+    for (const seat of [active, other]) {
+      state.G.players[seat].zones.hand = [];
+      for (const id of state.G.players[seat].zones.legendArea) state.G.cardIndex[id].meta.spent = true;
+    }
+    while (state.G.players[active].fixerArea.length) giveGig(state, active);
+    giveGig(state, other);
+    const attacker = placeCard(state, active, 'psycho-squad', 'field');
+    placeCard(state, other, 'corpo-security', 'field', true);
+    const engine = new LocalEngine(state);
+    const move = botDecision(engine, active, () => .3, skill);
+    expect(move).toMatchObject({ move: 'attackRival', args: { attackerId: attacker } });
+  });
+
+  it.each(['sharp', 'masterful'] as const)('%s sells an unusable Gear to fund a Unit on an empty field', skill => {
+    const { state, active, other } = rulesFixture();
+    state.G.players[active].zones.hand = [];
+    for (const id of state.G.players[active].zones.legendArea) { state.G.cardIndex[id].meta.spent = true; state.G.cardIndex[id].meta.faceDown = false; }
+    placeEddie(state, active);
+    const gear = placeCard(state, active, 'netwatch-netdriver', 'hand');
+    placeCard(state, active, 'jacked-in-voodoo-boy', 'hand');
+    giveGig(state, other);
+    const move = botDecision(new LocalEngine(state), active, () => .3, skill);
+    expect(move).toMatchObject({ move: 'sellCard', args: { cardId: gear } });
+  });
+
   it('delivers public rolls from both seats once, with the engine’s landed values', () => {
     const session = createEngineSession(setup('chrome-syndicate'), { shuffle: 'vault-rolls', bot: 'vault-rolls' });
     let snapshot = session.start();
@@ -1138,11 +1209,12 @@ describe('play engine', () => {
 function changeHiddenCards(state: EngineState, rival: Seat) {
   const { deck, hand } = state.G.players[rival].zones;
   const hiddenHandCard = state.G.cardIndex[hand[0]];
-  const hiddenDeckCard = deck.map((id) => state.G.cardIndex[id]).find((card) => card.definitionId !== hiddenHandCard.definitionId)!;
-  [hiddenHandCard.definitionId, hiddenDeckCard.definitionId] = [hiddenDeckCard.definitionId, hiddenHandCard.definitionId];
+  const hiddenDeckCard = deck.map((id) => state.G.cardIndex[id]).find((card) => card.definitionId !== hiddenHandCard?.definitionId);
+  if (hiddenHandCard && hiddenDeckCard) [hiddenHandCard.definitionId, hiddenDeckCard.definitionId] = [hiddenDeckCard.definitionId, hiddenHandCard.definitionId];
   for (const { zones } of Object.values(state.G.players)) {
     zones.deck.reverse();
-    const cards = zones.legendArea.map((id) => state.G.cardIndex[id]);
+    const cards = zones.legendArea.map((id) => state.G.cardIndex[id]).filter(card => (card as FixtureState['G']['cardIndex'][string]).meta.faceDown);
+    if (cards.length < 2) continue;
     const last = cards.at(-1)!.definitionId;
     for (let i = cards.length - 1; i > 0; i--) cards[i].definitionId = cards[i - 1].definitionId;
     cards[0].definitionId = last;

@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'vite';
 
 const revision = '6de59de1c203827edc1bc6faa1bc6184cd126a5f';
@@ -27,7 +27,7 @@ try {
     'submodules/agnostic-simulator/packages/typescript-config',
   ], { maxBuffer: 64 * 1024 * 1024 });
   execFileSync('tar', ['-xf', '-', '-C', checkout], { input: archive });
-  const patches = ['hide-shuffled-legends.patch', 'retail-rules.patch', 'manual-payments.patch', 'program-resolution.patch', 'rules-boundaries.patch'];
+  const patches = ['hide-shuffled-legends.patch', 'retail-rules.patch', 'manual-payments.patch', 'program-resolution.patch', 'rules-boundaries.patch', 'fair-tactical-search.patch'];
   execFileSync('git', ['apply', ...patches.map(file => join(vendor, file))], { cwd: checkout });
 
   const engine = join(checkout, 'submodules/cyberpunk/packages/engine/src');
@@ -56,6 +56,10 @@ try {
   if (output.output.length !== 1 || chunk.type !== 'chunk') throw new Error('Expected a single engine module.');
   const code = chunk.code.replace(/^\/\/ .*vault-engine-[^/]+\/(submodules\/.*)$/gm, '// upstream/$1');
   writeFileSync(join(vendor, 'engine.mjs'), `/*! Generated from tcg-engines ${revision}\n\n${notices}\n*/\n${code}`);
+  const { createCardCatalog } = await import(pathToFileURL(join(vendor, 'engine.mjs')).href + `?build=${Date.now()}`);
+  const supported = [...createCardCatalog().entries()].map(([, card]) => card).filter(card => card.legality === 'legal').map(card => card.slug).sort();
+  writeFileSync(join(vendor, 'card-slugs.json'), JSON.stringify(supported, null, 2) + '\n');
+
 } finally {
   rmSync(checkout, { recursive: true, force: true });
 }

@@ -1,3 +1,4 @@
+import { engineSlug } from './engineCards';
 import { chooseMove, createCardCatalog, createMatchState, LocalEngine, projectRevealedCardView, SeededRNG } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import type { EngineEvent, EngineHandle, EngineState } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import { describeAction, hideConcealedTargets, zoneCards, zoneCount } from './matchView';
@@ -6,18 +7,9 @@ import { emptyTally, matchReport, recordMove } from './matchReport';
 import type { CardView, GigRoll, MatchBeat, MatchFrame, MatchLogEntry, MatchSetup, MatchSnapshot, MatchTally, Move, RivalSkill, Seat } from './protocol';
 
 const catalog = createCardCatalog();
-const cardAliases: Record<string, string> = {
-  'el-sombrero-n-la-venganza-lenta': 'el-sombreron-la-venganza-lenta',
-  'gilded-mato-n': 'gilded-maton',
-  'judy-a-lvarez-braindance-maestro': 'judy-alvarez-braindance-maestro',
-  'judy-a-lvarez-nothing-to-doubt': 'judy-alvarez-nothing-to-doubt',
-  'les-e-le-mens': 'les-elemens',
-  'lucyna-kushinada-fresh-beginnings': 'lucyna-kushinada',
-  'muamar-reyes-el-capita-n': 'muamar-reyes-el-capitan',
-};
 
 export function engineCardId(slug: string) {
-  const card = catalog.get(cardAliases[slug] ?? slug);
+  const card = catalog.get(engineSlug(slug));
   if (card?.legality !== 'legal') throw new Error(`No playable engine card for ${slug}`);
   return card.id;
 }
