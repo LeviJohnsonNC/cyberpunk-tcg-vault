@@ -1,0 +1,108 @@
+/* Direct table interaction. Keep the mat quiet until a source is selected. */
+.play-grid.play-direct { grid-template-columns: minmax(0, 1fr) clamp(190px, 17vw, 240px); }
+.play-direct .play-rail .panel { padding: 12px; }
+.play-direct .play-decision h2 { font-size: 27px; }
+.play-controls-hint { color: var(--color-text-muted); font-size: 11px; line-height: 1.6; margin: 10px 0 0; }
+.play-all-toggle { margin-top: 10px; width: 100%; }
+.play-direct .play-moves { border-top: 1px solid var(--color-divider); padding-top: 8px; margin-top: 8px; }
+.play-direct .play-card-shell { position: relative; flex: 0 0 var(--play-card-width); width: var(--play-card-width); }
+.play-direct .play-legends .play-card-shell { --play-card-width: var(--play-reserve-width); }
+.play-direct .play-attachments .play-card-shell { --play-card-width: clamp(45px, 3.7vw, 66px); }
+.play-direct .play-hand .play-card-shell { --play-card-width: clamp(78px, min(7.7vw, 10.5vh), 134px); }
+.play-direct .play-pile-cards .play-card-shell { --play-card-width: 110px; }
+.play-direct .play-card { touch-action: pan-x pan-y; user-select: none; }
+.play-direct .play-card[data-draggable=true] { cursor: grab; }
+.play-direct .play-card img { -webkit-user-drag: none; user-select: none; }
+.play-direct .play-card-shell[data-dragging=true] > .play-card { opacity: .28; }
+.play-direct .play-card-shell .play-details {
+  position: absolute; top: 3px; right: 3px; width: 19px; height: 19px; padding: 0; display: grid; place-items: center;
+  border: 1px solid var(--color-divider); border-radius: 50%; background: var(--color-canvas-deep); color: var(--color-text);
+  font: 600 11px/1 var(--font-ui); cursor: pointer; opacity: .78;
+}
+.play-direct .play-details:hover, .play-direct .play-details:focus-visible { border-color: var(--color-accent); opacity: 1; }
+.play-direct [data-drop-available=true] { outline: 2px dashed var(--color-accent); outline-offset: -2px; background-color: color-mix(in srgb, var(--color-accent) 6%, var(--color-canvas-deep)); }
+.play-direct [data-drop-over=true] { outline: 2px solid var(--color-ticket); outline-offset: -2px; background-color: color-mix(in srgb, var(--color-ticket) 14%, var(--color-canvas-deep)); }
+.play-program-drop { position: absolute; left: 8%; right: 8%; bottom: 32%; min-height: 72px; display: grid; place-items: center; border-radius: 5px; z-index: 3; background: var(--color-surface); font: 700 23px/1 var(--font-display); text-transform: uppercase; pointer-events: auto; }
+.play-direct .play-table-decision { position: relative; z-index: 3; }
+.play-decision-tray { border: 1px solid var(--color-accent); border-left-width: 3px; background: var(--color-surface); border-radius: 4px; margin: 4px 0; padding: 8px; box-shadow: 0 5px 14px color-mix(in srgb, var(--color-canvas-deep) 55%, transparent); }
+.play-decision-tray .play-picks { margin: 0; gap: 6px; }
+.play-tray-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.play-tray-intent { min-width: 0; display: flex; align-items: center; gap: 7px; }
+.play-tray-intent h3, .play-opening-choices h3 { margin: 0; font: 700 19px/1 var(--font-display); }
+.play-tray-intent p { margin: 3px 0 0; color: var(--color-text-muted); font-size: 11px; }
+.play-tray-source { flex: none; width: 24px; }
+.play-tray-source .card-art { display: block; width: 100%; aspect-ratio: 5/7; object-fit: contain; box-shadow: none; transform: none; border-radius: 2px; }
+.play-tray-actions { display: flex; gap: 5px; flex-wrap: wrap; justify-content: end; }
+.play-tray-actions .btn { min-height: 32px; padding: 5px 8px; font-size: 11px; }
+.play-choice-steps { display: flex; flex-wrap: wrap; gap: 4px; }
+.play-choice-steps .btn { min-height: 28px; padding: 3px 6px; font-size: 10px; }
+.play-choice-steps .btn[aria-pressed=true] { border-color: var(--color-accent); color: var(--color-accent); }
+.play-choice-steps .btn > span { color: var(--color-text-muted); }
+.play-choice-steps .btn > b { font-family: var(--font-mono); font-weight: 500; }
+.play-active-choice { border: 0; padding: 0; margin: 0; min-width: 0; }
+.play-active-choice legend { font: 500 11px/1.3 var(--font-ui); margin-bottom: 4px; }
+.play-active-choice .play-pick-list { display: flex; flex-wrap: nowrap; overflow: auto; gap: 5px; max-height: 165px; padding: 2px 2px 5px; scrollbar-width: thin; }
+.play-active-choice .play-option { flex: none; max-width: 300px; font-size: 11px; min-height: 32px; padding: 4px 7px; }
+.play-active-choice .play-option .play-die-face { width: 28px; height: 28px; }
+.play-active-choice .play-option-card { width: 100px; display: grid; grid-template-columns: 32px minmax(0, 1fr); column-gap: 5px; align-items: center; }
+.play-option-card .card-art { width: 32px; aspect-ratio: 5/7; object-fit: contain; border-radius: 2px; box-shadow: none; transform: none; grid-row: span 2; }
+.play-option-card > span { overflow-wrap: anywhere; }
+.play-decision-tray .play-choice-detail { font-size: 11px; }
+.play-choice-order { margin: 0; padding: 0; list-style: none; display: flex; gap: 5px; flex-wrap: wrap; }
+.play-choice-order li { display: flex; align-items: center; gap: 4px; font-size: 11px; border: 1px solid var(--color-divider); padding-left: 6px; border-radius: 3px; }
+.play-choice-order .btn { min-height: 25px; padding: 3px 6px; }
+.play-opening-choices { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; margin-block: 4px; border: 1px solid var(--color-accent); border-radius: 4px; background: var(--color-surface); }
+.play-opening-choices .btn { min-height: 32px; font-size: 12px; }
+.play-card-menu { position: fixed; z-index: 80; width: 280px; max-height: calc(100vh - 20px); overflow: auto; padding: 10px; border: 1px solid var(--color-accent); border-radius: 5px; background: var(--color-surface); color: var(--color-text); box-shadow: 0 12px 35px color-mix(in srgb, var(--color-canvas-deep) 80%, transparent); display: grid; gap: 7px; }
+.play-card-menu-title { display: flex; align-items: start; justify-content: space-between; gap: 8px; font: 600 14px/1.4 var(--font-ui); }
+.play-card-menu-title .btn { min-height: 26px; padding: 2px 7px; }
+.play-card-menu > .btn { min-height: 34px; text-align: left; font-size: 12px; white-space: normal; }
+.play-card-menu .play-choice-detail { color: var(--color-text-muted); }
+.play-hover-preview { position: fixed; z-index: 70; width: 265px; padding: 7px; border: 1px solid var(--color-ticket); border-radius: 6px; background: var(--color-canvas-deep); box-shadow: 0 12px 35px var(--color-canvas-deep); pointer-events: none; }
+.play-hover-preview .card-art { width: 100%; max-height: 365px; aspect-ratio: 5/7; object-fit: contain; display: block; transform: none; box-shadow: none; border-radius: 4px; }
+.play-hover-preview strong { font: 500 12px/1.5 var(--font-ui); display: block; padding-top: 4px; }
+.play-drag-ghost { position: fixed; z-index: 100; pointer-events: none; filter: drop-shadow(0 10px 10px var(--color-canvas-deep)); rotate: 3deg; }
+.play-drag-ghost .card-art { width: 100%; aspect-ratio: 5/7; object-fit: contain; display: block; border: 2px solid var(--color-ticket); border-radius: 4px; transform: none; box-shadow: none; }
+.play-drag-ghost > span { display: block; width: 170px; padding: 5px 7px; margin-top: 6px; color: var(--color-ticket-ink); background: var(--color-ticket); border-radius: 3px; font: 500 11px/1.4 var(--font-ui); rotate: -3deg; }
+.play-target-arrow { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 65; pointer-events: none; overflow: visible; }
+.play-target-arrow > path { fill: none; stroke: var(--color-ticket); stroke-width: 3px; }
+.play-target-arrow marker path { fill: var(--color-ticket); stroke: none; }
+.play-table-notice { position: sticky; bottom: 8px; margin: 4px 0 0; padding: 7px 10px; background: var(--color-ticket); color: var(--color-ticket-ink); font-size: 12px; border-radius: 3px; }
+@media (min-width: 901px) and (max-height: 950px) {
+  .play-direct .play-hand .play-card-shell { --play-card-width: clamp(72px, min(6.1vw, 10.5vh), 100px); }
+}
+@media (max-width: 1100px) { .play-grid.play-direct { grid-template-columns: minmax(0, 1fr) 190px; } }
+@media (max-width: 900px) { .play-grid.play-direct { grid-template-columns: minmax(0, 1fr); } .play-tray-head { flex-wrap: wrap; } }
+@media (prefers-reduced-motion: no-preference) {
+  .play-direct .play-card-shell[data-dragging=false] { animation: play-card-settle 150ms ease-out; }
+  @keyframes play-card-settle { from { translate: 0 -3px; } to { translate: 0 0; } }
+}
+.play-on-mat-prompt { display: flex; flex-wrap: wrap; align-items: start; gap: 5px 12px; color: var(--color-text-muted); font-size: 11px; }
+.play-on-mat-prompt details { flex: 1; min-width: 0; }
+.play-on-mat-prompt summary { cursor: pointer; width: fit-content; color: var(--color-accent); }
+.play-on-mat-prompt details[open] { flex-basis: 100%; }
+.play-choice-option { position: relative; flex: none; display: grid; align-content: start; gap: 2px; }
+.play-choice-details { border: 0; padding: 2px; color: var(--color-text-muted); background: transparent; text-decoration: underline; font: 400 10px/1.4 var(--font-ui); cursor: pointer; }
+.play-direct .play-legends .play-details { width: 15px; height: 15px; font-size: 9px; top: 1px; right: 1px; opacity: 0; }
+.play-direct .play-legends .play-card-shell:hover .play-details, .play-direct .play-legends .play-card-shell:focus-within .play-details { opacity: 1; }
+
+.play-direct .play-field { position: relative; }
+.play-field-controls { position: absolute; inset: 17px 6px 4px; display: flex; align-items: center; justify-content: center; z-index: 2; background: var(--play-scrim); }
+.play-field-controls .play-opening-choices { border: 0; padding: 4px; margin: 0; justify-content: center; background: transparent; }
+/* Ordinary decisions stay a single strip so the hand remains in reach. */
+.play-decision-tray[data-compact=true] { padding: 5px 7px; }
+.play-decision-tray[data-compact=true] .play-picks { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 8px; }
+.play-decision-tray[data-compact=true] .play-tray-head { display: contents; }
+.play-decision-tray[data-compact=true] .play-tray-intent { order: 0; flex: 1; min-width: 140px; }
+.play-decision-tray[data-compact=true] .play-tray-intent > div { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 6px; }
+.play-decision-tray[data-compact=true] .play-tray-intent h3 { font-size: 16px; }
+.play-decision-tray[data-compact=true] .play-tray-intent p { margin: 0; }
+.play-decision-tray[data-compact=true] .play-tray-source { width: 18px; }
+.play-decision-tray[data-compact=true] .play-choice-steps { order: 1; }
+.play-decision-tray[data-compact=true] .play-on-mat-prompt { order: 2; }
+.play-decision-tray[data-compact=true] .play-on-mat-prompt > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.play-decision-tray[data-compact=true] .play-tray-actions { order: 3; }
+.play-decision-tray[data-compact=true] .play-picks > .play-choice-detail { order: 4; flex-basis: 100%; }
+.play-decision-tray[data-compact=true]:has(details[open]) .play-on-mat-prompt { flex-basis: 100%; order: 5; }
+.play-direct .play-card[data-source=true] { border-color: var(--color-accent); translate: 0 -3px; }
+.play-direct .play-card[data-spent=true] .play-card-art { rotate: 7deg; scale: .94; }
