@@ -57,7 +57,10 @@ export function describeBeat(seat: Seat, command: Move, before: PlayerView, afte
   const args = command.args ?? {};
   const rawSource = [args.cardId, args.legendId, args.attackerId, args.blockerId, command.move === 'resolveAttack' ? before.attackState?.attackerId : undefined].find((id) => typeof id === 'string' && visible.has(id));
   const resolving = zoneCards(before.players[seat], 'resolvingProgram')[0];
-  const source = typeof rawSource === 'string' ? visible.get(rawSource) : resolving ?? changes.find((change) => change.kind === 'played' || change.kind === 'called')?.card;
+  const payload = before.prompt.choice?.payload as { source?: { cardId?: string } } | undefined;
+  const choiceSource = payload?.source?.cardId ? visible.get(payload.source.cardId) : undefined;
+  const knownChoiceSource = choiceSource?.definitionId ? choiceSource : undefined;
+  const source = typeof rawSource === 'string' ? visible.get(rawSource) : knownChoiceSource ?? resolving ?? changes.find((change) => change.kind === 'played' || change.kind === 'called')?.card;
   const targets = [args.defenderId, args.attachToId, args.blockerId, args.protectedCardId, args.dieId,
     ...(Array.isArray(args.targetIds) ? args.targetIds : []), ...(Array.isArray(args.dieIds) ? args.dieIds : [])];
   const targetIds = [...new Set(targets.filter((id): id is string => typeof id === 'string' && visible.has(id)))];
@@ -66,7 +69,7 @@ export function describeBeat(seat: Seat, command: Move, before: PlayerView, afte
   const combatChanged = after.attackState?.step !== before.attackState?.step && !!after.attackState;
   const combatEnded = !!before.attackState && !after.attackState;
   const headline = description ?? (entered ? `${entered.label === 'Equipped' ? 'Equipped' : entered.kind === 'called' ? 'Called' : 'Played'} ${entered.card?.cardName ?? 'a card'}.`
-    : resolving?.cardName ? `${resolving.cardName} · effect.` : combatEnded ? 'Combat resolved.' : undefined);
+    : (knownChoiceSource ?? resolving)?.cardName ? `${(knownChoiceSource ?? resolving)!.cardName} · ${knownChoiceSource ? 'choice resolved' : 'effect'}.` : combatEnded ? 'Combat resolved.' : undefined);
   const text = headline ?? (changes.length ? changes.filter((change) => change.kind !== 'cred' || !changes.some((other) => other.kind === 'gigs' && other.seat === change.seat)).slice(0, 2)
     .map((change) => `${change.card?.cardName ? `${change.card.cardName} · ` : ''}${change.label}`).join(' ') : undefined);
   return { text: text ?? (combatChanged ? 'Combat continues.' : undefined), source: source && publicCard(source), targetIds, changes };
@@ -93,7 +96,7 @@ export function beatDuration(count: number, beat: Pick<MatchBeat, 'gigRolls'> & 
   if (beat.gigRolls.length) return rollDuration(beat.gigRolls);
   const kinds = new Set(beat.changes?.map((change) => change.kind));
   const base = kinds.has('defeated') ? 1300 : kinds.has('played') || kinds.has('called') ? 1350
-    : beat.view?.attackState || kinds.has('gigs') ? 1050 : 700;
+    : beat.view?.attackState || kinds.has('gigs') ? 1050 : kinds.has('power') ? 1100 : 700;
   return Math.round(base * beatPace(count));
 }
 

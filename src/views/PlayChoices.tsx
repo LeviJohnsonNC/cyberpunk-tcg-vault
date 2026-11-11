@@ -1,18 +1,21 @@
 import type { ReactNode } from 'react';
+import { Rules } from '../components/bits';
 import { isReady, type MatchActionForm, type PickField, type Picks } from '../lib/play/matchActions';
 import { commitLabel } from '../lib/play/matchInteraction';
-import type { CardView } from '../lib/play/protocol';
+import type { CardView, PlayerView } from '../lib/play/protocol';
+import { decisionSource, paymentPreview } from '../lib/play/tacticalInfo';
 import { CardFace } from './PlayCard';
 import { DieFace } from './PlayDice';
 
-export function PlayChoices({ action, picks, fields, active, cards, busy, forced, select, step, submit, cancel, alternatives, reorder, inspect, revealed }: {
+export function PlayChoices({ view, action, picks, fields, active, cards, busy, forced, select, step, submit, cancel, alternatives, reorder, inspect, revealed }: {
+  view: PlayerView;
   revealed?: CardView[]; action: MatchActionForm; picks: Picks; fields: PickField[]; active?: PickField; cards: CardView[];
   inspect: (card: CardView, trigger: HTMLElement) => void; busy: boolean; forced: boolean; select: (field: string, value: string) => void;
   step: (id: string) => void; reorder: (field: string, ids: string[]) => void; submit: () => void; cancel: () => void; alternatives: ReactNode;
 }) {
   const ready = isReady(fields, picks);
-  const source = fields[0]?.options.find((option) => picks[fields[0].id]?.includes(option.id));
-  const sourceCard = cards.find((card) => card.instanceId === source?.cardId);
+  const sourceCard = decisionSource(view, action, picks, cards);
+  const payment = paymentPreview(view, action, picks);
   const placement = action.id === 'resolveScry';
   const assigned = new Set(Object.values(picks).flat());
   const unassigned = revealed?.filter((card) => !assigned.has(card.instanceId)) ?? [];
@@ -30,7 +33,7 @@ export function PlayChoices({ action, picks, fields, active, cards, busy, forced
             {die && <DieFace type={card.definitionId} value={card.zone === 'gigArea' ? card.power : undefined} />}
             {artwork && <CardFace card={card} />}
             <span>{active.ordered && rank >= 0 ? `${rank + 1}. ` : ''}{option.label}</span>
-            {option.note && <small>{option.note}</small>}
+            {option.note && <small><Rules text={option.note} /></small>}
           </button>{artwork && <button type="button" className="play-choice-details" aria-label={`Details for ${option.label}`} onClick={(event) => inspect(card, event.currentTarget)}>Details</button>}</div>;
         })}{!active.options.length && <p className="play-empty">No eligible options. Choose an earlier step to change your selection.</p>}</div>
       </fieldset>;
@@ -38,8 +41,8 @@ export function PlayChoices({ action, picks, fields, active, cards, busy, forced
     <form className="play-picks" onSubmit={(event) => { event.preventDefault(); if (!busy && ready) submit(); }}>
       <div className="play-tray-head">
         <div className="play-tray-intent">
-          {sourceCard && <span className="play-tray-source"><CardFace card={sourceCard} /></span>}
-          <div><h3>{action.label}</h3>{source && <p>{source.label}</p>}</div>
+          {sourceCard && <button type="button" className="play-tray-source" aria-label={`Inspect ${sourceCard.cardName ?? 'selected card'}`} onClick={(event) => inspect(sourceCard, event.currentTarget)}><CardFace card={sourceCard} /></button>}
+          <div><h3>{action.label}</h3>{sourceCard && <p>{sourceCard.cardName ?? 'Selected Legend'}</p>}</div>
         </div>
         <div className="play-tray-actions">
           <button className="btn play-confirm" data-confirm-move={action.id} disabled={busy || !ready}>{commitLabel(action, picks)}</button>
@@ -47,7 +50,17 @@ export function PlayChoices({ action, picks, fields, active, cards, busy, forced
           {alternatives}
         </div>
       </div>
-      {action.detail && <p className="play-choice-detail">{action.detail}</p>}
+      {action.detail && <p className="play-choice-detail"><Rules text={action.detail} /></p>}
+      {payment && <div className="play-payment-receipt" aria-label="Payment preview" aria-live="polite">
+        <strong>Pay {payment.amount} €$</strong><span>{payment.ready ? payment.reserved.length ? `${payment.afterCosts} €$ after costs` : `${payment.afterPayment} €$ after payment` : 'Choose payment sources'}</span>
+        {payment.reserved.length > 0 && <span>Also spends {payment.reserved.join(', ')}</span>}
+        <details><summary>Payment details</summary>
+          <p>Before card entry, effects, or further costs resolve.</p>
+          {payment.sources.length > 0 && <ul>{payment.sources.map((source) => <li key={source.id}>{source.label}<span>{source.legend ? 'Spend Legend' : 'Spend Eddie'}</span></li>)}</ul>}
+          {payment.reserved.length > 0 && <p>Ability also spends {payment.reserved.join(', ')}. {payment.afterCosts} €$ remain after these costs.</p>}
+          {payment.amount === 0 && <p>No Eddies are required.</p>}
+        </details>
+      </div>}
       <div className="play-choice-steps" aria-label="Decision steps">{fields.map((field, index) =>
         <button type="button" key={field.id} className="btn quiet" aria-pressed={field.id === active?.id}
           data-step={field.id} disabled={busy} onClick={() => step(field.id)}>

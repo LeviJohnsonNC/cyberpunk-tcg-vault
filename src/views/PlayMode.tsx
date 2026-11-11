@@ -12,6 +12,7 @@ import { PlayTable } from './PlayTable';
 import { useTableSound } from './useTableSound';
 import { useMatchPresentation } from './useMatchPresentation';
 import './play-mode.css';
+import './play-tactics.css';
 
 type Client = Awaited<ReturnType<typeof openPlayMatch>>;
 type Confirm = 'replace' | 'restart' | 'concede';
