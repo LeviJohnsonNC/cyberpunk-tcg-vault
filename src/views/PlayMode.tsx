@@ -5,7 +5,7 @@ import { BY_SLUG, RECOMMENDED } from '../lib/data';
 import type { DeckDraft } from '../lib/deckDraft';
 import { deckFromRecommended } from '../lib/decks';
 import { openPlayMatch, resumePlayMatch } from '../lib/play/matchClient';
-import type { MatchSnapshot, MatchSummary, Move } from '../lib/play/protocol';
+import type { MatchSnapshot, MatchSummary, Move, RivalSkill } from '../lib/play/protocol';
 import { visibleCards } from '../lib/play/matchView';
 import { preloadArt, preloadFaces } from '../lib/play/cardArt';
 import { PlayTable } from './PlayTable';
@@ -19,6 +19,20 @@ const rivalPlans = [
   { id: 'lowball-netrun-plus', style: 'Tempo', note: 'Cheap Programs and fast follow-up plays.' },
   { id: 'nomad-convoy', style: 'Board control', note: 'Builds a field and trades its way ahead.' },
 ];
+// How the rival thinks, weakest first. Every level decides from what a player could see.
+const skills: { id: RivalSkill; label: string; note: string }[] = [
+  { id: 'standard', label: 'Standard', note: 'Follows a fixed order of priorities. A forgiving first opponent.' },
+  { id: 'sharp', label: 'Sharp', note: 'Looks a few moves ahead and weighs your likely replies.' },
+  { id: 'masterful', label: 'Masterful', note: 'Plans ahead and also reads card abilities and timing.' },
+];
+const skillPreference = 'cptv.play.rival-skill.v1';
+function savedSkill(): RivalSkill {
+  try {
+    const saved = localStorage.getItem(skillPreference);
+    if (skills.some(({ id }) => id === saved)) return saved as RivalSkill;
+  } catch { /* Use the default for this visit. */ }
+  return 'sharp';
+}
 const rivals = rivalPlans.flatMap((plan) => {
   const list = RECOMMENDED.find(({ id }) => id === plan.id);
   return list ? [{ ...plan, list }] : [];
@@ -33,6 +47,7 @@ export default function PlayMode({ scope, draft, saved, initialRival, rememberRi
 }) {
   const [rivalId, setRivalId] = useState(() => rivals.some(({ id }) => id === initialRival) ? initialRival : rivals[0]?.id);
   const [resume] = useState(!draft);
+  const [skill, setSkill] = useState(savedSkill);
   const [resumeAttempt, setResumeAttempt] = useState(0);
   const [snapshot, setSnapshot] = useState<MatchSnapshot>();
   const [busy, setBusy] = useState(resume);
@@ -116,7 +131,7 @@ export default function PlayMode({ scope, draft, saved, initialRival, rememberRi
     const rivalDeck = deckFromRecommended(rival.id);
     if (!rivalDeck) return;
     void run(async (isCurrent) => {
-      const next = await openPlayMatch(scope, draft, rivalDeck, saved?.matchId);
+      const next = await openPlayMatch(scope, draft, rivalDeck, saved?.matchId, skill);
       if (isCurrent()) {
         client.current = next;
         rememberRival(rival.id);
@@ -172,6 +187,17 @@ export default function PlayMode({ scope, draft, saved, initialRival, rememberRi
                 </span>
               </label>)}
             </fieldset>
+            <fieldset className="play-skills" disabled={busy}>
+              <legend className="play-eyebrow">Rival skill</legend>
+              {skills.map(({ id, label, note }) => <label key={id} className="play-skill" data-selected={id === skill}>
+                <input type="radio" name="play-skill" checked={id === skill} onChange={() => {
+                  setSkill(id);
+                  try { localStorage.setItem(skillPreference, id); } catch { /* Keep the choice for this visit. */ }
+                }} />
+                <strong>{label}</strong><span>{note}</span>
+              </label>)}
+              <p>Every level plays from what a player could see. None of them reads your hand or the decks.</p>
+            </fieldset>
           </section>
           <aside className="panel play-loadout">
             <div className="play-setup-title"><span className="play-eyebrow">02 / Your loadout</span><h2 title={name}>{name}</h2></div>
@@ -184,7 +210,7 @@ export default function PlayMode({ scope, draft, saved, initialRival, rememberRi
             {error && <p className="play-error" role="alert">{error}</p>}
             <div className="play-loadout-footer">
               {rival && <div className="play-selected-rival">
-                <span>Rival</span><strong>{rival.list.name}</strong>
+                <span>Rival</span><strong>{rival.list.name}</strong><em>{skills.find(({ id }) => id === skill)?.label}</em>
                 <span>{rival.list.colors.map((color) => <Pip key={color} color={color} bare />)}</span>
               </div>}
               <button type="button" className="btn play-start" disabled={busy || !rival} onClick={() => start()}>{busy ? 'Dealing…' : 'Start match'}</button>

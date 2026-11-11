@@ -124,6 +124,14 @@ Play Mode is the one screen where the cards are the interface. The table is the 
 
 **Combat.** The attacker steps toward its target and a live beam joins them. The command bar states the fight: attacker power, defender power or the Gigs under attack. When the attack connects, the attacker lunges, the hit lands on the defender, blocker or Gig area, and a defeated card breaks before it goes to Trash. Outcome numbers rise from the card or zone they changed.
 
+**Payment.** Every payment opens filled in (`suggestPayment`: ready Eddies, then face-down Legends, then face-up ones) so an ordinary play is one confirmation, and focus lands on the confirm button. The suggestion never overrides a payment the player has touched, and the sources stay selectable on the mat.
+
+**Sound** (`useTableSound.ts`, cues in `lib/play/tableSound.ts`). Short synthesised cues, no audio files. They are fired by the motion that shows each event, so a sound lands with its card, and are called off when that motion is skipped. One Sound toggle in the header; off until the player turns it on.
+
+**Start and end.** A new match names the two crews before the first hand is dealt. The result waits for the last hit to land, then covers the table with the outcome and a report (`PlayResult.tsx`, `lib/play/matchReport.ts`): Gigs by turn, cards played and sold, Units lost, and cards that sat in hand for three or more turns. The report is built only from the player's own view. Chart lines are named and valued in the legend, never told apart by colour alone.
+
+**Rival skill.** The setup screen offers Standard, Sharp and Masterful. All three play from what a player could see; say so wherever skill is described.
+
 **Pacing.** `beatDuration` gives each public move enough time for its movement to land, and long sequences speed up without dropping below a readable pace. Skip always jumps to the current decision.
 
 ## Play Mode interactions

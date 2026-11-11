@@ -8,9 +8,14 @@ export interface MatchDeck {
   mainDeck: string[];
 }
 
+/** How the rival chooses its moves. Every level plays from what a player could see. */
+export type RivalSkill = 'standard' | 'sharp' | 'masterful';
+
 export interface MatchSetup {
   player: MatchDeck;
   rival: MatchDeck;
+  /** Absent in matches saved before skill levels existed; those keep the standard rival. */
+  rivalSkill?: RivalSkill;
 }
 
 export interface CardView {
