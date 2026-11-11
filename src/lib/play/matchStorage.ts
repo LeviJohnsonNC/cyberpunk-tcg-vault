@@ -5,14 +5,15 @@ import { emptyCircuit, finishUnlocked, settleCircuit, type CircuitProgress, type
 const matches = 'matches';
 const summaries = 'summaries';
 const circuits = 'circuits';
+const campaigns = 'campaigns';
 let connection: Promise<IDBDatabase> | undefined;
 
-function openDatabase() {
+export function openDatabase() {
   return connection ??= new Promise<IDBDatabase>((resolve, reject) => {
     let blocked = false;
-    const request = indexedDB.open('cptv.play-matches', 2);
+    const request = indexedDB.open('cptv.play-matches', 3);
     request.onupgradeneeded = () => {
-      for (const name of [matches, summaries, circuits]) if (!request.result.objectStoreNames.contains(name)) request.result.createObjectStore(name);
+      for (const name of [matches, summaries, circuits, campaigns]) if (!request.result.objectStoreNames.contains(name)) request.result.createObjectStore(name);
     };
     request.onsuccess = () => {
       const db = request.result;

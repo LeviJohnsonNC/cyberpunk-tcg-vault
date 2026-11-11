@@ -21,6 +21,7 @@ import { clearSampleDraft, newDeck, readDeckDraft, rememberDeckDraft, SAMPLE_DRA
 import { TABS, useVaultNavigation, type TabId } from './lib/vaultNavigation';
 import { playPreviewEnabled } from './lib/play/playPreview';
 import { readMatchSummary } from './lib/play/matchStorage';
+import { PENDING_DECK_KEY } from './lib/handoff';
 import type { MatchSnapshot, MatchSummary } from './lib/play/protocol';
 import './mobile-shell.css';
 
@@ -263,11 +264,17 @@ export default function App() {
         {route.tab === 'about' && <HowItWorks openFeedback={() => setFeedbackOpen(true)} />}
         {route.tab === 'upgrade' && <UpgradePlanner onOpen={showCard} />}
         {route.tab === 'shared' && <SharedDeck onPlayAgainst={PlayMode && !mobile ? practiceAgainst : undefined} token={route.deck} onOpen={showCard} goAdd={() => go('add')} />}
-        {route.tab === 'play' && (PlayMode && !mobile && store.ready && matchInfo && (!matchInfo.failed || matchDraft || savedMatch)
+        {route.tab === 'play' && (PlayMode && !mobile && store.ready && matchInfo
           ? <Suspense fallback={<p className="callout" role="status">Opening Play Mode…</p>}>
             <PlayMode key={scope} scope={scope} draft={matchDraft} saved={savedMatch} initialRival={playRival?.scope === scope ? playRival.id : undefined}
               savedDecks={store.decks} initialOpponent={playDraft?.scope === scope ? playDraft.opponent : undefined}
-              rememberRival={(id) => setPlayRival({ scope, id })} onCheckpoint={acceptMatch} onEdit={returnToDraft} />
+              rememberRival={(id) => setPlayRival({ scope, id })} onCheckpoint={acceptMatch} onEdit={returnToDraft}
+              onCampaignDeck={(deck) => {
+                try {
+                  sessionStorage.setItem(PENDING_DECK_KEY, JSON.stringify({ ...structuredClone(deck), id: crypto.randomUUID(), name: `${deck.name} · Campaign clear` }));
+                  go('builder', '__pending');
+                } catch { toast('Could not open the campaign deck. Your completed run is still saved.', 'err'); }
+              }} />
           </Suspense>
           : PlayMode && !mobile && (!store.ready || !matchInfo) ? <p className="callout" role="status">Checking for a saved match…</p>
           : <section className="panel">

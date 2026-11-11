@@ -16,14 +16,41 @@ import { useMatchPresentation } from './useMatchPresentation';
 import './play-mode.css';
 import './play-tactics.css';
 import './circuit.css';
+import { CampaignMode } from './CampaignMode';
+import { readCampaign } from '../lib/play/campaignStorage';
+import type { Environment } from '../lib/play/campaign';
+import './campaign.css';
 
 type Client = Awaited<ReturnType<typeof openPlayMatch>>;
 type Confirm = 'replace' | 'restart' | 'concede';
 
-export default function PlayMode({ scope, draft, saved, initialRival, initialOpponent, savedDecks, rememberRival, onCheckpoint, onEdit }: {
+type Props = {
   scope: string; draft?: DeckDraft; saved?: MatchSummary; initialRival?: string; initialOpponent?: Deck; savedDecks: Deck[]; rememberRival: (id: string) => void;
-  onCheckpoint: (snapshot: MatchSnapshot, draft?: DeckDraft) => void; onEdit: () => void;
-}) {
+  onCheckpoint: (snapshot: MatchSnapshot, draft?: DeckDraft) => void; onEdit: () => void; onCampaignDeck: (deck: Deck) => void;
+};
+
+export default function PlayMode(props: Props) {
+  const handoff = !!(props.draft || props.initialOpponent);
+  const [mode, setMode] = useState<'campaign' | 'free'>(() => {
+    if (handoff) return 'free';
+    try {
+      const remembered = localStorage.getItem(`cptv.playMode:${props.scope}`);
+      if (remembered === 'free' || remembered === 'campaign') return remembered;
+    } catch { /* Use the current saved match when preferences are unavailable. */ }
+    return props.saved && !props.saved.ended ? 'free' : 'campaign';
+  });
+  useEffect(() => { if (handoff) try { localStorage.setItem(`cptv.playMode:${props.scope}`, 'free'); } catch { /* optional preference */ } }, [handoff, props.scope]);
+  const choose = (next: 'campaign' | 'free') => {
+    setMode(next);
+    try { localStorage.setItem(`cptv.playMode:${props.scope}`, next); } catch { /* optional preference */ }
+  };
+  return <><nav className="play-mode-tabs" aria-label="Play mode"><button className="btn" aria-current={mode === 'campaign' ? 'page' : undefined} onClick={() => choose('campaign')}>Campaign</button><button className="btn" aria-current={mode === 'free' ? 'page' : undefined} onClick={() => choose('free')}>Free Play</button><span className="play-mode-explainer">{mode === 'campaign' ? 'Grow an official starter through nine matches and earn a new room.' : 'Bring any legal deck, choose a rival, and practice without campaign stakes.'}</span></nav>
+    {mode === 'campaign' ? <CampaignMode scope={props.scope} exit={() => choose('free')} openInBuilder={props.onCampaignDeck} /> : <FreePlayMode {...props} />}</>;
+}
+
+function FreePlayMode({ scope, draft, saved, initialRival, initialOpponent, savedDecks, rememberRival, onCheckpoint, onEdit }: Props) {
+  const [environment, setEnvironment] = useState<Environment>();
+  useEffect(() => { let active = true; void readCampaign(scope).then(value => { if (active) setEnvironment(value.profile.equipped); }).catch(() => {}); return () => { active = false; }; }, [scope]);
   const [resume] = useState(!draft && !!saved);
   const [storedDraft] = useState(() => readDeckDraft(scope));
   const [resumeAttempt, setResumeAttempt] = useState(0);
@@ -143,13 +170,13 @@ export default function PlayMode({ scope, draft, saved, initialRival, initialOpp
 
   const live = snapshot && !(presentation.displayed ?? snapshot).view.gameEnded;
   return (
-    <section className="play-mode" data-finish={progress?.finish ?? 'afterlife'} onPointerDownCapture={sound.unlock} onKeyDownCapture={sound.unlock}>
+    <section className="play-mode" data-finish={progress?.finish ?? 'afterlife'} data-environment={environment ?? 'default'} onPointerDownCapture={sound.unlock} onKeyDownCapture={sound.unlock}>
       <ReactiveRoom />
       {snapshot && !lobby ? <>
         <PlayTable key={snapshot.matchId} scope={scope} snapshot={presentation.displayed ?? snapshot} names={snapshot.names}
           playback={presentation.playback} feedback={presentation.feedback} reduced={presentation.reduced} diceImpact={sound.impact} cue={sound.cue}
           busy={busy || presentation.playing} error={error} send={send} rematch={rematch} edit={onEdit} circuit={openCircuit} controls={<>
-            <button type="button" className="btn quiet" disabled={busy} onClick={openCircuit}>Circuit</button>
+            <button type="button" className="btn quiet" disabled={busy} onClick={openCircuit}>Free Play</button>
             <button type="button" className="btn quiet play-dice-sound" aria-label="Table sound" aria-pressed={sound.enabled}
               onClick={sound.toggle}>Sound <b>{sound.enabled ? 'On' : 'Off'}</b></button>
             <label className="play-sound-level" title="Game effects volume">FX <input type="range" aria-label="Game effects volume" min="0" max="1" step=".05" value={sound.volume} onChange={(e) => sound.changeVolume(Number(e.target.value))} /></label>

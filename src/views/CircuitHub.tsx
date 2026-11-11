@@ -11,8 +11,8 @@ import { DEFAULT_PLAY_DECK_KEY, curatedOpponents, opponentIssues } from '../lib/
 import type { RivalSkill } from '../lib/play/protocol';
 import { PlaySetup } from './PlaySetup';
 
-const tabs = [{ id: 'circuit', label: 'Contract board' }, { id: 'practice', label: 'Practice' }, { id: 'locker', label: 'Your locker' }, { id: 'record', label: 'Match record' }] as const;
-type HubTab = typeof tabs[number]['id'];
+const tabs = [{ id: 'practice', label: 'Free Play' }, { id: 'locker', label: 'Your locker' }, { id: 'record', label: 'Match record' }] as const;
+type HubTab = typeof tabs[number]['id'] | 'circuit';
 const markNames: Record<CircuitMark, string> = { clear: 'Contract cleared', bonus: 'Bonus objective', masterful: 'Masterful win' };
 
 /** Code-native enamel seal: scalable, legible, and in the same visual language as the dice. */
@@ -80,7 +80,7 @@ export function CircuitHub({ progress, draft, savedDecks, initialRival, initialO
   onStart: (draft: DeckDraft, rival: Deck, skill: RivalSkill, key: string, contractId?: string) => void;
   onResume?: () => void; onEdit: () => void; equip: (finish: TableFinish) => void;
 }) {
-  const [tab, setTab] = useState<HubTab>(initialOpponent ? 'practice' : 'circuit');
+  const [tab, setTab] = useState<HubTab>('practice');
   const [selected, setSelected] = useState(() => CIRCUIT_CONTRACTS.find(contract => !contractCleared(progress, contract.id))?.id ?? CIRCUIT_CONTRACTS[0].id);
   const [playerKey, setPlayerKey] = useState(draft && !opponentIssues(draft.deck).length ? 'current' : DEFAULT_PLAY_DECK_KEY);
   const [masterful, setMasterful] = useState(false);
@@ -94,15 +94,15 @@ export function CircuitHub({ progress, draft, savedDecks, initialRival, initialO
   const rank = rankIndex(progress.rep), marks = circuitMarks(progress), clears = CIRCUIT_CONTRACTS.filter(item => contractCleared(progress, item.id)).length;
   const contractIndex = CIRCUIT_CONTRACTS.indexOf(contract);
   return <div className="circuit-hub">
-    <header className="circuit-hero"><Masthead eyebrow="The Afterlife / Your name on the door" title="Afterlife Circuit" sub="Six contracts. Eighteen marks. Earn your seat." />
+    <header className="circuit-hero"><Masthead eyebrow="The Afterlife / Open table" title="Free Play" sub="Bring any deck. Choose any rival." />
       <div className="circuit-hero-actions">{onResume && <button type="button" className="btn" disabled={busy} onClick={onResume}>Return to match</button>}<button type="button" className="btn quiet" disabled={busy} onClick={onEdit}>Deck Builder</button></div>
       <div className="circuit-credential"><CircuitSeal level={rank} /><div><span>Current standing</span><strong>{CIRCUIT_RANKS[rank].name}</strong><small>{CIRCUIT_RANKS[rank].line}</small></div></div>
     </header>
     <div className="circuit-standing"><ReputationBar rep={progress.rep} /><dl><div><dt>Contracts</dt><dd>{clears}<small>/6</small></dd></div><div><dt>Marks</dt><dd>{marks}<small>/18</small></dd></div><div><dt>Wins</dt><dd>{progress.wins}</dd></div><div><dt>Win streak</dt><dd>{progress.streak}</dd></div></dl></div>
     <ViewTabs id="circuit-hub" label="Play Mode" tabs={tabs} value={tab} onChange={setTab} />
     {error && <p className="play-error" role="alert">{error}</p>}
-    <div id={`circuit-hub-panel-${tab}`} role="tabpanel" aria-labelledby={`circuit-hub-tab-${tab}`}>
-      {tab === 'circuit' && <div className="circuit-board">
+    <div id={`circuit-hub-panel-${tab}`} role="tabpanel" aria-labelledby={tab === 'circuit' ? undefined : `circuit-hub-tab-${tab}`} aria-label={tab === 'circuit' ? 'Classic Circuit' : undefined}>
+      {tab === 'circuit' && <><button className="btn quiet" onClick={() => setTab('record')}>← Match record</button><div className="circuit-board">
         <section className="circuit-route" aria-label="Contracts">
           <div className="circuit-section-heading"><div><p className="play-eyebrow">The house list</p><h2>{clears === 6 ? 'The room is yours.' : 'Your next move.'}</h2></div><span>{clears === 6 ? `${18 - marks} marks left to master` : 'Clear a job to open the next.'}</span></div>
           <div className="circuit-acts">{[0, 1, 2].map(act => <section className="circuit-act" key={act}><h3>{CIRCUIT_CONTRACTS[act * 2].act}</h3>{CIRCUIT_CONTRACTS.slice(act * 2, act * 2 + 2).map((item, i) => {
@@ -128,10 +128,10 @@ export function CircuitHub({ progress, draft, savedDecks, initialRival, initialO
           <div className="circuit-bonus"><span>◆ Bonus mark</span><p>{contract.bonus}</p></div>
           <details className="circuit-briefing"><summary>Read the briefing</summary><p>{contract.briefing}</p><p>All rival levels play from public information. Standard rules, best of one. No card or stat bonuses.</p></details>
         </aside>
-      </div>}
+      </div></>}
       {tab === 'practice' && <PlaySetup draft={draft} savedDecks={savedDecks} initialRival={initialRival} initialOpponent={initialOpponent} busy={busy} onStart={onStart} />}
       {tab === 'locker' && <Locker progress={progress} busy={busy} equip={equip} />}
-      {tab === 'record' && <Record progress={progress} />}
+      {tab === 'record' && <><Record progress={progress} /><div className="circuit-legacy-entry"><p>The original six-contract Circuit and its marks are still here.</p><button className="btn quiet" onClick={() => setTab('circuit')}>Open classic contracts</button></div></>}
     </div>
     <p className="circuit-local-note">Circuit progress is saved in this browser, separately for each Vault. It is not cloud-synced. Clearing browser data removes it.</p>
   </div>;

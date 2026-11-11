@@ -61,11 +61,11 @@ function ContextMenu({ context, children, close }: { context: Context; children:
   </div>, document.body);
 }
 
-export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, edit, circuit, playback, feedback, reduced, controls, diceImpact, cue }: {
+export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, edit, circuit, playback, feedback, reduced, controls, diceImpact, cue, resultContinueLabel }: {
   cue?: (name: TableCue, delayMs?: number) => (() => void) | undefined;
   diceImpact?: (type: string, soft: boolean, launch?: boolean) => (() => void) | undefined;
   playback?: MatchPlayback; feedback?: MatchBeat; scope: string; snapshot: MatchSnapshot; names: Record<Seat, string>; busy: boolean; error?: string;
-  send: (move: Move) => void; rematch: () => void; edit: () => void; circuit?: () => void; reduced: boolean; controls?: ReactNode;
+  send: (move: Move) => void; rematch: () => void; edit: () => void; circuit?: () => void; reduced: boolean; controls?: ReactNode; resultContinueLabel?: string;
 }) {
   const { view } = snapshot;
   const contract = CIRCUIT_CONTRACTS.find(item => item.id === snapshot.circuit?.contractId);
@@ -397,7 +397,7 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
       {playing && turnKey !== firstTurn && <div className="play-turn-banner" key={turnKey} data-seat={view.activePlayerId} aria-hidden="true">
         <span>Turn {view.turnNumber}</span><strong>{yourTurn ? 'Your turn' : 'Rival turn'}</strong>
       </div>}
-      {view.gameEnded && <MatchResult view={view} report={snapshot.report} receipt={snapshot.circuit?.receipt} circuit={circuit} title={decisionTitle} reason={winReasons[view.winReason ?? ''] ?? 'Match ended'} busy={busy} rematch={rematch} edit={edit} />}
+      {view.gameEnded && <MatchResult view={view} report={snapshot.report} receipt={snapshot.circuit?.receipt} circuit={circuit} title={decisionTitle} reason={winReasons[view.winReason ?? ''] ?? 'Match ended'} busy={busy} rematch={rematch} edit={edit} continueLabel={resultContinueLabel} />}
       {intro && <div className="play-intro" aria-hidden="true"><span>Practice table</span><strong>{names.player}</strong><i>vs.</i><strong>{names.rival}</strong></div>}
       <span className="sr-only" role="status">{notice}{busy ? ' Resolving move.' : ''}</span>
       {notice && <p className="play-table-notice">{notice}</p>}

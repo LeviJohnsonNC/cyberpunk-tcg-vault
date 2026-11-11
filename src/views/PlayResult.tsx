@@ -25,9 +25,9 @@ function GigTimeline({ gigs }: { gigs: MatchReport['gigs'] }) {
 }
 
 /** The end of the match, on the table: the result, how it went, and what never got played. */
-export function MatchResult({ view, report, receipt, circuit, title, reason, busy, rematch, edit }: {
+export function MatchResult({ view, report, receipt, circuit, title, reason, busy, rematch, edit, continueLabel }: {
   view: PlayerView; report?: MatchReport; title: string; reason: string; busy: boolean; rematch: () => void; edit: () => void;
-  receipt?: CircuitReceipt; circuit?: () => void;
+  receipt?: CircuitReceipt; circuit?: () => void; continueLabel?: string;
 }) {
   const reportBody = report && <div className="play-result-body">
     {report.gigs.length > 1 && <GigTimeline gigs={report.gigs} />}
@@ -45,6 +45,6 @@ export function MatchResult({ view, report, receipt, circuit, title, reason, bus
     <dl className="play-result-score"><div><dt>Your Gigs</dt><dd>{view.players.player.gigCount}</dd></div><div><dt>Rival Gigs</dt><dd>{view.players.rival.gigCount}</dd></div></dl>
     {receipt && <CircuitPayout receipt={receipt} />}
     {receipt ? <details className="circuit-match-detail"><summary>Inspect match report</summary>{reportBody}</details> : reportBody}
-    <div className="play-actions">{circuit && <button type="button" className="btn" disabled={busy} onClick={circuit}>{receipt?.marks.includes('clear') && receipt.contractId !== CIRCUIT_CONTRACTS.at(-1)?.id ? 'Next contract' : 'Back to Circuit'}</button>}<button type="button" className={`btn ${circuit ? 'ghost' : ''}`} disabled={busy} onClick={rematch}>Rematch</button><button type="button" className="btn quiet" disabled={busy} onClick={edit}>Edit draft</button></div>
+    <div className="play-actions">{circuit && <button type="button" className="btn" disabled={busy} onClick={circuit}>{receipt?.marks.includes('clear') && receipt.contractId !== CIRCUIT_CONTRACTS.at(-1)?.id ? 'Next contract' : 'Back to Circuit'}</button>}<button type="button" className={`btn ${circuit ? 'ghost' : ''}`} disabled={busy} onClick={rematch}>{continueLabel ?? 'Rematch'}</button>{!continueLabel && <button type="button" className="btn quiet" disabled={busy} onClick={edit}>Edit draft</button>}</div>
   </section>;
 }
