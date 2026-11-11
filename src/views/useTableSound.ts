@@ -67,9 +67,10 @@ export function useTableSound() {
     return stop ? () => { clearTimeout(timer); if (timer) duckTimers.current.delete(timer); stop(); } : undefined;
   }, [play]);
   useEffect(() => {
+    const cache = buffers.current;
     const hide = () => { if (document.hidden) clear(); };
     document.addEventListener('visibilitychange', hide);
-    return () => { document.removeEventListener('visibilitychange', hide); clear(); const context = audio.current; audio.current = null; master.current = null; buffers.current.clear(); if (context) void context.close().catch(() => {}); };
+    return () => { document.removeEventListener('visibilitychange', hide); clear(); const context = audio.current; audio.current = null; master.current = null; cache.clear(); if (context) void context.close().catch(() => {}); };
   }, []);
   return { enabled, volume, changeVolume, toggle, unlock, impact, cue };
 }

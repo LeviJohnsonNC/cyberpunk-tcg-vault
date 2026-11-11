@@ -54,7 +54,9 @@ export function MusicPlayer({ tracks = PLAYLIST, controlsContainer }: { tracks?:
     wantPlay.current = true; setError(false); setLoading(true);
     // Keep ordinary HTML audio as the fallback if Web Audio is unavailable.
     try { if (!graph.current && typeof AudioContext !== 'undefined') graph.current = connectMusic(el); } catch { /* Music still works without room analysis. */ }
-    void (graph.current?.resume() ?? Promise.resolve()).then(() => el.play()).catch((e: unknown) => {
+    if (el.error) el.load();
+    // Call play inside the gesture as well as resuming Web Audio (especially important on Safari).
+    void Promise.all([graph.current?.resume() ?? Promise.resolve(), el.play()]).catch((e: unknown) => {
       if (id !== request.current || (e instanceof DOMException && e.name === 'AbortError')) return;
       setError(true); setLoading(false); setPlaying(false); wantPlay.current = false;
     });

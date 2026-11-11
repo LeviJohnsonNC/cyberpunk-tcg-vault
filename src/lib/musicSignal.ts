@@ -18,7 +18,7 @@ export class MusicEnvelope {
     const dt = Math.min(100, Math.max(0, now - this.lastTime)); this.lastTime = now;
     const bass = Math.max(0, Math.min(1, (bands[0] + bands[1]) / 2));
     this.average += (bass - this.average) * (1 - Math.exp(-dt / 1000));
-    const onset = bass > .18 && bass > this.average * 1.16 && bass - this.previous > .025 && now - this.lastBeat > 280;
+    const onset = bass > .18 && bass > this.average + .025 && bass - this.previous > .025 && now - this.lastBeat > 280;
     this.pulse *= Math.exp(-dt / 240);
     if (onset) { this.pulse = Math.min(1, .35 + (bass - this.average) * 2); this.lastBeat = now; }
     this.previous = bass;
