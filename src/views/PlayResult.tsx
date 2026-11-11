@@ -1,7 +1,7 @@
 import { vaultCard } from '../lib/play/cardDisplay';
 import type { MatchReport, PlayerView } from '../lib/play/protocol';
 import { CardFace } from './PlayCard';
-import type { CircuitReceipt } from '../lib/play/circuit';
+import { CIRCUIT_CONTRACTS, type CircuitReceipt } from '../lib/play/circuit';
 import { CircuitPayout } from './CircuitHub';
 
 /** Gig counts turn by turn, as two step lines. Each line is named and valued in the legend, never by colour alone. */
@@ -45,6 +45,6 @@ export function MatchResult({ view, report, receipt, circuit, title, reason, bus
     <dl className="play-result-score"><div><dt>Your Gigs</dt><dd>{view.players.player.gigCount}</dd></div><div><dt>Rival Gigs</dt><dd>{view.players.rival.gigCount}</dd></div></dl>
     {receipt && <CircuitPayout receipt={receipt} />}
     {receipt ? <details className="circuit-match-detail"><summary>Inspect match report</summary>{reportBody}</details> : reportBody}
-    <div className="play-actions">{circuit && <button type="button" className="btn" disabled={busy} onClick={circuit}>{receipt?.marks.includes('clear') ? 'Next contract' : 'Back to Circuit'}</button>}<button type="button" className={`btn ${circuit ? 'ghost' : ''}`} disabled={busy} onClick={rematch}>Rematch</button><button type="button" className="btn quiet" disabled={busy} onClick={edit}>Edit draft</button></div>
+    <div className="play-actions">{circuit && <button type="button" className="btn" disabled={busy} onClick={circuit}>{receipt?.marks.includes('clear') && receipt.contractId !== CIRCUIT_CONTRACTS.at(-1)?.id ? 'Next contract' : 'Back to Circuit'}</button>}<button type="button" className={`btn ${circuit ? 'ghost' : ''}`} disabled={busy} onClick={rematch}>Rematch</button><button type="button" className="btn quiet" disabled={busy} onClick={edit}>Edit draft</button></div>
   </section>;
 }

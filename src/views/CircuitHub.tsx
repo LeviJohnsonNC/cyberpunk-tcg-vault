@@ -26,7 +26,7 @@ export function CircuitSeal({ level, small = false }: { level: number; small?: b
   </svg>;
 }
 function Marks({ marks = [] }: { marks?: CircuitMark[] }) {
-  return <span className="circuit-marks" aria-label={`${marks.length} of 3 marks earned`}>{(['clear', 'bonus', 'masterful'] as const).map(mark =>
+  return <span className="circuit-marks" role="img" aria-label={`${marks.length} of 3 marks earned`}>{(['clear', 'bonus', 'masterful'] as const).map(mark =>
     <span key={mark} data-earned={marks.includes(mark)} title={`${markNames[mark]}${marks.includes(mark) ? ' · earned' : ''}`} aria-hidden="true">◆</span>)}</span>;
 }
 export function ReputationBar({ rep, before }: { rep: number; before?: number }) {

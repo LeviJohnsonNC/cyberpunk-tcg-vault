@@ -62,7 +62,7 @@ export default function PlayMode({ scope, draft, saved, initialRival, initialOpp
     finally { setEquipping(false); }
   }
 
-  function openCircuit() { presentation.playback?.skip(); setLobby(true); }
+  function openCircuit() { presentation.playback?.skip(); setProgress(undefined); setProgressError(undefined); setLobby(true); }
 
   useLayoutEffect(() => {
     if (matchId) window.scrollTo({ top: 0, behavior: 'instant' });

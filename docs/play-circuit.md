@@ -7,6 +7,7 @@ Six sequential contracts turn desktop practice into a personal progression loop.
 - First Call / Heist Reloaded, Chrome Debt / Chrome Syndicate (Standard).
 - Dead Air / Lowball Netrun+, Night Drive / Nomad Convoy (Sharp).
 - Red Line / Smasher Surge (Sharp), Last Call / Arasaka 9s (Masterful).
+- Bonus goals: play 6 cards, defeat 3 rival Units, sell 4 cards, win by turn 16, lose at most 2 Units, and finish on at least 40 Street Cred, respectively. The contract title at the table opens its briefing and objective.
 - Every contract has permanent clear, bonus-objective and Masterful-win marks. The first clear opens the next job; the others give reasons to replay. Earlier contracts can be raised to Masterful. Rival lists and minimum skill are validated against the actual setup.
 - Reputation ranks: Unlisted, Runner, Operator, Fixer, Headliner, Afterlife Legend. Thresholds: 0, 150, 400, 800, 1,400 and 2,400 REP. Ranks do not regress.
 - Match REP: 75/100/125 for Standard/Sharp/Masterful wins, 25 for a completed loss or draw, zero for a concession. One-time clear/bonus/Masterful rewards: 100/50/75. Practice earns match REP, not contract marks. Restarting or replacing an unfinished match earns nothing.
@@ -21,7 +22,15 @@ Progress is local to the browser and the existing Vault scope (signed-in user, l
 
 ## Verification
 
-Automated coverage includes each objective, every real rival list, skill and unlock restrictions, one-time marks, no concession farming, repeat settlement, bounded history with lifetime totals, version-one database migration, scope isolation, simultaneous tab settlement, cosmetic/settlement races, rejected stale actions and failed-write rollback. Final build and browser verification are recorded after review.
+Automated coverage includes each objective, every real rival list, skill and unlock restrictions, one-time marks, no concession farming, repeat settlement, bounded history with lifetime totals, version-one database migration, scope isolation, simultaneous tab settlement, cosmetic/settlement races, rejected stale actions and failed-write rollback. Final verification: `npm run check` passes 366 tests across 34 files, lint and the production build. Existing unrelated lint and bundle-size warnings remain. A deterministic, complete 15-turn engine match (12 cards played) wins First Call, settles 225 REP, promotes to Runner, equips Ghost Signal and resumes without paying twice. Separate tests cover the exact fast-win and Street Cred objective boundaries and the final-contract handoff.
+
+Browser verification on the Vercel preview covers contract selection and locks, the locker, empty and populated match records, all existing Practice options, starting a contract, the objective drawer, opening and returning from the Circuit, refresh/resume, and concession settlement followed by refresh. At 1280 × 800 the contract start ends at y=706 and the winning reward actions at y=685, with no page-wide overflow. Also inspected the initial 1382 × 766 layout and the 390 × 844 desktop-only gate.
+
+The winning reward was visually inspected using the actual `MatchResult` component rendered from the full engine match above on an isolated, clearly labelled temporary QA page. It did not inject progress into a browser Vault; that page is removed from the final change. The whole six-contract campaign has not been manually played end to end, so difficulty and REP pacing should be evaluated with real player feedback.
+
+![Contract board at laptop size](screenshots/afterlife-circuit-board.jpg)
+
+![Winning reward visual QA from a complete engine match](screenshots/afterlife-circuit-reward-qa.jpg)
 
 ## Art
 
