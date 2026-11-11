@@ -51,7 +51,8 @@ export function PlayChoices({ view, action, picks, fields, active, cards, busy, 
       </div>
       {action.detail && <p className="play-choice-detail">{action.detail}</p>}
       {payment && <div className="play-payment-receipt" aria-label="Payment preview" aria-live="polite">
-        <strong>Pay {payment.amount} €$</strong><span>{payment.ready ? `${payment.afterPayment} €$ after payment` : 'Choose payment sources'}</span>
+        <strong>Pay {payment.amount} €$</strong><span>{payment.ready ? payment.reserved.length ? `${payment.afterCosts} €$ after costs` : `${payment.afterPayment} €$ after payment` : 'Choose payment sources'}</span>
+        {payment.reserved.length > 0 && <span>Also spends {payment.reserved.join(', ')}</span>}
         <details><summary>Payment details</summary>
           <p>Before card entry, effects, or further costs resolve.</p>
           {payment.sources.length > 0 && <ul>{payment.sources.map((source) => <li key={source.id}>{source.label}<span>{source.legend ? 'Spend Legend' : 'Spend Eddie'}</span></li>)}</ul>}

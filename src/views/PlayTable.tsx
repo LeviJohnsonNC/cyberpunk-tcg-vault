@@ -22,7 +22,6 @@ import { MatchResult } from './PlayResult';
 import './play-table.css';
 import './play-interaction.css';
 import './play-presentation.css';
-import './play-tactics.css';
 
 const combatSteps: Record<string, string> = { attack: 'Attack', react: 'React', fight: 'Fight', fightResult: 'Fight result', steal: 'Steal' };
 const winReasons: Record<string, string> = { gig_victory: 'Seven Gigs secured', overtime_majority: 'Majority of Gigs in overtime', deck_out_victory: 'Deck-out', concede: 'Concession', concession: 'Concession' };
@@ -350,7 +349,8 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
                 submit={() => selection !== undefined && commit({ action: selection, picks })}
                 cancel={() => { setChoice(choice ? defaultSelection : undefined, {}); clearHover(); }}
                 inspect={inspect} alternatives={choice ? special.map(({ index }) => actionButton(index)) : null} /></div>
-            : choice || setup ? <div className="play-opening-choices">{combat && <CombatBanner view={view} watching={false} compact inspect={inspect} />}<h3>{decisionTitle}</h3>{actions.map((_, index) => actionButton(index, undefined, setup && actions.length === 2 && index === 1 ? 'btn' : 'btn quiet'))}</div>
+            : choice || setup ? <div className="play-opening-choices">{combat && <CombatBanner view={view} watching={false} compact inspect={inspect} />}<h3>{decisionTitle}</h3>{actions.map((_, index) => actionButton(index, undefined, setup && actions.length === 2 && index === 1 ? 'btn' : 'btn quiet'))}
+              {choice && actions[0]?.detail && <p className="play-choice-detail">{actions[0].detail}</p>}</div>
             : combat ? <CombatBanner view={view} watching={false} inspect={inspect} controls={resolveButtons} />
             : <><div className="play-command-lead"><strong>{decisionTitle}</strong>
               <p role="status">{feedback && !busy ? <><b>{feedback.seat === 'player' ? 'You' : 'Rival'}</b> {feedback.text}</> : hint}</p></div>{turnButtons}</>}

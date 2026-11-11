@@ -65,18 +65,18 @@ export interface PreviewRect { left: number; top: number; width: number; height:
 /** Find a readable close-up that does not cover the hand, decision controls or eligible targets. */
 export function previewPosition(anchor: PreviewRect, viewport: { width: number; height: number }, blocked: PreviewRect[]) {
   for (const { width, height, landscape } of [{ width: 286, height: 464, landscape: false }, { width: 440, height: 360, landscape: true }]) {
-  const margin = 12;
-  const clampX = (x: number) => Math.max(margin, Math.min(viewport.width - width - margin, x));
-  const clampY = (y: number) => Math.max(margin, Math.min(viewport.height - height - margin, y));
-  if (viewport.width < width + 2 * margin || viewport.height < height + 2 * margin) continue;
-  const positions = [
-    { x: clampX(anchor.left + anchor.width + margin), y: clampY(anchor.top) },
-    { x: clampX(anchor.left - width - margin), y: clampY(anchor.top) },
-    { x: clampX(anchor.left + anchor.width / 2 - width / 2), y: clampY(anchor.top - height - margin) },
-    { x: viewport.width - width - margin, y: margin }, { x: margin, y: margin },
-  ];
-  const position = positions.find(({ x, y }) => ![anchor, ...blocked].some((rect) =>
-    x < rect.left + rect.width + 4 && x + width + 4 > rect.left && y < rect.top + rect.height + 4 && y + height + 4 > rect.top));
-  if (position) return { ...position, landscape };
+    const margin = 12;
+    const clampX = (x: number) => Math.max(margin, Math.min(viewport.width - width - margin, x));
+    const clampY = (y: number) => Math.max(margin, Math.min(viewport.height - height - margin, y));
+    if (viewport.width < width + 2 * margin || viewport.height < height + 2 * margin) continue;
+    const positions = [
+      { x: clampX(anchor.left + anchor.width + margin), y: clampY(anchor.top) },
+      { x: clampX(anchor.left - width - margin), y: clampY(anchor.top) },
+      { x: clampX(anchor.left + anchor.width / 2 - width / 2), y: clampY(anchor.top - height - margin) },
+      { x: viewport.width - width - margin, y: margin }, { x: margin, y: margin },
+    ];
+    const position = positions.find(({ x, y }) => ![anchor, ...blocked].some((rect) =>
+      x < rect.left + rect.width + 4 && x + width + 4 > rect.left && y < rect.top + rect.height + 4 && y + height + 4 > rect.top));
+    if (position) return { ...position, landscape };
   }
 }

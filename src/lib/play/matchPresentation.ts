@@ -69,7 +69,7 @@ export function describeBeat(seat: Seat, command: Move, before: PlayerView, afte
   const combatChanged = after.attackState?.step !== before.attackState?.step && !!after.attackState;
   const combatEnded = !!before.attackState && !after.attackState;
   const headline = description ?? (entered ? `${entered.label === 'Equipped' ? 'Equipped' : entered.kind === 'called' ? 'Called' : 'Played'} ${entered.card?.cardName ?? 'a card'}.`
-    : (knownChoiceSource ?? resolving)?.cardName ? `${(knownChoiceSource ?? resolving)!.cardName} · effect resolved.` : combatEnded ? 'Combat resolved.' : undefined);
+    : (knownChoiceSource ?? resolving)?.cardName ? `${(knownChoiceSource ?? resolving)!.cardName} · ${knownChoiceSource ? 'choice resolved' : 'effect'}.` : combatEnded ? 'Combat resolved.' : undefined);
   const text = headline ?? (changes.length ? changes.filter((change) => change.kind !== 'cred' || !changes.some((other) => other.kind === 'gigs' && other.seat === change.seat)).slice(0, 2)
     .map((change) => `${change.card?.cardName ? `${change.card.cardName} · ` : ''}${change.label}`).join(' ') : undefined);
   return { text: text ?? (combatChanged ? 'Combat continues.' : undefined), source: source && publicCard(source), targetIds, changes };
