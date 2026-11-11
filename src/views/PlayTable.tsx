@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { isReady, matchActions, type Picks } from '../lib/play/matchActions';
-import { activeStep, cardIntents, dropIntents, intentLabel, reorderPick, updatePick, type Destination, type Intent } from '../lib/play/matchInteraction';
+import { activeStep, cardIntents, dropIntents, intentLabel, reorderPick, suggestPayment, updatePick, type Destination, type Intent } from '../lib/play/matchInteraction';
 import { visibleCards, zoneCards } from '../lib/play/matchView';
 import type { CardView, MatchBeat, MatchSnapshot, Move, Seat } from '../lib/play/protocol';
 import { CardFace, CardInspection } from './PlayCard';
@@ -89,8 +89,9 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
   const current = decision?.matchId === snapshot.matchId && decision.state === view.stateID ? decision : undefined;
   const candidate = current?.selection ?? (current ? undefined : defaultSelection);
   const selection = candidate !== undefined && actions[candidate] ? candidate : undefined;
-  const picks = current?.picks ?? {};
   const selected = selection === undefined ? undefined : actions[selection];
+  // A forced choice that opens on payment starts with a suggestion, like any other payment.
+  const picks = current?.picks ?? (selected ? suggestPayment(selected, {}, visibleCards(view)) : {});
   const fields = selected?.fields(picks) ?? [];
   const step = activeStep(fields, picks, current?.step);
   const targetIds = new Set(step?.options.flatMap((option) => option.cardId ? [option.cardId] : []) ?? []);
@@ -118,12 +119,21 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
     enabled: !reduced, pace: playback ? beatPace(playback.count) : 1, deal: setup });
 
   useEffect(() => {
-    if (focusAfter.current) { grid.current?.querySelector<HTMLElement>('.play-decision-tray [data-step][aria-pressed=true],.play-decision-tray button:not(:disabled),.play-command-inner')?.focus({ preventScroll: true }); focusAfter.current = false; }
+    if (!focusAfter.current) return;
+    focusAfter.current = false;
+    // In order of usefulness: confirm a ready decision, else the step in progress, else the bar itself.
+    const targets = ['.play-decision-tray [data-confirm-move]:not(:disabled)', '.play-decision-tray [data-step][aria-pressed=true]', '.play-decision-tray button:not(:disabled)', '.play-command-inner'];
+    for (const target of targets) {
+      const element = grid.current?.querySelector<HTMLElement>(target);
+      if (element) { element.focus({ preventScroll: true }); break; }
+    }
   }, [stateKey, selection, current?.step]);
   useEffect(() => () => clearTimeout(hoverTimer.current), []);
 
   function clearHover() { clearTimeout(hoverTimer.current); setPreview(undefined); setArrow(undefined); }
-  function setChoice(selection: number | undefined, picks: Picks, step?: string) {
+  function setChoice(selection: number | undefined, chosen: Picks, step?: string) {
+    // Payment starts filled in, so an ordinary play is one confirmation. The sources stay selectable on the mat.
+    const picks = selection !== undefined && actions[selection] ? suggestPayment(actions[selection], chosen, visibleCards(view)) : chosen;
     const next = { matchId: snapshot.matchId, state: view.stateID, selection, picks, step };
     setDecision(next);
     try { localStorage.setItem(decisionKey, JSON.stringify(next)); } catch { /* Optional UI state. */ }

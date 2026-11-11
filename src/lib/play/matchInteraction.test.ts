@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { matchActions, isReady } from './matchActions';
-import { activeStep, cardIntents, dropIntents, reorderPick, intentLabel, updatePick } from './matchInteraction';
+import { activeStep, cardIntents, dropIntents, reorderPick, intentLabel, suggestPayment, updatePick } from './matchInteraction';
 import type { CardView, PlayerView } from './protocol';
 
 const card = (id: string, type = 'unit'): CardView => ({ instanceId: id, definitionId: id, cardName: id, type, zone: 'hand', faceDown: false, spent: false, power: 1, effectivePower: 1, cost: 1 });
@@ -13,6 +13,27 @@ function view(): PlayerView {
     ], payment: { eddieIds: ['eddie-a', 'eddie-b'], eddies: 2, legendIds: ['legend'], effectGearHosts: {}, costs: { playCard: { unit: { amount: 2 }, gear: { amount: 1 }, program: { amount: 1 } } } } } };
 }
 describe('direct table intents', () => {
+  it('suggests a payment of Eddies before Legends and never overrides the player', () => {
+    const actions = matchActions(view());
+    const [play] = dropIntents(actions, card('unit'), { key: 'field:player' });
+    const action = actions[play.action];
+    const legends = [{ ...card('legend'), zone: 'legendArea', faceDown: true }];
+    const suggested = suggestPayment(action, play.picks, legends);
+    expect(suggested.payment).toEqual(['eddie-a', 'eddie-b']);
+    expect(isReady(action.fields(suggested), suggested)).toBe(true);
+    expect(suggestPayment(action, { ...play.picks, payment: [] }, legends).payment).toEqual([]);
+    expect(suggestPayment(action, { ...play.picks, payment: ['legend'] }, legends).payment).toEqual(['legend']);
+    // Nothing is suggested before the card that sets the cost is chosen.
+    expect(suggestPayment(action, {}, legends)).toEqual({});
+  });
+  it('spends face-down Legends before face-up ones when Eddies run short', () => {
+    const state = view();
+    state.prompt.payment = { ...state.prompt.payment!, eddieIds: ['eddie-a'], eddies: 1, legendIds: ['shown', 'hidden'], costs: { playCard: { unit: { amount: 2 } } } };
+    const actions = matchActions(state);
+    const [play] = dropIntents(actions, card('unit'), { key: 'field:player' });
+    const legends = [{ ...card('shown'), zone: 'legendArea' }, { ...card('hidden'), zone: 'legendArea', faceDown: true }];
+    expect(suggestPayment(actions[play.action], play.picks, legends).payment).toEqual(['eddie-a', 'hidden']);
+  });
   it('maps distinct destinations onto the existing legal commands and keeps payment uncommitted', () => {
     const actions = matchActions(view());
     const [play] = dropIntents(actions, card('unit'), { key: 'field:player' });

@@ -65,6 +65,27 @@ export function updatePick(action: MatchActionForm, picks: Picks, fieldId: strin
   return result;
 }
 
+/**
+ * Fills in a starting payment once everything before it is chosen: ready Eddies
+ * first, then face-down Legends, then face-up ones. It only ever suggests. A
+ * payment the player has touched, even an emptied one, is left as they set it.
+ */
+export function suggestPayment(action: MatchActionForm, picks: Picks, cards: CardView[]): Picks {
+  const fields = action.fields(picks);
+  const index = fields.findIndex((field) => field.id === 'payment');
+  const payment = fields[index];
+  if (!payment || 'payment' in picks || !isReady(fields.slice(0, index), picks)) return picks;
+  const byId = new Map(cards.map((card) => [card.instanceId, card]));
+  const rank = (cardId?: string) => {
+    const card = cardId ? byId.get(cardId) : undefined;
+    return card?.zone !== 'legendArea' ? 0 : card.faceDown ? 1 : 2;
+  };
+  const sources = payment.options.map((option, order) => ({ option, order }))
+    .sort((a, b) => rank(a.option.cardId) - rank(b.option.cardId) || a.order - b.order)
+    .slice(0, payment.min).map(({ option }) => option.id);
+  return sources.length === payment.min ? { ...picks, payment: sources } : picks;
+}
+
 export function reorderPick(action: MatchActionForm, picks: Picks, fieldId: string, order: string[]): Picks | undefined {
   const field = action.fields(picks).find((candidate) => candidate.id === fieldId);
   const previous = picks[fieldId] ?? [];
