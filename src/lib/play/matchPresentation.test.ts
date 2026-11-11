@@ -61,9 +61,13 @@ describe('public move presentation', () => {
     after.players.rival.streetCred++;
     expect(describeBeat('rival', { move: 'resolveAdjustGig', args: {} }, before, after).text).toBe('+1 Street Cred');
   });
-  it('keeps dice results readable while bounding ordinary move pacing', () => {
-    expect(beatDuration(1, { gigRolls: [] })).toBe(950);
-    expect(beatDuration(30, { gigRolls: [] })).toBeLessThan(300);
+  it('paces each move by what it shows and speeds up long sequences without rushing them', () => {
+    const played = { gigRolls: [], changes: [{ kind: 'played' as const, seat: 'rival' as const, label: 'Played' }] };
+    expect(beatDuration(1, { gigRolls: [] })).toBe(700);
+    expect(beatDuration(1, played)).toBeGreaterThan(beatDuration(1, { gigRolls: [] }));
+    expect(beatDuration(1, { gigRolls: [], changes: [{ kind: 'defeated', seat: 'player', label: 'Defeated' }] })).toBeGreaterThanOrEqual(1200);
+    expect(beatDuration(30, played)).toBeLessThan(beatDuration(1, played));
+    expect(beatDuration(30, { gigRolls: [] })).toBeGreaterThanOrEqual(350);
     const roll = { dieId: 'die', dieType: 'd6', result: 3, seat: 'rival', origin: 'gainGig' } as const;
     const ordinary = beatDuration(10, { gigRolls: [roll] });
     expect(ordinary).toBeGreaterThan(1000);

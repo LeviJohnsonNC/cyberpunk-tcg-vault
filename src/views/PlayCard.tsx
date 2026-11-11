@@ -1,11 +1,15 @@
-import { useEffect, useId, useRef } from 'react';
-import { CARD_BACK, CardImg, Pip, Rules } from '../components/bits';
+import { useEffect, useId, useRef, useState } from 'react';
+import { CARD_BACK, Pip, Rules } from '../components/bits';
+import { imageUrl } from '../lib/data';
 import { vaultCard } from '../lib/play/cardDisplay';
 import type { CardView } from '../lib/play/protocol';
 
+/** Table art loads at once: every card on the table is in view, and a late image would fly as a card back. */
 export function CardFace({ card }: { card: CardView }) {
-  const printing = vaultCard(card);
-  return printing ? <CardImg slug={printing.slug} alt="" priority /> : <img className="card-art" src={CARD_BACK} alt="" />;
+  const slug = vaultCard(card)?.slug;
+  const [failed, setFailed] = useState<string>();
+  return slug && failed !== slug ? <img className="card-art" src={imageUrl(slug)} alt="" decoding="async" onError={() => setFailed(slug)} />
+    : <img className="card-art" src={CARD_BACK} alt="" />;
 }
 
 export function CardInspection({ card, hostName, shortcuts, onClose }: {

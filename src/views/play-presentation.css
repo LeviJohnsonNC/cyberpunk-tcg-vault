@@ -1,49 +1,154 @@
-.play-move-receipt { padding: 10px; border: 1px solid var(--play-edge); border-top: 2px solid var(--color-ticket); border-radius: 4px; background: var(--color-surface); }
-.play-move-receipt-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.play-move-receipt .btn { min-height: 28px; padding: 4px 7px; font-size: 11px; }
-.play-receipt-art { display: block; width: min(100%, 130px); margin: 10px auto; }
-.play-receipt-art .card-art { width: 100%; aspect-ratio: 5/7; display: block; object-fit: contain; border-radius: 4px; transform: none; box-shadow: none; }
-.play-move-receipt p { font-size: 12px; line-height: 1.5; margin: 8px 0; overflow-wrap: anywhere; }
-.play-move-receipt p b { color: var(--color-ticket); }
-.play-move-receipt ul { padding: 0; margin: 8px 0 0; list-style: none; display: grid; gap: 4px; }
-.play-move-receipt li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 3px 6px; font-size: 11px; padding: 5px 0; border-top: 1px solid var(--color-divider); }
-.play-move-receipt li > span { color: var(--color-text-muted); }
-.play-move-receipt li strong { color: var(--color-ticket); font-weight: 500; }
-.play-move-receipt li[data-change=defeated] strong { color: var(--color-danger); }
-.play-playback-progress { height: 2px; background: var(--color-divider); margin-top: 9px; }
-.play-playback-progress > span { display: block; height: 100%; background: var(--color-accent); }
-.play-direct .play-card[data-feedback] { border-color: var(--color-ticket); }
-.play-direct .play-card[data-combat-role=attacking] { border-color: var(--color-accent); box-shadow: 0 0 0 1px var(--color-accent); }
-.play-direct .play-card[data-combat-role=defending] { border-color: var(--color-ticket); box-shadow: 0 0 0 1px var(--color-ticket); }
-.play-direct .play-card[data-combat-role] > small { font-size: 9px; max-width: calc(100% - 4px); color: var(--color-ticket); }
-.play-combat-banner { position: relative; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 6px 12px; flex-wrap: wrap; padding: 5px 8px; margin-block: 4px; border: 1px solid var(--color-ticket); border-left: 3px solid var(--color-accent); border-radius: 3px; background: var(--color-surface); }
-.play-combat-banner h3 { display: inline; margin: 0 8px 0 0; color: var(--color-ticket); font: 700 17px/1.15 var(--font-display); }
-.play-combat-banner p { display: inline; margin: 0; color: var(--color-text); font: 500 11px/1.4 var(--font-ui); overflow-wrap: anywhere; }
-.play-combat-banner[data-responding=true] { background: color-mix(in srgb, var(--color-accent) 9%, var(--color-surface)); }
-.play-combat-banner[data-responding=true] h3 { color: var(--color-accent); }
-.play-combat-instruction { flex: 1 1 140px; color: var(--color-text-muted); font: 400 10px/1.4 var(--font-ui); }
-.play-combat-controls { display: flex; flex-wrap: wrap; gap: 5px; }
-.play-combat-controls .btn { min-height: 28px; font-size: 11px; padding: 4px 8px; }
-.play-combat-arrow { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 2; overflow: visible; pointer-events: none; filter: drop-shadow(0 1px 2px var(--color-canvas-deep)); }
-.play-combat-arrow > path { fill: none; stroke: var(--color-accent); stroke-width: 3px; stroke-dasharray: 7 5; opacity: .85; }
+/* What happens on the table: flights between zones, combat, and the caption for each public move. */
+.play-flight-layer { position: absolute; inset: 0; z-index: 44; pointer-events: none; }
+.play-flight { position: absolute; perspective: 900px; filter: drop-shadow(0 14px 12px var(--play-shadow)); will-change: transform; }
+.play-flight-flip { position: absolute; inset: 0; transform-style: preserve-3d; }
+.play-flight-flip > * { backface-visibility: hidden; }
+.play-flight-back { position: absolute; inset: 0; border: 1px solid var(--color-ticket-muted); border-radius: 7px; background: center / cover no-repeat var(--color-canvas-deep); transform: rotateY(180deg); }
+.play-flight .play-card-art { translate: none; rotate: none; scale: none; filter: none; outline-color: transparent; }
+.play-flight .play-card-art > small, .play-flight .play-card-art::after { display: none; }
+.play-flight[data-kind="defeat"]::after {
+  content: '';
+  position: absolute;
+  inset: -14%;
+  background: linear-gradient(118deg, transparent 44%, var(--color-text) 48.5%, var(--color-danger) 51.5%, transparent 56%);
+  opacity: 0;
+  animation: play-slash var(--duration, 900ms) linear var(--delay, 0ms) both;
+}
+@keyframes play-slash {
+  0%, 4% { opacity: 0; transform: translate(-34%, -34%); }
+  9% { opacity: 1; }
+  22% { opacity: 1; transform: none; }
+  34%, 100% { opacity: 0; transform: translate(24%, 24%); }
+}
+.play-table [data-in-flight] { opacity: 0 !important; }
+.play-card-shell:has(> [data-in-flight]) > .play-details, .play-card-shell:has(> [data-in-flight]) > .play-float { opacity: 0; }
+.play-card-shell:has(> [data-striking]) { z-index: 30; }
+
+.play-impact {
+  position: absolute;
+  width: 170px;
+  height: 170px;
+  margin: -85px 0 0 -85px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--color-text) 0 7%, var(--color-ticket) 15%, color-mix(in srgb, var(--color-accent) 80%, transparent) 30%, transparent 62%);
+  animation: play-impact 520ms ease-out both;
+}
+.play-impact::before, .play-impact::after { content: ''; position: absolute; border-radius: 50%; animation: 520ms ease-out both; animation-delay: inherit; animation-duration: inherit; }
+.play-impact::before { inset: 12%; border: 3px solid var(--color-ticket); animation-name: play-impact-ring; }
+.play-impact::after {
+  inset: -18%;
+  background: repeating-conic-gradient(from 8deg, var(--color-text) 0 3deg, transparent 3deg 30deg);
+  mask: radial-gradient(circle, transparent 24%, black 26% 52%, transparent 66%);
+  animation-name: play-impact-rays;
+}
+@keyframes play-impact { 0% { opacity: 0; scale: .2; } 18% { opacity: 1; scale: 1; } 100% { opacity: 0; scale: 1.35; } }
+@keyframes play-impact-ring { 0% { opacity: 0; scale: .3; } 20% { opacity: 1; } 100% { opacity: 0; scale: 1.9; } }
+@keyframes play-impact-rays { 0% { opacity: 0; scale: .35; rotate: 0deg; } 22% { opacity: .95; } 100% { opacity: 0; scale: 1.25; rotate: 16deg; } }
+
+/* Numbers that rise from the card or zone they changed. */
+.play-floats { position: absolute; inset: -12px 0 auto; z-index: 40; display: flex; justify-content: center; gap: 6px; height: 0; pointer-events: none; }
+.play-float {
+  position: absolute;
+  inset: 34% auto auto 50%;
+  z-index: 40;
+  translate: -50% 0;
+  padding: 3px 9px 4px;
+  color: var(--color-ticket-ink);
+  background: var(--color-ticket);
+  font: 800 20px/1 var(--font-display);
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: play-float 1.7s ease-out both;
+}
+.play-floats .play-float { position: static; translate: none; }
+.play-float[data-tone="down"] { color: var(--color-accent-ink); background: var(--color-danger); }
+@keyframes play-float {
+  0% { opacity: 0; transform: translateY(10px) scale(.7); }
+  12% { opacity: 1; transform: translateY(-5px) scale(1.12); }
+  22% { transform: translateY(-7px) scale(1); }
+  78% { opacity: 1; transform: translateY(-14px); }
+  100% { opacity: 0; transform: translateY(-34px); visibility: hidden; }
+}
+@keyframes play-float-still { to { visibility: hidden; } }
+
+.play-turn-banner {
+  position: absolute;
+  z-index: 45;
+  inset: 70% 0 auto;
+  translate: 0 -50%;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 12px 0 16px;
+  color: var(--color-ticket-ink);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-ticket) 94%, transparent) 20% 80%, transparent);
+  pointer-events: none;
+  animation: play-turn-banner 1.3s cubic-bezier(.2, .8, .2, 1) both;
+}
+.play-turn-banner[data-seat="rival"] { inset-block-start: 31%; padding-block: 7px 10px; color: var(--color-accent-ink); background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-accent) 92%, transparent) 26% 74%, transparent); animation-duration: 1s; }
+.play-turn-banner span { font: 500 11px/1.2 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; }
+.play-turn-banner strong { font: italic 800 clamp(46px, 6.2vw, 92px)/.88 var(--font-display); text-transform: uppercase; transform: skewX(-4deg); }
+.play-turn-banner[data-seat="rival"] strong { font-size: clamp(30px, 3.6vw, 52px); }
+@keyframes play-turn-banner {
+  0% { opacity: 0; clip-path: inset(0 100% 0 0); }
+  20%, 70% { opacity: 1; clip-path: inset(0); }
+  100% { opacity: 0; clip-path: inset(0 0 0 100%); visibility: hidden; }
+}
+
+/* Combat, stated in the command bar and drawn across the table. */
+.play-combat-banner { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px var(--space-3); }
+.play-versus { flex: none; display: flex; align-items: center; gap: 8px; padding-inline-end: var(--space-3); border-inline-end: 1px solid var(--color-divider); }
+.play-versus-side { display: flex; align-items: center; gap: 7px; }
+.play-mode .play-versus .card-art { display: block; width: 28px; aspect-ratio: 5/7; object-fit: contain; border: 0; border-radius: 3px; box-shadow: none; transform: none; }
+.play-versus-side b { min-width: 1ch; color: var(--color-ticket); font: 800 36px/1 var(--font-display); font-variant-numeric: tabular-nums; text-align: center; }
+.play-versus-side[data-role="attacker"] b { color: var(--color-accent); }
+.play-versus i { color: var(--color-text-faint); font: italic 800 14px/1 var(--font-display); text-transform: uppercase; }
+.play-versus em { color: var(--color-ticket); font: 800 17px/1 var(--font-display); font-style: normal; text-transform: uppercase; white-space: nowrap; }
+.play-combat-copy { min-width: 0; }
+.play-combat-copy h3 { margin: 0; color: var(--color-ticket); font: 800 19px/1 var(--font-display); text-transform: uppercase; white-space: nowrap; }
+.play-combat-banner[data-responding="true"] .play-combat-copy h3 { color: var(--color-accent); }
+.play-combat-copy p { margin: 2px 0 0; font: 500 12px/1.3 var(--font-ui); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.play-combat-instruction { flex: 1 1 120px; min-width: 0; color: var(--color-text-muted); font: 400 12px/1.35 var(--font-ui); }
+.play-combat-controls { display: flex; flex-wrap: wrap; gap: 6px; margin-inline-start: auto; }
+.play-command .play-combat-controls .btn { min-height: 38px; padding-inline: 16px; font-size: 13px; }
+.play-combat-arrow { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 2; overflow: visible; pointer-events: none; }
+.play-combat-glow { fill: none; stroke: var(--color-accent); stroke-width: 13px; stroke-linecap: round; opacity: .2; }
+.play-combat-beam { fill: none; stroke: var(--color-accent); stroke-width: 4px; stroke-linecap: round; stroke-dasharray: 14 9; }
 .play-combat-arrow marker path { fill: var(--color-accent); }
 .play-combat-arrow circle { fill: var(--color-ticket); stroke: var(--color-canvas-deep); stroke-width: 2px; }
+.play-table[data-combat="true"] .play-card:not([data-combat-role], [data-target="true"]) .play-card-art { filter: brightness(.78); }
+
+/* The rolling die crosses the command bar; keep it above the bar and hold the result until it lands. */
+.play-table > .play-gig-roll-layer { z-index: 42; }
+.play-grid:has(.play-gig-roll[data-phase="air"]) .play-gigs .play-floats { display: none; }
+
+/* One line for the move being shown. */
+.play-move-receipt { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-3); }
+.play-move-receipt p { flex: 0 1 auto; min-width: 0; margin: 0; font-size: 14px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.play-move-receipt p b { margin-inline-end: 4px; color: var(--color-accent); font: 800 17px/1 var(--font-display); text-transform: uppercase; }
+.play-move-receipt[data-seat="player"] p b { color: var(--color-ticket); }
+.play-move-receipt ul { flex: 1 1 0; display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; max-height: 24px; margin: 0; padding: 0; overflow: hidden; list-style: none; }
+.play-move-receipt li { display: flex; gap: 5px; padding: 3px 7px; border: 1px solid var(--color-divider); border-radius: 3px; font: 500 11px/1.4 var(--font-mono); white-space: nowrap; }
+.play-move-receipt li > span { color: var(--color-text-muted); }
+.play-move-receipt li strong { color: var(--color-ticket); font-weight: 500; }
+.play-move-receipt li[data-change="defeated"] strong { color: var(--color-danger); }
+.play-playback { flex: none; display: flex; align-items: center; gap: var(--space-2); margin-inline-start: auto; }
+.play-playback-progress { width: 84px; height: 3px; background: var(--color-divider); }
+.play-playback-progress > span { display: block; height: 100%; background: var(--color-accent); }
+
 @media (prefers-reduced-motion: no-preference) {
-  .play-direct .play-card[data-feedback] { animation: play-result-pulse 650ms ease-out; }
-  @keyframes play-result-pulse { 30% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-ticket) 45%, transparent); } }
+  .play-card[data-feedback] .play-card-art { animation: play-result-pulse 700ms ease-out; }
+  @keyframes play-result-pulse { 30% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-ticket) 55%, transparent), 0 0 24px var(--color-ticket); } }
+  .play-combat-beam { animation: play-beam 620ms linear infinite; }
+  @keyframes play-beam { to { stroke-dashoffset: -23; } }
+  .play-result { animation: play-result-in 520ms cubic-bezier(.2, .8, .2, 1) both; }
+  .play-result h2 { animation: play-result-title 700ms cubic-bezier(.2, .9, .2, 1) 120ms both; }
+  @keyframes play-result-in { from { opacity: 0; } }
+  @keyframes play-result-title { from { opacity: 0; transform: skewX(-4deg) scale(1.5); } }
+  .play-playback-progress > span { transition: width 300ms ease; }
 }
-.play-direct[data-playback=true] .play-card:disabled { opacity: 1; cursor: default; }
-
-.play-direct .play-gig-zones { position: relative; z-index: 3; }
-.play-direct .play-card-shell:has([data-combat-role]) { z-index: 3; }
-
-.play-direct .play-card[data-effect-source=true] { border-color: var(--color-accent); }
-.play-direct .play-card[data-effect-target=true], .play-direct .play-die[data-result=true] { border-color: var(--color-ticket); box-shadow: 0 0 0 1px var(--color-ticket); opacity: 1; }
-
-.play-move-receipt ul { max-height: 210px; overflow: auto; scrollbar-width: thin; }
-.play-private-peek { padding: 10px; border: 1px dashed var(--color-accent); border-radius: 4px; background: var(--color-surface); }
-.play-private-peek h3 { margin: 0; color: var(--color-accent); font: 700 19px/1.2 var(--font-display); }
-.play-private-peek p { font-size: 11px; color: var(--color-text-muted); margin: 4px 0 8px; }
-.play-private-peek .btn { display: flex; gap: 8px; align-items: center; width: 100%; text-align: left; white-space: normal; font-size: 11px; }
-.play-private-peek .card-art { width: 48px; aspect-ratio: 5/7; object-fit: contain; border-radius: 3px; box-shadow: none; transform: none; }
-.play-private-peek strong, .play-private-peek small { display: block; margin-top: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  .play-float { animation: play-float-still 1.7s steps(1, end) both; }
+  .play-turn-banner { display: none; }
+}
