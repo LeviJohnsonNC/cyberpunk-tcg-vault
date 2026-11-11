@@ -380,7 +380,6 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
         overlay={dropZones.has('program') && <div className="play-program-drop" data-drop-zone="program" data-drop-available="true" data-drop-over={dropOver === 'program'}>Play Program</div>} />
       <PlayerBench rolls={rolls} active={playing && yourTurn} {...targeting} renderCard={renderCard} renderFace={face}>
         <section className="play-hand" data-zone="hand:player" aria-label="Your hand">
-          <h2 className="play-zone-label">Your hand <b>{hand.length}</b></h2>
           <div className="play-card-row">{hand.length ? hand.map((card, index) => renderCard(card, undefined, { index, count: hand.length })) : <span className="play-empty">No cards in hand</span>}</div>
         </section>
       </PlayerBench>

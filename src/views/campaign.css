@@ -1,4 +1,6 @@
 .play-mode-tabs { display: flex; gap: 8px; max-width: 1500px; margin: 10px auto; padding: 0 18px; position: relative; z-index: 10; }
+/* The table has its own controls. Keep the mode switch in the lobby. */
+.play-mode-tabs:has(+ .play-mode > .play-table) { display: none; }
 .play-mode-tabs .btn { background: var(--color-surface); color: var(--color-text-muted); border: 1px solid var(--color-divider); }
 .play-mode-tabs .btn[aria-current] { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-accent-ink); }
 .play-mode-explainer { align-self: center; margin-left: 10px; color: var(--color-text-muted); font-size: 12px; }

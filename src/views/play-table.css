@@ -290,7 +290,7 @@
   background: var(--play-scrim);
 }
 .play-gigs[data-seat="rival"] { border-block-start-color: var(--color-accent); }
-.play-gig-count { flex: none; display: flex; align-items: baseline; gap: 7px; margin: 0; }
+.play-gig-count { flex: none; display: flex; align-items: center; gap: 7px; margin: 0; }
 .play-gig-count span { color: var(--color-ticket); font: 800 clamp(22px, calc(var(--play-die) * .72), 34px)/1 var(--font-display); font-variant-numeric: tabular-nums; }
 .play-gigs[data-seat="rival"] .play-gig-count span { color: var(--color-accent); }
 .play-gigs .play-dice { flex: 1; min-width: 0; }
@@ -349,7 +349,6 @@
 
 /* ---------- the hand ---------- */
 .play-hand { position: relative; align-self: end; min-width: 0; }
-.play-hand > .play-zone-label { position: absolute; inset: 0 auto auto 8px; }
 .play-hand .play-card-row { align-items: flex-end; min-height: calc(var(--play-hand-width) * 1.4 + 6px); padding: calc(var(--play-hand-width) * .14) 6px 0; }
 .play-hand .play-empty { align-self: center; }
 .play-hand .play-card-shell {
