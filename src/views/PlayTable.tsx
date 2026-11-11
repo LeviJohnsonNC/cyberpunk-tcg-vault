@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { isReady, matchActions, type Picks } from '../lib/play/matchActions';
 import { activeStep, cardIntents, dropIntents, intentLabel, reorderPick, updatePick, type Destination, type Intent } from '../lib/play/matchInteraction';
 import { visibleCards, zoneCards } from '../lib/play/matchView';
-import type { CardView, MatchSnapshot, Move, Seat } from '../lib/play/protocol';
+import type { CardView, MatchBeat, MatchSnapshot, Move, Seat } from '../lib/play/protocol';
 import { CardFace, CardInspection } from './PlayCard';
 import { vaultCard } from '../lib/play/cardDisplay';
 import { GigRollDisplay } from './PlayDice';
@@ -11,7 +11,10 @@ import { GigZones, PlayMat } from './PlayMat';
 import { PlayChoices } from './PlayChoices';
 import { useTableDrag } from './useTableDrag';
 import { Rules } from '../components/bits';
+import { CombatArrow, CombatBanner } from './PlayCombat';
+import { PlayPresentation, type MatchPlayback } from './PlayPresentation';
 import './play-interaction.css';
+import './play-presentation.css';
 
 const combatSteps: Record<string, string> = { attack: 'Attack', react: 'React', fight: 'Fight', fightResult: 'Fight result', steal: 'Steal' };
 const winReasons: Record<string, string> = { gig_victory: 'Seven Gigs secured', overtime_majority: 'Majority of Gigs in overtime', deck_out_victory: 'Deck-out', concede: 'Concession', concession: 'Concession' };
@@ -50,8 +53,8 @@ function ContextMenu({ context, children, close }: { context: Context; children:
   </div>, document.body);
 }
 
-export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, edit }: {
-  scope: string; snapshot: MatchSnapshot; names: Record<Seat, string>; busy: boolean; error?: string;
+export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, edit, playback, feedback }: {
+  playback?: MatchPlayback; feedback?: MatchBeat; scope: string; snapshot: MatchSnapshot; names: Record<Seat, string>; busy: boolean; error?: string;
   send: (move: Move) => void; rematch: () => void; edit: () => void;
 }) {
   const { view } = snapshot;
@@ -98,7 +101,7 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
   const defender = cards.find((card) => card.instanceId === combat?.defenderId);
   const attackingPlayer = zoneCards(view.players.player, 'field').some((card) => card.instanceId === combat?.attackerId);
   const combatCaption = attacker?.cardName && `${attacker.cardName} attacks ${defender?.cardName ?? (attackingPlayer ? 'the rival’s Gigs' : 'your Gigs')}.`;
-  const decisionTitle = view.gameEnded ? view.winnerId === 'player' ? 'You win' : view.winnerId === 'rival' ? 'Rival wins' : 'Match complete'
+  const decisionTitle = playback ? 'Watching moves' : view.gameEnded ? view.winnerId === 'player' ? 'You win' : view.winnerId === 'rival' ? 'Rival wins' : 'Match complete'
     : waiting ? 'Rival is deciding' : choice?.type === 'chooseFirstPlayer' ? 'Choose turn order'
     : view.gamePhase === 'setup' ? 'Opening hand' : choice ? actions[0]?.label ?? 'Resolve a choice'
     : combatStep === 'React' ? 'Reaction window' : combatStep ?? 'Your move';
@@ -198,29 +201,32 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
   function renderCard(card: CardView, fallback = 'Face-down card') {
     const printing = vaultCard(card);
     const name = printing?.name ?? card.cardName ?? fallback;
-    const target = targetIds.has(card.instanceId);
+    const target = !busy && targetIds.has(card.instanceId);
     const dragLegal = !selected && canDrag(card) && !busy;
     const dropLegal = drag && dropIntents(actions, drag.card, { key: card.instanceId === combat?.attackerId ? 'attacker' : 'card', cardId: card.instanceId }).length > 0;
     const unavailable = view.gamePhase === 'main' && handIds.has(card.instanceId) && view.prompt.status === 'action'
       && !actions.some((action) => action.id === 'playCard' && action.fields({})[0]?.options.some((option) => option.cardId === card.instanceId)) && !target;
     const combatRole = combat?.attackerId === card.instanceId ? 'Attacking' : combat?.defenderId === card.instanceId ? 'Defending' : undefined;
-    const state = [combatRole, card.spent && 'Spent', card.hasLag && 'Lag', snapshot.knownLegends.some((legend) => legend.instanceId === card.instanceId) && 'Known', !!card.damage && `${card.damage} dmg`].filter(Boolean).join(' · ');
+    const effectTarget = playback?.beat.targetIds.includes(card.instanceId);
+    const effectSource = playback?.beat.source?.instanceId === card.instanceId;
+    const visibleRole = combatRole ?? (effectTarget ? 'Target' : effectSource ? 'Source' : undefined);
+    const state = [visibleRole, card.spent && 'Spent', card.hasLag && 'Lag', snapshot.knownLegends.some((legend) => legend.instanceId === card.instanceId) && 'Known', !!card.damage && `${card.damage} dmg`].filter(Boolean).join(' · ');
     const power = card.zone === 'field' && card.type !== 'gear' ? card.effectivePower : undefined;
     return <div key={card.instanceId} className="play-card-shell" data-dragging={drag?.card.instanceId === card.instanceId}>
-      <button type="button" className="play-card" data-card-id={card.instanceId} data-board-card={card.instanceId}
+      <button type="button" className="play-card" disabled={!!playback} data-card-id={card.instanceId} data-board-card={card.instanceId}
         data-drop-zone={card.instanceId === combat?.attackerId ? 'attacker' : undefined} data-drop-available={!!dropLegal} data-drop-over={drag?.destination?.cardId === card.instanceId}
-        data-source={!!selected && sourceId === card.instanceId} data-target={target} data-unplayable={unavailable || undefined} data-spent={card.spent} data-combat={!!combatRole} data-color={printing?.color} data-draggable={dragLegal}
+        data-source={!!selected && sourceId === card.instanceId} data-target={target} data-unplayable={unavailable || undefined} data-spent={card.spent} data-combat={!!combatRole} data-combat-role={combatRole?.toLowerCase()} data-effect-target={effectTarget || undefined} data-effect-source={effectSource || undefined} data-feedback={feedback?.changes.find((change) => change.card?.instanceId === card.instanceId)?.kind} data-color={printing?.color} data-draggable={dragLegal}
         aria-pressed={target ? chosenIds.has(card.instanceId) : undefined} aria-label={[name, state, power != null && `power ${power}`, target && 'selectable'].filter(Boolean).join(', ')}
         onPointerDown={(event) => dragControl.start(event, card)} onDragStart={(event) => event.preventDefault()}
         onMouseEnter={(event) => enterCard(card, event.currentTarget)} onMouseLeave={clearHover}
-        onKeyDown={(event) => { if (event.key.toLowerCase() === 'i') { event.preventDefault(); inspect(card, event.currentTarget); } }}
-        onClick={(event) => { if (dragControl.suppressClick()) return; if (!pickOnBoard(card.instanceId)) { if (event.currentTarget.closest('dialog')) inspect(card, event.currentTarget); else showMenu(card, event.currentTarget); } }}>
+        onKeyDown={(event) => { if (!playback && event.key.toLowerCase() === 'i') { event.preventDefault(); inspect(card, event.currentTarget); } }}
+        onClick={(event) => { if (playback || dragControl.suppressClick()) return; if (!pickOnBoard(card.instanceId)) { if (event.currentTarget.closest('dialog')) inspect(card, event.currentTarget); else showMenu(card, event.currentTarget); } }}>
         <span className="play-card-art"><CardFace card={card} />
           {printing && <span className="play-art-fallback" aria-hidden="true">{printing.type}</span>}
           {power != null && <span className="play-power" aria-hidden="true">{power}</span>}
-        </span><span className="play-card-name">{name}</span>{state && <small>{combatRole ?? state}</small>}
+        </span><span className="play-card-name">{name}</span>{state && <small>{visibleRole ?? state}</small>}
       </button>
-      <button type="button" className="play-details" aria-label={`Details for ${name}`} title="Inspect card · I" onClick={(event) => inspect(card, event.currentTarget)}>i</button>
+      <button type="button" className="play-details" disabled={!!playback} aria-label={`Details for ${name}`} title="Inspect card · I" onClick={(event) => inspect(card, event.currentTarget)}>i</button>
     </div>;
   }
   function actionButton(index: number, label?: string) {
@@ -231,23 +237,34 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
   const special = actions.map((action, index) => ({ action, index })).filter(({ action }) => !action.fields({}).length);
   const log = snapshot.log;
   const latest = log.at(-1);
-  const targeting = { snapshot, onPick: pickOnBoard, targetIds, chosenIds, dropZones, dropOver };
+  const targeting = { snapshot, onPick: pickOnBoard, targetIds: busy ? new Set<string>() : targetIds, chosenIds, effectIds: new Set(playback?.beat.targetIds ?? []), dropZones, dropOver };
   const shownArrow = drag?.destination && (drag.destination.cardId || drag.destination.key === 'gigs:rival')
     ? { x1: drag.originX, y1: drag.originY, x2: drag.x, y2: drag.y } : arrow?.state === stateKey && !drag ? arrow : undefined;
-  return <div ref={grid} className="play-grid play-direct" data-match-id={snapshot.matchId} data-state-id={view.stateID} data-busy={busy}
+  return <div ref={grid} className="play-grid play-direct" data-match-id={snapshot.matchId} data-state-id={view.stateID} data-busy={busy} data-playback={!!playback}
     onKeyDown={(event) => { if (event.key === 'Escape' && !drag && !inspected && !menu) { setChoice(choice ? defaultSelection : undefined, {}); clearHover(); } }}>
     <aside className="play-rail" aria-label="Match controls">
       <section className="panel play-decision" aria-label="Current decision" data-result={view.gameEnded ? view.winnerId ?? 'draw' : undefined}>
-        <div className="play-decision-heading"><span className="play-eyebrow">{view.gameEnded ? 'Match report' : busy ? 'Resolving move' : waiting ? 'Rival decision' : 'Practice table'}</span>
-          <h2 aria-live="polite">{decisionTitle}</h2><p className="play-combat-caption">{combatCaption ?? (view.gameEnded ? winReasons[view.winReason ?? ''] ?? 'Match ended' : choice || selected ? 'Follow the decision on the mat.' : 'Select a card to act. Drag it to a highlighted destination.')}</p></div>
+        <div className="play-decision-heading"><span className="play-eyebrow">{playback ? 'Public moves' : view.gameEnded ? 'Match report' : busy ? 'Resolving move' : waiting ? 'Rival decision' : 'Practice table'}</span>
+          <h2 aria-live="polite">{decisionTitle}</h2><p className="play-combat-caption">{playback ? 'The table is showing public moves. Skip to the next decision when ready.' : combatCaption ?? (view.gameEnded ? winReasons[view.winReason ?? ''] ?? 'Match ended' : choice || selected ? 'Follow the decision on the mat.' : 'Select a card to act. Drag it to a highlighted destination.')}</p></div>
         {error && <p className="play-error" role="alert">{error}</p>}
         {view.gameEnded ? <><dl className="play-result-score"><div><dt>Your Gigs</dt><dd>{view.players.player.gigCount}</dd></div><div><dt>Rival Gigs</dt><dd>{view.players.rival.gigCount}</dd></div></dl>
           <div className="play-actions"><button type="button" className="btn" disabled={busy} onClick={rematch}>Rematch</button><button type="button" className="btn quiet" disabled={busy} onClick={edit}>Edit draft</button></div></>
-          : <><div className="play-actions">{special.filter(({ action }) => !choice && ['passPhase', 'resolveAttack'].includes(action.id)).map(({ index }) => actionButton(index))}</div>
-            <button type="button" className="btn quiet play-all-toggle" aria-expanded={allActions} onClick={() => setAllActions(!allActions)}>Show {allActions ? 'fewer' : 'all'} actions</button>
+          : <><div className="play-actions">{special.filter(({ action }) => !choice && ['passPhase', 'resolveAttack'].includes(action.id) && !(combat && action.id === 'resolveAttack')).map(({ index }) => actionButton(index))}</div>
+            <button type="button" className="btn quiet play-all-toggle" aria-expanded={allActions} disabled={!!playback} onClick={() => setAllActions(!allActions)}>Show {allActions ? 'fewer' : 'all'} actions</button>
             {allActions && <div className="play-actions play-moves">{actions.map((_, index) => actionButton(index))}</div>}
-            <p className="play-controls-hint">Click to select · Drag to act<br />I to inspect · Esc to cancel selection</p></>}
+            {!playback && <p className="play-controls-hint">Click to select · Drag to act<br />I to inspect · Esc to cancel selection</p>}</>}
       </section>
+      <PlayPresentation playback={playback} feedback={feedback} />
+      {!playback && snapshot.peeks.length > 0 && <section className="play-private-peek" aria-label="Private Legend peek">
+        <h3>Private Legend peek</h3><p>Only you can see this identity.</p>
+        {snapshot.peeks.map((card) => {
+          const owner = (['player', 'rival'] as const).find((seat) => zoneCards(view.players[seat], 'legendArea').some((slot) => slot.instanceId === card.instanceId));
+          const slot = owner ? zoneCards(view.players[owner], 'legendArea').findIndex((item) => item.instanceId === card.instanceId) + 1 : undefined;
+          return <button key={card.instanceId} type="button" className="btn quiet" onClick={(event) => inspect(card, event.currentTarget)}>
+            <CardFace card={card} /><span>{owner ? `${owner === 'player' ? 'Your' : 'Rival'} slot ${slot}` : 'Revealed Legend'}<strong>{card.cardName}</strong><small>Inspect</small></span>
+          </button>;
+        })}
+      </section>}
       <section className="panel play-log" aria-label="Match activity"><div className="play-log-heading"><h3>Last move</h3></div>
         {latest ? <><p className="play-latest"><b>{latest.seat === 'player' ? 'You' : 'Rival'}</b>{latest.text}</p><details className="play-history"><summary>Action log <span>{log.length}</span></summary>
           <ol>{log.slice().reverse().map((entry) => <li key={entry.id}><small>T{entry.turn} · {entry.seat === 'player' ? 'You' : 'Rival'}</small><span>{entry.text}</span></li>)}</ol></details></> : <p className="play-empty">Match events appear here.</p>}
@@ -256,8 +273,8 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
     <div className="play-table"><GigRollDisplay rolls={snapshot.gigRolls} stateID={view.stateID} />
       <PlayMat seat="rival" name={names.rival} active={view.activePlayerId === 'rival' && view.gamePhase !== 'setup' && !view.gameEnded} {...targeting} renderCard={renderCard} renderFace={(card) => <CardFace card={card} />} />
       <GigZones {...targeting} />
-      <div className="play-table-strip" tabIndex={-1} data-combat={!!combat}><span>{view.gamePhase === 'setup' ? 'Opening setup' : `Turn ${view.turnNumber} · ${view.activePlayerId === 'player' ? 'Your turn' : 'Rival turn'}`}</span><span>{combatStep ?? (view.overtimeActive ? 'Overtime' : 'Best of one')}</span></div>
-      {!view.gameEnded && view.gamePhase !== 'setup' && (selected || choice) && <div className="play-table-decision" key={stateKey}>
+      {combat ? <CombatBanner view={view} watching={!!playback} controls={<>{playback && <button type="button" className="btn quiet" onClick={playback.skip}>Skip moves</button>}{special.filter(({ action }) => action.id === 'resolveAttack').map(({ index }) => actionButton(index))}</>} /> : <div className="play-table-strip" tabIndex={-1} data-combat={!!combat}><span>{view.gamePhase === 'setup' ? 'Opening setup' : `Turn ${view.turnNumber} · ${view.activePlayerId === 'player' ? 'Your turn' : 'Rival turn'}`}</span><span>{playback ? `Watching move ${playback.index + 1}/${playback.count}` : combatStep ?? (view.overtimeActive ? 'Overtime' : 'Best of one')}</span></div>}
+      {!playback && !view.gameEnded && view.gamePhase !== 'setup' && (selected || choice) && <div className="play-table-decision" key={stateKey}>
         {selected ? <PlayChoices action={selected} picks={picks} fields={fields} active={step} cards={cards} busy={busy} forced={!!choice} revealed={reveal?.revealedCards} select={chooseValue}
           step={(id) => setChoice(selection, picks, id)} reorder={(field, ids) => { const next = reorderPick(selected, picks, field, ids); if (next) setChoice(selection, next, field); }}
           submit={() => selection !== undefined && commit({ action: selection, picks })}
@@ -265,7 +282,7 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
           inspect={inspect} alternatives={choice ? special.map(({ index }) => actionButton(index)) : null} />
           : <div className="play-opening-choices"><h3>{decisionTitle}</h3>{actions.map((_, index) => actionButton(index))}</div>}
       </div>}
-      <PlayMat seat="player" fieldControls={view.gamePhase === 'setup' ? <div className="play-opening-choices"><h3>{decisionTitle}</h3>{actions.map((_, index) => actionButton(index))}</div> : undefined} name={names.player} active={view.activePlayerId === 'player' && view.gamePhase !== 'setup' && !view.gameEnded} {...targeting} renderCard={renderCard} renderFace={(card) => <CardFace card={card} />} />
+      <PlayMat seat="player" fieldControls={!playback && view.gamePhase === 'setup' ? <div className="play-opening-choices"><h3>{decisionTitle}</h3>{actions.map((_, index) => actionButton(index))}</div> : undefined} name={names.player} active={view.activePlayerId === 'player' && view.gamePhase !== 'setup' && !view.gameEnded} {...targeting} renderCard={renderCard} renderFace={(card) => <CardFace card={card} />} />
       {(dropZones.has('program')) && <div className="play-program-drop" data-drop-zone="program" data-drop-available="true" data-drop-over={dropOver === 'program'}>Play Program</div>}
       <section className="play-hand" aria-label="Your hand"><div className="play-hand-heading"><h2 className="play-eyebrow">Your hand <span>{hand.length}</span></h2><span className="play-eyebrow">Private</span></div>
         <div className="play-card-row">{hand.length ? hand.map((card) => renderCard(card)) : <span className="play-empty">No cards in hand</span>}</div></section>
@@ -279,6 +296,7 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
       <button type="button" className="btn quiet" onClick={() => inspect(menu.card, menu.trigger)}>Details</button></ContextMenu>}
     {hovered && !drag && !menu && !inspected && createPortal(<div className="play-hover-preview" style={{ left: hovered.x, top: hovered.y }} aria-hidden="true"><CardFace card={hovered.card} /><strong>{hovered.card.cardName ?? 'Concealed card'}</strong></div>, document.body)}
     {drag && createPortal(<div className="play-drag-ghost" style={{ left: drag.x + 12, top: drag.y - 35, width: Math.max(65, Math.min(drag.width, 110)) }} aria-hidden="true"><CardFace card={drag.card} /><span>{drag.destination ? 'Release to choose this action' : 'Choose a highlighted destination'}</span></div>, document.body)}
+    {combat && <CombatArrow view={view} root={grid} />}
     {shownArrow && createPortal(<svg className="play-target-arrow" aria-hidden="true"><defs><marker id="play-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 6 3 0 6" /></marker></defs><path d={`M${shownArrow.x1} ${shownArrow.y1} Q${shownArrow.x1} ${shownArrow.y2} ${shownArrow.x2} ${shownArrow.y2}`} markerEnd="url(#play-arrowhead)" /></svg>, document.body)}
     {inspected && <CardInspection card={inspected} hostName={cards.find((card) => card.instanceId === inspected.attachedToId)?.cardName ?? undefined} shortcuts={[]} onClose={() => { setInspection(undefined); focusReturn.current?.focus({ preventScroll: true }); }} />}
   </div>;
