@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
 import { CARD_BACK } from '../components/bits';
 import { planMotion } from '../lib/play/matchMotion';
 import type { MatchBeat, PlayerView } from '../lib/play/protocol';
+import type { TableCue } from '../lib/play/tableSound';
 
 /** Position of a table piece, relative to the table. */
 interface Spot { x: number; y: number; w: number; h: number }
@@ -26,7 +27,9 @@ function clone(el: HTMLElement, spot: Spot) {
  */
 export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
   key: string; view: PlayerView; beat?: MatchBeat; enabled: boolean; pace: number; deal: boolean;
+  sound?: (cue: TableCue, delayMs?: number) => (() => void) | undefined;
 }) {
+  const sounds = useRef<(() => void)[]>([]);
   const pieces = useRef<Map<string, Piece> | undefined>(undefined);
   const lastView = useRef<PlayerView | undefined>(undefined);
   const running = useRef<Set<() => void>>(new Set());
@@ -46,6 +49,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
   useEffect(() => () => {
     for (const finish of [...running.current]) finish();
     // Leave nothing behind, so a remount (or development's repeated mount) starts from a fresh table.
+    for (const stop of sounds.current.splice(0)) stop();
     played.current = undefined; pieces.current = undefined; lastView.current = undefined;
   }, []);
 
@@ -55,7 +59,9 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
     if (!table || played.current === live.current.key) return;
     played.current = live.current.key;
     for (const finish of [...running.current]) finish();
-    const { view, beat, enabled, pace, deal } = live.current;
+    // Sounds queued for motion that was just cut short would arrive late and out of place.
+    for (const stop of sounds.current.splice(0)) stop();
+    const { view, beat, enabled, pace, deal, sound } = live.current;
     const before = pieces.current, previousView = lastView.current;
     const next = measure(table);
     pieces.current = next;
@@ -79,8 +85,18 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       void Promise.all(animations.map((animation) => animation.finished)).then(finish, () => undefined);
     };
     const time = (ms: number) => Math.round(ms * pace);
+    const heard = new Map<TableCue, number>();
+    // A sound marks a moment on the table. Repeats of one cue in a frame are capped so a full deal doesn't clatter.
+    const say = (cue: TableCue, delay: number) => {
+      const count = heard.get(cue) ?? 0;
+      if (count >= (cue === 'draw' ? 4 : 2)) return;
+      heard.set(cue, count + 1);
+      const stop = sound?.(cue, delay);
+      if (stop) sounds.current.push(stop);
+    };
 
-    function fly(piece: Piece, from: Spot, options: { delay?: number; faceDown?: boolean; showcase?: boolean; duration?: number } = {}) {
+    function fly(piece: Piece, from: Spot, options: { delay?: number; faceDown?: boolean; showcase?: boolean; duration?: number; cue?: TableCue } = {}) {
+      if (options.cue) say(options.cue, (options.delay ?? 0) + (options.cue === 'draw' ? 0 : time(options.showcase ? 1080 : (options.duration ?? 420) * .8)));
       const to = piece.spot;
       const wrap = document.createElement('div');
       wrap.className = 'play-flight';
@@ -120,6 +136,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
     }
 
     function leave(piece: Piece, to: Spot | undefined, options: { defeated: boolean; delay: number }) {
+      if (options.defeated) say('defeat', options.delay + time(140));
       const from = piece.spot;
       const wrap = document.createElement('div');
       wrap.className = 'play-flight';
@@ -147,7 +164,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       if (deal) {
         const deck = anchor('deck:player');
         let dealt = 0;
-        for (const piece of next.values()) if (deck && piece.zone === 'hand:player') fly(piece, deck, { delay: 120 + 90 * dealt++, faceDown: true, duration: 460 });
+        for (const piece of next.values()) if (deck && piece.zone === 'hand:player') fly(piece, deck, { delay: 120 + 90 * dealt++, faceDown: true, duration: 460, cue: 'draw' });
       }
       return;
     }
@@ -173,7 +190,9 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       if (earlier) {
         const moved = Math.hypot(earlier.spot.x - piece.spot.x, earlier.spot.y - piece.spot.y);
         if (earlier.zone !== piece.zone || earlier.el !== piece.el) {
-          if (moved > 3) fly(piece, earlier.spot, { delay: id === strike?.attackerId ? impact : 0 });
+          const arriving = piece.zone.split(':')[0];
+          if (moved > 3) fly(piece, earlier.spot, { delay: id === strike?.attackerId ? impact : 0,
+            cue: arriving === 'eddies' ? 'eddie' : arriving === 'gigs' ? 'gig' : earlier.zone === 'hand:player' ? 'play' : undefined });
         } else if (moved > 3 && id !== strike?.attackerId) {
           const animation = piece.el.animate([{ transform: `translate(${earlier.spot.x - piece.spot.x}px, ${earlier.spot.y - piece.spot.y}px)` }, { transform: 'none' }],
             { duration: time(280), easing: EASE });
@@ -184,7 +203,8 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       if (id.startsWith('pool:')) continue;
       const [kind, seat] = piece.zone.split(':');
       const from = kind === 'hand' ? anchor('deck:player') : seat === 'rival' && ['field', 'resolving', 'eddies'].includes(kind) ? anchor('hand:rival') : undefined;
-      if (from) fly(piece, from, { delay: 70 * entered++, faceDown: kind !== 'eddies', showcase: plan.showcase.includes(id) });
+      if (from) fly(piece, from, { delay: 70 * entered++, faceDown: kind !== 'eddies', showcase: plan.showcase.includes(id),
+        cue: kind === 'hand' ? 'draw' : kind === 'eddies' ? 'eddie' : 'play' });
       else track([piece.el.animate([{ transform: 'scale(.6)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: time(260), easing: EASE })], () => undefined);
     }
 
@@ -208,6 +228,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
         track([lunge], () => { delete body.dataset.striking; });
       }
       const burst = document.createElement('div');
+      say('hit', impact);
       burst.className = 'play-impact';
       burst.style.cssText = `left:${struck.x}px;top:${struck.y}px;animation-delay:${impact}ms;animation-duration:${time(520)}ms;`;
       layer.append(burst);

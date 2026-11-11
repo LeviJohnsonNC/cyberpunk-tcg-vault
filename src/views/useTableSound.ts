@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { renderCue, type TableCue } from '../lib/play/tableSound';
 
+// The key predates the wider table sounds. Keeping it preserves each player's choice.
 const preference = 'cptv.play.dice-sound.v1';
 
-export function useDiceSound() {
+/** Table sound: dice impacts plus short cues for cards, Eddies, combat and the match result. Off until the player turns it on. */
+export function useTableSound() {
   const [enabled, setEnabled] = useState(() => {
     try { return localStorage.getItem(preference) === 'on'; } catch { return false; }
   });
   const active = useRef(enabled);
   const audio = useRef<AudioContext | null>(null);
+  const buffers = useRef(new Map<TableCue, AudioBuffer>());
 
   function unlock() {
     if (!active.current || typeof AudioContext === 'undefined') return;
@@ -55,11 +59,35 @@ export function useDiceSound() {
     };
   }, []);
 
+  /** Plays a cue now or after a delay. Returns a way to call it off before it starts. */
+  const cue = useCallback((name: TableCue, delayMs = 0) => {
+    const context = audio.current;
+    if (!active.current || context?.state !== 'running') return;
+    let buffer = buffers.current.get(name);
+    if (!buffer) {
+      const samples = renderCue(name, context.sampleRate);
+      buffer = context.createBuffer(1, samples.length, context.sampleRate);
+      buffer.getChannelData(0).set(samples);
+      buffers.current.set(name, buffer);
+    }
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.connect(context.destination);
+    const startsAt = context.currentTime + Math.max(0, delayMs) / 1000;
+    source.start(startsAt);
+    source.onended = () => source.disconnect();
+    return () => {
+      if (context.state === 'closed' || context.currentTime >= startsAt) return;
+      try { source.stop(); } catch { /* Already stopped. */ }
+    };
+  }, []);
+
   useEffect(() => () => {
     const context = audio.current;
     audio.current = null;
+    buffers.current.clear();
     if (context) void context.close().catch(() => {});
   }, []);
 
-  return { enabled, toggle, unlock, impact };
+  return { enabled, toggle, unlock, impact, cue };
 }

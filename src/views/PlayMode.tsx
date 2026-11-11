@@ -9,7 +9,7 @@ import type { MatchSnapshot, MatchSummary, Move } from '../lib/play/protocol';
 import { visibleCards } from '../lib/play/matchView';
 import { preloadArt, preloadFaces } from '../lib/play/cardArt';
 import { PlayTable } from './PlayTable';
-import { useDiceSound } from './useDiceSound';
+import { useTableSound } from './useTableSound';
 import { useMatchPresentation } from './useMatchPresentation';
 import './play-mode.css';
 
@@ -46,7 +46,7 @@ export default function PlayMode({ scope, draft, saved, initialRival, rememberRi
   const name = deck?.name.trim() || 'Untitled deck';
   const matchId = snapshot?.matchId;
   const presentation = useMatchPresentation(snapshot);
-  const diceSound = useDiceSound();
+  const sound = useTableSound();
 
   useLayoutEffect(() => {
     if (matchId) window.scrollTo({ top: 0, behavior: 'instant' });
@@ -137,13 +137,13 @@ export default function PlayMode({ scope, draft, saved, initialRival, rememberRi
 
   const live = snapshot && !(presentation.displayed ?? snapshot).view.gameEnded;
   return (
-    <section className="play-mode" onPointerDownCapture={diceSound.unlock} onKeyDownCapture={diceSound.unlock}>
+    <section className="play-mode" onPointerDownCapture={sound.unlock} onKeyDownCapture={sound.unlock}>
       {snapshot ? <>
         <PlayTable key={snapshot.matchId} scope={scope} snapshot={presentation.displayed ?? snapshot} names={snapshot.names}
-          playback={presentation.playback} feedback={presentation.feedback} reduced={presentation.reduced} diceImpact={diceSound.impact}
+          playback={presentation.playback} feedback={presentation.feedback} reduced={presentation.reduced} diceImpact={sound.impact} cue={sound.cue}
           busy={busy || presentation.playing} error={error} send={send} rematch={rematch} edit={onEdit} controls={<>
-            <button type="button" className="btn quiet play-dice-sound" aria-label="Dice sound" aria-pressed={diceSound.enabled}
-              onClick={diceSound.toggle}>Dice sound <b>{diceSound.enabled ? 'On' : 'Off'}</b></button>
+            <button type="button" className="btn quiet play-dice-sound" aria-label="Table sound" aria-pressed={sound.enabled}
+              onClick={sound.toggle}>Sound <b>{sound.enabled ? 'On' : 'Off'}</b></button>
             {live && <button type="button" className="btn quiet" disabled={busy || presentation.playing} onClick={() => setConfirm('restart')}>Restart match</button>}
             {live && <button type="button" className="btn danger-ghost" disabled={busy || presentation.playing} onClick={() => setConfirm('concede')}>Concede</button>}
             <button type="button" className="btn quiet" disabled={busy} onClick={() => { presentation.playback?.skip(); onEdit(); }}>Back to draft</button>

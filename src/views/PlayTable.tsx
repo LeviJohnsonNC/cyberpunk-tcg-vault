@@ -13,6 +13,7 @@ import { PlayChoices } from './PlayChoices';
 import { useTableDrag } from './useTableDrag';
 import { useTableMotion } from './useTableMotion';
 import { beatPace } from '../lib/play/matchMotion';
+import type { TableCue } from '../lib/play/tableSound';
 import { Rules } from '../components/bits';
 import { CombatArrow, CombatBanner } from './PlayCombat';
 import { PlayPresentation, type MatchPlayback } from './PlayPresentation';
@@ -57,7 +58,8 @@ function ContextMenu({ context, children, close }: { context: Context; children:
   </div>, document.body);
 }
 
-export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, edit, playback, feedback, reduced, controls, diceImpact }: {
+export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, edit, playback, feedback, reduced, controls, diceImpact, cue }: {
+  cue?: (name: TableCue, delayMs?: number) => (() => void) | undefined;
   diceImpact?: (type: string, soft: boolean) => (() => void) | undefined;
   playback?: MatchPlayback; feedback?: MatchBeat; scope: string; snapshot: MatchSnapshot; names: Record<Seat, string>; busy: boolean; error?: string;
   send: (move: Move) => void; rematch: () => void; edit: () => void; reduced: boolean; controls?: ReactNode;
@@ -116,7 +118,16 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
   const [firstTurn] = useState(turnKey);
   // Movement follows each public frame: the player's own result, then every rival move in turn.
   useTableMotion(table, { key: `${stateKey}:${playback?.beat.id ?? ''}`, view, beat: playback?.beat ?? feedback,
-    enabled: !reduced, pace: playback ? beatPace(playback.count) : 1, deal: setup });
+    enabled: !reduced, pace: playback ? beatPace(playback.count) : 1, deal: setup, sound: cue });
+  // The turn passing to the player and the result of the match are heard as well as seen.
+  const ending = view.gameEnded ? view.winnerId ?? 'draw' : undefined;
+  const heard = useRef({ turn: turnKey, ending });
+  useEffect(() => {
+    const before = heard.current;
+    heard.current = { turn: turnKey, ending };
+    if (ending && ending !== before.ending) cue?.(ending === 'player' ? 'win' : 'lose', 250);
+    else if (!ending && turnKey !== before.turn && turnKey.endsWith(':player')) cue?.('turn');
+  }, [turnKey, ending, cue]);
 
   useEffect(() => {
     if (!focusAfter.current) return;
