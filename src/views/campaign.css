@@ -45,26 +45,6 @@
 .campaign-legend-swaps > div { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px; background: var(--color-canvas-deep); }
 .campaign-legend-swaps strong { min-width: 180px; }
 .campaign-reward { margin-top: 24px; }
-.campaign-sealed-pack { position: relative; width: min(300px, 100%); min-height: 360px; margin: 12px auto 24px; padding: 26px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; cursor: pointer; text-align: left; color: var(--color-ticket); border: 2px solid var(--color-ticket); clip-path: polygon(0 0, 93% 0, 100% 6%, 100% 100%, 7% 100%, 0 94%); background: repeating-linear-gradient(130deg, transparent 0 14px, color-mix(in srgb, var(--color-accent) 7%, transparent) 15px 16px), radial-gradient(at 80% 12%, color-mix(in srgb, var(--color-accent) 42%, transparent), transparent 45%), linear-gradient(140deg, var(--color-canvas-deep), var(--color-surface-raised) 55%, var(--color-canvas-deep)); box-shadow: 12px 16px 0 color-mix(in srgb, var(--color-accent) 17%, transparent); }
-.campaign-sealed-pack::before { content: ''; position: absolute; inset: 8px; border: 1px solid color-mix(in srgb, var(--color-ticket) 55%, transparent); pointer-events: none; }
-.campaign-sealed-pack:hover, .campaign-sealed-pack:focus-visible { filter: brightness(1.17); }
-.campaign-pack-code, .campaign-pack-count { font: 11px/1.6 var(--font-mono); letter-spacing: .12em; }
-.campaign-sealed-pack strong { font: italic 900 54px/.9 var(--font-display); color: var(--color-accent); text-shadow: 2px 3px var(--color-canvas-deep); }
-.campaign-pack-seal { display: block; margin: 0 -26px; padding: 13px 16px; text-align: center; background: var(--color-ticket); color: var(--color-ticket-ink); font: 700 15px var(--font-mono); text-transform: uppercase; }
-.campaign-reward-cards, .campaign-offers, .campaign-environments { display: grid; grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); gap: 14px; margin: 20px 0; }
-.campaign-reward-card, .campaign-offers article { padding: 12px; background: var(--color-canvas-deep); border: 1px solid var(--color-divider); display: grid; justify-items: center; align-content: start; gap: 8px; }
-.campaign-reward-card img, .campaign-offers img { width: 100%; aspect-ratio: 5/7; object-fit: contain; }
-.campaign-reward-card[data-hidden=true] > span { aspect-ratio: 5/7; width: 100%; display: grid; place-items: center; font-size: 40px; color: var(--color-accent); border: 2px double var(--color-accent); background: repeating-linear-gradient(45deg, var(--color-canvas-deep), var(--color-canvas-deep) 7px, var(--color-surface) 8px); }
-.campaign-reward-card strong, .campaign-offers strong { font-size: 13px; text-align: center; }
-.campaign-offers article { border-color: var(--color-accent); }
-.campaign-offers article .btn { width: 100%; }
-.campaign-offers small { color: var(--color-text-muted); }
-.campaign-environments { grid-template-columns: repeat(3, 1fr); }
-.campaign-environment { min-height: 175px; padding: 22px; text-align: left; display: grid; align-content: end; gap: 10px; color: var(--color-text); cursor: pointer; border: 1px solid var(--color-accent); background: linear-gradient(145deg, var(--color-canvas-deep), var(--color-surface-raised)); }
-.campaign-environment[data-environment=rooftop] { border-color: var(--color-rarity-rare); background: radial-gradient(at 60% 0%, color-mix(in srgb, var(--color-rarity-rare) 22%, transparent), transparent 55%), var(--color-canvas-deep); }
-.campaign-environment[data-environment=arasaka] { border-color: var(--color-ticket); background: linear-gradient(145deg, var(--color-canvas-deep), color-mix(in srgb, var(--color-ticket) 23%, var(--color-surface))); }
-.campaign-environment strong { font: 800 24px var(--font-display); text-transform: uppercase; }
-.campaign-environment span { font-size: 13px; }
 .campaign-mode[data-environment=booth] { --campaign-room: var(--color-accent); }
 .campaign-mode[data-environment=rooftop] { --campaign-room: var(--color-rarity-rare); }
 .campaign-mode[data-environment=arasaka] { --campaign-room: var(--color-ticket); }
@@ -72,9 +52,6 @@
 .play-mode[data-environment=rooftop] { --campaign-room: var(--color-rarity-rare); }
 .play-mode[data-environment=arasaka] { --campaign-room: var(--color-ticket); }
 .play-mode[data-environment]:not([data-environment=default]) .play-table { box-shadow: 0 0 65px color-mix(in srgb, var(--campaign-room, var(--color-accent)) 23%, transparent); }
-.play-mode[data-environment=booth] .room-scene { background: linear-gradient(180deg, color-mix(in srgb, var(--color-canvas-deep) 42%, transparent), var(--color-canvas) 96%), url('../assets/play/afterlife-circuit.webp') center / cover; }
-.play-mode[data-environment=rooftop] .room-scene { background: linear-gradient(180deg, color-mix(in srgb, var(--color-canvas-deep) 55%, transparent), var(--color-canvas) 96%), linear-gradient(150deg, transparent 40%, color-mix(in srgb, var(--color-rarity-rare) 22%, transparent) 60%, transparent 76%), url('../assets/play/afterlife-back-room.webp') center / cover; filter: hue-rotate(42deg) saturate(.7); }
-.play-mode[data-environment=arasaka] .room-scene { background: linear-gradient(180deg, color-mix(in srgb, var(--color-canvas-deep) 40%, transparent), var(--color-canvas) 96%), linear-gradient(110deg, transparent 0 29%, color-mix(in srgb, var(--color-ticket) 18%, transparent) 30% 31%, transparent 32% 65%, color-mix(in srgb, var(--color-ticket) 18%, transparent) 66% 67%, transparent 68%), url('../assets/play/afterlife-table.webp') center / cover; filter: saturate(.5); }
 .play-mode[data-environment=rooftop] .room-haze-blue { opacity: calc(var(--room-bass) * .32 + var(--room-pulse) * .2); }
 .play-mode[data-environment=arasaka] .room-haze-pink { background: radial-gradient(ellipse, var(--color-ticket), transparent 68%); }
 .campaign-locker, .campaign-finale { margin-top: 24px; }

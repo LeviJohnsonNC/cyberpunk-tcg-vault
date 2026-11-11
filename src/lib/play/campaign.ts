@@ -35,6 +35,8 @@ export interface CampaignRun {
   encounter: number; attempts: number; inventory: Record<string, number>; deck: Deck; lastLegal: Deck;
   /** Absent on runs started before the balance pass. */
   balanceVersion?: 2;
+  /** Presentation-only acknowledgement. Older runs can show their current act once. */
+  briefedAct?: number;
   rewards: Record<number, CampaignReward>; opponents: Deck[]; match?: StoredMatch; completedAt?: number; revealed?: number;
 }
 export interface CampaignArchive { id: string; starter: StarterKey; cleared: number; completed: boolean; endedAt: number; deck: Deck; }

@@ -1,5 +1,5 @@
 /** Short synthesised sounds for things that happen on the table. No audio files. */
-export type TableCue = 'draw' | 'play' | 'eddie' | 'hit' | 'defeat' | 'gig' | 'turn' | 'win' | 'lose' | 'equip' | 'program' | 'call' | 'attack' | 'select' | 'ready';
+export type TableCue = 'draw' | 'play' | 'eddie' | 'hit' | 'defeat' | 'gig' | 'turn' | 'win' | 'lose' | 'equip' | 'program' | 'call' | 'attack' | 'select' | 'ready' | 'pack-open' | 'pack-reveal' | 'reward-lock' | 'act-arrival';
 
 const TAU = Math.PI * 2;
 const tone = (hz: number, t: number) => Math.sin(TAU * hz * t);
@@ -10,6 +10,11 @@ const fall = (from: number, floor: number, rate: number, t: number) => TAU * (fl
 
 interface Recipe { seconds: number; gain: number; smooth: number; voice: (t: number, noise: number) => number }
 const recipes: Record<TableCue, Recipe> = {
+  // Foil tear, a glassy reveal, and a quiet lock-in. Shared mute and voice limits apply.
+  'pack-open': { seconds: .55, gain: .4, smooth: .22, voice: (t, n) => n * Math.sin(Math.PI * t / .55) ** 2 * (1 + .35 * tone(43, t)) + note(196, t, .3, 12) * .6 },
+  'pack-reveal': { seconds: .36, gain: .28, smooth: .5, voice: (t, n) => n * Math.exp(-24 * t) * .6 + note(880, t, .04, 14) * .6 + note(1320, t, .09, 16) * .3 },
+  'reward-lock': { seconds: .4, gain: .35, smooth: .8, voice: (t, n) => note(180, t, 0, 30) + n * Math.exp(-70 * t) * .4 + note(659.25, t, .07, 12) * .6 + note(987.77, t, .12, 12) * .3 },
+  'act-arrival': { seconds: 1.35, gain: .35, smooth: .9, voice: t => note(130.81, t, 0, 3) * .7 + note(261.63, t, .12, 4) * .6 + note(392, t, .25, 4) * .5 + note(523.25, t, .4, 4) * .4 },
   equip: { seconds: .28, gain: .5, smooth: .65, voice: (t, n) => note(1450, t, 0, 65) * .55 + note(2200, t, .055, 38) * .4 + n * Math.exp(-45 * t) * .3 },
   program: { seconds: .42, gain: .38, smooth: .3, voice: (t, n) => Math.sin(fall(-900, 1600, 6, t)) * Math.sin(Math.PI * t / .42) ** 2 * .4 + note(1568, t, .16, 20) * .4 + n * Math.exp(-18 * t) * .2 },
   call: { seconds: .72, gain: .38, smooth: .22, voice: (t, n) => note(196, t, 0, 6) * .8 + note(392, t, .07, 7) * .5 + note(587.33, t, .14, 6) * .35 + n * Math.exp(-12 * t) * .3 },
