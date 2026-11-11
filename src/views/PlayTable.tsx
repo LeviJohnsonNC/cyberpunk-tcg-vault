@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { isReady, matchActions, type Picks } from '../lib/play/matchActions';
-import { activeStep, cardIntents, dropIntents, intentLabel, updatePick, type Destination, type Intent } from '../lib/play/matchInteraction';
+import { activeStep, cardIntents, dropIntents, intentLabel, reorderPick, updatePick, type Destination, type Intent } from '../lib/play/matchInteraction';
 import { visibleCards, zoneCards } from '../lib/play/matchView';
 import type { CardView, MatchSnapshot, Move, Seat } from '../lib/play/protocol';
 import { CardFace, CardInspection } from './PlayCard';
@@ -10,6 +10,7 @@ import { GigRollDisplay } from './PlayDice';
 import { GigZones, PlayMat } from './PlayMat';
 import { PlayChoices } from './PlayChoices';
 import { useTableDrag } from './useTableDrag';
+import { Rules } from '../components/bits';
 import './play-interaction.css';
 
 const combatSteps: Record<string, string> = { attack: 'Attack', react: 'React', fight: 'Fight', fightResult: 'Fight result', steal: 'Steal' };
@@ -29,16 +30,21 @@ function readDecision(key: string, snapshot: MatchSnapshot): SavedDecision | und
 
 function ContextMenu({ context, children, close }: { context: Context; children: ReactNode; close: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(close);
+  useEffect(() => { closeRef.current = close; });
   useEffect(() => {
     ref.current?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
-    function outside(event: PointerEvent) { if (event.target instanceof Node && !ref.current?.contains(event.target)) close(); }
-    function escape(event: KeyboardEvent) { if (event.key === 'Escape') { event.preventDefault(); close(); } }
+    function outside(event: PointerEvent) { if (event.target instanceof Node && !ref.current?.contains(event.target)) closeRef.current(); }
+    function escape(event: KeyboardEvent) { if (event.key === 'Escape') { event.preventDefault(); closeRef.current(); } }
+    function reposition(event: Event) { if (event.type === 'resize' || !(event.target instanceof Node) || !ref.current?.contains(event.target)) closeRef.current(); }
+    window.addEventListener('resize', reposition);
+    document.addEventListener('scroll', reposition, true);
     document.addEventListener('pointerdown', outside);
     document.addEventListener('keydown', escape);
-    return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape); };
-  }, [close]);
+    return () => { window.removeEventListener('resize', reposition); document.removeEventListener('scroll', reposition, true); document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape); };
+  }, []);
   return createPortal(<div ref={ref} className="play-card-menu" role="dialog" aria-label={`Actions for ${context.card.cardName ?? 'Legend slot'}`}
-    style={{ left: Math.max(10, Math.min(context.x, innerWidth - 290)), top: Math.max(10, Math.min(context.y, innerHeight - 300)) }}>
+    style={{ left: Math.max(10, Math.min(context.x, innerWidth - 290)), top: Math.max(10, Math.min(context.y, innerHeight - 300)), maxHeight: innerHeight - Math.max(10, Math.min(context.y, innerHeight - 300)) - 12 }}>
     <div className="play-card-menu-title"><strong>{context.card.cardName ?? 'Face-down Legend'}</strong><button type="button" className="btn quiet" aria-label="Close card actions" onClick={close}>×</button></div>
     {children}
   </div>, document.body);
@@ -144,7 +150,7 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
     return false;
   }
   function availableIntents(card: CardView) {
-    return view.gameEnded || busy || (selected && !choice) ? [] : cardIntents(actions, card.instanceId);
+    return view.gameEnded || busy || choice || selected ? [] : cardIntents(actions, card.instanceId);
   }
   function showMenu(card: CardView, trigger: HTMLElement, intents = availableIntents(card), point?: { x: number; y: number }) {
     clearHover();
@@ -252,8 +258,8 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
       <GigZones {...targeting} />
       <div className="play-table-strip" tabIndex={-1} data-combat={!!combat}><span>{view.gamePhase === 'setup' ? 'Opening setup' : `Turn ${view.turnNumber} · ${view.activePlayerId === 'player' ? 'Your turn' : 'Rival turn'}`}</span><span>{combatStep ?? (view.overtimeActive ? 'Overtime' : 'Best of one')}</span></div>
       {!view.gameEnded && view.gamePhase !== 'setup' && (selected || choice) && <div className="play-table-decision" key={stateKey}>
-        {selected ? <PlayChoices action={selected} picks={picks} fields={fields} active={step} cards={cards} busy={busy} forced={!!choice} select={chooseValue}
-          step={(id) => setChoice(selection, picks, id)} reorder={(field, ids) => setChoice(selection, { ...picks, [field]: ids }, field)}
+        {selected ? <PlayChoices action={selected} picks={picks} fields={fields} active={step} cards={cards} busy={busy} forced={!!choice} revealed={reveal?.revealedCards} select={chooseValue}
+          step={(id) => setChoice(selection, picks, id)} reorder={(field, ids) => { const next = reorderPick(selected, picks, field, ids); if (next) setChoice(selection, next, field); }}
           submit={() => selection !== undefined && commit({ action: selection, picks })}
           cancel={() => { setChoice(choice ? defaultSelection : undefined, {}); clearHover(); }}
           inspect={inspect} alternatives={choice ? special.map(({ index }) => actionButton(index)) : null} />
@@ -267,7 +273,8 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
       {notice && <p className="play-table-notice">{notice}</p>}
     </div>
     {menu && <ContextMenu context={menu} close={closeMenu}>{menu.intents.map((intent, index) => <button key={index} type="button" className="btn ghost" data-context-action={actions[intent.action].id}
-      onClick={() => beginIntent(intent, true)}>{actions[intent.action].id === 'playCard' && menu.card.zone === 'legendArea' ? 'Play normally · ' : ''}{intentLabel(actions[intent.action], intent.picks)}</button>)}
+      onClick={() => beginIntent(intent, true)}>{intentLabel(actions[intent.action], intent.picks, menu.card)}</button>)}
+      {menu.intents.some((intent) => actions[intent.action].id === 'activateAbility') && vaultCard(menu.card) && <details className="play-menu-rules"><summary>Printed abilities</summary><Rules text={vaultCard(menu.card)!.text} /></details>}
       {!menu.intents.length && <p className="play-choice-detail">{selected ? 'Finish or cancel the current selection to start another action.' : 'No action available for this card now.'}</p>}
       <button type="button" className="btn quiet" onClick={() => inspect(menu.card, menu.trigger)}>Details</button></ContextMenu>}
     {hovered && !drag && !menu && !inspected && createPortal(<div className="play-hover-preview" style={{ left: hovered.x, top: hovered.y }} aria-hidden="true"><CardFace card={hovered.card} /><strong>{hovered.card.cardName ?? 'Concealed card'}</strong></div>, document.body)}

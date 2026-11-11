@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { matchActions, isReady } from './matchActions';
-import { activeStep, cardIntents, dropIntents, updatePick } from './matchInteraction';
+import { activeStep, cardIntents, dropIntents, reorderPick, intentLabel, updatePick } from './matchInteraction';
 import type { CardView, PlayerView } from './protocol';
 
 const card = (id: string, type = 'unit'): CardView => ({ instanceId: id, definitionId: id, cardName: id, type, zone: 'hand', faceDown: false, spent: false, power: 1, effectivePower: 1, cost: 1 });
@@ -39,7 +39,10 @@ describe('direct table intents', () => {
     const v = view();
     v.prompt.availableMoves.push({ moveId: 'goSolo', inputSpec: { type: 'goSolo', candidates: ['unit'] } });
     const actions = matchActions(v);
-    expect(dropIntents(actions, { ...card('unit'), zone: 'legendArea' }, { key: 'field:player' }).map((intent) => actions[intent.action].id)).toEqual(['playCard', 'goSolo']);
+    const legend = { ...card('unit'), zone: 'legendArea' };
+    const entries = dropIntents(actions, legend, { key: 'field:player' });
+    expect(entries.map((intent) => actions[intent.action].id)).toEqual(['playCard', 'goSolo']);
+    expect(intentLabel(actions[entries[0].action], entries[0].picks, legend)).toBe('Play normally · 2 €$');
     v.prompt.availableMoves = [{ moveId: 'activateAbility', inputSpec: { type: 'activateAbility', candidates: [
       { cardId: 'unit', abilityIndex: 0, eddieCost: 0, spendsCard: true }, { cardId: 'unit', abilityIndex: 1, eddieCost: 1, spendsCard: false },
     ] } }];
@@ -72,5 +75,38 @@ describe('direct table intents', () => {
     v.prompt.availableMoves = [{ moveId: 'useBlocker', inputSpec: { type: 'useBlocker', candidates: ['host'] } }];
     const [block] = dropIntents(matchActions(v), card('host'), { key: 'attacker' });
     expect(matchActions(v)[block.action].move(block.picks).args).toEqual({ blockerId: 'host' });
+  });
+});
+
+describe('ordered and optional table decisions', () => {
+  function scry() {
+    const v = view();
+    v.prompt = { status: 'choice', availableMoves: [{ moveId: 'resolveScry', inputSpec: { type: 'none' } }], choice: { type: 'scry', payload: {
+      revealedCards: [card('one'), card('two'), card('three')], destinations: [
+        { zone: 'hand', max: 1, eligibleCardIds: ['one', 'two', 'three'] },
+        { zone: 'deckTop', max: 2, eligibleCardIds: ['one', 'two', 'three'] },
+        { zone: 'deckBottom', remainder: true, eligibleCardIds: ['one', 'two', 'three'] },
+      ],
+    } } };
+    return matchActions(v)[0];
+  }
+  it('starts optional destinations at the first step and keeps each revealed card in one place', () => {
+    const action = scry();
+    expect(activeStep(action.fields({}), {})?.id).toBe('0');
+    let picks = updatePick(action, {}, '0', 'one')!;
+    expect(updatePick(action, picks, '1', 'one')).toBeUndefined();
+    picks = updatePick(action, picks, '1', 'two')!;
+    picks = updatePick(action, picks, '1', 'three')!;
+    expect(action.move(picks).args).toEqual({ destinations: [{ zone: 'hand', cardIds: ['one'] }, { zone: 'deckTop', cardIds: ['three', 'two'] }] });
+    expect(updatePick(action, picks, '1', 'unknown')).toBeUndefined();
+  });
+  it('reorders only the existing ordered selection and preserves engine top-of-deck semantics', () => {
+    const action = scry(), picks = { '0': ['one'], '1': ['two', 'three'] };
+    const next = reorderPick(action, picks, '1', ['three', 'two'])!;
+    expect(action.move(next).args).toEqual({ destinations: [{ zone: 'hand', cardIds: ['one'] }, { zone: 'deckTop', cardIds: ['two', 'three'] }] });
+    expect(reorderPick(action, picks, '1', ['two', 'two'])).toBeUndefined();
+    expect(reorderPick(action, picks, '1', ['one', 'two'])).toBeUndefined();
+    expect(reorderPick(action, picks, '0', ['one'])).toBeUndefined();
+    expect(picks).toEqual({ '0': ['one'], '1': ['two', 'three'] });
   });
 });

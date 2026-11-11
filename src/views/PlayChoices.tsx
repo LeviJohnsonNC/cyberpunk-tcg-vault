@@ -5,14 +5,17 @@ import type { CardView } from '../lib/play/protocol';
 import { CardFace } from './PlayCard';
 import { DieFace } from './PlayDice';
 
-export function PlayChoices({ action, picks, fields, active, cards, busy, forced, select, step, submit, cancel, alternatives, reorder, inspect }: {
-  action: MatchActionForm; picks: Picks; fields: PickField[]; active?: PickField; cards: CardView[];
+export function PlayChoices({ action, picks, fields, active, cards, busy, forced, select, step, submit, cancel, alternatives, reorder, inspect, revealed }: {
+  revealed?: CardView[]; action: MatchActionForm; picks: Picks; fields: PickField[]; active?: PickField; cards: CardView[];
   inspect: (card: CardView, trigger: HTMLElement) => void; busy: boolean; forced: boolean; select: (field: string, value: string) => void;
   step: (id: string) => void; reorder: (field: string, ids: string[]) => void; submit: () => void; cancel: () => void; alternatives: ReactNode;
 }) {
   const ready = isReady(fields, picks);
   const source = fields[0]?.options.find((option) => picks[fields[0].id]?.includes(option.id));
   const sourceCard = cards.find((card) => card.instanceId === source?.cardId);
+  const placement = action.id === 'resolveScry';
+  const assigned = new Set(Object.values(picks).flat());
+  const unassigned = revealed?.filter((card) => !assigned.has(card.instanceId)) ?? [];
   const byId = new Map(cards.map((card) => [card.instanceId, card]));
   const onMat = !!active?.options.length && !active.ordered && active.options.every((option) => option.cardId?.startsWith('pool:') || cards.some((card) => card.instanceId === option.cardId && ['hand', 'field', 'legendArea', 'eddieArea', 'gigArea', 'fixerArea', 'resolvingProgram'].includes(card.zone ?? '')));
   const options = active && <fieldset disabled={busy} data-pick-field={active.id} className="play-active-choice">
@@ -51,10 +54,14 @@ export function PlayChoices({ action, picks, fields, active, cards, busy, forced
           <span>{index + 1}</span> {field.label} <b>{picks[field.id]?.length ?? 0}/{field.min === field.max ? field.min : `${field.min}–${field.max}`}</b>
         </button>)}</div>
       {onMat ? <div className="play-on-mat-prompt"><span>{active?.id === 'payment' ? 'Select Eddies or Legends on the mat.' : 'Select a highlighted card or die on the mat.'}</span><details key={active?.id}><summary>Options</summary>{options}</details></div> : options}
+      {placement && <div className="play-placement-review" aria-label="Placement review">
+        {fields.map((field) => <div key={field.id}><strong>{field.label}</strong><span>{(picks[field.id] ?? []).map((id) => field.options.find((option) => option.id === id)?.label).join(' → ') || 'None selected'}</span></div>)}
+        {unassigned.length > 0 && <div><strong>Unassigned</strong><span>{unassigned.map((card) => card.cardName ?? 'Revealed card').join(' · ')}. {action.detail?.split('Unassigned cards · ')[1] ?? 'Follow the remaining destination shown above.'}</span></div>}
+      </div>}
       {active?.ordered && (picks[active.id]?.length ?? 0) > 1 && <ol className="play-choice-order" aria-label="Selected order">{picks[active.id].map((id, index, ids) =>
         <li key={id}><span>{index + 1}. {active.options.find((option) => option.id === id)?.label}</span>
           <button type="button" className="btn quiet" disabled={busy || index === 0} aria-label={`Move ${active.options.find((option) => option.id === id)?.label} earlier`} onClick={() => {
-            // Rebuild through the same selection path so constraints stay authoritative.
+            // Reorder the selected cards without changing their destination.
             const reordered = [...ids]; [reordered[index - 1], reordered[index]] = [reordered[index], reordered[index - 1]];
             reorder(active.id, reordered);
           }}>↑</button>
