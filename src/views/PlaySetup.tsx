@@ -40,7 +40,7 @@ export function PlaySetup({ draft, savedDecks, initialRival, initialOpponent, bu
   const [imported, setImported] = useState<ReturnType<typeof readOpponentText>>();
   const [fileError, setFileError] = useState('');
   const file = useRef<HTMLInputElement>(null), fileRead = useRef(0);
-  const saved = savedDecks.map(deck => ({ key: `saved:${deck.id}`, deck, category: 'Saved deck', label: deckSize(deck) }));
+  const saved = savedDecks.map(deck => ({ key: `saved:${deck.id}`, deck, category: 'Saved deck', label: deck.legends.map(slug => BY_SLUG.get(slug)?.name ?? slug).join(' / ') }));
   const choices = [{ key: 'current', deck: draft.deck, category: 'Current draft', label: '' }, ...saved, ...curatedOpponents];
   const yourDeck = choices.find(choice => choice.key === playerKey)?.deck;
   const rival = selected === 'mirror' ? yourDeck : selected === 'external' ? initialOpponent : selected === 'import' ? imported?.deck : [...curatedOpponents, ...saved].find(choice => choice.key === selected)?.deck;
@@ -63,6 +63,7 @@ export function PlaySetup({ draft, savedDecks, initialRival, initialOpponent, bu
   return <div className="opponent-workbench" aria-busy={busy}>
     <section className="panel opponent-library" aria-labelledby="opponent-library-title">
       <header className="opponent-section-head"><div><p className="play-eyebrow">01 / Across the table</p><h2 id="opponent-library-title">Choose your rival</h2></div><button type="button" className="btn ghost" disabled={!yourDeck || !!yourIssues.length || busy} aria-pressed={selected === 'mirror'} onClick={() => setSelected('mirror')}>Mirror match</button></header>
+      {initialOpponent && <button type="button" className="btn quiet opponent-opened" disabled={busy} aria-pressed={selected === 'external'} onClick={() => setSelected('external')}>Opened deck: {initialOpponent.name}</button>}
       <ViewTabs id="opponents" label="Opponent sources" tabs={sources} value={source} onChange={chooseSource} />
       {sources.map(tab => <div key={tab.id} id={`opponents-panel-${tab.id}`} role="tabpanel" aria-labelledby={`opponents-tab-${tab.id}`} hidden={source !== tab.id}>
         {tab.id === 'import' ? <div className="opponent-import">
@@ -80,11 +81,9 @@ export function PlaySetup({ draft, savedDecks, initialRival, initialOpponent, bu
     </section>
     <aside className="panel opponent-matchup" aria-label="Match setup">
       <p className="play-eyebrow">02 / The matchup</p>
-      <label htmlFor="your-practice-deck" className="opponent-label">Your deck</label>
+      <div className="opponent-own-label"><label htmlFor="your-practice-deck" className="opponent-label">Your deck</label>{yourDeck && <span className="opponent-size">{deckSize(yourDeck)}</span>}</div>
       <VaultSelect id="your-practice-deck" disabled={busy} value={playerKey} placeholder="Choose your deck" onValueChange={setPlayerKey} options={choices.map(choice => ({ value: choice.key, label: `${choice.deck.name} · ${choice.category}` }))} />
-      {yourDeck && <p className="opponent-size">{deckSize(yourDeck)}</p>}
       {!!yourIssues.length && <div className="opponent-errors" role="alert"><strong>Your deck needs fixes</strong><ul>{yourIssues.map(issue => <li key={issue}>{issue}</li>)}</ul></div>}
-      <div className="opponent-versus"><span>VS</span><i /></div>
       {rival ? <><div className="opponent-selected-heading"><span className="play-eyebrow">{selected === 'mirror' ? 'Mirror match' : selected === 'import' ? 'Imported rival' : 'Rival deck'}</span><h2>{rival.name}</h2></div><Crew deck={rival} /><p className="opponent-size">{deckSize(rival)}</p><ListDetails deck={rival} /></> : <p className="muted">Choose a rival or preview an imported list.</p>}
       {!!issues.length && <div className="opponent-errors" role="alert"><strong>Resolve these before playing</strong><ul>{issues.map(issue => <li key={issue}>{issue}</li>)}</ul></div>}
       <fieldset className="opponent-skills" disabled={busy}><legend>Rival skill</legend><div className="opponent-skill-options">{skills.map(option => <label key={option.id} data-selected={skill === option.id}><input type="radio" name="rival-skill" checked={skill === option.id} onChange={() => { setSkill(option.id); try { localStorage.setItem(skillKey, option.id); } catch { /* Optional. */ } }} /><strong>{option.label}</strong></label>)}</div><p className="opponent-skill-note">{skills.find(option => option.id === skill)?.note}</p></fieldset>
