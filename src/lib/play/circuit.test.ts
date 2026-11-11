@@ -8,7 +8,7 @@ import type { MatchSetup, MatchSnapshot } from './protocol';
 export function circuitFixture(id = 'match-1') {
   const deck = prepareMatchDeck(curatedOpponents.find(item => item.key === 'curated:heist-reloaded')!.deck);
   const setup: MatchSetup = { player: deck, rival: deck, rivalSkill: 'standard', circuit: { version: 1, contractId: 'first-call', rivalKey: 'curated:heist-reloaded' } };
-  const seat = { firstPlayer: true, zones: {}, eddies: 2, availableEddies: 3, gigCount: 7, streetCred: 30 };
+  const seat = { firstPlayer: true, zones: {}, eddies: 2, availableEddies: 3, gigCount: 7, streetCred: 45 };
   const snapshot: MatchSnapshot = { matchId: id, names: { player: 'My deck', rival: deck.name }, peeks: [], log: [], gigRolls: [], knownLegends: [], report: {
     turns: 12, gigs: [{ turn: 10, player: 5, rival: 2 }, { turn: 12, player: 7, rival: 0 }], played: 6, sold: 4, lost: { player: 2, rival: 3 }, stuck: [],
   }, view: { players: { player: seat, rival: { ...seat, gigCount: 0 } }, gamePhase: 'main', turnNumber: 12, activePlayerId: 'player', overtimeActive: false, gameEnded: true, winnerId: 'player', winReason: 'gig_victory', stateID: 40, prompt: { status: 'idle', choice: null, availableMoves: [] } } };
@@ -87,6 +87,16 @@ describe('Afterlife Circuit settlements', () => {
     expect(finishUnlocked(progress, 'chrome')).toBe(true);
     expect(finishUnlocked(emptyCircuit(), 'gold')).toBe(false);
     expect(rankIndex(2400)).toBe(5);
+  });
+  it.each([
+    ['night-drive', 16, 17], ['last-call', 40, 39],
+  ] as const)('requires the exact bonus boundary for %s', (id, pass, fail) => {
+    const { setup, snapshot } = circuitFixture(), progress = emptyCircuit();
+    for (const contract of CIRCUIT_CONTRACTS) progress.contracts[contract.id] = ['clear'];
+    setup.circuit!.contractId = id; setup.rivalSkill = 'masterful';
+    const set = (value: number) => { if (id === 'night-drive') snapshot.view.turnNumber = value; else snapshot.view.players.player.streetCred = value; };
+    set(fail); expect(settleCircuit(progress, snapshot, setup)!.receipt.marks).not.toContain('bonus');
+    set(pass); expect(settleCircuit(progress, snapshot, setup)!.receipt.marks).toContain('bonus');
   });
   it('does not grant the low-loss bonus when an old result has no report', () => {
     const { setup, snapshot } = circuitFixture();

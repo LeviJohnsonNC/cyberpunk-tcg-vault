@@ -4,7 +4,7 @@ export type CircuitMark = 'clear' | 'bonus' | 'masterful';
 export type TableFinish = 'afterlife' | 'ghost' | 'netrunner' | 'gold' | 'chrome';
 export interface CircuitContract {
   id: string; title: string; act: string; location: string; rival: string; skill: RivalSkill;
-  hook: string; briefing: string; bonus: string; objective: 'played' | 'defeated' | 'sold' | 'peakGigs' | 'losses' | 'gigs'; threshold: number;
+  hook: string; briefing: string; bonus: string; objective: 'played' | 'defeated' | 'sold' | 'turns' | 'losses' | 'cred'; threshold: number;
 }
 export const CIRCUIT_CONTRACTS: CircuitContract[] = [
   { id: 'first-call', title: 'First call', act: '01 / Get noticed', location: 'Watson', rival: 'heist-reloaded', skill: 'standard',
@@ -14,11 +14,11 @@ export const CIRCUIT_CONTRACTS: CircuitContract[] = [
   { id: 'dead-air', title: 'Dead air', act: '02 / Make a name', location: 'Westbrook', rival: 'lowball-netrun-plus', skill: 'sharp',
     hook: 'Break the signal. Keep the payday.', briefing: 'Lowball Netrun+ wants to play on its terms. Build an economy that can keep up with the noise.', bonus: 'Win after selling at least 4 cards for Eddies.', objective: 'sold', threshold: 4 },
   { id: 'night-drive', title: 'Night drive', act: '02 / Make a name', location: 'The Badlands', rival: 'nomad-convoy', skill: 'sharp',
-    hook: 'No brakes. No easy way home.', briefing: 'The Convoy keeps moving. Take control of the Gigs before the road belongs to someone else.', bonus: 'Win after holding 5 or more Gigs at once.', objective: 'peakGigs', threshold: 5 },
+    hook: 'No brakes. No easy way home.', briefing: 'The Convoy keeps moving. Take control of the Gigs before the road belongs to someone else.', bonus: 'Win by turn 16.', objective: 'turns', threshold: 16 },
   { id: 'red-line', title: 'Red line', act: '03 / Own the room', location: 'City Center', rival: 'smasher-surge', skill: 'sharp',
     hook: 'Survive the headline act.', briefing: 'Smasher Surge puts real pressure on the table. Make every trade count and keep your crew standing.', bonus: 'Win with no more than 2 of your Units defeated.', objective: 'losses', threshold: 2 },
   { id: 'last-call', title: 'Last call', act: '03 / Own the room', location: 'The Afterlife', rival: 'arasaka-nines', skill: 'masterful',
-    hook: 'The best seat is earned.', briefing: 'Arasaka 9s. Masterful tactics. One final contract. Close it out and the gold finish is yours.', bonus: 'Win while holding at least 4 Gigs.', objective: 'gigs', threshold: 4 },
+    hook: 'The best seat is earned.', briefing: 'Arasaka 9s. Masterful tactics. One final contract. Close it out and the gold finish is yours.', bonus: 'Win with at least 40 Street Cred.', objective: 'cred', threshold: 40 },
 ];
 export const CIRCUIT_RANKS = [
   { name: 'Unlisted', rep: 0, line: 'Every name starts somewhere.' },
@@ -69,8 +69,8 @@ export function bonusProgress(contract: CircuitContract, snapshot: MatchSnapshot
     case 'sold': return report?.sold ?? 0;
     case 'defeated': return report?.lost.rival ?? 0;
     case 'losses': return report?.lost.player ?? Infinity;
-    case 'peakGigs': return Math.max(snapshot.view.players.player.gigCount, ...(report?.gigs.map(point => point.player) ?? []));
-    case 'gigs': return snapshot.view.players.player.gigCount;
+    case 'turns': return snapshot.view.turnNumber;
+    case 'cred': return snapshot.view.players.player.streetCred;
   }
 }
 
@@ -91,7 +91,7 @@ export function settleCircuit(progress: CircuitProgress, snapshot: MatchSnapshot
   if (won && !conceded && contract && contractUnlocked(progress, contract.id) && skillLevel(skill) >= skillLevel(contract.skill)) {
     if (!prior.includes('clear')) marks.push('clear');
     const actual = bonusProgress(contract, snapshot);
-    if (!prior.includes('bonus') && (contract.objective === 'losses' ? actual <= contract.threshold : actual >= contract.threshold)) marks.push('bonus');
+    if (!prior.includes('bonus') && (['losses', 'turns'].includes(contract.objective) ? actual <= contract.threshold : actual >= contract.threshold)) marks.push('bonus');
     if (skill === 'masterful' && !prior.includes('masterful')) marks.push('masterful');
   }
   const contractRep = marks.includes('clear') ? 100 : 0;

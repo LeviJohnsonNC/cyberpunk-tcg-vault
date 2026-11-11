@@ -78,7 +78,7 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
   const [preview, setPreview] = useState<Preview>();
   const [arrow, setArrow] = useState<{ state: string; x1: number; y1: number; x2: number; y2: number }>();
   const [notice, setNotice] = useState('');
-  const [panel, setPanel] = useState<'log' | 'actions' | 'effects'>();
+  const [panel, setPanel] = useState<'log' | 'actions' | 'effects' | 'contract'>();
   const panelId = useId();
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const grid = useRef<HTMLDivElement>(null);
@@ -313,7 +313,8 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
     }}>
     <header className="play-match-header">
       <div className="play-match-identity">
-        <p className="play-eyebrow" title="Match saved in this browser">{contract?.title ?? 'Practice table'} <span>/</span> Autosaved</p>
+        {contract ? <button type="button" className="play-eyebrow circuit-contract-trigger" aria-expanded={panel === 'contract'} aria-controls={`${panelId}-contract`} onClick={() => setPanel(panel === 'contract' ? undefined : 'contract')} title="View contract objective">◆ {contract.title} <span>/</span> Autosaved</button>
+          : <p className="play-eyebrow" title="Match saved in this browser">Practice table <span>/</span> Autosaved</p>}
         <h1 title={`${names.player} vs. ${names.rival}`}>{names.player} <span>vs.</span> {names.rival}</h1>
       </div>
       <div className="play-header-actions">
@@ -324,6 +325,11 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
         {controls}
       </div>
     </header>
+    {panel === 'contract' && contract && <section id={`${panelId}-contract`} className="play-drawer circuit-table-brief" aria-label="Contract objective">
+      <div className="play-drawer-head"><h3>{contract.title}</h3>{closePanel}</div>
+      <p>{contract.briefing}</p><div className="circuit-bonus"><span>◆ Bonus mark</span><p>{contract.bonus}</p></div>
+      <p>Win to clear the contract. Win at Masterful to earn the third mark. Every mark stays earned.</p>
+    </section>}
     {panel === 'effects' && <section id={`${panelId}-effects`} className="play-drawer play-table-effects" aria-label="Table effects">
       <div className="play-drawer-head"><h3>Table effects</h3>{closePanel}</div>
       {tableEffects.length ? tableEffects.map(({ seat, effect }, index) => {

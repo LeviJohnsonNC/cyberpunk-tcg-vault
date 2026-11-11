@@ -77,13 +77,15 @@
 .circuit-brief-ticket .circuit-marks span[data-earned="true"] { color: var(--color-ticket-ink); text-shadow: none; }
 .circuit-brief > h2 { font: italic 800 43px/.95 var(--font-display); margin: 6px 0; }
 .circuit-hook { color: var(--color-text-muted); font-size: 12px; margin: 8px 0 16px; }
-.circuit-rival { margin-bottom: 16px; }
+.circuit-rival-name { display: flex; align-items: baseline; gap: 8px; font-size: 11px; color: var(--color-text-muted); margin: 12px 0 16px; }
+.circuit-rival-name strong { color: var(--color-text); font-size: 13px; }
+.circuit-rival { margin: 12px 0 16px; }
 .circuit-rival > div { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
 .circuit-rival .card-art { width: 100%; aspect-ratio: 5/7; object-fit: contain; border-radius: 3px; border: 1px solid var(--color-divider); transform: none; box-shadow: 0 5px 14px var(--play-shadow); }
 .circuit-rival > strong { display: block; text-align: center; margin-top: 8px; font: 600 13px/1.4 var(--font-ui); }
 .circuit-deck-label { display: block; margin-bottom: 7px; font: 500 11px/1.4 var(--font-mono); text-transform: uppercase; color: var(--color-text-muted); }
 .circuit-brief [data-radix-collection-item], .circuit-brief .vault-select-trigger { max-width: 100%; }
-.circuit-masterful { display: flex; align-items: center; gap: 9px; padding-block: 14px; font-size: 12px; cursor: pointer; }
+.circuit-masterful { display: flex; align-items: center; gap: 9px; padding-block: 5px 10px; font-size: 12px; cursor: pointer; }
 .circuit-masterful small { display: block; margin-top: 3px; font-size: 10px; line-height: 1.5; color: var(--color-text-muted); }
 .circuit-masterful input { accent-color: var(--color-accent); width: 17px; height: 17px; flex: none; }
 .circuit-start { display: flex; justify-content: space-between; width: 100%; min-height: 46px; margin: 10px 0; font-weight: 600; }
@@ -181,6 +183,20 @@
   .circuit-trophy-case { grid-template-columns: repeat(3, 1fr); }
   .circuit-trophy-case > div:first-child { grid-column: 1 / -1; }
 }
+/* Keep the next action above the fold on ordinary laptop screens. */
+@media (max-height: 850px) and (min-width: 900px) {
+  .circuit-hero { min-height: 160px; padding: 20px 26px; }
+  .circuit-hero .al-title { font-size: clamp(48px, 5vw, 68px); }
+  .circuit-hero .al-subline { margin-top: 7px; }
+  .circuit-credential { padding: 8px 12px; min-width: 235px; }
+  .circuit-credential .circuit-seal { width: 50px; }
+  .circuit-credential small { display: none; }
+  .circuit-standing { padding-block: 12px; margin-bottom: 14px; }
+  .circuit-hub > .al-view-tabs { margin-bottom: 16px; }
+  .circuit-contract { min-height: 166px; padding-block: 13px; }
+  .circuit-contract-number { margin-bottom: 10px; }
+  .circuit-contract .circuit-marks { padding-top: 10px; }
+}
 @media (prefers-reduced-motion: no-preference) {
   .circuit-contract { transition: border-color 140ms, box-shadow 140ms, translate 140ms; }
   .circuit-contract:hover { translate: 0 -3px; }
@@ -193,3 +209,7 @@
   @keyframes circuit-seal-in { from { opacity: 0; transform: rotateY(80deg) scale(.75); } }
   @keyframes circuit-brief-in { from { opacity: .5; translate: 0 4px; } }
 }
+
+.circuit-contract-trigger { background: none; border: 0; padding: 5px 0; cursor: pointer; }
+.circuit-contract-trigger:hover, .circuit-contract-trigger[aria-expanded="true"] { color: var(--color-ticket); }
+.circuit-table-brief > p { font-size: 13px; line-height: 1.6; color: var(--color-text-muted); }

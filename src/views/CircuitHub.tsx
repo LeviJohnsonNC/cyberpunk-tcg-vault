@@ -118,12 +118,13 @@ export function CircuitHub({ progress, draft, savedDecks, initialRival, initialO
         <aside className="circuit-brief" aria-label="Selected contract" key={selected}>
           <div className="circuit-brief-ticket"><span>Contract 0{contractIndex + 1}</span><Marks marks={progress.contracts[contract.id]} /></div>
           <p className="play-eyebrow">{contract.location} / {skill} table</p><h2>{contract.title}</h2><p className="circuit-hook">{contract.hook}</p>
-          <div className="circuit-rival"><div>{rival.deck.legends.map(slug => <CardImg key={slug} slug={slug} alt={BY_SLUG.get(slug)?.display ?? slug} priority />)}</div><strong>{rival.deck.name}</strong></div>
+          <p className="circuit-rival-name">Rival <strong>{rival.deck.name}</strong></p>
           {open ? <><label className="circuit-deck-label" htmlFor="circuit-player-deck">Your deck</label><VaultSelect id="circuit-player-deck" value={playerKey} disabled={busy} onValueChange={setPlayerKey} options={choices.map(choice => ({ value: choice.key, label: `${choice.deck.name} · ${choice.category}` }))} />
             {issues.length > 0 && <p className="play-error" role="alert">{issues.join(' ')}</p>}
-            {skillLevel(contract.skill) < 2 && <label className="circuit-masterful"><input type="checkbox" checked={masterful} disabled={busy} onChange={e => setMasterful(e.target.checked)} /><span>Raise the stakes <small>Masterful rival · earn the third mark with a win</small></span></label>}
             <button type="button" className="btn circuit-start" disabled={busy || !!issues.length || !yourDeck} onClick={() => { if (yourDeck) onStart({ deck: structuredClone(yourDeck), dirty: playerKey === 'current' ? draft.dirty : false }, structuredClone(rival.deck), skill, rival.key, contract.id); }}>{busy ? 'Opening the table…' : cleared ? 'Run it back' : 'Take the contract'} <span aria-hidden="true">↗</span></button>
+            {skillLevel(contract.skill) < 2 && <label className="circuit-masterful"><input type="checkbox" checked={masterful} disabled={busy} onChange={e => setMasterful(e.target.checked)} /><span>Raise the stakes <small>Masterful rival · earn the third mark with a win</small></span></label>}
           </> : <div className="circuit-locked-note"><strong>Earn your way in.</strong><p>Clear {CIRCUIT_CONTRACTS[contractIndex - 1]?.title} to open this table.</p><button className="btn ghost" onClick={() => setSelected(CIRCUIT_CONTRACTS.find(item => !contractCleared(progress, item.id))!.id)}>Go to your next contract</button></div>}
+          <div className="circuit-rival"><div>{rival.deck.legends.map(slug => <CardImg key={slug} slug={slug} alt={BY_SLUG.get(slug)?.display ?? slug} priority />)}</div></div>
           <div className="circuit-bonus"><span>◆ Bonus mark</span><p>{contract.bonus}</p></div>
           <details className="circuit-briefing"><summary>Read the briefing</summary><p>{contract.briefing}</p><p>All rival levels play from public information. Standard rules, best of one. No card or stat bonuses.</p></details>
         </aside>
