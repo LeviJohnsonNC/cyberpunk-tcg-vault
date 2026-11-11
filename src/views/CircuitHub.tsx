@@ -11,8 +11,8 @@ import { DEFAULT_PLAY_DECK_KEY, curatedOpponents, opponentIssues } from '../lib/
 import type { RivalSkill } from '../lib/play/protocol';
 import { PlaySetup } from './PlaySetup';
 
-const tabs = [{ id: 'circuit', label: 'Contract board' }, { id: 'practice', label: 'Practice' }, { id: 'locker', label: 'Your locker' }, { id: 'record', label: 'Match record' }] as const;
-type HubTab = typeof tabs[number]['id'];
+const tabs = [{ id: 'practice', label: 'Free Play' }, { id: 'locker', label: 'Your locker' }, { id: 'record', label: 'Match record' }] as const;
+type HubTab = typeof tabs[number]['id'] | 'circuit';
 const markNames: Record<CircuitMark, string> = { clear: 'Contract cleared', bonus: 'Bonus objective', masterful: 'Masterful win' };
 
 /** Code-native enamel seal: scalable, legible, and in the same visual language as the dice. */
@@ -80,7 +80,7 @@ export function CircuitHub({ progress, draft, savedDecks, initialRival, initialO
   onStart: (draft: DeckDraft, rival: Deck, skill: RivalSkill, key: string, contractId?: string) => void;
   onResume?: () => void; onEdit: () => void; equip: (finish: TableFinish) => void;
 }) {
-  const [tab, setTab] = useState<HubTab>(initialOpponent ? 'practice' : 'circuit');
+  const [tab, setTab] = useState<HubTab>('practice');
   const [selected, setSelected] = useState(() => CIRCUIT_CONTRACTS.find(contract => !contractCleared(progress, contract.id))?.id ?? CIRCUIT_CONTRACTS[0].id);
   const [playerKey, setPlayerKey] = useState(draft && !opponentIssues(draft.deck).length ? 'current' : DEFAULT_PLAY_DECK_KEY);
   const [masterful, setMasterful] = useState(false);
@@ -94,7 +94,7 @@ export function CircuitHub({ progress, draft, savedDecks, initialRival, initialO
   const rank = rankIndex(progress.rep), marks = circuitMarks(progress), clears = CIRCUIT_CONTRACTS.filter(item => contractCleared(progress, item.id)).length;
   const contractIndex = CIRCUIT_CONTRACTS.indexOf(contract);
   return <div className="circuit-hub">
-    <header className="circuit-hero"><Masthead eyebrow="The Afterlife / Your name on the door" title="Afterlife Circuit" sub="Six contracts. Eighteen marks. Earn your seat." />
+    <header className="circuit-hero"><Masthead eyebrow="The Afterlife / Open table" title="Free Play" sub="Bring any deck. Choose any rival." />
       <div className="circuit-hero-actions">{onResume && <button type="button" className="btn" disabled={busy} onClick={onResume}>Return to match</button>}<button type="button" className="btn quiet" disabled={busy} onClick={onEdit}>Deck Builder</button></div>
       <div className="circuit-credential"><CircuitSeal level={rank} /><div><span>Current standing</span><strong>{CIRCUIT_RANKS[rank].name}</strong><small>{CIRCUIT_RANKS[rank].line}</small></div></div>
     </header>

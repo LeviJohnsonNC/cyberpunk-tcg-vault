@@ -47,7 +47,7 @@ export interface CircuitResult {
 }
 export interface CircuitProgress {
   version: 1; rep: number; matches: number; wins: number; losses: number; draws: number; streak: number; bestStreak: number;
-  contracts: Record<string, CircuitMark[]>; history: CircuitResult[]; finish: TableFinish;
+  contracts: Record<string, CircuitMark[]>; history: CircuitResult[]; finish: TableFinish; campaignFinishes?: TableFinish[];
 }
 export const emptyCircuit = (): CircuitProgress => ({ version: 1, rep: 0, matches: 0, wins: 0, losses: 0, draws: 0, streak: 0, bestStreak: 0, contracts: {}, history: [], finish: 'afterlife' });
 export const skillLevel = (skill: RivalSkill) => ['standard', 'sharp', 'masterful'].indexOf(skill);
@@ -59,7 +59,7 @@ export const contractUnlocked = (progress: CircuitProgress, id: string) => {
 };
 export function circuitMarks(progress: CircuitProgress) { return CIRCUIT_CONTRACTS.reduce((sum, contract) => sum + (progress.contracts[contract.id]?.length ?? 0), 0); }
 export function finishUnlocked(progress: CircuitProgress, finish: TableFinish) {
-  return finish === 'afterlife' || (finish === 'ghost' && progress.rep >= 150) || (finish === 'netrunner' && progress.rep >= 400)
+  return finish === 'afterlife' || !!progress.campaignFinishes?.includes(finish) || (finish === 'ghost' && progress.rep >= 150) || (finish === 'netrunner' && progress.rep >= 400)
     || (finish === 'gold' && CIRCUIT_CONTRACTS.every(contract => contractCleared(progress, contract.id))) || (finish === 'chrome' && circuitMarks(progress) === 18);
 }
 export function bonusProgress(contract: CircuitContract, snapshot: MatchSnapshot) {
