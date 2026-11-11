@@ -317,6 +317,12 @@ hr.cut { border: 0; border-top: 1px dashed var(--color-divider); margin: var(--s
   .cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .cols-3 { grid-template-columns: 1fr; }
 }
+@media (1100px < width <= 1240px) {
+  .appbar-inner { gap: var(--space-3); }
+  .navlink { padding-inline: var(--space-2); }
+  .navlink[aria-current='page']::after { inset-inline: var(--space-2); }
+  .status { gap: var(--space-2); }
+}
 @media (max-width: 1100px) {
   .appbar-inner { flex-wrap: wrap; gap: 0 var(--space-3); padding: 0 12px; min-height: 0; }
   .brand { padding: 12px 0; }
