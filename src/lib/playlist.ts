@@ -12,4 +12,9 @@ export const PLAYLIST: Track[] = [
   { title: 'One More Life', src: '/music/one-more-life.m4a' },
   { title: 'Wrong Way Home', src: '/music/wrong-way-home.m4a' },
   { title: 'Dead Air, Live Wire', src: '/music/dead-air-live-wire.m4a' },
+  { title: 'A Little More', src: '/music/a-little-more.mp3' },
+  { title: 'Call Me Back', src: '/music/call-me-back.mp3' },
+  { title: 'In the Blackout', src: '/music/in-the-blackout.mp3' },
+  { title: 'Looks Like Trouble', src: '/music/looks-like-trouble.mp3' },
+  { title: 'Make It Feel Real', src: '/music/make-it-feel-real.mp3' },
 ];
