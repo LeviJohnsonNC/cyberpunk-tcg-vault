@@ -26,5 +26,23 @@ it('restores the exact campaign engine checkpoint without replacing a finished s
     expect(resumed.snapshot?.matchId).toBe(opening.snapshot?.matchId);
     expect(resumed.snapshot?.view.stateID).toBe(opening.snapshot?.view.stateID);
     expect((await command({ type: 'start', revision: started.run.revision })).error).toContain('changed in another tab');
+    const lost = await command({ type: 'move', matchId: opening.snapshot!.matchId,
+      stateID: opening.snapshot!.view.stateID, move: { move: 'concede' } });
+    expect(lost.error).toBeUndefined();
+    expect(lost.run?.phase).toBe('preparing');
+    expect(lost.run?.encounter).toBe(0);
+    expect(lost.run?.inventory).toEqual(started.run.inventory);
+    expect(lost.run?.rewards[0]).toEqual(opening.run?.rewards[0]);
+    const savedLoss = await command({ type: 'resume' });
+    expect(savedLoss.snapshot?.view.gameEnded).toBe(true);
+    expect(savedLoss.snapshot?.matchId).toBe(opening.snapshot?.matchId);
+    const retry = await command({ type: 'start', revision: lost.run!.revision });
+    expect(retry.run?.phase).toBe('inMatch');
+    expect(retry.run?.rewards[0]).toEqual(opening.run?.rewards[0]);
+    expect(retry.snapshot?.matchId).not.toBe(opening.snapshot?.matchId);
+    const staleMove = await command({ type: 'move', matchId: opening.snapshot!.matchId,
+      stateID: opening.snapshot!.view.stateID, move: { move: 'concede' } });
+    expect(staleMove.error).toBeTruthy();
+    expect((await readCampaign(scope)).run?.match?.summary.matchId).toBe(retry.snapshot?.matchId);
   } finally { vi.unstubAllGlobals(); }
 }, 30000);
