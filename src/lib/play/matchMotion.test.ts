@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { beatPace, planMotion } from './matchMotion';
+import { beatPace, planMotion, tableAccents } from './matchMotion';
 import type { CardView, PlayerView } from './protocol';
 
 const card = (id: string, zone: string, extra: Partial<CardView> = {}): CardView => ({ instanceId: id, definitionId: id, cardName: id, zone, type: 'unit', faceDown: false, spent: false, power: 3, effectivePower: 3, cost: 2, ...extra });
@@ -68,5 +68,45 @@ describe('table motion plan', () => {
   it('keeps long sequences readable', () => {
     expect(beatPace(1)).toBe(1);
     expect(beatPace(100)).toBe(0.55);
+  });
+});
+
+describe('table accents', () => {
+  it('rewards plays, called Legends and sales on both sides without revealing an Eddie identity', () => {
+    const before = fresh(), after = structuredClone(before);
+    before.players.rival.zones.legendArea = [card('legend', 'legendArea', { faceDown: true, definitionId: '', cardName: null })];
+    after.players.rival.zones.legendArea = [card('legend', 'legendArea', { type: 'legend' })];
+    after.players.player.zones.hand = [];
+    after.players.player.zones.field = [card('guard', 'field'), card('my-hand', 'field')];
+    after.players.rival.zones.eddieArea = [card('cash', 'eddieArea', { faceDown: true, definitionId: '', cardName: null })];
+    expect(tableAccents(before, after)).toEqual([
+      { kind: 'legend', cardId: 'legend', seat: 'rival' },
+      { kind: 'land', cardId: 'my-hand', seat: 'player' },
+      { kind: 'cash', cardId: 'cash', seat: 'rival' },
+    ]);
+    expect(tableAccents(after, after)).toEqual([]);
+  });
+
+  it('does not celebrate restore, setup, ending, readying, or revealing a still-concealed card', () => {
+    const before = fresh(), after = structuredClone(before);
+    before.players.player.zones.eddieArea = [card('cash', 'eddieArea', { spent: true })];
+    after.players.player.zones.eddieArea = [card('cash', 'eddieArea')];
+    after.players.player.zones.field = [card('guard', 'field', { spent: true }), card('hidden', 'field', { faceDown: true })];
+    expect(tableAccents(before, after)).toEqual([]);
+    expect(tableAccents(undefined, after)).toEqual([]);
+    after.players.player.zones.field = [card('new', 'field')];
+    expect(tableAccents({ ...before, gamePhase: 'setup' }, after)).toEqual([]);
+    expect(tableAccents(before, { ...after, gameEnded: true })).toEqual([]);
+  });
+
+  it('keeps mass changes quiet and never cash-stamps a spent Eddie becoming ready', () => {
+    const before = fresh(), after = structuredClone(before);
+    after.players.player.zones.eddieArea = Array.from({ length: 7 }, (_, i) => card(`cash-${i}`, 'eddieArea'));
+    after.players.rival.zones.field = Array.from({ length: 12 }, (_, i) => card(`unit-${i}`, 'field'));
+    const accents = tableAccents(before, after);
+    expect(accents).toHaveLength(4);
+    expect(accents.filter((accent) => accent.kind === 'cash')).toHaveLength(1);
+    after.players.player.availableEddies += 3;
+    expect(tableAccents(before, { ...before, players: { ...before.players, player: { ...before.players.player, availableEddies: 10 } } })).toEqual([]);
   });
 });

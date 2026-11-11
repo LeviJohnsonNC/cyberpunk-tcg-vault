@@ -6,6 +6,31 @@ const tableZones = ['field', 'legendArea', 'resolvingProgram', 'eddieArea', 'gig
 /** Where a card that left the table is headed, as a table anchor. */
 const pileAnchors: Record<string, string> = { trash: 'trash', deck: 'deck', hand: 'hand' };
 
+export interface TableAccent { kind: 'land' | 'legend' | 'cash'; cardId: string; seat: Seat }
+
+/** Small rewards for actual public changes, never for mounting or inspecting a saved table. */
+export function tableAccents(before: PlayerView | undefined, after: PlayerView): TableAccent[] {
+  if (!before || before.gamePhase !== 'main' || after.gamePhase !== 'main' || after.gameEnded) return [];
+  const accents: TableAccent[] = [];
+  for (const seat of seats) {
+    const old = new Map(shown(before, seat).map((card) => [card.instanceId, card]));
+    for (const card of shown(after, seat)) {
+      const previous = old.get(card.instanceId);
+      if (card.zone === 'eddieArea' && previous?.zone !== 'eddieArea') {
+        // Only one cash pulse per seat, even when an effect sells several cards.
+        if (!accents.some((accent) => accent.kind === 'cash' && accent.seat === seat)) accents.push({ kind: 'cash', cardId: card.instanceId, seat });
+      } else if (card.definitionId && !card.faceDown) {
+        if (card.zone === 'legendArea' && previous?.faceDown) accents.push({ kind: 'legend', cardId: card.instanceId, seat });
+        else if (['field', 'resolvingProgram'].includes(card.zone ?? '') && previous?.zone !== card.zone) {
+          accents.push({ kind: 'land', cardId: card.instanceId, seat });
+        }
+      }
+    }
+  }
+  // A mass summon should still leave the board readable.
+  return accents.sort((a, b) => Number(b.kind === 'legend') - Number(a.kind === 'legend')).slice(0, 4);
+}
+
 export interface Strike {
   attackerId: string;
   /** A Unit that takes the hit. */
