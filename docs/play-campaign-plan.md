@@ -1,6 +1,6 @@
 # Afterlife Campaign: design and implementation plan
 
-Status: approved. The campaign foundation and progression loop merged in PR #55. Phase-two persistence and recovery verification is recorded in [the phase-two QA report](qa/campaign-phase-two.md). Balance, interactive and visual QA, and release polish remain phase three.
+Status: approved. The campaign foundation and progression loop merged in PR #55. Phase-two persistence and recovery verification is recorded in [the phase-two QA report](qa/campaign-phase-two.md). Phase-three [encounter and reward calibration](qa/campaign-balance.md) is complete. Presentation, interactive and visual QA, and release verification remain.
 
 Prepared 11 November 2026. Source baseline: `origin/main` at `3d73cff`.
 
