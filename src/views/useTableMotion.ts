@@ -160,11 +160,11 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
     }
 
     if (!before || !previousView) {
-      // A fresh table deals the opening hand from the deck.
+      // A fresh table deals the opening hand from the deck, once the match intro has cleared.
       if (deal) {
         const deck = anchor('deck:player');
         let dealt = 0;
-        for (const piece of next.values()) if (deck && piece.zone === 'hand:player') fly(piece, deck, { delay: 120 + 90 * dealt++, faceDown: true, duration: 460, cue: 'draw' });
+        for (const piece of next.values()) if (deck && piece.zone === 'hand:player') fly(piece, deck, { delay: 1150 + 90 * dealt++, faceDown: true, duration: 460, cue: 'draw' });
       }
       return;
     }

@@ -2,7 +2,8 @@ import { chooseMove, createCardCatalog, createMatchState, LocalEngine, projectRe
 import type { EngineEvent, EngineState } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import { describeAction, hideConcealedTargets, zoneCards, zoneCount } from './matchView';
 import { describeBeat, describeRolls, presentationView } from './matchPresentation';
-import type { CardView, GigRoll, MatchBeat, MatchFrame, MatchLogEntry, MatchSetup, MatchSnapshot, Move, Seat } from './protocol';
+import { emptyTally, matchReport, recordMove } from './matchReport';
+import type { CardView, GigRoll, MatchBeat, MatchFrame, MatchLogEntry, MatchSetup, MatchSnapshot, MatchTally, Move, Seat } from './protocol';
 
 const catalog = createCardCatalog();
 const cardAliases: Record<string, string> = {
@@ -69,6 +70,8 @@ export interface EngineCheckpoint {
   peeks: CardView[];
   log: MatchLogEntry[];
   commandNumber: number;
+  /** Absent in matches saved before the report existed. */
+  tally?: MatchTally;
 }
 
 export function createEngineSession(
@@ -85,6 +88,7 @@ export function createEngineSession(
   const known = checkpoint?.known ?? new Map<string, Set<Seat>>();
   let peeks = checkpoint?.peeks ?? [];
   const log = checkpoint?.log ?? [];
+  const tally = checkpoint?.tally ?? emptyTally();
   let gigRolls: GigRoll[] = [];
   let commandNumber = checkpoint?.commandNumber ?? 0;
   const names = { player: setup.player.name.trim() || 'Untitled deck', rival: setup.rival.name };
@@ -137,6 +141,7 @@ export function createEngineSession(
     gigRolls.push(...rolls);
     const main = before.gamePhase !== 'setup' && after.gamePhase !== 'setup';
     const defeated = new Set(result.gameEvents.flatMap((event) => event.type === 'cardDefeated' ? [event.cardId] : []));
+    recordMove(tally, seat, command, before, after, defeated);
     const described = main || rolls.length ? describeBeat(seat, command, before, after, defeated) : undefined;
     const beatText = described?.text || describeRolls(rolls, seat);
     const text = describeAction(seat, command, before, after)
@@ -162,6 +167,7 @@ export function createEngineSession(
         if (view.gameEnded || view.prompt.status === 'action' || view.prompt.status === 'choice') {
           const snapshot: MatchSnapshot = { matchId, names, ...frame(view, gigRolls),
             ...(beats.length || feedback ? { presentation: { beats, feedback } } : {}),
+            ...(view.gameEnded && { report: matchReport(tally, view) }),
           };
           gigRolls = [];
           beats = [];
@@ -183,7 +189,7 @@ export function createEngineSession(
     matchId,
     start: advance,
     checkpoint: (): EngineCheckpoint => ({
-      matchId, state: engine.getState(), botRng: botRng.getState(), known, peeks, log, commandNumber,
+      matchId, state: engine.getState(), botRng: botRng.getState(), known, peeks, log, commandNumber, tally,
     }),
     isCurrent,
     move(stateID: number, move: Move) {

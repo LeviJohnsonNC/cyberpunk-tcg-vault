@@ -52,6 +52,10 @@ describe('play engine', () => {
     }
     expect(snapshot.view.gameEnded).toBe(true);
     expect(snapshot.view.winReason).toMatch(/^(gig_victory|overtime_majority|deck_out_victory)$/);
+    // The report arrives with the result and agrees with the final table.
+    expect(snapshot.report?.turns).toBe(snapshot.view.turnNumber);
+    expect(snapshot.report?.gigs.at(-1)).toMatchObject({ player: snapshot.view.players.player.gigCount, rival: snapshot.view.players.rival.gigCount });
+    expect(snapshot.report?.played).toBeGreaterThan(0);
   });
 
   it('delivers public rolls from both seats once, with the engine’s landed values', () => {

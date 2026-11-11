@@ -17,6 +17,7 @@ import type { TableCue } from '../lib/play/tableSound';
 import { Rules } from '../components/bits';
 import { CombatArrow, CombatBanner } from './PlayCombat';
 import { PlayPresentation, type MatchPlayback } from './PlayPresentation';
+import { MatchResult } from './PlayResult';
 import './play-table.css';
 import './play-interaction.css';
 import './play-presentation.css';
@@ -116,6 +117,8 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
   const setup = view.gamePhase === 'setup';
   const turnKey = setup ? 'setup' : `${view.turnNumber}:${view.activePlayerId}`;
   const [firstTurn] = useState(turnKey);
+  // A match that opens on setup is new: name the two crews before the first cards are dealt.
+  const [intro] = useState(setup);
   // Movement follows each public frame: the player's own result, then every rival move in turn.
   useTableMotion(table, { key: `${stateKey}:${playback?.beat.id ?? ''}`, view, beat: playback?.beat ?? feedback,
     enabled: !reduced, pace: playback ? beatPace(playback.count) : 1, deal: setup, sound: cue });
@@ -366,13 +369,8 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
       {playing && turnKey !== firstTurn && <div className="play-turn-banner" key={turnKey} data-seat={view.activePlayerId} aria-hidden="true">
         <span>Turn {view.turnNumber}</span><strong>{yourTurn ? 'Your turn' : 'Rival turn'}</strong>
       </div>}
-      {view.gameEnded && <section className="play-result" data-result={view.winnerId ?? 'draw'} aria-label="Match report">
-        <p className="play-eyebrow">Match report</p>
-        <h2>{decisionTitle}</h2>
-        <p className="play-result-reason">{winReasons[view.winReason ?? ''] ?? 'Match ended'}</p>
-        <dl className="play-result-score"><div><dt>Your Gigs</dt><dd>{view.players.player.gigCount}</dd></div><div><dt>Rival Gigs</dt><dd>{view.players.rival.gigCount}</dd></div></dl>
-        <div className="play-actions"><button type="button" className="btn" disabled={busy} onClick={rematch}>Rematch</button><button type="button" className="btn quiet" disabled={busy} onClick={edit}>Edit draft</button></div>
-      </section>}
+      {view.gameEnded && <MatchResult view={view} report={snapshot.report} title={decisionTitle} reason={winReasons[view.winReason ?? ''] ?? 'Match ended'} busy={busy} rematch={rematch} edit={edit} />}
+      {intro && <div className="play-intro" aria-hidden="true"><span>Practice table</span><strong>{names.player}</strong><i>vs.</i><strong>{names.rival}</strong></div>}
       <span className="sr-only" role="status">{notice}{busy ? ' Resolving move.' : ''}</span>
       {notice && <p className="play-table-notice">{notice}</p>}
       {rolling && <PlayGigRoll key={view.stateID} rolls={rolls} impact={diceImpact} />}
