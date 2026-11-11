@@ -86,7 +86,7 @@ function paletteFor(table: HTMLElement, roll: GigRoll): DicePalette {
 
 function RollingDie({ roll, index, seatIndex, seatCount, impact }: {
   roll: GigRoll; index: number; seatIndex: number; seatCount: number;
-  impact?: (type: string, soft: boolean) => (() => void) | undefined;
+  impact?: (type: string, soft: boolean, launch?: boolean) => (() => void) | undefined;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -109,6 +109,7 @@ function RollingDie({ roll, index, seatIndex, seatCount, impact }: {
     const sounds: (() => void)[] = [];
     let route = layout(mat, roll, seatIndex, seatCount);
     let dirty = false;
+    let launched = false;
     let firstImpact = false;
     let settled = false;
     let frame = 0;
@@ -122,6 +123,7 @@ function RollingDie({ roll, index, seatIndex, seatCount, impact }: {
       const elapsed = now - start - rollOffset(index);
       if (dirty) { route = layout(mat, roll, seatIndex, seatCount); dirty = false; }
       if (route && elapsed >= 0) {
+        if (!launched) { launched = true; const stop = elapsed < 100 ? impact?.(roll.dieType, false, true) : undefined; if (stop) sounds.push(stop); }
         const motion = pose(route, roll, elapsed);
         const { point, radius, lift, dock } = motion;
         const phase = elapsed < ROLL_SETTLE ? 'air' : dock < 1 ? 'landed' : 'docked';
@@ -171,7 +173,7 @@ function RollingDie({ roll, index, seatIndex, seatCount, impact }: {
 }
 
 export function PlayGigRoll({ rolls, impact }: {
-  rolls: GigRoll[]; impact?: (type: string, soft: boolean) => (() => void) | undefined;
+  rolls: GigRoll[]; impact?: (type: string, soft: boolean, launch?: boolean) => (() => void) | undefined;
 }) {
   if (!rolls.length) return null;
   return <div className="play-gig-roll-layer" aria-hidden="true">

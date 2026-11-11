@@ -126,7 +126,7 @@ Play Mode is the one screen where the cards are the interface. The table is the 
 
 **Payment.** Every payment opens filled in (`suggestPayment`: ready Eddies, then face-down Legends, then face-up ones) so an ordinary play is one confirmation, and focus lands on the confirm button. The suggestion never overrides a payment the player has touched, and the sources stay selectable on the mat.
 
-**Sound** (`useTableSound.ts`, cues in `lib/play/tableSound.ts`). Short synthesised cues, no audio files. They are fired by the motion that shows each event, so a sound lands with its card, and are called off when that motion is skipped. One Sound toggle in the header; off until the player turns it on.
+**Sound** (`useTableSound.ts`, cues in `lib/play/tableSound.ts`). Short synthesised cues, no audio files. They are fired by the presentation of each event so a sound lands with its card; stale scheduled sounds are cancelled when that presentation is interrupted. Reduced motion keeps concise outcome cues. One Sound toggle and independent FX level in the header; restrained effects start after a table gesture, preserving any existing mute choice.
 
 **Start and end.** A new match names the two crews before the first hand is dealt. The result waits for the last hit to land, then covers the table with the outcome and a report (`PlayResult.tsx`, `lib/play/matchReport.ts`): Gigs by turn, cards played and sold, Units lost, and cards that sat in hand for three or more turns. The report is built only from the player's own view. Chart lines are named and valued in the legend, never told apart by colour alone.
 
@@ -142,8 +142,14 @@ All paths use the same action forms and engine commands. Spatial gestures expres
 
 Ordinary decisions use a single line in the command bar. Revealed cards, branching effects, ordering and placement reviews expand the tray downward without moving the table. Cancel before committing; after commitment, only clear unsubmitted selections or decline where the engine permits it. Ready/Spent state follows engine results.
 
-Keep the hand reachable, use stable slots, respect reduced motion, and preserve valid pending selections after refresh. Motion must explain a state change; nothing moves for decoration. Hover previews yield to dragging and decisions. Keyboard focus follows user actions and never jumps away from the table.
+Keep the hand reachable, use stable slots, respect reduced motion, and preserve valid pending selections after refresh. Table motion must explain a state change. The music-reactive room is an optional atmospheric exception behind the table; it must never move game controls or card targets. Hover previews yield to dragging and decisions. Keyboard focus follows user actions and never jumps away from the table.
 
 Rival move pacing uses transient, read-only frames built from the player's filtered view at each public move. Save the authoritative final checkpoint before presenting the sequence. Skip, changing motion preferences, returning from a hidden tab, and refresh all return to the current decision without rerunning moves or RNG. Do not store the presentation queue in the match checkpoint or copy future logs, peeks or cards into earlier frames.
 
 Combat keeps a persistent source-to-defender arrow and distinct Attacking/Defending labels. The command bar owns the Your response / Pass reaction control. Show only responses offered by the current engine prompt; mandatory choices must finish before passing. Arrows follow visible cards, reveal off-screen combatants horizontally, and yield to readable labels and controls. Public outcome feedback distinguishes power, Gigs, Street Cred and available currency; never infer a defeat from a generic move to Trash.
+
+### Afterhours audio and room
+
+The music deck is Afterhours Radio: plum hardware, a cream station label, pink transport, a real music spectrum, and readable track titles. Music starts only on an explicit play gesture; pause preserves position. Music volume and table-effects volume are independent and remembered. Existing mute choices win; new visitors hear restrained effects after their first table gesture. Ten concurrent effects maximum, short repeat suppression, a master compressor, and light music ducking keep busy turns controlled. Match audio stays independent of reduced-motion preferences.
+
+`musicSignal.ts` analyses only the site's music element, never microphone/system audio. Its adaptive bass-onset envelope drives `ReactiveRoom` at at most 30 updates/second, outside React state. The room's photograph breathes slightly; edge lighting changes shape and soft rings follow bass transients. The mat and hit targets never move with music. Room motion has its own persistent switch and yields completely to reduced motion. Pause, mute, buffering, hidden tabs and silence stop or settle the visual response. No fixed-tempo loop pretends to be the music.
