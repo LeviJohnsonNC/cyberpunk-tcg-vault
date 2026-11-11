@@ -18,17 +18,6 @@
   isolation: isolate;
 }
 
-.play-mode::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--color-canvas-deep) 76%, transparent), var(--color-canvas) 98%),
-    linear-gradient(90deg, color-mix(in srgb, var(--color-canvas) 91%, transparent), color-mix(in srgb, var(--color-canvas) 66%, transparent)),
-    url('../assets/play/afterlife-back-room.webp') center / cover no-repeat var(--color-canvas);
-}
 
 .play-eyebrow {
   color: var(--color-text-muted);
@@ -247,3 +236,6 @@
 @media (prefers-reduced-motion: no-preference) {
   .play-rival, .play-option { transition: border-color 140ms ease, background-color 140ms ease; }
 }
+
+.play-sound-level { display: flex; align-items: center; gap: 5px; color: var(--color-text-muted); font: 500 10px/1 var(--font-mono); }
+.play-sound-level input { width: 62px; height: 28px; margin: 0; padding: 0; accent-color: var(--color-accent); }

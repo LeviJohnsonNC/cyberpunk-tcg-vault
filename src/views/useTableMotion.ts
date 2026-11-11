@@ -27,7 +27,7 @@ function clone(el: HTMLElement, spot: Spot) {
  */
 export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
   key: string; view: PlayerView; beat?: MatchBeat; enabled: boolean; pace: number; deal: boolean;
-  sound?: (cue: TableCue, delayMs?: number) => (() => void) | undefined;
+  sound?: (cue: TableCue, delayMs?: number, pan?: number) => (() => void) | undefined;
 }) {
   const sounds = useRef<(() => void)[]>([]);
   const pieces = useRef<Map<string, Piece> | undefined>(undefined);
@@ -84,7 +84,23 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
     const next = measure(table);
     pieces.current = next;
     lastView.current = view;
-    if (!enabled || document.hidden) return;
+    if (document.hidden) return;
+    if (!enabled) {
+      // Reduced motion changes the presentation, not the player's independent sound preference.
+      if (previousView) {
+        const accents = tableAccents(previousView, view);
+        const plan = planMotion(previousView, view, beat);
+        const cues = new Set<TableCue>(accents.map((accent) => accent.kind === 'cash' ? 'eddie' : accent.kind === 'legend' ? 'call' : 'play'));
+        if (plan.strike) cues.add('hit');
+        if (plan.defeated.length) cues.add('defeat');
+        if (beat?.gigRolls.length) cues.add('gig');
+        const oldHand = previousView.players.player.zones.hand;
+        const newHand = view.players.player.zones.hand;
+        if (Array.isArray(oldHand) && Array.isArray(newHand) && newHand.some((card) => !oldHand.some((old) => old.instanceId === card.instanceId))) cues.add('draw');
+        for (const cue of [...cues].slice(0, 3)) { const stop = sound?.(cue); if (stop) sounds.current.push(stop); }
+      }
+      return;
+    }
     const layer = flightLayer(table);
     const anchor = (key?: string) => {
       const el = key ? table.querySelector<HTMLElement>(`[data-anchor="${key}"]`) : null;
@@ -105,18 +121,18 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
     const time = (ms: number) => Math.round(ms * pace);
     const heard = new Map<TableCue, number>();
     // A sound marks a moment on the table. Repeats of one cue in a frame are capped so a full deal doesn't clatter.
-    const say = (cue: TableCue, delay: number) => {
+    const say = (cue: TableCue, delay: number, pan = 0) => {
       const count = heard.get(cue) ?? 0;
       if (count >= (cue === 'draw' ? 4 : 2)) return;
       heard.set(cue, count + 1);
-      const stop = sound?.(cue, delay);
+      const stop = sound?.(cue, delay, pan);
       if (stop) sounds.current.push(stop);
     };
 
     const arrivals = new Map<string, number>();
     function fly(piece: Piece, from: Spot, options: { delay?: number; faceDown?: boolean; showcase?: boolean; duration?: number; cue?: TableCue } = {}) {
       if (piece.el.dataset.cardId) arrivals.set(piece.el.dataset.cardId, (options.delay ?? 0) + time(options.showcase ? 1080 : options.duration ?? 420));
-      if (options.cue) say(options.cue, (options.delay ?? 0) + (options.cue === 'draw' ? 0 : time(options.showcase ? 1080 : (options.duration ?? 420) * .8)));
+      if (options.cue) say(options.cue, (options.delay ?? 0) + (options.cue === 'draw' ? 0 : time(options.showcase ? 1080 : (options.duration ?? 420) * .8)), piece.zone.endsWith('rival') ? .24 : -.24);
       const to = piece.spot;
       const wrap = document.createElement('div');
       wrap.className = 'play-flight';
@@ -194,6 +210,14 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
     const moves = (zone: string) => !settingUp || zone === 'hand:player';
     const plan = planMotion(previousView, view, beat);
     const accents = tableAccents(previousView, view);
+    const publicCards = Object.values(view.players).flatMap((seat) => Object.values(seat.zones).flatMap((zone) => Array.isArray(zone) ? zone : []));
+    const arrivalCue = (id: string): TableCue => {
+      const card = publicCards.find((card) => card.instanceId === id);
+      return card?.attachedToId ? 'equip' : card?.type === 'program' ? 'program' : card?.type === 'legend' ? 'call' : 'play';
+    };
+    if (!previousView.attackState && view.attackState) say('attack', 0);
+    if (previousView.turnNumber === view.turnNumber && publicCards.some((card) => !card.spent && Object.values(previousView.players).some((seat) => Object.values(seat.zones).some((zone) => Array.isArray(zone) && zone.some((old) => old.instanceId === card.instanceId && old.spent))))) say('ready', 0);
+
     // A Gig die being rolled has its own journey across the table.
     const rolled = new Set(beat?.gigRolls.map((roll) => roll.dieId));
     const strike = plan.strike;
@@ -210,14 +234,14 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       const earlier = before.get(id);
       if (earlier) {
         if (accents.some((accent) => accent.kind === 'legend' && accent.cardId === id)) {
-          fly(piece, piece.spot, { faceDown: true, duration: 400, cue: 'play' });
+          fly(piece, piece.spot, { faceDown: true, duration: 400, cue: 'call' });
           continue;
         }
         const moved = Math.hypot(earlier.spot.x - piece.spot.x, earlier.spot.y - piece.spot.y);
         if (earlier.zone !== piece.zone || earlier.el !== piece.el) {
           const arriving = piece.zone.split(':')[0];
           if (moved > 3) fly(piece, earlier.spot, { delay: id === strike?.attackerId ? impact : 0,
-            cue: arriving === 'eddies' ? 'eddie' : arriving === 'gigs' ? 'gig' : earlier.zone === 'hand:player' ? 'play' : undefined });
+            cue: arriving === 'eddies' ? 'eddie' : arriving === 'gigs' ? 'gig' : earlier.zone === 'hand:player' ? arrivalCue(id) : undefined });
         } else if (moved > 3 && id !== strike?.attackerId) {
           const animation = piece.el.animate([{ transform: `translate(${earlier.spot.x - piece.spot.x}px, ${earlier.spot.y - piece.spot.y}px)` }, { transform: 'none' }],
             { duration: time(280), easing: EASE });
@@ -229,7 +253,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       const [kind, seat] = piece.zone.split(':');
       const from = kind === 'hand' ? anchor('deck:player') : seat === 'rival' && ['field', 'resolving', 'eddies'].includes(kind) ? anchor('hand:rival') : undefined;
       if (from) fly(piece, from, { delay: 70 * entered++, faceDown: kind !== 'eddies', showcase: plan.showcase.includes(id),
-        cue: kind === 'hand' ? 'draw' : kind === 'eddies' ? 'eddie' : 'play' });
+        cue: kind === 'hand' ? 'draw' : kind === 'eddies' ? 'eddie' : arrivalCue(id) });
       else track([piece.el.animate([{ transform: 'scale(.6)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: time(260), easing: EASE })], () => undefined);
     }
 

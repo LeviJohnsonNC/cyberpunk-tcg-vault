@@ -1,3 +1,4 @@
+import { ReactiveRoom } from './ReactiveRoom';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { CardImg, Pip } from '../components/bits';
 import { ConfirmDialog, Masthead } from '../components/ui';
@@ -153,12 +154,14 @@ export default function PlayMode({ scope, draft, saved, initialRival, rememberRi
   const live = snapshot && !(presentation.displayed ?? snapshot).view.gameEnded;
   return (
     <section className="play-mode" onPointerDownCapture={sound.unlock} onKeyDownCapture={sound.unlock}>
+      <ReactiveRoom />
       {snapshot ? <>
         <PlayTable key={snapshot.matchId} scope={scope} snapshot={presentation.displayed ?? snapshot} names={snapshot.names}
           playback={presentation.playback} feedback={presentation.feedback} reduced={presentation.reduced} diceImpact={sound.impact} cue={sound.cue}
           busy={busy || presentation.playing} error={error} send={send} rematch={rematch} edit={onEdit} controls={<>
             <button type="button" className="btn quiet play-dice-sound" aria-label="Table sound" aria-pressed={sound.enabled}
               onClick={sound.toggle}>Sound <b>{sound.enabled ? 'On' : 'Off'}</b></button>
+            <label className="play-sound-level" title="Game effects volume">FX <input type="range" aria-label="Game effects volume" min="0" max="1" step=".05" value={sound.volume} onChange={(e) => sound.changeVolume(Number(e.target.value))} /></label>
             {live && <button type="button" className="btn quiet" disabled={busy || presentation.playing} onClick={() => setConfirm('restart')}>Restart match</button>}
             {live && <button type="button" className="btn danger-ghost" disabled={busy || presentation.playing} onClick={() => setConfirm('concede')}>Concede</button>}
             <button type="button" className="btn quiet" disabled={busy} onClick={() => { presentation.playback?.skip(); onEdit(); }}>Back to draft</button>

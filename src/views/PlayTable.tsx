@@ -61,7 +61,7 @@ function ContextMenu({ context, children, close }: { context: Context; children:
 
 export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, edit, playback, feedback, reduced, controls, diceImpact, cue }: {
   cue?: (name: TableCue, delayMs?: number) => (() => void) | undefined;
-  diceImpact?: (type: string, soft: boolean) => (() => void) | undefined;
+  diceImpact?: (type: string, soft: boolean, launch?: boolean) => (() => void) | undefined;
   playback?: MatchPlayback; feedback?: MatchBeat; scope: string; snapshot: MatchSnapshot; names: Record<Seat, string>; busy: boolean; error?: string;
   send: (move: Move) => void; rematch: () => void; edit: () => void; reduced: boolean; controls?: ReactNode;
 }) {
@@ -264,7 +264,7 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
         onPointerDown={(event) => dragControl.start(event, card)} onDragStart={(event) => event.preventDefault()}
         onMouseEnter={(event) => enterCard(card, event.currentTarget)} onMouseLeave={clearHover}
         onKeyDown={(event) => { if (!playback && event.key.toLowerCase() === 'i') { event.preventDefault(); inspect(card, event.currentTarget); } }}
-        onClick={(event) => { if (playback || dragControl.suppressClick()) return; if (!pickOnBoard(card.instanceId)) { if (event.currentTarget.closest('dialog')) inspect(card, event.currentTarget); else showMenu(card, event.currentTarget); } }}>
+        onClick={(event) => { if (playback || dragControl.suppressClick()) return; cue?.('select'); if (!pickOnBoard(card.instanceId)) { if (event.currentTarget.closest('dialog')) inspect(card, event.currentTarget); else showMenu(card, event.currentTarget); } }}>
         <span className="play-card-art"><CardFace card={card} />
           {printing && <span className="play-art-fallback" aria-hidden="true"><b>{name}</b>{printing.type}</span>}
           {power != null && <span className="play-power" aria-hidden="true">{power}</span>}
