@@ -1,6 +1,8 @@
 import { vaultCard } from '../lib/play/cardDisplay';
 import type { MatchReport, PlayerView } from '../lib/play/protocol';
 import { CardFace } from './PlayCard';
+import type { CircuitReceipt } from '../lib/play/circuit';
+import { CircuitPayout } from './CircuitHub';
 
 /** Gig counts turn by turn, as two step lines. Each line is named and valued in the legend, never by colour alone. */
 function GigTimeline({ gigs }: { gigs: MatchReport['gigs'] }) {
@@ -23,32 +25,26 @@ function GigTimeline({ gigs }: { gigs: MatchReport['gigs'] }) {
 }
 
 /** The end of the match, on the table: the result, how it went, and what never got played. */
-export function MatchResult({ view, report, title, reason, busy, rematch, edit }: {
+export function MatchResult({ view, report, receipt, circuit, title, reason, busy, rematch, edit }: {
   view: PlayerView; report?: MatchReport; title: string; reason: string; busy: boolean; rematch: () => void; edit: () => void;
+  receipt?: CircuitReceipt; circuit?: () => void;
 }) {
-  return <section className="play-result" data-result={view.winnerId ?? 'draw'} data-report={!!report} aria-label="Match report">
+  const reportBody = report && <div className="play-result-body">
+    {report.gigs.length > 1 && <GigTimeline gigs={report.gigs} />}
+    <dl className="play-result-facts">
+      <div><dt>Cards played</dt><dd>{report.played}</dd></div><div><dt>Sold for Eddies</dt><dd>{report.sold}</dd></div>
+      <div><dt>Your Units defeated</dt><dd>{report.lost.player}</dd></div><div><dt>Rival Units defeated</dt><dd>{report.lost.rival}</dd></div>
+    </dl>
+    {report.stuck.length > 0 && <div className="play-result-stuck"><h3>Sat in your hand</h3><ul>{report.stuck.map(({ card, copies, turns }) => <li key={card.definitionId}><CardFace card={card} /><span><strong>{vaultCard(card)?.name ?? card.cardName ?? 'Card'}{copies > 1 ? ` ×${copies}` : ''}</strong><small>Held {turns} turns</small></span></li>)}</ul><p>Still unplayed when the match ended.</p></div>}
+  </div>;
+  return <section className="play-result" data-result={view.winnerId ?? 'draw'} data-report={!!report} data-circuit={!!receipt} aria-label="Match report">
     <span className="play-result-burst" aria-hidden="true" />
     <p className="play-eyebrow">Match report{report ? <> <span>/</span> {report.turns} turns</> : null}</p>
     <h2>{title}</h2>
     <p className="play-result-reason">{reason}</p>
     <dl className="play-result-score"><div><dt>Your Gigs</dt><dd>{view.players.player.gigCount}</dd></div><div><dt>Rival Gigs</dt><dd>{view.players.rival.gigCount}</dd></div></dl>
-    {report && <div className="play-result-body">
-      {report.gigs.length > 1 && <GigTimeline gigs={report.gigs} />}
-      <dl className="play-result-facts">
-        <div><dt>Cards played</dt><dd>{report.played}</dd></div>
-        <div><dt>Sold for Eddies</dt><dd>{report.sold}</dd></div>
-        <div><dt>Your Units defeated</dt><dd>{report.lost.player}</dd></div>
-        <div><dt>Rival Units defeated</dt><dd>{report.lost.rival}</dd></div>
-      </dl>
-      {report.stuck.length > 0 && <div className="play-result-stuck">
-        <h3>Sat in your hand</h3>
-        <ul>{report.stuck.map(({ card, copies, turns }) => <li key={card.definitionId}>
-          <CardFace card={card} />
-          <span><strong>{vaultCard(card)?.name ?? card.cardName ?? 'Card'}{copies > 1 ? ` ×${copies}` : ''}</strong><small>Held {turns} turns</small></span>
-        </li>)}</ul>
-        <p>Still unplayed when the match ended.</p>
-      </div>}
-    </div>}
-    <div className="play-actions"><button type="button" className="btn" disabled={busy} onClick={rematch}>Rematch</button><button type="button" className="btn quiet" disabled={busy} onClick={edit}>Edit draft</button></div>
+    {receipt && <CircuitPayout receipt={receipt} />}
+    {receipt ? <details className="circuit-match-detail"><summary>Inspect match report</summary>{reportBody}</details> : reportBody}
+    <div className="play-actions">{circuit && <button type="button" className="btn" disabled={busy} onClick={circuit}>{receipt?.marks.includes('clear') ? 'Next contract' : 'Back to Circuit'}</button>}<button type="button" className={`btn ${circuit ? 'ghost' : ''}`} disabled={busy} onClick={rematch}>Rematch</button><button type="button" className="btn quiet" disabled={busy} onClick={edit}>Edit draft</button></div>
   </section>;
 }

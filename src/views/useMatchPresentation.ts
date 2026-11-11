@@ -48,7 +48,9 @@ export function useMatchPresentation(snapshot?: MatchSnapshot) {
   const feedback = beat ?? (expired !== key ? last : undefined);
   const displayed: MatchSnapshot | undefined = snapshot && beat ? {
     matchId: snapshot.matchId, names: snapshot.names,
-    view: beat.view.gameEnded && beat.gigRolls.length ? { ...beat.view, gameEnded: false } : beat.view,
+    circuit: snapshot.circuit && { contractId: snapshot.circuit.contractId, skill: snapshot.circuit.skill },
+    // Reveal the saved report and Circuit receipt together, after the final public beat.
+    view: beat.view.gameEnded ? { ...beat.view, gameEnded: false } : beat.view,
     peeks: beat.peeks,
     knownLegends: beat.knownLegends, log: beat.log, gigRolls: beat.gigRolls,
   } : snapshot && beats.length && !reduced ? { ...snapshot, gigRolls: [] } : snapshot;

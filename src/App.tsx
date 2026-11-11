@@ -265,7 +265,7 @@ export default function App() {
         {route.tab === 'shared' && <SharedDeck onPlayAgainst={PlayMode && !mobile ? practiceAgainst : undefined} token={route.deck} onOpen={showCard} goAdd={() => go('add')} />}
         {route.tab === 'play' && (PlayMode && !mobile && store.ready && matchInfo && (matchDraft || savedMatch)
           ? <Suspense fallback={<p className="callout" role="status">Opening Play Mode…</p>}>
-            <PlayMode scope={scope} draft={matchDraft} saved={savedMatch} initialRival={playRival?.scope === scope ? playRival.id : undefined}
+            <PlayMode key={scope} scope={scope} draft={matchDraft} saved={savedMatch} initialRival={playRival?.scope === scope ? playRival.id : undefined}
               savedDecks={store.decks} initialOpponent={playDraft?.scope === scope ? playDraft.opponent : undefined}
               rememberRival={(id) => setPlayRival({ scope, id })} onCheckpoint={acceptMatch} onEdit={returnToDraft} />
           </Suspense>
