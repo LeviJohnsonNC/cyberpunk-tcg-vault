@@ -91,6 +91,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
         const accents = tableAccents(previousView, view);
         const plan = planMotion(previousView, view, beat);
         const cues = new Set<TableCue>(accents.map((accent) => accent.kind === 'cash' ? 'eddie' : accent.kind === 'legend' ? 'call' : 'play'));
+        for (const change of beat?.changes ?? []) if (change.kind === 'played') cues.add(change.card?.type === 'program' ? 'program' : change.card?.attachedToId ? 'equip' : 'play');
         if (plan.strike) cues.add('hit');
         if (plan.defeated.length) cues.add('defeat');
         if (beat?.gigRolls.length) cues.add('gig');
@@ -215,6 +216,8 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       const card = publicCards.find((card) => card.instanceId === id);
       return card?.attachedToId ? 'equip' : card?.type === 'program' ? 'program' : card?.type === 'legend' ? 'call' : 'play';
     };
+    // Instant Programs can go hand → trash in one public frame, with no landing on the mat.
+    for (const change of beat?.changes ?? []) if (change.kind === 'played' && change.card?.type === 'program' && !next.has(change.card.instanceId)) say('program', time(80), change.seat === 'rival' ? .24 : -.24);
     if (!previousView.attackState && view.attackState) say('attack', 0);
     if (previousView.turnNumber === view.turnNumber && publicCards.some((card) => !card.spent && Object.values(previousView.players).some((seat) => Object.values(seat.zones).some((zone) => Array.isArray(zone) && zone.some((old) => old.instanceId === card.instanceId && old.spent))))) say('ready', 0);
 
