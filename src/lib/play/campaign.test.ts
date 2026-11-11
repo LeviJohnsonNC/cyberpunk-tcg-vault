@@ -6,7 +6,7 @@ import { ENCOUNTERS, campaignDeckIssues, encounterDeck, generateReward, grantVic
 import { matchDeckIssues, prepareMatchDeck } from './matchDeck';
 import { createMatchController } from './workerController';
 import { chooseReward, claimEnvironment, readCampaign, revealCampaignPack, saveCampaignDeck, startCampaign, updateCampaign } from './campaignStorage';
-import { readCircuitProgress, equipTableFinish } from './matchStorage';
+import { readCircuitProgress, equipTableFinish, openDatabase, readMatchSummary } from './matchStorage';
 
 describe('starter campaign', () => {
   it('uses the exact official legal starter and legal rival lists in all nine encounters', () => {
@@ -130,36 +130,107 @@ describe('starter campaign', () => {
     expect(third.profile.history?.at(-1)?.deck).toEqual(second.run.deck);
   });
 
-  it('persists an entire nine-table reward path and never puts earned cards into the ordinary Vault', async () => {
-    const scope = 'campaign-complete-path';
-    await startCampaign(scope, 'embracing-power');
+  it.each(STARTERS)('persists all nine tables and workshop transitions for $name without touching Free Play', async starter => {
+    const scope = `campaign-complete-path:${starter.key}`;
+    const db = await openDatabase();
+    const freeSummary = { matchId: `free:${starter.key}`, ended: false };
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction('summaries', 'readwrite');
+      tx.objectStore('summaries').put(freeSummary, scope);
+      tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error);
+    });
+    await startCampaign(scope, starter.key);
+    let sawRecruit = false;
     for (let encounter = 0; encounter < 9; encounter++) {
       const before = (await readCampaign(scope)).run!;
       expect(before.encounter).toBe(encounter);
+      expect(['preparing', 'upgrading']).toContain(before.phase);
       expect(campaignDeckIssues(before, before.deck)).toEqual([]);
       const controller = createMatchController();
       const response = controller.respond({ id: 1, action: { type: 'start', setup: { player: prepareMatchDeck(before.deck), rival: prepareMatchDeck(encounterDeck(before)) } } });
       if (!('snapshot' in response)) throw new Error(response.error);
       const match = controller.save(response.snapshot);
       match.summary.ended = true;
-      const result = grantVictory({ ...before, phase: 'inMatch', rewards: encounter < 8 ? { ...before.rewards, [encounter]: generateReward(before) } : before.rewards },
-        (await readCampaign(scope)).profile, match, 'player');
-      await updateCampaign(scope, () => ({ ...result, value: null }));
+      const sealed = encounter < 8 ? generateReward(before) : undefined;
+      await updateCampaign(scope, () => ({ run: { ...before, phase: 'inMatch', match,
+        rewards: sealed ? { ...before.rewards, [encounter]: sealed } : before.rewards }, value: null }));
+      const live = (await readCampaign(scope)).run!;
+      expect(live.phase).toBe('inMatch');
+      expect(live.match?.summary.matchId).toBe(match.summary.matchId);
+      await updateCampaign(scope, (run, profile) => ({ ...grantVictory(run!, profile, match, 'player'), value: null }));
+      const settled = (await readCampaign(scope)).run!;
+      expect(grantVictory(settled, (await readCampaign(scope)).profile, match, 'player').run).toEqual(settled);
       if (encounter < 8) {
-        expect((await readCampaign(scope)).run?.phase).toBe('rewardPending');
-        const revealed = await revealCampaignPack(scope, result.run.revision, 7);
-        const chosen = await chooseReward(scope, revealed.run.revision, revealed.run.rewards[encounter].offers[0]);
+        expect(settled.phase).toBe('rewardPending');
+        expect(settled.rewards[encounter]).toEqual(sealed);
+        const firstCard = await revealCampaignPack(scope, settled.revision, 1);
+        expect((await readCampaign(scope)).run?.revealed).toBe(1);
+        await expect(revealCampaignPack(scope, settled.revision, 7)).rejects.toThrow();
+        const revealed = await revealCampaignPack(scope, firstCard.run.revision, 7);
+        expect((await readCampaign(scope)).run?.revealed).toBe(7);
+        const offer = [2, 5].includes(encounter) ? revealed.run.rewards[encounter].offers[0]
+          : revealed.run.rewards[encounter].offers[encounter % 3];
+        const chosen = await chooseReward(scope, revealed.run.revision, offer);
+        await expect(chooseReward(scope, revealed.run.revision, offer)).rejects.toThrow();
         expect(chosen.run.phase).toBe('upgrading');
         expect(chosen.run.encounter).toBe(encounter + 1);
-        expect(chosen.run.rewards[encounter].choice).toBeDefined();
+        expect(chosen.run.rewards[encounter].choice).toBe(offer);
+        expect((await readCampaign(scope)).run?.inventory[offer]).toBe(chosen.run.inventory[offer]);
+        if (encounter === 0) {
+          const [remove] = Object.entries(chosen.run.deck.cards).find(([, qty]) => qty > 0)!;
+          const short = structuredClone(chosen.run.deck);
+          short.cards[remove]--; if (!short.cards[remove]) delete short.cards[remove];
+          const saved = await saveCampaignDeck(scope, chosen.run.revision, short);
+          expect((await readCampaign(scope)).run?.deck).toEqual(short);
+          expect(saved.run.lastLegal).toEqual(chosen.run.deck);
+          expect(campaignDeckIssues(saved.run, saved.run.deck).length).toBeGreaterThan(0);
+          await expect(saveCampaignDeck(scope, chosen.run.revision, chosen.run.deck)).rejects.toThrow();
+          await saveCampaignDeck(scope, saved.run.revision, saved.run.lastLegal);
+        }
+        if ([2, 5].includes(encounter)) {
+          const current = (await readCampaign(scope)).run!;
+          const offered = BY_SLUG.get(offer)!;
+          const prior = current.deck.legends.find(slug => BY_SLUG.get(slug)?.color === offered.color
+            && (BY_SLUG.get(slug)?.ram ?? 0) <= (offered.ram ?? 0))!;
+          const swapped = { ...current.deck, legends: current.deck.legends.map(slug => slug === prior ? offer : slug) };
+          const updated = await saveCampaignDeck(scope, current.revision, swapped);
+          expect(campaignDeckIssues(updated.run, updated.run.deck)).toEqual([]);
+          sawRecruit = true;
+        } else {
+          const current = (await readCampaign(scope)).run!;
+          const available = sealed!.cards.find(slug => !current.deck.cards[slug]);
+          if (available) {
+            const [remove] = Object.entries(current.deck.cards).find(([, qty]) => qty > 0)!;
+            const updated = structuredClone(current.deck);
+            updated.cards[remove]--; if (!updated.cards[remove]) delete updated.cards[remove];
+            updated.cards[available] = 1;
+            const saved = await saveCampaignDeck(scope, current.revision, updated);
+            expect(campaignDeckIssues(saved.run, saved.run.deck)).toEqual([]);
+          }
+        }
+        expect((await readCampaign(scope)).run?.phase).toBe('upgrading');
+        expect(await readMatchSummary(scope)).toEqual(freeSummary);
       }
     }
     const finish = await readCampaign(scope);
     expect(finish.run?.phase).toBe('claimingFinish');
-    expect(finish.profile.completions['embracing-power']).toBe(1);
-    await expect(startCampaign(scope, 'the-heist', true)).rejects.toThrow('Choose your earned room');
+    expect(sawRecruit).toBe(true);
+    expect(finish.profile.completions[starter.key]).toBe(1);
+    await expect(startCampaign(scope, starter.key, true)).rejects.toThrow('Choose your earned room');
     const room = await claimEnvironment(scope, finish.run!.revision, 'rooftop');
     expect(room.run.phase).toBe('completed');
     expect((await readCampaign(scope)).profile.equipped).toBe('rooftop');
+    expect(await readMatchSummary(scope)).toEqual(freeSummary);
   }, 30000);
+
+  it('leaves the previous campaign intact if a transaction cannot store a change', async () => {
+    const scope = 'campaign-failed-write';
+    const started = await startCampaign(scope, 'the-heist');
+    await expect(updateCampaign(scope, run => ({ run: { ...run!, deck: {
+      ...run!.deck, notes: (() => 'cannot clone') as unknown as string,
+    } }, value: null }))).rejects.toThrow();
+    expect((await readCampaign(scope)).run).toEqual(started.run);
+    const edited = await saveCampaignDeck(scope, started.run.revision, started.run.deck);
+    expect(edited.run.revision).toBe(started.run.revision + 1);
+  });
 });

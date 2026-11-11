@@ -21,6 +21,9 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   const [snapshot, setSnapshot] = useState<MatchSnapshot>();
   const [showTable, setShowTable] = useState(false);
   const [busy, setBusy] = useState(true);
+  const actionLock = useRef(false);
+  const recoveryVersion = useRef(0);
+  const workerFailed = useRef(false);
   const [error, setError] = useState<string>();
   const [replace, setReplace] = useState<StarterKey>();
   const [undo, setUndo] = useState<Deck>();
@@ -34,7 +37,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
 
   const send = useCallback((action: { type: 'start'; revision: number } | { type: 'resume' } | { type: 'move'; matchId: string; stateID: number; move: Move }) =>
     new Promise<CampaignWorkerResponse>((resolve, reject) => {
-      if (!worker.current) return reject(new Error('Campaign engine is not ready.'));
+      if (!worker.current || workerFailed.current) return reject(new Error('Campaign engine stopped. Reload the page to restore your saved match.'));
       const id = ++serial.current;
       requests.current.set(id, { resolve, reject });
       worker.current.postMessage({ id, scope, action });
@@ -50,6 +53,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   useEffect(() => {
     const current = new Worker(new URL('../lib/play/campaign.worker.ts', import.meta.url), { type: 'module' });
     let active = true;
+    workerFailed.current = false;
     const pending = requests.current;
     worker.current = current;
     const receive = ({ data }: MessageEvent<CampaignWorkerResponse>) => {
@@ -59,32 +63,35 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
       if (data.error) pending.reject(new Error(data.error)); else pending.resolve(data);
     };
     current.addEventListener('message', receive);
-    const failed = () => { setError('The campaign engine stopped. Reload the page to restore the saved match.'); for (const request of pending.values()) request.reject(new Error('The campaign engine stopped.')); pending.clear(); };
+    const failed = () => { workerFailed.current = true; current.terminate(); setError('The campaign engine stopped. Reload the page to restore the saved match.'); for (const request of pending.values()) request.reject(new Error('Campaign engine stopped. Reload the page to restore your saved match.')); pending.clear(); };
     current.addEventListener('error', failed);
     void recover().catch(cause => { if (active) setError(String(cause)); }).finally(() => { if (active) setBusy(false); });
     async function recover() {
+      const version = ++recoveryVersion.current;
       const value = await readCampaign(scope);
-      if (!active) return;
+      if (!active || actionLock.current || version !== recoveryVersion.current) return;
       setRun(value.run); setProfile(value.profile);
       if (value.run?.phase === 'inMatch') {
         const resumed = await send({ type: 'resume' });
-        if (active) { setSnapshot(resumed.snapshot); setShowTable(true); }
+        if (active && !actionLock.current && version === recoveryVersion.current) { setSnapshot(resumed.snapshot); setShowTable(true); }
       } else if (value.run?.match) {
         // A second tab may have finished the match while this one was out of focus.
         setShowTable(false);
       }
     }
-    const focus = () => { void recover().catch(() => {}); };
+    const focus = () => { if (!actionLock.current) void recover().catch(() => {}); };
     window.addEventListener('focus', focus);
     return () => { active = false; window.removeEventListener('focus', focus); current.removeEventListener('message', receive); current.removeEventListener('error', failed); current.terminate(); worker.current = null;
       for (const request of pending.values()) request.reject(new Error('Campaign closed.')); pending.clear(); };
   }, [scope, send]);
 
   async function apply<T>(task: () => Promise<T>, update: (value: T) => void) {
-    if (busy) return;
+    if (busy || actionLock.current) return;
+    actionLock.current = true;
+    recoveryVersion.current++;
     setBusy(true); setError(undefined);
-    try { update(await task()); } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not save your campaign.'); }
-    finally { setBusy(false); }
+    try { update(await task()); } catch (cause) { setError(workerFailed.current ? 'The campaign engine stopped. Reload the page to restore the saved match.' : cause instanceof Error ? cause.message : 'Could not save your campaign.'); }
+    finally { actionLock.current = false; setBusy(false); }
   }
 
   function create(starter: StarterKey, abandon = false) {
@@ -135,6 +142,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   }
 
   function reloadSavedState() {
+    if (workerFailed.current) { window.location.reload(); return; }
     void apply(async () => {
       const value = await readCampaign(scope);
       const resumed = value.run?.phase === 'inMatch' ? await send({ type: 'resume' }) : undefined;
@@ -156,14 +164,14 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
       busy={busy || presentation.playing} error={error} send={move} rematch={() => { presentation.playback?.skip(); setShowTable(false); }}
       edit={() => setShowTable(false)} resultContinueLabel={snapshot.view.winnerId === 'player' ? run?.phase === 'claimingFinish' ? 'Open Champion’s Cache' : 'Open your pack' : 'Review deck and retry'}
       controls={<><button className="btn quiet" onClick={() => { presentation.playback?.skip(); setShowTable(false); }}>Campaign board</button>
-        {error && <button className="btn" onClick={reloadSavedState}>Reload saved match</button>}
+        {error && <button className="btn" onClick={reloadSavedState}>{workerFailed.current ? 'Reload page' : 'Reload saved match'}</button>}
         <button className="btn quiet" onClick={exit}>Free Play</button>
         <button className="btn quiet" onClick={sound.toggle}>Sound {sound.enabled ? 'On' : 'Off'}</button>
         <label className="play-sound-level">FX <input type="range" aria-label="Game effects volume" min="0" max="1" step=".05" value={sound.volume} onChange={e => sound.changeVolume(Number(e.target.value))} /></label></>} />
     : <div className="campaign-hub">
       <header className="campaign-head"><Masthead eyebrow="The Afterlife / A deck to make your own" title="Campaign" sub="Two starters. Nine tables. One seat at the top." />
         <p className="campaign-save-note">Saved in this browser for this Vault. Campaign cards stay in this run.</p></header>
-      {error && <div className="play-error" role="alert">{error} <button className="btn quiet" onClick={reloadSavedState}>Reload campaign</button></div>}
+      {error && <div className="play-error" role="alert">{error} <button className="btn quiet" onClick={reloadSavedState}>{workerFailed.current ? 'Reload page' : 'Reload campaign'}</button></div>}
       {busy && !profile && <p role="status">Opening the table…</p>}
       {!busy && profile && !run && <div className="campaign-starters">{STARTERS.map(starter => <article key={starter.key}>
         <div className="campaign-crew-art">{starter.legends.map(slug => <CardImg key={slug} slug={slug} alt="" priority />)}</div>
