@@ -1,3 +1,4 @@
+import type { Deck } from '../lib/store';
 import { useState } from 'react';
 import { Masthead, ViewTabs } from '../components/ui';
 import { VaultBuilds } from '../components/VaultBuilds';
@@ -13,7 +14,7 @@ const VIEWS = [
 
 type View = (typeof VIEWS)[number]['id'];
 
-export function MetaIntel({ onOpen, openInBuilder, goAdd }: { onOpen: (slug: string) => void; openInBuilder: (id: string) => void; goAdd: () => void }) {
+export function MetaIntel({ onOpen, openInBuilder, goAdd, onPlayAgainst }: { onOpen: (slug: string) => void; openInBuilder: (id: string) => void; goAdd: () => void; onPlayAgainst?: (deck: Deck) => void }) {
   const [view, setView] = useState<View>('build');
 
   return (
@@ -24,7 +25,7 @@ export function MetaIntel({ onOpen, openInBuilder, goAdd }: { onOpen: (slug: str
         <VaultBuilds onOpen={onOpen} goAdd={goAdd} />
       </div>
       <div id="meta-panel-curated" role="tabpanel" aria-labelledby="meta-tab-curated" tabIndex={0} hidden={view !== 'curated'}>
-        <CuratedDecks onOpen={onOpen} openInBuilder={openInBuilder} />
+        <CuratedDecks onPlayAgainst={onPlayAgainst} onOpen={onOpen} openInBuilder={openInBuilder} />
       </div>
       <div id="meta-panel-learn" role="tabpanel" aria-labelledby="meta-tab-learn" tabIndex={0} hidden={view !== 'learn'}>
         <MetaLearn />

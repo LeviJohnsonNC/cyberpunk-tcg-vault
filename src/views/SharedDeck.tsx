@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BY_SLUG, TYPES, printingLabel, type Card } from '../lib/data';
 import { estimateText, money } from '../lib/currency';
-import { newId, useStore } from '../lib/store';
+import { newId, useStore, type Deck } from '../lib/store';
 import { openInBuilder } from '../lib/handoff';
 import { compareDeck, copyForBuilder, loadShared, shareStatus, type LoadResult } from '../lib/share';
 import { CardImg } from '../components/bits';
@@ -13,7 +13,7 @@ import { Masthead, MetricStrip } from '../components/ui';
 const sum = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a + b, 0);
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-export function SharedDeck({ token, onOpen, goAdd }: { token?: string; onOpen: (slug: string) => void; goAdd: () => void }) {
+export function SharedDeck({ token, onOpen, goAdd, onPlayAgainst }: { token?: string; onOpen: (slug: string) => void; goAdd: () => void; onPlayAgainst?: (deck: Deck) => void }) {
   const { owned, collectionReady, demo, mode, toast } = useStore();
   const [testing, setTesting] = useState(false);
   const [loaded, setLoaded] = useState<{ token?: string; res: LoadResult } | null>(null);
@@ -117,6 +117,7 @@ export function SharedDeck({ token, onOpen, goAdd }: { token?: string; onOpen: (
         }
       >
         <button className="btn" onClick={copy}>Open a copy in Deck Builder</button>
+        {onPlayAgainst && <button className="btn quiet" onClick={() => onPlayAgainst(copyForBuilder(deck, newId()))}>Play against this deck</button>}
       </Masthead>
 
       {deck.dropped.length > 0 && (

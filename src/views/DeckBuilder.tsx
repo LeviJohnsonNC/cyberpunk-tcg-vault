@@ -19,7 +19,7 @@ const splitWorkbench = () => window.matchMedia('(max-width: 1000px)').matches;
 
 type BuilderProps = {
   onOpen: (slug: string) => void; initialDeck?: string; onConsumeDeck: () => void; mobile: boolean;
-  onPlay?: (draft: DeckDraft) => void; onResume?: () => void; resumeEnded?: boolean;
+  onPlay?: (draft: DeckDraft) => void; onPlayAgainst?: (draft: DeckDraft) => void; onResume?: () => void; resumeEnded?: boolean;
 };
 
 export function DeckBuilder(props: BuilderProps) {
@@ -32,7 +32,7 @@ export function DeckBuilder(props: BuilderProps) {
   return <DeckWorkbench key={owner} owner={owner} {...props} />;
 }
 
-function DeckWorkbench({ owner, onOpen, initialDeck, onConsumeDeck, onPlay, onResume, resumeEnded, mobile }: BuilderProps & { owner: string }) {
+function DeckWorkbench({ owner, onOpen, initialDeck, onConsumeDeck, onPlay, onPlayAgainst, onResume, resumeEnded, mobile }: BuilderProps & { owner: string }) {
   const { decks, saveDeck, deleteDeck, owned, toast, collectionReady, collectionError, retryCollection, demo } = useStore();
   const [draft, setDraft] = useState<DeckDraft>(() => readDeckDraft(owner) ?? { deck: newDeck(), dirty: false });
   const { deck, dirty } = draft;
@@ -318,6 +318,10 @@ function DeckWorkbench({ owner, onOpen, initialDeck, onConsumeDeck, onPlay, onRe
           <details className="workbench-more" ref={actions}>
             <summary className="btn quiet">More</summary>
             <div className="workbench-menu">
+              {onPlayAgainst && <button type="button" disabled={saving || deleting} onClick={() => fromMenu(() => {
+                if (!checks.legal) { selectPane('checks', true); toast('Resolve the deck checks to use this rival.', 'err'); return; }
+                rememberDeckDraft(owner, draft); onPlayAgainst(draft);
+              })}>Play against this deck</button>}
               <button type="button" disabled={saving || deleting} onClick={() => fromMenu(() => replace({ deck: newDeck(), dirty: false }))}>New empty deck</button>
               <button type="button" disabled={saving || deleting} onClick={() => fromMenu(() => { void save(true); })}>Save copy</button>
               <button type="button" onClick={() => fromMenu(() => { void copy(formatDeckText(deck), 'Decklist'); })}>Copy list</button>

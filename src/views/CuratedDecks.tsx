@@ -3,8 +3,8 @@ import { CardImg, Pip } from '../components/bits';
 import { VaultSelect } from '../components/VaultSelect';
 import { BY_SLUG, COLORS, RECOMMENDED, type Color } from '../lib/data';
 import { estimateText } from '../lib/currency';
-import { CLOSE_THRESHOLD, completion, costRank, matchesFilter, validate, type BuildFilter } from '../lib/decks';
-import { useStore } from '../lib/store';
+import { CLOSE_THRESHOLD, completion, deckFromRecommended, costRank, matchesFilter, validate, type BuildFilter } from '../lib/decks';
+import { useStore, type Deck } from '../lib/store';
 
 const KIND_LABEL = { budget: 'Budget', meta: 'Community meta', brew: 'Brew' } as const;
 const LS_KEY = 'cptv.meta.filters.v1';
@@ -38,7 +38,7 @@ function loadFilters(): Filters {
   }
 }
 
-export function CuratedDecks({ onOpen, openInBuilder }: { onOpen: (slug: string) => void; openInBuilder: (id: string) => void }) {
+export function CuratedDecks({ onOpen, openInBuilder, onPlayAgainst }: { onOpen: (slug: string) => void; openInBuilder: (id: string) => void; onPlayAgainst?: (deck: Deck) => void }) {
   const { owned, collectionReady, collectionError, retryCollection } = useStore();
   const [f, setF] = useState<Filters>(loadFilters);
   const set = (patch: Partial<Filters>) => {
@@ -138,6 +138,7 @@ export function CuratedDecks({ onOpen, openInBuilder }: { onOpen: (slug: string)
                   <div className="meta-curated-action">
                     <button className="btn meta-open-draft" onClick={() => openInBuilder(d.id)}>Open draft<span> in Deck Builder</span></button>
                     <p>Edit and save in Deck Builder.</p>
+                    {onPlayAgainst && <button className="btn quiet" onClick={() => { const deck = deckFromRecommended(d.id); if (deck) onPlayAgainst(deck); }}>Play against this deck</button>}
                   </div>
                 </div>
                 <div className="meta-curated-detail-row">

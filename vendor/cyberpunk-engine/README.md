@@ -19,3 +19,7 @@ The build reads the pinned revision from the local clone, applies the checked-in
 The Program-resolution patch adds the public resolving area, finalizes Programs before older effects, and covers simultaneous end-of-turn effects and paid mass-defeat replacement. It also distinguishes ordinary Legend play from Go Solo and updates the reference fixtures affected by the Program zone change.
 
 The rules-boundaries patch validates Unit and Gig attack targets, resumes a suspended end of turn after a defeat replacement, and adds the Fight-step regression for Muamar's protection.
+
+The fair-tactical-search patch stops speculative evaluation at new concealed-card revelations (including shuffled Legends), removes the upstream exception for looking at the controller's unknown deck top, and prevents follow-up/stall scoring from reading those simulated outcomes. Known board tactics still use lookahead. Targeted decision invariance and sampled-midgame tests cover the boundary; they are not a claim of optimal play.
+
+The build also generates `card-slugs.json`, a lightweight legal-card manifest used to validate matchup lists without loading the engine on the UI thread. `src/lib/play/engineCards.ts` keeps Vault-to-engine aliases shared by validation and match setup.

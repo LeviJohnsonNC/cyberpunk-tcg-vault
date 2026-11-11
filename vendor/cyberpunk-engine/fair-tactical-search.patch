@@ -1,0 +1,98 @@
+--- a/submodules/cyberpunk/packages/engine/src/automation/search/tactical.ts
++++ b/submodules/cyberpunk/packages/engine/src/automation/search/tactical.ts
+@@ -96,14 +96,6 @@
+   "sellFromDeck",
+   "trashFromDeck",
+ ]);
+-// Activated abilities whose only hidden-outcome hints reveal the top of the
+-// CONTROLLER'S OWN deck (e.g. Judy Álvarez: Nothing to Doubt). Their fork is
+-// deterministic, so scoring them from the simulated outcome does not model
+-// unknown information — the simulator observes the revealed card exactly as
+-// the activating player would. Product decision (2026-09-17): practice bots
+-// are allowed this self-deck top-card knowledge when weighing an activation;
+-// every other hidden-outcome effect keeps the pessimistic cutoff.
+-const SELF_DECK_REVEAL_EFFECT_HINTS = new Set(["trashFromDeck"]);
+ const PUBLIC_OPPONENT_MOVES: ReadonlySet<MoveId> = new Set([
+   "attackUnit",
+   "attackRival",
+@@ -354,11 +346,12 @@
+     scored.push({
+       action,
+       score:
+-        after.gameEnded || score <= STALL_SCORE
++        hiddenCutoff || after.gameEnded || score <= STALL_SCORE
+           ? score
+           : score + strategicActionBonus(action, before, after, rootPlayerId as string),
+       abilityFit: abilityAwarePriorAdjustment(action, before, rootPlayerId as string, scoring),
+-      child,
++      // Never run the follow-up/stall probe through a concealed outcome.
++      child: hiddenCutoff ? null : child,
+     });
+   }
+   return scored;
+@@ -1809,8 +1802,22 @@
+ ): boolean {
+   if (action.move === "mulligan" || action.move === "gainGig") return true;
+   if (promptChoiceCrossesHiddenInformation(after.prompt)) return true;
+-  const selfDeckReveal = isSelfDeckRevealActivation(before.prompt, action);
+-  if (actionUsesHiddenEffectHint(before.prompt, action) && !selfDeckReveal) return true;
++  if (actionUsesHiddenEffectHint(before.prompt, action)) return true;
++  // A deterministic fork still knows more than the player. Stop before using
++  // a concealed Legend, rival hand card, or unknown deck card revealed by it.
++  const known = new Set<string>();
++  for (const player of Object.values(before.players)) {
++    for (const zone of Object.values(player.zones)) {
++      if (Array.isArray(zone)) for (const card of zone) {
++        if (!card.faceDown) known.add(card.instanceId);
++      }
++    }
++  }
++  for (const player of Object.values(after.players)) {
++    for (const zone of Object.values(player.zones)) {
++      if (Array.isArray(zone) && zone.some(card => !card.faceDown && !known.has(card.instanceId))) return true;
++    }
++  }
+   if (action.move !== "resolveAdjustGig" && gigValuesChanged(before, after)) return true;
+   for (const playerId of Object.keys(before.players)) {
+     const beforePlayer = before.players[playerId];
+@@ -1818,10 +1825,6 @@
+     if (!beforePlayer || !afterPlayer) continue;
+     if (zoneCount(beforePlayer.zones.deck) === zoneCount(afterPlayer.zones.deck)) continue;
+     if (isPublicRivalUnitBottomDeckMove(before, action, actor, playerId)) continue;
+-    // A self-deck reveal activation is scored from its deterministic fork and
+-    // its owner sees the revealed card; the owner's own deck shrinking is not
+-    // unknown information. Any other deck delta stays hidden.
+-    if (selfDeckReveal && playerId === actor) continue;
+     return true;
+   }
+   return false;
+@@ -1870,29 +1873,6 @@
+         field.some((card) => card.instanceId === id && card.type === "unit" && !card.faceDown)
+       );
+     }),
+-  );
+-}
+-
+-/**
+- * True when the action activates an ability whose hidden-outcome hints are all
+- * self-deck top reveals ({@link SELF_DECK_REVEAL_EFFECT_HINTS}); such forks are
+- * safe to score from their simulated outcome.
+- */
+-function isSelfDeckRevealActivation(
+-  prompt: PlayerPrompt,
+-  action: MoveDecision & { kind: "command" },
+-): boolean {
+-  if (action.move !== "activateAbility") return false;
+-  const move = prompt.availableMoves.find((candidate) => candidate.moveId === "activateAbility");
+-  if (move?.inputSpec.type !== "selectAbility") return false;
+-  const cardId = stringArg(action.args?.cardId);
+-  const abilityIndex = numberArg(action.args?.abilityIndex);
+-  const candidate = move.inputSpec.candidates.find(
+-    (ability) => ability.cardId === cardId && ability.abilityIndex === abilityIndex,
+-  );
+-  if (!candidate) return false;
+-  return candidate.effectHints.every(
+-    (hint) => !HIDDEN_OUTCOME_EFFECTS.has(hint) || SELF_DECK_REVEAL_EFFECT_HINTS.has(hint),
+   );
+ }
+ 
