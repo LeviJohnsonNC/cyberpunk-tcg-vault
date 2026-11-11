@@ -6,6 +6,8 @@ import type { DeckDraft } from '../lib/deckDraft';
 import { deckFromRecommended } from '../lib/decks';
 import { openPlayMatch, resumePlayMatch } from '../lib/play/matchClient';
 import type { MatchSnapshot, MatchSummary, Move } from '../lib/play/protocol';
+import { visibleCards } from '../lib/play/matchView';
+import { preloadArt, preloadFaces } from '../lib/play/cardArt';
 import { PlayTable } from './PlayTable';
 import { useDiceSound } from './useDiceSound';
 import { useMatchPresentation } from './useMatchPresentation';
@@ -49,6 +51,15 @@ export default function PlayMode({ scope, draft, saved, initialRival, rememberRi
   useLayoutEffect(() => {
     if (matchId) window.scrollTo({ top: 0, behavior: 'instant' });
   }, [matchId]);
+
+  // Both lists are known at the door. Fetch their art while the player picks a rival.
+  useEffect(() => {
+    if (deck && !snapshot) preloadArt([...deck.legends, ...Object.keys(deck.cards), ...(rival ? [...rival.list.legends, ...Object.keys(rival.list.cards)] : [])]);
+  }, [deck, rival, snapshot]);
+  // The whole rival turn arrives at once. Warm its art before the moves play.
+  useEffect(() => {
+    if (snapshot) preloadFaces([snapshot.view, ...(snapshot.presentation?.beats ?? []).map((beat) => beat.view)].flatMap(visibleCards));
+  }, [snapshot]);
 
   useEffect(() => () => {
     generation.current++;
@@ -128,22 +139,15 @@ export default function PlayMode({ scope, draft, saved, initialRival, rememberRi
   return (
     <section className="play-mode" onPointerDownCapture={diceSound.unlock} onKeyDownCapture={diceSound.unlock}>
       {snapshot ? <>
-        <header className="play-match-header">
-          <div className="play-match-identity">
-            <p className="play-eyebrow" title="Match saved in this browser">The Afterlife <span>/</span> Practice table <span>/</span> Autosaved</p>
-            <h1 title={`${snapshot.names.player} vs. ${snapshot.names.rival}`}>{snapshot.names.player} <span>vs.</span> {snapshot.names.rival}</h1>
-          </div>
-          <div className="play-header-actions">
+        <PlayTable key={snapshot.matchId} scope={scope} snapshot={presentation.displayed ?? snapshot} names={snapshot.names}
+          playback={presentation.playback} feedback={presentation.feedback} reduced={presentation.reduced} diceImpact={diceSound.impact}
+          busy={busy || presentation.playing} error={error} send={send} rematch={rematch} edit={onEdit} controls={<>
             <button type="button" className="btn quiet play-dice-sound" aria-label="Dice sound" aria-pressed={diceSound.enabled}
               onClick={diceSound.toggle}>Dice sound <b>{diceSound.enabled ? 'On' : 'Off'}</b></button>
             {live && <button type="button" className="btn quiet" disabled={busy || presentation.playing} onClick={() => setConfirm('restart')}>Restart match</button>}
             {live && <button type="button" className="btn danger-ghost" disabled={busy || presentation.playing} onClick={() => setConfirm('concede')}>Concede</button>}
             <button type="button" className="btn quiet" disabled={busy} onClick={() => { presentation.playback?.skip(); onEdit(); }}>Back to draft</button>
-          </div>
-        </header>
-        <PlayTable key={snapshot.matchId} scope={scope} snapshot={presentation.displayed ?? snapshot} names={snapshot.names}
-          playback={presentation.playback} feedback={presentation.feedback} diceImpact={diceSound.impact}
-          busy={busy || presentation.playing} error={error} send={send} rematch={rematch} edit={onEdit} />
+          </>} />
       </> : deck ? <>
         <div className="play-entrance">
           <Masthead eyebrow="The Afterlife / Practice table" title="Play Mode" sub="Local practice ◆ Best of one">

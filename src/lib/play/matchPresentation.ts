@@ -1,4 +1,5 @@
 import { rollDuration } from './diceTiming';
+import { beatPace } from './matchMotion';
 import { describeAction, visibleCards, zoneCards } from './matchView';
 import type { CardView, GigRoll, MatchBeat, MatchChange, Move, PlayerView, Seat } from './protocol';
 
@@ -87,8 +88,13 @@ export function presentationView(view: PlayerView): PlayerView {
   };
 }
 
-export function beatDuration(count: number, beat: Pick<MatchBeat, 'gigRolls'>) {
-  return beat.gigRolls.length ? rollDuration(beat.gigRolls) : Math.max(180, Math.min(950, 7000 / Math.max(1, count)));
+/** Time on screen for one public move: long enough for its movement on the table to land. */
+export function beatDuration(count: number, beat: Pick<MatchBeat, 'gigRolls'> & Partial<Pick<MatchBeat, 'changes' | 'view'>>) {
+  if (beat.gigRolls.length) return rollDuration(beat.gigRolls);
+  const kinds = new Set(beat.changes?.map((change) => change.kind));
+  const base = kinds.has('defeated') ? 1300 : kinds.has('played') || kinds.has('called') ? 1350
+    : beat.view?.attackState || kinds.has('gigs') ? 1050 : 700;
+  return Math.round(base * beatPace(count));
 }
 
 export function combatContext(view: PlayerView) {
