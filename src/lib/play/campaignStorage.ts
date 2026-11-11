@@ -91,6 +91,15 @@ export function revealCampaignPack(scope: string, expected: number, count: numbe
   });
 }
 
+export function acknowledgeCampaignAct(scope: string, expected: number) {
+  return updateCampaign(scope, (run, profile) => {
+    if (!run || run.revision !== expected || run.phase !== 'upgrading' || ![3, 6].includes(run.encounter))
+      throw new Error('The campaign changed in another tab. Reload the campaign.');
+    const next = { ...run, revision: run.revision + 1, briefedAct: Math.floor(run.encounter / 3) };
+    return { run: next, value: { run: next, profile } };
+  });
+}
+
 export function saveCampaignDeck(scope: string, expected: number, deck: Deck) {
   return updateCampaign(scope, (run, profile) => {
     if (!run || run.revision !== expected || !['preparing', 'upgrading'].includes(run.phase)) throw new Error('The deck changed in another tab. Reload the campaign.');
