@@ -34,11 +34,23 @@ export function createMatchState(options: {
   manualPaymentPlayerId?: Seat;
 }): EngineState;
 
+type Command = { commandID: string; move: string; input?: { args: Record<string, unknown> } };
+
+/** What a look-ahead strategy may touch: filtered views, legal prompts, and forks to try its own moves on. */
+export interface EngineHandle {
+  getFilteredView(seat: Seat): PlayerView;
+  getPrompt(seat: Seat): PlayerView['prompt'];
+  processCommand(command: Command, seat: Seat): { success: boolean };
+  fork(): EngineHandle;
+}
+
 export class LocalEngine {
   constructor(initialState: EngineState);
   getState(): EngineState;
   getFilteredView(seat: Seat): PlayerView;
-  processCommand(command: { commandID: string; move: string; input?: { args: Record<string, unknown> } }, seat: Seat):
+  getPrompt(seat: Seat): PlayerView['prompt'];
+  fork(): LocalEngine;
+  processCommand(command: Command, seat: Seat):
     | { success: true; state: EngineState; gameEvents: EngineEvent[] }
     | { success: false; error: string };
 }
@@ -50,5 +62,7 @@ export class SeededRNG {
   setState(state: { state: number }): void;
 }
 
-export function chooseMove(view: PlayerView, rng: () => number, seat: Seat): Move | undefined;
+/** Every strategy decides from the seat's filtered view. The tactical ones also need `engine` to look ahead. */
+export function chooseMove(view: PlayerView, rng: () => number, seat: Seat,
+  options?: { strategy?: 'greedy' | 'tactical' | 'tactical-ability-aware'; engine?: EngineHandle }): Move | undefined;
 export function projectRevealedCardView(state: EngineState, instanceId: string): CardView | null;

@@ -1,8 +1,9 @@
 import { chooseMove, createCardCatalog, createMatchState, LocalEngine, projectRevealedCardView, SeededRNG } from '../../../vendor/cyberpunk-engine/engine.mjs';
-import type { EngineEvent, EngineState } from '../../../vendor/cyberpunk-engine/engine.mjs';
+import type { EngineEvent, EngineHandle, EngineState } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import { describeAction, hideConcealedTargets, zoneCards, zoneCount } from './matchView';
 import { describeBeat, describeRolls, presentationView } from './matchPresentation';
-import type { CardView, GigRoll, MatchBeat, MatchFrame, MatchLogEntry, MatchSetup, MatchSnapshot, Move, Seat } from './protocol';
+import { emptyTally, matchReport, recordMove } from './matchReport';
+import type { CardView, GigRoll, MatchBeat, MatchFrame, MatchLogEntry, MatchSetup, MatchSnapshot, MatchTally, Move, RivalSkill, Seat } from './protocol';
 
 const catalog = createCardCatalog();
 const cardAliases: Record<string, string> = {
@@ -36,10 +37,38 @@ export function initialEngineState(setup: MatchSetup, seed: string, matchId: str
   });
 }
 
-export function botDecision(engine: LocalEngine, seat: Seat, rng: () => number) {
+const strategies = { standard: 'greedy', sharp: 'tactical', masterful: 'tactical-ability-aware' } as const;
+
+/**
+ * The engine as a look-ahead strategy may use it: it can try its own moves on a
+ * fork, but every view it reads is the seat's filtered one with concealed
+ * targets masked, exactly as the player's is.
+ */
+function fairHandle(engine: LocalEngine): EngineHandle {
+  // A search reads the same position many times. Views are kept until the fork moves on.
+  const views = new Map<Seat, ReturnType<typeof hideConcealedTargets>>();
+  const view = (seat: Seat) => {
+    let seen = views.get(seat);
+    if (!seen) views.set(seat, seen = hideConcealedTargets(engine.getFilteredView(seat)));
+    return seen;
+  };
+  return {
+    getFilteredView: view,
+    getPrompt: (seat) => view(seat).prompt,
+    processCommand: (command, seat) => {
+      views.clear();
+      return { success: engine.processCommand(command, seat).success };
+    },
+    // The engine's own fork also copies its undo history, which a search never uses and which
+    // made each look-ahead several times slower. A fresh engine on a copy of the state plays the same.
+    fork: () => fairHandle(new LocalEngine(structuredClone(engine.getState()))),
+  };
+}
+
+export function botDecision(engine: LocalEngine, seat: Seat, rng: () => number, skill: RivalSkill = 'standard') {
   const view = hideConcealedTargets(engine.getFilteredView(seat));
   if (view.prompt.status === 'choice' || view.prompt.status === 'action') {
-    return chooseMove(view, rng, seat);
+    return chooseMove(view, rng, seat, skill === 'standard' ? undefined : { strategy: strategies[skill], engine: fairHandle(engine) });
   }
 }
 
@@ -69,6 +98,8 @@ export interface EngineCheckpoint {
   peeks: CardView[];
   log: MatchLogEntry[];
   commandNumber: number;
+  /** Absent in matches saved before the report existed. */
+  tally?: MatchTally;
 }
 
 export function createEngineSession(
@@ -85,6 +116,7 @@ export function createEngineSession(
   const known = checkpoint?.known ?? new Map<string, Set<Seat>>();
   let peeks = checkpoint?.peeks ?? [];
   const log = checkpoint?.log ?? [];
+  const tally = checkpoint?.tally ?? emptyTally();
   let gigRolls: GigRoll[] = [];
   let commandNumber = checkpoint?.commandNumber ?? 0;
   const names = { player: setup.player.name.trim() || 'Untitled deck', rival: setup.rival.name };
@@ -137,6 +169,7 @@ export function createEngineSession(
     gigRolls.push(...rolls);
     const main = before.gamePhase !== 'setup' && after.gamePhase !== 'setup';
     const defeated = new Set(result.gameEvents.flatMap((event) => event.type === 'cardDefeated' ? [event.cardId] : []));
+    recordMove(tally, seat, command, before, after, defeated);
     const described = main || rolls.length ? describeBeat(seat, command, before, after, defeated) : undefined;
     const beatText = described?.text || describeRolls(rolls, seat);
     const text = describeAction(seat, command, before, after)
@@ -162,13 +195,14 @@ export function createEngineSession(
         if (view.gameEnded || view.prompt.status === 'action' || view.prompt.status === 'choice') {
           const snapshot: MatchSnapshot = { matchId, names, ...frame(view, gigRolls),
             ...(beats.length || feedback ? { presentation: { beats, feedback } } : {}),
+            ...(view.gameEnded && { report: matchReport(tally, view) }),
           };
           gigRolls = [];
           beats = [];
           feedback = undefined;
           return snapshot;
         }
-        const command = botDecision(engine, 'rival', () => botRng.next());
+        const command = botDecision(engine, 'rival', () => botRng.next(), setup.rivalSkill);
         if (!command || command.move === 'concede') throw new Error('The rival could not resolve its current action.');
         apply('rival', command);
       }
@@ -183,7 +217,7 @@ export function createEngineSession(
     matchId,
     start: advance,
     checkpoint: (): EngineCheckpoint => ({
-      matchId, state: engine.getState(), botRng: botRng.getState(), known, peeks, log, commandNumber,
+      matchId, state: engine.getState(), botRng: botRng.getState(), known, peeks, log, commandNumber, tally,
     }),
     isCurrent,
     move(stateID: number, move: Move) {

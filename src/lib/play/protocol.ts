@@ -8,9 +8,14 @@ export interface MatchDeck {
   mainDeck: string[];
 }
 
+/** How the rival chooses its moves. Every level plays from what a player could see. */
+export type RivalSkill = 'standard' | 'sharp' | 'masterful';
+
 export interface MatchSetup {
   player: MatchDeck;
   rival: MatchDeck;
+  /** Absent in matches saved before skill levels existed; those keep the standard rival. */
+  rivalSkill?: RivalSkill;
 }
 
 export interface CardView {
@@ -112,11 +117,35 @@ export interface MatchBeat extends MatchFrame {
   changes: MatchChange[];
 }
 
+/** Running public facts about a match, kept with the saved game. */
+export interface MatchTally {
+  /** Gig counts at the end of each turn so far. */
+  gigs: { turn: number; player: number; rival: number }[];
+  /** The turn each card now in the player's hand arrived. */
+  held: Record<string, number>;
+  played: number;
+  sold: number;
+  lost: Record<Seat, number>;
+}
+
+/** What the player sees when the match ends. Built only from their own view of it. */
+export interface MatchReport {
+  turns: number;
+  gigs: MatchTally['gigs'];
+  played: number;
+  sold: number;
+  lost: Record<Seat, number>;
+  /** Cards still in hand at the end that had been there for several turns. */
+  stuck: { card: CardView; copies: number; turns: number }[];
+}
+
 export interface MatchSnapshot extends MatchFrame {
   matchId: string;
   names: Record<Seat, string>;
   /** Transient public presentation. Never saved in the engine checkpoint. */
   presentation?: { beats: MatchBeat[]; feedback?: MatchBeat };
+  /** Present once the match has ended. */
+  report?: MatchReport;
 }
 
 export type MatchAction =

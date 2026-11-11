@@ -142,8 +142,19 @@
   @keyframes play-result-pulse { 30% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-ticket) 55%, transparent), 0 0 24px var(--color-ticket); } }
   .play-combat-beam { animation: play-beam 620ms linear infinite; }
   @keyframes play-beam { to { stroke-dashoffset: -23; } }
-  .play-result { animation: play-result-in 520ms cubic-bezier(.2, .8, .2, 1) both; }
-  .play-result h2 { animation: play-result-title 700ms cubic-bezier(.2, .9, .2, 1) 120ms both; }
+  /* Let the last hit land before the result covers the table. */
+  .play-result { animation: play-result-in 520ms cubic-bezier(.2, .8, .2, 1) 650ms both; }
+  .play-result h2 { animation: play-result-title 700ms cubic-bezier(.2, .9, .2, 1) 770ms both; }
+  .play-result-body > *, .play-result .play-actions { animation: play-result-rise 500ms cubic-bezier(.2, .8, .2, 1) 1250ms both; }
+  .play-result-burst { animation: play-result-spin 60s linear infinite; }
+  @keyframes play-result-rise { from { opacity: 0; translate: 0 14px; } }
+  @keyframes play-result-spin { to { rotate: 360deg; } }
+  .play-intro { animation: play-intro 1.7s cubic-bezier(.2, .8, .2, 1) both; }
+  .play-intro strong:first-of-type { animation: play-intro-left 1.7s cubic-bezier(.2, .8, .2, 1) both; }
+  .play-intro strong:last-child { animation: play-intro-right 1.7s cubic-bezier(.2, .8, .2, 1) both; }
+  @keyframes play-intro { 0% { opacity: 0; visibility: visible; } 12%, 72% { opacity: 1; visibility: visible; } 100% { opacity: 0; visibility: hidden; } }
+  @keyframes play-intro-left { 0% { translate: -40px 0; } 18%, 100% { translate: 0 0; } }
+  @keyframes play-intro-right { 0% { translate: 40px 0; } 18%, 100% { translate: 0 0; } }
   @keyframes play-result-in { from { opacity: 0; } }
   @keyframes play-result-title { from { opacity: 0; transform: skewX(-4deg) scale(1.5); } }
   .play-playback-progress > span { transition: width 300ms ease; }

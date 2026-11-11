@@ -35,5 +35,6 @@ Run `npm run check` (lint + tests + typecheck/build) before committing. Tests li
 - The Price Book (`src/views/PriceBook.tsx`, `src/views/pricebook.css`) is the reference implementation.
 - Destructive actions go through `ConfirmDialog` (see `DeleteCollection.tsx`).
 - Play Mode's table (`PlayTable.tsx`, `PlayMat.tsx`, `play-table.css`) is sized by `--play-card-width` and never scrolls. Movement between zones comes from `useTableMotion.ts`, planned by the pure, tested `src/lib/play/matchMotion.ts`: it reads only the player's filtered views and public beats, and is skipped under reduced motion. Every table piece needs `data-card-id` inside a `data-zone`; piles and the rival hand are `data-anchor` targets.
+- The rival's skill levels map to upstream strategies in `vendor/cyberpunk-engine/entry.ts` (public-information only; never export the oracle ones). `engine.mjs` is generated: change `entry.ts` or the patches and rebuild with `scripts/build-play-engine.mjs` (see the vendor README), never by hand. Look-ahead goes through `fairHandle` in `src/lib/play/engineSession.ts`.
 - Avoid em-dashes in UI copy.
 - Before calling UI work done: check laptop and phone widths, long names, missing art, loading/empty states and keyboard focus.

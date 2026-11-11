@@ -52,7 +52,31 @@ describe('play engine', () => {
     }
     expect(snapshot.view.gameEnded).toBe(true);
     expect(snapshot.view.winReason).toMatch(/^(gig_victory|overtime_majority|deck_out_victory)$/);
+    // The report arrives with the result and agrees with the final table.
+    expect(snapshot.report?.turns).toBe(snapshot.view.turnNumber);
+    expect(snapshot.report?.gigs.at(-1)).toMatchObject({ player: snapshot.view.players.player.gigCount, rival: snapshot.view.players.rival.gigCount });
+    expect(snapshot.report?.played).toBeGreaterThan(0);
   });
+
+  it.each(['sharp', 'masterful'] as const)('finishes a match against a %s rival, the same way every time', (rivalSkill) => {
+    const play = () => {
+      const session = createEngineSession({ ...setup('smasher-surge'), rivalSkill }, { shuffle: 'vault-skill', bot: 'rival-skill' });
+      const rng = new SeededRNG('player-skill');
+      let snapshot = session.start();
+      for (let step = 0; !snapshot.view.gameEnded && step < 300; step++) {
+        const move = chooseMove(snapshot.view, () => rng.next(), 'player');
+        expect(move?.move).toBeTruthy();
+        snapshot = session.move(snapshot.view.stateID, move!);
+      }
+      return snapshot.view;
+    };
+    const first = play();
+    expect(first.gameEnded).toBe(true);
+    expect(first.winReason).toMatch(/^(gig_victory|overtime_majority|deck_out_victory)$/);
+    // Looking ahead must not make the rival unpredictable across a reload: same seeds, same match.
+    const again = play();
+    expect([again.winnerId, again.turnNumber, again.stateID]).toEqual([first.winnerId, first.turnNumber, first.stateID]);
+  }, 60_000);
 
   it('delivers public rolls from both seats once, with the engine’s landed values', () => {
     const session = createEngineSession(setup('chrome-syndicate'), { shuffle: 'vault-rolls', bot: 'vault-rolls' });

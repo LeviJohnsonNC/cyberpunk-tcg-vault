@@ -1,7 +1,7 @@
 import type { DeckDraft } from '../deckDraft';
 import type { Deck } from '../store';
 import { prepareMatchDeck } from './matchDeck';
-import type { MatchAction, MatchResponse, MatchSnapshot, Move } from './protocol';
+import type { MatchAction, MatchResponse, MatchSnapshot, Move, RivalSkill } from './protocol';
 
 async function connectPlayMatch(scope: string, initialAction: MatchAction) {
   const worker = new Worker(new URL('./match.worker.ts', import.meta.url), { type: 'module' });
@@ -54,8 +54,8 @@ async function connectPlayMatch(scope: string, initialAction: MatchAction) {
   }
 }
 
-export function openPlayMatch(scope: string, draft: DeckDraft, rival: Deck, replaceMatchId?: string) {
-  const setup = { player: prepareMatchDeck(draft.deck), rival: prepareMatchDeck(rival) };
+export function openPlayMatch(scope: string, draft: DeckDraft, rival: Deck, replaceMatchId?: string, rivalSkill?: RivalSkill) {
+  const setup = { player: prepareMatchDeck(draft.deck), rival: prepareMatchDeck(rival), rivalSkill };
   return connectPlayMatch(scope, { type: 'start', setup, draft, replaceMatchId });
 }
 
