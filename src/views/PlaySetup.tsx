@@ -5,7 +5,7 @@ import { ViewTabs } from '../components/ui';
 import { BY_SLUG } from '../lib/data';
 import { totalCopies, type DeckDraft } from '../lib/deckDraft';
 import type { Deck } from '../lib/store';
-import { curatedOpponents, deckColors, deckSize, IMPORT_LIMIT, opponentIssues, readOpponentText } from '../lib/play/opponents';
+import { DEFAULT_PLAY_DECK_KEY, curatedOpponents, deckColors, deckSize, IMPORT_LIMIT, opponentIssues, readOpponentText } from '../lib/play/opponents';
 import type { RivalSkill } from '../lib/play/protocol';
 import { preloadArt } from '../lib/play/cardArt';
 import './play-setup.css';
@@ -28,20 +28,20 @@ function ListDetails({ deck }: { deck: Deck }) {
 }
 
 export function PlaySetup({ draft, savedDecks, initialRival, initialOpponent, busy, error, onStart }: {
-  draft: DeckDraft; savedDecks: Deck[]; initialRival?: string; initialOpponent?: Deck; busy: boolean; error?: string;
+  draft?: DeckDraft; savedDecks: Deck[]; initialRival?: string; initialOpponent?: Deck; busy: boolean; error?: string;
   onStart: (draft: DeckDraft, rival: Deck, skill: RivalSkill, key: string) => void;
 }) {
   const [source, setSource] = useState<Source>('curated');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(initialOpponent ? 'external' : (curatedOpponents.some(r => r.key === initialRival || r.key === `curated:${initialRival}`) ? (initialRival!.startsWith('curated:') ? initialRival! : `curated:${initialRival}`) : 'curated:smasher-surge'));
-  const [playerKey, setPlayerKey] = useState(initialOpponent ? '' : 'current');
+  const [playerKey, setPlayerKey] = useState(initialOpponent ? '' : draft ? 'current' : DEFAULT_PLAY_DECK_KEY);
   const [skill, setSkill] = useState(initialSkill);
   const [text, setText] = useState('');
   const [imported, setImported] = useState<ReturnType<typeof readOpponentText>>();
   const [fileError, setFileError] = useState('');
   const file = useRef<HTMLInputElement>(null), fileRead = useRef(0);
   const saved = savedDecks.map(deck => ({ key: `saved:${deck.id}`, deck, category: 'Saved deck', label: deck.legends.map(slug => BY_SLUG.get(slug)?.name ?? slug).join(' / ') }));
-  const choices = [{ key: 'current', deck: draft.deck, category: 'Current draft', label: '' }, ...saved, ...curatedOpponents];
+  const choices = [...(draft ? [{ key: 'current', deck: draft.deck, category: 'Current draft', label: '' }] : []), ...saved, ...curatedOpponents];
   const yourDeck = choices.find(choice => choice.key === playerKey)?.deck;
   const rival = selected === 'mirror' ? yourDeck : selected === 'external' ? initialOpponent : selected === 'import' ? imported?.deck : [...curatedOpponents, ...saved].find(choice => choice.key === selected)?.deck;
   useEffect(() => {
@@ -88,7 +88,7 @@ export function PlaySetup({ draft, savedDecks, initialRival, initialOpponent, bu
       {!!issues.length && <div className="opponent-errors" role="alert"><strong>Resolve these before playing</strong><ul>{issues.map(issue => <li key={issue}>{issue}</li>)}</ul></div>}
       <fieldset className="opponent-skills" disabled={busy}><legend>Rival skill</legend><div className="opponent-skill-options">{skills.map(option => <label key={option.id} data-selected={skill === option.id}><input type="radio" name="rival-skill" checked={skill === option.id} onChange={() => { setSkill(option.id); try { localStorage.setItem(skillKey, option.id); } catch { /* Optional. */ } }} /><strong>{option.label}</strong></label>)}</div><p className="opponent-skill-note">{skills.find(option => option.id === skill)?.note}</p></fieldset>
       {error && <p className="play-error" role="alert">{error}</p>}
-      <button type="button" className="btn opponent-start" disabled={!canStart} onClick={() => { if (yourDeck && rival) onStart({ deck: structuredClone(yourDeck), dirty: playerKey === 'current' ? draft.dirty : false }, structuredClone(rival), skill, selected); }}>{busy ? 'Dealing…' : selected === 'mirror' ? 'Start mirror match' : 'Play against this deck'}</button>
+      <button type="button" className="btn opponent-start" disabled={!canStart} onClick={() => { if (yourDeck && rival) onStart({ deck: structuredClone(yourDeck), dirty: playerKey === 'current' && !!draft?.dirty }, structuredClone(rival), skill, selected); }}>{busy ? 'Dealing…' : selected === 'mirror' ? 'Start mirror match' : 'Play against this deck'}</button>
       <p className="opponent-fair">All levels play fair: no peeking at your hand or deck order.</p>
       <p className="opponent-footnote">Best of one · Sideboards stay out of play.</p>
     </aside>

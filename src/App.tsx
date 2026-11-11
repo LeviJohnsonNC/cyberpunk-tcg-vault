@@ -167,7 +167,7 @@ export default function App() {
             <span className="brand-name"><span>Cyberpunk TCG</span>Vault</span>
           </a>
           {!mobile && <><nav className="navlinks" aria-label="Sections" ref={nav}>
-            {TABS.map((t) => (
+            {TABS.filter((tab) => tab.id !== 'play' || PlayMode).map((t) => (
               <button key={t.id} className="navlink" aria-current={route.tab === t.id ? 'page' : undefined} onClick={() => go(t.id)}>
                 {t.label}
               </button>
@@ -263,7 +263,7 @@ export default function App() {
         {route.tab === 'about' && <HowItWorks openFeedback={() => setFeedbackOpen(true)} />}
         {route.tab === 'upgrade' && <UpgradePlanner onOpen={showCard} />}
         {route.tab === 'shared' && <SharedDeck onPlayAgainst={PlayMode && !mobile ? practiceAgainst : undefined} token={route.deck} onOpen={showCard} goAdd={() => go('add')} />}
-        {route.tab === 'play' && (PlayMode && !mobile && store.ready && matchInfo && (matchDraft || savedMatch)
+        {route.tab === 'play' && (PlayMode && !mobile && store.ready && matchInfo && (!matchInfo.failed || matchDraft || savedMatch)
           ? <Suspense fallback={<p className="callout" role="status">Opening Play Mode…</p>}>
             <PlayMode key={scope} scope={scope} draft={matchDraft} saved={savedMatch} initialRival={playRival?.scope === scope ? playRival.id : undefined}
               savedDecks={store.decks} initialOpponent={playDraft?.scope === scope ? playDraft.opponent : undefined}
@@ -273,8 +273,7 @@ export default function App() {
           : <section className="panel">
             <h1 className="panel-title">Play Mode</h1>
             <p>{mobile ? 'Play Mode is available on desktop.' : !PlayMode ? 'Play Mode is currently in preview.'
-              : matchInfo?.failed ? 'Play Mode couldn’t read this browser’s match storage.'
-              : 'Open a legal draft in Deck Builder to start a match.'}</p>
+              : 'Play Mode couldn’t read this browser’s match storage.'}</p>
             <button type="button" className="btn" onClick={() => go('builder')}>Open Deck Builder</button>
           </section>)}
       </main>

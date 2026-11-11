@@ -1,12 +1,11 @@
 import { ReactiveRoom } from './ReactiveRoom';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ConfirmDialog } from '../components/ui';
-import type { DeckDraft } from '../lib/deckDraft';
+import { readDeckDraft, type DeckDraft } from '../lib/deckDraft';
 import type { Deck } from '../lib/store';
 import { CircuitHub } from './CircuitHub';
 import { equipTableFinish, readCircuitProgress } from '../lib/play/matchStorage';
 import { type CircuitProgress, type TableFinish } from '../lib/play/circuit';
-import { curatedOpponents } from '../lib/play/opponents';
 import { openPlayMatch, resumePlayMatch } from '../lib/play/matchClient';
 import type { MatchSnapshot, MatchSummary, Move, RivalSkill } from '../lib/play/protocol';
 import { visibleCards } from '../lib/play/matchView';
@@ -25,7 +24,8 @@ export default function PlayMode({ scope, draft, saved, initialRival, initialOpp
   scope: string; draft?: DeckDraft; saved?: MatchSummary; initialRival?: string; initialOpponent?: Deck; savedDecks: Deck[]; rememberRival: (id: string) => void;
   onCheckpoint: (snapshot: MatchSnapshot, draft?: DeckDraft) => void; onEdit: () => void;
 }) {
-  const [resume] = useState(!draft);
+  const [resume] = useState(!draft && !!saved);
+  const [storedDraft] = useState(() => readDeckDraft(scope));
   const [resumeAttempt, setResumeAttempt] = useState(0);
   const [snapshot, setSnapshot] = useState<MatchSnapshot>();
   const [busy, setBusy] = useState(resume);
@@ -39,7 +39,7 @@ export default function PlayMode({ scope, draft, saved, initialRival, initialOpp
   const client = useRef<Client | null>(null);
   const generation = useRef(0);
   const locked = useRef(false);
-  const hubDraft = draft ?? saved?.draft ?? { deck: curatedOpponents.find(item => item.key === 'curated:heist-reloaded')!.deck, dirty: false };
+  const hubDraft = draft ?? saved?.draft ?? storedDraft;
   const pendingStart = useRef<{ draft: DeckDraft; rival: Deck; skill: RivalSkill; key: string; contractId?: string } | undefined>(undefined);
   const matchId = snapshot?.matchId;
   const presentation = useMatchPresentation(snapshot);
@@ -157,7 +157,7 @@ export default function PlayMode({ scope, draft, saved, initialRival, initialOpp
             {live && <button type="button" className="btn danger-ghost" disabled={busy || presentation.playing} onClick={() => setConfirm('concede')}>Concede</button>}
             <button type="button" className="btn quiet" disabled={busy} onClick={() => { presentation.playback?.skip(); onEdit(); }}>Back to draft</button>
           </>} />
-      </> : draft || lobby ? progress ? <CircuitHub progress={progress} draft={hubDraft} savedDecks={savedDecks} initialRival={initialRival} initialOpponent={initialOpponent}
+      </> : !resume || lobby ? progress ? <CircuitHub progress={progress} draft={hubDraft} savedDecks={savedDecks} initialRival={initialRival} initialOpponent={initialOpponent}
         busy={busy || equipping} error={error ?? progressError} equip={equip} onEdit={onEdit} onResume={snapshot ? () => setLobby(false) : undefined}
         onStart={(draft, rival, skill, key, contractId) => { pendingStart.current = { draft, rival, skill, key, contractId }; start(); }} />
         : <div className="panel" role="status"><h1>Opening the Circuit</h1>{progressError ? <><p className="play-error">{progressError}</p><button className="btn" onClick={() => setProgressAttempt(value => value + 1)}>Try again</button><button className="btn quiet" onClick={onEdit}>Back to draft</button></> : <p>Checking your standing…</p>}</div>
