@@ -7,7 +7,7 @@ import type { DeckDraft } from '../lib/deckDraft';
 import type { Deck } from '../lib/store';
 import { CIRCUIT_CONTRACTS, CIRCUIT_RANKS, TABLE_FINISHES, circuitMarks, contractCleared, contractUnlocked, finishUnlocked, rankIndex, skillLevel,
   type CircuitMark, type CircuitProgress, type CircuitReceipt, type TableFinish } from '../lib/play/circuit';
-import { curatedOpponents, opponentIssues } from '../lib/play/opponents';
+import { DEFAULT_PLAY_DECK_KEY, curatedOpponents, opponentIssues } from '../lib/play/opponents';
 import type { RivalSkill } from '../lib/play/protocol';
 import { PlaySetup } from './PlaySetup';
 
@@ -76,17 +76,17 @@ function Record({ progress }: { progress: CircuitProgress }) {
 }
 
 export function CircuitHub({ progress, draft, savedDecks, initialRival, initialOpponent, busy, error, onStart, onResume, onEdit, equip }: {
-  progress: CircuitProgress; draft: DeckDraft; savedDecks: Deck[]; initialRival?: string; initialOpponent?: Deck; busy: boolean; error?: string;
+  progress: CircuitProgress; draft?: DeckDraft; savedDecks: Deck[]; initialRival?: string; initialOpponent?: Deck; busy: boolean; error?: string;
   onStart: (draft: DeckDraft, rival: Deck, skill: RivalSkill, key: string, contractId?: string) => void;
   onResume?: () => void; onEdit: () => void; equip: (finish: TableFinish) => void;
 }) {
   const [tab, setTab] = useState<HubTab>(initialOpponent ? 'practice' : 'circuit');
   const [selected, setSelected] = useState(() => CIRCUIT_CONTRACTS.find(contract => !contractCleared(progress, contract.id))?.id ?? CIRCUIT_CONTRACTS[0].id);
-  const [playerKey, setPlayerKey] = useState(opponentIssues(draft.deck).length ? 'curated:heist-reloaded' : 'current');
+  const [playerKey, setPlayerKey] = useState(draft && !opponentIssues(draft.deck).length ? 'current' : DEFAULT_PLAY_DECK_KEY);
   const [masterful, setMasterful] = useState(false);
   const contract = CIRCUIT_CONTRACTS.find(item => item.id === selected)!;
   const rival = curatedOpponents.find(item => item.key === `curated:${contract.rival}`)!;
-  const choices = [{ key: 'current', deck: draft.deck, category: 'Current draft' }, ...savedDecks.map(deck => ({ key: `saved:${deck.id}`, deck, category: 'Saved deck' })), ...curatedOpponents];
+  const choices = [...(draft ? [{ key: 'current', deck: draft.deck, category: 'Current draft' }] : []), ...savedDecks.map(deck => ({ key: `saved:${deck.id}`, deck, category: 'Saved deck' })), ...curatedOpponents];
   const yourDeck = choices.find(choice => choice.key === playerKey)?.deck;
   const issues = yourDeck ? opponentIssues(yourDeck) : ['Choose a deck.'];
   const open = contractUnlocked(progress, contract.id), cleared = contractCleared(progress, contract.id);
@@ -121,7 +121,7 @@ export function CircuitHub({ progress, draft, savedDecks, initialRival, initialO
           <p className="circuit-rival-name">Rival <strong>{rival.deck.name}</strong></p>
           {open ? <><label className="circuit-deck-label" htmlFor="circuit-player-deck">Your deck</label><VaultSelect id="circuit-player-deck" value={playerKey} disabled={busy} onValueChange={setPlayerKey} options={choices.map(choice => ({ value: choice.key, label: `${choice.deck.name} · ${choice.category}` }))} />
             {issues.length > 0 && <p className="play-error" role="alert">{issues.join(' ')}</p>}
-            <button type="button" className="btn circuit-start" disabled={busy || !!issues.length || !yourDeck} onClick={() => { if (yourDeck) onStart({ deck: structuredClone(yourDeck), dirty: playerKey === 'current' ? draft.dirty : false }, structuredClone(rival.deck), skill, rival.key, contract.id); }}>{busy ? 'Opening the table…' : cleared ? 'Run it back' : 'Take the contract'} <span aria-hidden="true">↗</span></button>
+            <button type="button" className="btn circuit-start" disabled={busy || !!issues.length || !yourDeck} onClick={() => { if (yourDeck) onStart({ deck: structuredClone(yourDeck), dirty: playerKey === 'current' && !!draft?.dirty }, structuredClone(rival.deck), skill, rival.key, contract.id); }}>{busy ? 'Opening the table…' : cleared ? 'Run it back' : 'Take the contract'} <span aria-hidden="true">↗</span></button>
             {skillLevel(contract.skill) < 2 && <label className="circuit-masterful"><input type="checkbox" checked={masterful} disabled={busy} onChange={e => setMasterful(e.target.checked)} /><span>Raise the stakes <small>Masterful rival · earn the third mark with a win</small></span></label>}
           </> : <div className="circuit-locked-note"><strong>Earn your way in.</strong><p>Clear {CIRCUIT_CONTRACTS[contractIndex - 1]?.title} to open this table.</p><button className="btn ghost" onClick={() => setSelected(CIRCUIT_CONTRACTS.find(item => !contractCleared(progress, item.id))!.id)}>Go to your next contract</button></div>}
           <div className="circuit-rival"><div>{rival.deck.legends.map(slug => <CardImg key={slug} slug={slug} alt={BY_SLUG.get(slug)?.display ?? slug} priority />)}</div></div>

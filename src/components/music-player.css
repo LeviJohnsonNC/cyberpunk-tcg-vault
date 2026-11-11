@@ -9,8 +9,9 @@
 .radio-led { display: inline-block; flex: none; width: 5px; height: 5px; border-radius: 50%; background: var(--color-text-faint); }
 [data-playing="true"] .radio-led { background: var(--color-success); box-shadow: 0 0 8px color-mix(in srgb, var(--color-success) 50%, transparent); }
 .radio-display strong { display: block; margin: 5px 0; font: 700 25px/.98 var(--font-display); text-transform: uppercase; overflow-wrap: anywhere; }
-.radio-display small { display: flex; justify-content: space-between; gap: 5px; color: var(--color-text-faint); font: 400 9px/1.4 var(--font-mono); }
+.radio-display small { display: block; color: var(--color-text-faint); font: 400 9px/1.4 var(--font-mono); }
 .radio-spectrum { display: inline-flex; flex: none; align-items: end; gap: 3px; width: 45px; height: 38px; overflow: hidden; }
+.radio-display .radio-spectrum { width: 44%; gap: 4px; }
 .radio-spectrum i { display: block; flex: 1; height: 100%; background: linear-gradient(var(--color-ticket), var(--color-accent-deep)); transform: scaleY(.12); transform-origin: bottom; transition: transform 90ms linear; }
 .radio-timeline { display: flex; align-items: center; gap: 8px; color: var(--color-text-faint); font: 400 9px/1 var(--font-mono); }
 .afterhours-radio input[type="range"] { appearance: none; width: 100%; min-width: 0; height: 20px; padding: 0; background: transparent; cursor: pointer; border: 0; accent-color: var(--color-accent); }

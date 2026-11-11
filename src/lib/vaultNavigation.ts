@@ -4,16 +4,17 @@ export const TABS = [
   { id: 'collection', label: 'Collection' },
   { id: 'prices', label: 'Price Book' },
   { id: 'builder', label: 'Deck Builder' },
+  { id: 'play', label: 'Play' },
   { id: 'meta', label: 'Meta Intel' },
   { id: 'add', label: 'Add Cards' },
 ] as const;
 export type PrimaryTab = (typeof TABS)[number]['id'];
-export type TabId = PrimaryTab | 'about' | 'upgrade' | 'shared' | 'play';
+export type TabId = PrimaryTab | 'about' | 'upgrade' | 'shared';
 type Route = { tab: TabId; deck?: string };
 
 const readHash = (): Route => {
   const [path, query] = window.location.hash.replace(/^#\/?/, '').split('?');
-  const tab = path === 'about' || path === 'upgrade' || path === 'shared' || path === 'play'
+  const tab = path === 'about' || path === 'upgrade' || path === 'shared'
     ? path : TABS.find((item) => item.id === path)?.id ?? 'collection';
   return { tab, deck: new URLSearchParams(query).get('deck') ?? undefined };
 };
