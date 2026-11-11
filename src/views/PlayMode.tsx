@@ -7,6 +7,7 @@ import { deckFromRecommended } from '../lib/decks';
 import { openPlayMatch, resumePlayMatch } from '../lib/play/matchClient';
 import type { MatchSnapshot, MatchSummary, Move } from '../lib/play/protocol';
 import { PlayTable } from './PlayTable';
+import { useDiceSound } from './useDiceSound';
 import { useMatchPresentation } from './useMatchPresentation';
 import './play-mode.css';
 
@@ -43,6 +44,7 @@ export default function PlayMode({ scope, draft, saved, initialRival, rememberRi
   const name = deck?.name.trim() || 'Untitled deck';
   const matchId = snapshot?.matchId;
   const presentation = useMatchPresentation(snapshot);
+  const diceSound = useDiceSound();
 
   useLayoutEffect(() => {
     if (matchId) window.scrollTo({ top: 0, behavior: 'instant' });
@@ -124,7 +126,7 @@ export default function PlayMode({ scope, draft, saved, initialRival, rememberRi
 
   const live = snapshot && !(presentation.displayed ?? snapshot).view.gameEnded;
   return (
-    <section className="play-mode">
+    <section className="play-mode" onPointerDownCapture={diceSound.unlock} onKeyDownCapture={diceSound.unlock}>
       {snapshot ? <>
         <header className="play-match-header">
           <div className="play-match-identity">
@@ -132,13 +134,15 @@ export default function PlayMode({ scope, draft, saved, initialRival, rememberRi
             <h1 title={`${snapshot.names.player} vs. ${snapshot.names.rival}`}>{snapshot.names.player} <span>vs.</span> {snapshot.names.rival}</h1>
           </div>
           <div className="play-header-actions">
+            <button type="button" className="btn quiet play-dice-sound" aria-label="Dice sound" aria-pressed={diceSound.enabled}
+              onClick={diceSound.toggle}>Dice sound <b>{diceSound.enabled ? 'On' : 'Off'}</b></button>
             {live && <button type="button" className="btn quiet" disabled={busy || presentation.playing} onClick={() => setConfirm('restart')}>Restart match</button>}
             {live && <button type="button" className="btn danger-ghost" disabled={busy || presentation.playing} onClick={() => setConfirm('concede')}>Concede</button>}
             <button type="button" className="btn quiet" disabled={busy} onClick={() => { presentation.playback?.skip(); onEdit(); }}>Back to draft</button>
           </div>
         </header>
         <PlayTable key={snapshot.matchId} scope={scope} snapshot={presentation.displayed ?? snapshot} names={snapshot.names}
-          playback={presentation.playback} feedback={presentation.feedback}
+          playback={presentation.playback} feedback={presentation.feedback} diceImpact={diceSound.impact}
           busy={busy || presentation.playing} error={error} send={send} rematch={rematch} edit={onEdit} />
       </> : deck ? <>
         <div className="play-entrance">

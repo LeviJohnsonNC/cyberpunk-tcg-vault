@@ -1,3 +1,4 @@
+import { rollDuration } from './diceTiming';
 import { describeAction, visibleCards, zoneCards } from './matchView';
 import type { CardView, GigRoll, MatchBeat, MatchChange, Move, PlayerView, Seat } from './protocol';
 
@@ -87,7 +88,7 @@ export function presentationView(view: PlayerView): PlayerView {
 }
 
 export function beatDuration(count: number, beat: Pick<MatchBeat, 'gigRolls'>) {
-  return beat.gigRolls.length ? 1550 : Math.max(180, Math.min(950, 7000 / Math.max(1, count)));
+  return beat.gigRolls.length ? rollDuration(beat.gigRolls) : Math.max(180, Math.min(950, 7000 / Math.max(1, count)));
 }
 
 export function combatContext(view: PlayerView) {

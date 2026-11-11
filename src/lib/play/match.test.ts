@@ -77,6 +77,29 @@ describe('play engine', () => {
     expect(seats).toEqual(new Set(['player', 'rival']));
   });
 
+  it('marks a roll that reaches seven Gigs without declaring the match over before the win check', () => {
+    const { state } = rulesFixture('rival');
+    while (state.G.players.player.fixerArea.length > 1) giveGig(state, 'player');
+    const stolen = state.G.players.rival.fixerArea.shift()!;
+    Object.assign(state.G.gigDice[stolen], { ownerId: 'player', location: 'gigArea', faceValue: 1 });
+    state.G.players.player.gigArea.push(stolen);
+    state.G.players.rival.zones.hand = [];
+    for (const id of state.G.players.rival.zones.legendArea) state.G.cardIndex[id].meta.spent = true;
+    const [dieId] = state.G.players.player.fixerArea;
+    const session = createEngineSession(setup('chrome-syndicate'), undefined, {
+      matchId: 'test', state, botRng: new SeededRNG('decisive-roll').getState(),
+      known: new Map(), peeks: [], log: [], commandNumber: 20,
+    });
+    const final = session.start();
+    expect(final.view.gameEnded).toBe(false);
+    expect(final.view.players.player.gigCount).toBe(7);
+    expect(final.presentation?.beats.flatMap((beat) => beat.gigRolls)).toEqual([
+      expect.objectContaining({ dieId, seat: 'player', origin: 'gainGig', fixerIndex: 0, decisive: true }),
+    ]);
+    expect(session.checkpoint().state.ctx.stateID).toBe(final.view.stateID);
+    expect(session.start()).toMatchObject({ view: final.view, gigRolls: [] });
+  });
+
   it('delivers chronological read-only rival frames once without saving presentation in checkpoints', () => {
     const session = createEngineSession(setup('chrome-syndicate'), { shuffle: 'public-rival-presentation', bot: 'public-rival-presentation' });
     let snapshot = session.start();

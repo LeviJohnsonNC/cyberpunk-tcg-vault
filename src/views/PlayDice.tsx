@@ -52,17 +52,7 @@ export function DieFace({ type, value }: { type: string; value?: number }) {
   </svg>;
 }
 
-export function GigRollDisplay({ rolls, stateID }: { rolls: GigRoll[]; stateID: number }) {
-  return <>
-    <span className="sr-only" role="status">{rolls.map(({ seat, origin, dieType, result }) =>
-      `${seat === 'player' ? 'You' : 'Rival'} ${origin === 'reroll' ? 'rerolled' : 'rolled'} a ${dieType}: ${result}.`).join(' ')}</span>
-    {rolls.length > 0 && <div className="play-roll-stage" key={stateID} aria-hidden="true">
-      {rolls.map(({ dieId, dieType, result, seat, origin }, index) =>
-        <div className="play-roll-receipt" key={`${dieId}:${index}`} data-seat={seat} data-die={dieType} data-result={result}>
-          <span className="play-roll-shadow" />
-          <DieFace type={dieType} value={result} />
-          <span className="play-roll-caption">{seat === 'player' ? 'You' : 'Rival'} {origin === 'reroll' ? 'rerolled' : 'rolled'} <b>{dieType}</b></span>
-        </div>)}
-    </div>}
-  </>;
+export function GigRollAnnouncement({ rolls }: { rolls: GigRoll[] }) {
+  return <span className="sr-only" role="status">{rolls.map(({ seat, origin, dieType, result }) =>
+    `${seat === 'player' ? 'You' : 'Rival'} ${origin === 'reroll' ? 'rerolled' : 'rolled'} a ${dieType}: ${result}.`).join(' ')}</span>;
 }

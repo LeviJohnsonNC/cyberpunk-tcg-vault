@@ -1,6 +1,6 @@
 import { chooseMove, createCardCatalog, createMatchState, LocalEngine, projectRevealedCardView, SeededRNG } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import type { EngineEvent, EngineState } from '../../../vendor/cyberpunk-engine/engine.mjs';
-import { describeAction, hideConcealedTargets } from './matchView';
+import { describeAction, hideConcealedTargets, zoneCards, zoneCount } from './matchView';
 import { describeBeat, describeRolls, presentationView } from './matchPresentation';
 import type { CardView, GigRoll, MatchBeat, MatchFrame, MatchLogEntry, MatchSetup, MatchSnapshot, Move, Seat } from './protocol';
 
@@ -119,13 +119,25 @@ export function createEngineSession(
     const after = hideConcealedTargets(engine.getFilteredView('player'));
     if (seat === 'player') peeks = [];
     peeks.push(...recordLegendPeeks(result.state, result.gameEvents, known));
-    const rolls: GigRoll[] = result.gameEvents.flatMap((event) => event.type === 'gigDieRolled' ? [{
-      dieId: event.dieId, dieType: event.dieType, result: event.result, seat: event.playerId, origin: event.origin,
-    }] : []);
+    const winThreshold = after.overtimeActive
+      ? Math.floor(seats.reduce((total, seat) => total + zoneCount(after.players[seat], 'gigArea') + zoneCount(after.players[seat], 'fixerArea'), 0) / 2) + 1
+      : 7;
+    const rolls: GigRoll[] = result.gameEvents.flatMap((event) => {
+      if (event.type !== 'gigDieRolled') return [];
+      const { dieId, dieType, result, playerId: seat, origin } = event;
+      const fixerIndex = zoneCards(before.players[seat], 'fixerArea').findIndex((die) => die.instanceId === dieId);
+      // Reaching the winning count warrants a longer hold. The engine checks the actual win at turn start.
+      const atWinThreshold = before.players[seat].gigCount < winThreshold && after.players[seat].gigCount >= winThreshold;
+      const decisive = atWinThreshold || (after.gameEnded && !before.gameEnded);
+      return [{ dieId, dieType, result, seat, origin,
+        ...(fixerIndex >= 0 && { fixerIndex }),
+        ...(decisive && { decisive: true }),
+      }];
+    });
     gigRolls.push(...rolls);
     const main = before.gamePhase !== 'setup' && after.gamePhase !== 'setup';
     const defeated = new Set(result.gameEvents.flatMap((event) => event.type === 'cardDefeated' ? [event.cardId] : []));
-    const described = main ? describeBeat(seat, command, before, after, defeated) : undefined;
+    const described = main || rolls.length ? describeBeat(seat, command, before, after, defeated) : undefined;
     const beatText = described?.text || describeRolls(rolls, seat);
     const text = describeAction(seat, command, before, after)
       ?? (described?.changes.length || rolls.length ? beatText : undefined);

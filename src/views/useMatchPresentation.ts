@@ -16,7 +16,7 @@ export function useMatchPresentation(snapshot?: MatchSnapshot) {
   const [expired, setExpired] = useState('');
   const rival = snapshot?.presentation?.beats ?? [];
   const own = snapshot?.presentation?.feedback;
-  const beats = rival.length && own?.changes.length ? [own, ...rival] : rival;
+  const beats = own && (own.gigRolls.length || (rival.length && own.changes.length)) ? [own, ...rival] : rival;
   const index = progress?.key === key ? progress.index : 0;
   const playing = !!snapshot && !reduced && index < beats.length;
   const beat = playing ? beats[index] : undefined;
@@ -46,9 +46,11 @@ export function useMatchPresentation(snapshot?: MatchSnapshot) {
   const last = rival.at(-1) ?? own;
   const feedback = beat ?? (expired !== key ? last : undefined);
   const displayed: MatchSnapshot | undefined = snapshot && beat ? {
-    matchId: snapshot.matchId, names: snapshot.names, view: beat.view, peeks: beat.peeks,
+    matchId: snapshot.matchId, names: snapshot.names,
+    view: beat.view.gameEnded && beat.gigRolls.length ? { ...beat.view, gameEnded: false } : beat.view,
+    peeks: beat.peeks,
     knownLegends: beat.knownLegends, log: beat.log, gigRolls: beat.gigRolls,
-  } : snapshot && rival.length && !reduced ? { ...snapshot, gigRolls: [] } : snapshot;
+  } : snapshot && beats.length && !reduced ? { ...snapshot, gigRolls: [] } : snapshot;
   return { displayed, playing, feedback, reduced,
     playback: playing ? { beat: beat!, index, count: beats.length, skip } : undefined,
   };
