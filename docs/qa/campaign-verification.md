@@ -8,7 +8,9 @@
 - IndexedDB tests cover cross-tab revision conflicts, pack reveal and claim, final reward, old finish entitlements, scoped storage, archived runs, and a real worker match checkpoint/resume.
 - The engine sweep uses a Sharp reference player and campaign rivals at their configured skills. The simulated upgrade policy chooses a non-Legend offer and makes up to three legal rating-based substitutions after each pack. It is a proxy for mechanical balance, not a human win rate or proof of optimal deck building.
 
-## Balance observations
+## Original balance observations
+
+The [phase-three calibration](campaign-balance.md) covers the current content. The results below record the original campaign.
 
 The [ten-seed final sweep](campaign-benchmark.json) tested both starters with an untouched deck and the three-swap policy at encounters 1 and 9. The same shuffle seed is used across the two upgrade policies. The reference won 28/40 openings and 22/40 finales; all 80 games ended without a rejected command or stall. By path:
 
@@ -21,11 +23,9 @@ The [ten-seed final sweep](campaign-benchmark.json) tested both starters with an
 
 These cells are small and the bot is better than many new players. The tuned Arasaka House List is markedly tougher against The Heist, but Embracing Power's upgraded path remains favored in this proxy. That is a balance item for human playtests, not a reason to claim a guaranteed difficulty curve. The [all-encounter smoke sweep](campaign-all-encounters.json) ran both starters through all nine tables with one seed each; all 18 matches ended without engine errors. The earlier [provisional stage sweep](campaign-benchmark-stages.json) predates the final boss and offer tuning and is retained only as a historical baseline.
 
-## Reproduce the sweep
+## Reproduce the original sweep
 
-`node scripts/benchmark-campaign.mjs docs/qa/campaign-benchmark.json`
-
-Environment variables `CAMPAIGN_SEEDS`, `CAMPAIGN_POLICIES`, and `CAMPAIGN_ENCOUNTERS` narrow a run. `CAMPAIGN_FINAL_RIVAL` temporarily substitutes a curated candidate for comparative authoring. The committed JSON reports include seed, starter, policy, opponent, winner, turn count, and any error.
+At commit `5077edc`, run `CAMPAIGN_SEEDS=10 CAMPAIGN_POLICIES=starter,three-swaps CAMPAIGN_ENCOUNTERS=1,9 node scripts/benchmark-campaign.mjs /tmp/campaign-original.json`. The committed JSON reports include seed, starter, policy, opponent, winner, turn count, and any error.
 
 ## Remaining release checks
 

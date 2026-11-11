@@ -1,4 +1,4 @@
-import { BY_SLUG, CARDS, fitsRam, ramLimits } from '../data';
+import { BY_SLUG, CARDS, fitsRam, ramLimits, type Card } from '../data';
 import { validate } from '../decks';
 import { rating, synergy } from '../autobuild';
 import { STARTERS, starterAsDeck, type StarterKey } from '../starters';
@@ -7,6 +7,7 @@ import type { Deck } from '../store';
 import type { StoredMatch } from './workerController';
 import type { RivalSkill } from './protocol';
 import recommended from '../../data/decks.json';
+import { ARASAKA_HOUSE_LIST, HEIST_OPENING_RIVAL, REWARD_THEMES, RIVAL_TUNING } from './campaignBalance';
 
 export const CAMPAIGN_VERSION = 1;
 export const ENVIRONMENTS = [
@@ -32,6 +33,8 @@ export interface CampaignReward { id: string; cards: string[]; offers: string[];
 export interface CampaignRun {
   version: 1; id: string; starter: StarterKey; seed: string; revision: number; phase: CampaignPhase;
   encounter: number; attempts: number; inventory: Record<string, number>; deck: Deck; lastLegal: Deck;
+  /** Absent on runs started before the balance pass. */
+  balanceVersion?: 2;
   rewards: Record<number, CampaignReward>; opponents: Deck[]; match?: StoredMatch; completedAt?: number; revealed?: number;
 }
 export interface CampaignArchive { id: string; starter: StarterKey; cleared: number; completed: boolean; endedAt: number; deck: Deck; }
@@ -47,7 +50,7 @@ export function makeStarterDeck(key: StarterKey): Deck {
 
 export function newCampaign(starter: StarterKey, id: string, seed: string): CampaignRun {
   const deck = makeStarterDeck(starter);
-  const run: CampaignRun = { version: 1, id, seed, starter, revision: 0, phase: 'preparing', encounter: 0, attempts: 0,
+  const run: CampaignRun = { version: 1, id, seed, starter, revision: 0, phase: 'preparing', encounter: 0, attempts: 0, balanceVersion: 2,
     inventory: { ...deck.cards, ...Object.fromEntries(deck.legends.map(slug => [slug, 1])) },
     deck, lastLegal: structuredClone(deck), rewards: {}, opponents: [] };
   run.opponents = ENCOUNTERS.map((_, encounter) => structuredClone(encounterDeck({ ...run, encounter })));
@@ -76,7 +79,19 @@ export function encounterDeck(run: CampaignRun): Deck {
   if (run.opponents?.[run.encounter]) return structuredClone(run.opponents[run.encounter]);
   const info = ENCOUNTERS[run.encounter];
   if (!info) throw new Error('The campaign is complete.');
-  if (info.rival === 'other-starter') return makeStarterDeck(run.starter === 'the-heist' ? 'embracing-power' : 'the-heist');
+  if (info.rival === 'other-starter') {
+    const rival = makeStarterDeck(run.starter === 'the-heist' ? 'embracing-power' : 'the-heist');
+    if (run.balanceVersion === 2 && run.starter === 'the-heist') {
+      rival.name = 'Embracing Power · Practice List';
+      applyCopyDeltas(rival.cards, HEIST_OPENING_RIVAL.cards);
+    }
+    return rival;
+  }
+  if (run.balanceVersion === 2 && info.id === 'last-call') {
+    return { id: 'campaign-rival:arasaka-nines', name: 'Arasaka 9s · House List',
+      legends: [...ARASAKA_HOUSE_LIST.legends], cards: { ...ARASAKA_HOUSE_LIST.cards },
+      sideboard: {}, notes: 'Hold the board with blockers and Arasaka Units, then close with Goro or Smasher.', updatedAt: '' };
+  }
   const item = recommended.find(deck => deck.id === info.rival);
   if (!item) throw new Error('This opponent is not available.');
   const cards = Object.fromEntries(Object.entries(item.cards).filter((entry): entry is [string, number] => typeof entry[1] === 'number'));
@@ -87,7 +102,21 @@ export function encounterDeck(run: CampaignRun): Deck {
       'emergency-atlus': 1, 'field-operator': 2, 'valentino-street-racer': 1, 'meredith-stout-stone-cold-corpo': 2,
       'all-is-lost': 3, detonate: 2, 'take-control': 2, 'peace-offering': 1 });
   }
+  if (run.balanceVersion === 2) applyCopyDeltas(cards, RIVAL_TUNING[info.id]?.cards);
   return { id: `campaign-rival:${item.id}`, name: run.encounter === 8 ? 'Arasaka 9s · House List' : item.name, legends: [...item.legends], cards, sideboard: {}, notes: item.summary, updatedAt: '' };
+}
+
+function applyCopyDeltas(cards: Record<string, number>, deltas?: Readonly<Record<string, number>>) {
+  for (const [slug, delta] of Object.entries(deltas ?? {})) {
+    const count = (cards[slug] ?? 0) + delta;
+    if (count === 0) delete cards[slug];
+    else cards[slug] = count;
+  }
+}
+
+export function encounterSkill(run: CampaignRun): RivalSkill {
+  const info = ENCOUNTERS[run.encounter];
+  return (run.balanceVersion === 2 ? RIVAL_TUNING[info.id]?.skill : undefined) ?? info.skill;
 }
 
 // Rewards have their own seed. A loss changes match shuffle, never the pack waiting behind it.
@@ -104,35 +133,93 @@ function shuffled<T>(array: T[], seed: string): T[] {
 }
 
 export function generateReward(run: CampaignRun): CampaignReward {
-  const seed = `${run.seed}:reward:${run.encounter}:v1`;
+  const seed = `${run.seed}:reward:${run.encounter}:v${run.balanceVersion ?? 1}`;
   const limits = ramLimits(run.deck.legends);
   const colours = STARTERS.find(item => item.key === run.starter)!.colors;
   const eligible = CARDS.filter(card => card.type !== 'Legend' && card.legal === 'legal' && isEngineSupported(card.slug)
     && colours.includes(card.color) && fitsRam(card, limits) && (run.inventory[card.slug] ?? 0) < 3);
+  const recruits = recruitCandidates(run, colours);
+  const { cards, offers } = run.balanceVersion === 2
+    ? balancedPack(run, eligible, recruits, seed)
+    : legacyPack(run, eligible, recruits, seed);
+  if (cards.length !== 7 || offers.length !== 3 || new Set([...cards, ...offers]).size !== 10)
+    throw new Error('This reward pool cannot make a valid pack. Your campaign progress is still saved.');
+  return { id: `${run.id}:${run.encounter}`, cards, offers };
+}
+
+const isRecruitment = (run: CampaignRun) => run.encounter === 2 || run.encounter === 5;
+
+function recruitCandidates(run: CampaignRun, colours: readonly string[]) {
+  if (!isRecruitment(run)) return [];
+  const names = new Set(run.deck.legends.map(slug => BY_SLUG.get(slug)?.name));
+  return CARDS.filter(card => card.type === 'Legend' && card.legal === 'legal' && isEngineSupported(card.slug)
+    && colours.includes(card.color) && !names.has(card.name) && !run.inventory[card.slug]
+    && run.deck.legends.some(slug => BY_SLUG.get(slug)?.color === card.color && (BY_SLUG.get(slug)?.ram ?? 0) <= (card.ram ?? 0)));
+}
+
+function legacyPack(run: CampaignRun, eligible: Card[], recruits: Card[], seed: string) {
   const ranked = shuffled(eligible, seed).sort((a, b) =>
     (rating(b.slug).power + synergy(b, run.deck.legends)) - (rating(a.slug).power + synergy(a, run.deck.legends)));
-  // Two deliberate role/synergy picks and five varied draws, with no duplicate identities.
   const cards = [...ranked.slice(0, 2), ...shuffled(ranked.slice(2), `${seed}:cards`).slice(0, 5)].map(card => card.slug);
   const remaining = ranked.filter(card => !cards.includes(card.slug));
   const offerPool = shuffled(remaining.slice(0, 20), `${seed}:offers`);
-  // Distinct card types give the player a meaningful direction when the pool supports it.
-  const mainOffers: string[] = [];
+  const offers: string[] = [];
   for (const type of shuffled(['Unit', 'Gear', 'Program'], `${seed}:roles`)) {
-    const candidate = offerPool.find(card => card.type === type && !mainOffers.includes(card.slug));
-    if (candidate) mainOffers.push(candidate.slug);
+    const candidate = offerPool.find(card => card.type === type && !offers.includes(card.slug));
+    if (candidate) offers.push(candidate.slug);
   }
-  for (const card of offerPool) if (mainOffers.length < 3 && !mainOffers.includes(card.slug)) mainOffers.push(card.slug);
-  let offers = mainOffers;
-  if ([2, 5].includes(run.encounter)) {
-    const names = new Set(run.deck.legends.map(slug => BY_SLUG.get(slug)?.name));
-    const recruits = CARDS.filter(card => card.type === 'Legend' && card.legal === 'legal' && isEngineSupported(card.slug)
-      && colours.includes(card.color) && !names.has(card.name) && !run.inventory[card.slug]
-      && run.deck.legends.some(slug => BY_SLUG.get(slug)?.color === card.color && (BY_SLUG.get(slug)?.ram ?? 0) <= (card.ram ?? 0)));
-    offers = [...shuffled(recruits, `${seed}:legends`).slice(0, 2).map(card => card.slug), remaining[0].slug];
+  for (const card of offerPool) if (offers.length < 3 && !offers.includes(card.slug)) offers.push(card.slug);
+  return {
+    cards,
+    offers: isRecruitment(run) ? [...shuffled(recruits, `${seed}:legends`).slice(0, 2).map(card => card.slug), ...remaining.slice(0, 1).map(card => card.slug)] : offers,
+  };
+}
+
+function balancedPack(run: CampaignRun, eligible: Card[], recruits: Card[], seed: string) {
+  const themes = REWARD_THEMES[run.starter];
+  const selected = new Set<string>();
+  const slugOrder = (a: Card, b: Card) => a.slug.localeCompare(b.slug, 'en');
+  const sorted = [...eligible].sort(slugOrder);
+  const early = run.encounter < 3;
+  const late = run.encounter >= 6;
+  const economy = (card: Card) => (card.cost ?? 9) <= 3 && (card.sellable || card.type === 'Unit');
+  const answer = (card: Card) => rating(card.slug).roles.some(role => role === 'removal' || role === 'blocker' || role === 'draw');
+  const score = (card: Card) => rating(card.slug).power + synergy(card, run.deck.legends) * .5
+    + (early ? economy(card) ? 2 : (card.cost ?? 0) >= 6 ? -2 : 0 : 0)
+    + (late && answer(card) ? 1 : 0)
+    + ((run.deck.cards[card.slug] ?? 0) > 0 ? .5 : 0);
+
+  const scores = new Map(sorted.map(card => [card.slug, score(card)]));
+
+  // Each themed slot first tries its authored pool, then broadens to a compatible role.
+  function pick(label: string, preference: (card: Card) => boolean, fallback: (card: Card) => boolean) {
+    const available = shuffled(sorted.filter(card => !selected.has(card.slug)), `${seed}:${label}:rank`)
+      .sort((a, b) => scores.get(b.slug)! - scores.get(a.slug)!);
+    const pool = [available.filter(preference), available.filter(fallback), available].find(cards => cards.length > 0) ?? [];
+    const card = shuffled(pool.slice(0, 4), `${seed}:${label}:pick`)[0];
+    if (!card) throw new Error('There are too few eligible campaign rewards. Your campaign progress is still saved.');
+    selected.add(card.slug);
+    return card.slug;
   }
-  if (cards.length !== 7 || offers.length !== 3 || new Set([...cards, ...offers]).size !== 10)
-    throw new Error('This reward pool cannot make a valid pack. Your victory remains saved.');
-  return { id: `${run.id}:${run.encounter}`, cards, offers };
+
+  const offers: string[] = [];
+  if (isRecruitment(run)) {
+    const ordered = shuffled([...recruits].sort(slugOrder), `${seed}:recruit`);
+    const first = ordered[0];
+    if (first) offers.push(first.slug);
+    const second = ordered.find(card => card.color !== first?.color) ?? ordered[1];
+    if (second) offers.push(second.slug);
+  } else {
+    for (const [index, theme] of themes.entries()) {
+      offers.push(pick(`offer-theme-${index}`, card => theme.has(card.slug), early ? economy : answer));
+    }
+  }
+  while (offers.length < 3) offers.push(pick(`offer-flex-${offers.length}`, early ? economy : answer, economy));
+
+  const cards = themes.map((theme, index) => pick(`pack-theme-${index}`, card => theme.has(card.slug), early ? economy : answer));
+  cards.push(pick('pack-economy', economy, answer));
+  const wild = shuffled(sorted.filter(card => !selected.has(card.slug)), `${seed}:pack-wild`);
+  return { cards: [...cards, ...wild.slice(0, 7 - cards.length).map(card => card.slug)], offers };
 }
 
 export function grantVictory(run: CampaignRun, profile: CampaignProfile, match: StoredMatch, winner: string | null) {

@@ -1,12 +1,14 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
-import { BY_SLUG } from '../data';
+import { BY_SLUG, fitsRam, ramLimits } from '../data';
 import { STARTERS } from '../starters';
-import { ENCOUNTERS, campaignDeckIssues, encounterDeck, generateReward, grantVictory, newCampaign } from './campaign';
+import { ENCOUNTERS, campaignDeckIssues, encounterDeck, encounterSkill, generateReward, grantVictory, newCampaign } from './campaign';
 import { matchDeckIssues, prepareMatchDeck } from './matchDeck';
 import { createMatchController } from './workerController';
 import { chooseReward, claimEnvironment, readCampaign, revealCampaignPack, saveCampaignDeck, startCampaign, updateCampaign } from './campaignStorage';
 import { readCircuitProgress, equipTableFinish, openDatabase, readMatchSummary } from './matchStorage';
+import { REWARD_THEMES } from './campaignBalance';
+import { isEngineSupported } from './engineCards';
 
 describe('starter campaign', () => {
   it('uses the exact official legal starter and legal rival lists in all nine encounters', () => {
@@ -24,6 +26,7 @@ describe('starter campaign', () => {
   it('generates complete packs for 1,000 reward paths for each starter without dead copies or rerolls', () => {
     for (const starter of STARTERS) for (let seed = 0; seed < 1000; seed++) {
       const run = newCampaign(starter.key, `run-${seed}`, `seed-${seed}`);
+      const ram = ramLimits(run.deck.legends);
       for (let encounter = 0; encounter < 8; encounter++) {
         run.encounter = encounter;
         const pack = generateReward(run);
@@ -31,17 +34,54 @@ describe('starter campaign', () => {
         expect(pack.cards).toHaveLength(7);
         expect(pack.offers).toHaveLength(3);
         expect(new Set([...pack.cards, ...pack.offers]).size).toBe(10);
-        for (const slug of pack.cards) {
-          expect(run.inventory[slug] ?? 0).toBeLessThan(3);
-          expect(starter.colors).toContain(BY_SLUG.get(slug)?.color);
-          run.inventory[slug] = (run.inventory[slug] ?? 0) + 1;
+        const legends = pack.offers.filter(slug => BY_SLUG.get(slug)?.type === 'Legend');
+        expect(legends).toHaveLength([2, 5].includes(encounter) ? 2 : 0);
+        for (const slug of [...pack.cards, ...pack.offers]) {
+          const card = BY_SLUG.get(slug)!;
+          if (!isEngineSupported(slug) || card.legal !== 'legal' || !starter.colors.includes(card.color)
+            || (run.inventory[slug] ?? 0) >= (card.type === 'Legend' ? 1 : 3)
+            || (card.type !== 'Legend' && !fitsRam(card, ram))) {
+            throw new Error(`${starter.key} seed ${seed}, pack ${encounter + 1}: ineligible ${slug}`);
+          }
         }
+        if (encounter < 3) expect(pack.cards.some(slug => {
+          const card = BY_SLUG.get(slug)!;
+          return (card.cost ?? 9) <= 3 && (card.sellable || card.type === 'Unit');
+        })).toBe(true);
         const option = pack.offers[seed % 3];
-        expect(run.inventory[option] ?? 0).toBeLessThan(BY_SLUG.get(option)?.type === 'Legend' ? 1 : 3);
-        run.inventory[option] = (run.inventory[option] ?? 0) + 1;
+        for (const slug of [...pack.cards, option]) run.inventory[slug] = (run.inventory[slug] ?? 0) + 1;
       }
     }
   }, 60000);
+
+  it.each(STARTERS)('fills a late $name pack when both authored reward pools have hit the copy cap', starter => {
+    const run = newCampaign(starter.key, 'saturated', 'saturated');
+    run.encounter = 7;
+    const saturated = new Set(REWARD_THEMES[starter.key].flatMap(theme => [...theme]));
+    for (const slug of saturated) run.inventory[slug] = 3;
+    const pack = generateReward(run);
+    expect(new Set([...pack.cards, ...pack.offers]).size).toBe(10);
+    expect([...pack.cards, ...pack.offers].some(slug => saturated.has(slug))).toBe(false);
+  });
+
+  it('keeps the original rewards, rival snapshots, and skill schedule for campaigns started before tuning', () => {
+    const legacy = newCampaign('the-heist', 'compat', 'compat');
+    delete legacy.balanceVersion;
+    legacy.opponents = [];
+    expect(generateReward(legacy)).toEqual({ id: 'compat:0',
+      cards: ['dying-night-v-s-pistol', 'towerfall', 'viktor-vektor-drop-your-illusions', 'mt0d12-flathead',
+        'rockn-rockerboy', 'trauma-team-operatives', 't-bug-amateur-philosopher'],
+      offers: ['augmented-negotiators', 'tetratronic-rippler', 'reboot-optics'],
+    });
+    legacy.opponents = ENCOUNTERS.map((_, encounter) => encounterDeck({ ...legacy, encounter }));
+    const current = newCampaign('the-heist', 'current', 'compat');
+    expect(encounterDeck(legacy).cards).toEqual(STARTERS.find(starter => starter.key === 'embracing-power')?.cards);
+    expect(encounterDeck(current).name).toContain('Practice List');
+    expect(encounterSkill({ ...legacy, encounter: 3 })).toBe('standard');
+    expect(encounterSkill({ ...current, encounter: 3 })).toBe('sharp');
+    expect(encounterDeck({ ...legacy, encounter: 8 }).legends).toContain('yorinobu-arasaka-embracing-destruction');
+    expect(encounterDeck({ ...current, encounter: 8 }).legends).toContain('goro-takemura-hands-unclean');
+  });
 
   it('rejects cards from the physical Vault and decks with unsupported colour changes', () => {
     const run = newCampaign('the-heist', 'locked', 'seed');

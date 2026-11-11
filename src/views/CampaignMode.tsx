@@ -5,7 +5,7 @@ import { BY_SLUG, CARDS } from '../lib/data';
 import { STARTERS, type StarterKey } from '../lib/starters';
 import type { Deck } from '../lib/store';
 import { totalCopies } from '../lib/deckDraft';
-import { ENCOUNTERS, ENVIRONMENTS, campaignDeckIssues, type CampaignProfile, type CampaignRun } from '../lib/play/campaign';
+import { ENCOUNTERS, ENVIRONMENTS, campaignDeckIssues, encounterSkill, type CampaignProfile, type CampaignRun } from '../lib/play/campaign';
 import { readCampaign, startCampaign, chooseReward, saveCampaignDeck, claimEnvironment, equipEnvironment, campaignStatus, revealCampaignPack } from '../lib/play/campaignStorage';
 import type { CampaignWorkerResponse } from '../lib/play/campaign.worker';
 import type { MatchSnapshot, Move } from '../lib/play/protocol';
@@ -194,7 +194,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
         {run.phase === 'claimingFinish' && <section className="campaign-reward panel hot"><p className="play-eyebrow">The final table is yours</p><h2>Choose your new room</h2><p>Your finished deck and this environment are yours to keep.</p><div className="campaign-environments">{ENVIRONMENTS.filter(item => !profile.environments.includes(item.id) || profile.environments.length === ENVIRONMENTS.length).map(item => <button key={item.id} className="campaign-environment" data-environment={item.id} disabled={busy} onClick={() => void apply(() => claimEnvironment(scope, run.revision, item.id), value => { setRun(value.run); setProfile(value.profile); })}><strong>{item.name}</strong><span>{item.description}</span></button>)}</div></section>}
         {run.phase === 'completed' && <section className="panel hot campaign-finale"><h2>You earned your seat.</h2><p>Completed with {STARTERS.find(item => item.key === run.starter)?.name}. Your deck can become a separate draft in Deck Builder; earned cards do not become physical Vault holdings.</p><button className="btn" onClick={takeDeckToBuilder}>Open deck as draft</button><button className="btn quiet" onClick={exit}>Go to Free Play</button><p>Start again with another crew:</p>{STARTERS.map(starter => <button className="btn quiet" key={starter.key} onClick={() => create(starter.key)}>{starter.name}</button>)}</section>}
         {['preparing', 'upgrading', 'inMatch'].includes(run.phase) && <div className="campaign-workspace">
-          <section className="campaign-brief panel hot"><p className="play-eyebrow">Contract {run.encounter + 1} / {ENCOUNTERS.length} · {encounter?.skill}</p><h2>{encounter?.title}</h2><p>{encounter?.brief}</p>
+          <section className="campaign-brief panel hot"><p className="play-eyebrow">Contract {run.encounter + 1} / {ENCOUNTERS.length} · {encounterSkill(run)}</p><h2>{encounter?.title}</h2><p>{encounter?.brief}</p>
             <p className="play-eyebrow">Rival crew · {run.opponents[run.encounter]?.name}</p><div className="campaign-rival-crew">{run.opponents[run.encounter]?.legends.map(slug => <button key={slug} title={`Inspect ${BY_SLUG.get(slug)?.display}`} onClick={() => setInspected(slug)}><CardImg slug={slug} alt={BY_SLUG.get(slug)?.display ?? slug} /></button>)}</div>
             {run.phase === 'inMatch' ? <button className="btn" disabled={busy} onClick={() => void apply(() => send({ type: 'resume' }), value => { setSnapshot(value.snapshot); setShowTable(true); })}>Return to match</button>
               : <button className="btn" disabled={busy || issues.length > 0} onClick={launch}>{run.attempts ? 'Retry contract' : 'Take the contract'}</button>}
