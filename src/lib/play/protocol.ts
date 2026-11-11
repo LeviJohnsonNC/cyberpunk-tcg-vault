@@ -1,4 +1,5 @@
 import type { DeckDraft } from '../deckDraft';
+import type { CircuitReceipt } from './circuit';
 
 export type Seat = 'player' | 'rival';
 
@@ -16,6 +17,8 @@ export interface MatchSetup {
   rival: MatchDeck;
   /** Absent in matches saved before skill levels existed; those keep the standard rival. */
   rivalSkill?: RivalSkill;
+  /** Present only for matches started after Circuit launched. Does not affect game rules. */
+  circuit?: { version: 1; contractId?: string; rivalKey: string };
 }
 
 export interface CardView {
@@ -163,6 +166,7 @@ export interface MatchSnapshot extends MatchFrame {
   presentation?: { beats: MatchBeat[]; feedback?: MatchBeat };
   /** Present once the match has ended. */
   report?: MatchReport;
+  circuit?: { contractId?: string; skill: RivalSkill; receipt?: CircuitReceipt };
 }
 
 export type MatchAction =

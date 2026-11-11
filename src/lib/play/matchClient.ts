@@ -54,8 +54,9 @@ async function connectPlayMatch(scope: string, initialAction: MatchAction) {
   }
 }
 
-export function openPlayMatch(scope: string, draft: DeckDraft, rival: Deck, replaceMatchId?: string, rivalSkill?: RivalSkill) {
-  const setup = { player: prepareMatchDeck(draft.deck), rival: prepareMatchDeck(rival), rivalSkill };
+export function openPlayMatch(scope: string, draft: DeckDraft, rival: Deck, replaceMatchId?: string, rivalSkill?: RivalSkill, circuit?: { contractId?: string; rivalKey: string }) {
+  const setup = { player: prepareMatchDeck(draft.deck), rival: prepareMatchDeck(rival), rivalSkill,
+    circuit: { version: 1 as const, rivalKey: circuit?.rivalKey ?? rival.id, contractId: circuit?.contractId } };
   return connectPlayMatch(scope, { type: 'start', setup, draft, replaceMatchId });
 }
 

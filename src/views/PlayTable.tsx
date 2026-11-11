@@ -19,6 +19,7 @@ import { Rules } from '../components/bits';
 import { CombatArrow, CombatBanner } from './PlayCombat';
 import { PlayPresentation, type MatchPlayback } from './PlayPresentation';
 import { MatchResult } from './PlayResult';
+import { CIRCUIT_CONTRACTS } from '../lib/play/circuit';
 import './play-table.css';
 import './play-interaction.css';
 import './play-presentation.css';
@@ -60,13 +61,14 @@ function ContextMenu({ context, children, close }: { context: Context; children:
   </div>, document.body);
 }
 
-export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, edit, playback, feedback, reduced, controls, diceImpact, cue }: {
+export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, edit, circuit, playback, feedback, reduced, controls, diceImpact, cue }: {
   cue?: (name: TableCue, delayMs?: number) => (() => void) | undefined;
   diceImpact?: (type: string, soft: boolean, launch?: boolean) => (() => void) | undefined;
   playback?: MatchPlayback; feedback?: MatchBeat; scope: string; snapshot: MatchSnapshot; names: Record<Seat, string>; busy: boolean; error?: string;
-  send: (move: Move) => void; rematch: () => void; edit: () => void; reduced: boolean; controls?: ReactNode;
+  send: (move: Move) => void; rematch: () => void; edit: () => void; circuit?: () => void; reduced: boolean; controls?: ReactNode;
 }) {
   const { view } = snapshot;
+  const contract = CIRCUIT_CONTRACTS.find(item => item.id === snapshot.circuit?.contractId);
   const actions = matchActions(view);
   // Keep the established key so a valid, uncommitted selection survives this UI update.
   const decisionKey = `cptv.playDecision.v1:${scope}`;
@@ -76,7 +78,7 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
   const [preview, setPreview] = useState<Preview>();
   const [arrow, setArrow] = useState<{ state: string; x1: number; y1: number; x2: number; y2: number }>();
   const [notice, setNotice] = useState('');
-  const [panel, setPanel] = useState<'log' | 'actions' | 'effects'>();
+  const [panel, setPanel] = useState<'log' | 'actions' | 'effects' | 'contract'>();
   const panelId = useId();
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const grid = useRef<HTMLDivElement>(null);
@@ -311,7 +313,8 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
     }}>
     <header className="play-match-header">
       <div className="play-match-identity">
-        <p className="play-eyebrow" title="Match saved in this browser">Practice table <span>/</span> Autosaved</p>
+        {contract ? <button type="button" className="play-eyebrow circuit-contract-trigger" aria-expanded={panel === 'contract'} aria-controls={`${panelId}-contract`} onClick={() => setPanel(panel === 'contract' ? undefined : 'contract')} title="View contract objective">◆ {contract.title} <span>/</span> Autosaved</button>
+          : <p className="play-eyebrow" title="Match saved in this browser">Practice table <span>/</span> Autosaved</p>}
         <h1 title={`${names.player} vs. ${names.rival}`}>{names.player} <span>vs.</span> {names.rival}</h1>
       </div>
       <div className="play-header-actions">
@@ -322,6 +325,11 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
         {controls}
       </div>
     </header>
+    {panel === 'contract' && contract && <section id={`${panelId}-contract`} className="play-drawer circuit-table-brief" aria-label="Contract objective">
+      <div className="play-drawer-head"><h3>{contract.title}</h3>{closePanel}</div>
+      <p>{contract.briefing}</p><div className="circuit-bonus"><span>◆ Bonus mark</span><p>{contract.bonus}</p></div>
+      <p>Win to clear the contract. Win at Masterful to earn the third mark. Every mark stays earned.</p>
+    </section>}
     {panel === 'effects' && <section id={`${panelId}-effects`} className="play-drawer play-table-effects" aria-label="Table effects">
       <div className="play-drawer-head"><h3>Table effects</h3>{closePanel}</div>
       {tableEffects.length ? tableEffects.map(({ seat, effect }, index) => {
@@ -389,7 +397,7 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
       {playing && turnKey !== firstTurn && <div className="play-turn-banner" key={turnKey} data-seat={view.activePlayerId} aria-hidden="true">
         <span>Turn {view.turnNumber}</span><strong>{yourTurn ? 'Your turn' : 'Rival turn'}</strong>
       </div>}
-      {view.gameEnded && <MatchResult view={view} report={snapshot.report} title={decisionTitle} reason={winReasons[view.winReason ?? ''] ?? 'Match ended'} busy={busy} rematch={rematch} edit={edit} />}
+      {view.gameEnded && <MatchResult view={view} report={snapshot.report} receipt={snapshot.circuit?.receipt} circuit={circuit} title={decisionTitle} reason={winReasons[view.winReason ?? ''] ?? 'Match ended'} busy={busy} rematch={rematch} edit={edit} />}
       {intro && <div className="play-intro" aria-hidden="true"><span>Practice table</span><strong>{names.player}</strong><i>vs.</i><strong>{names.rival}</strong></div>}
       <span className="sr-only" role="status">{notice}{busy ? ' Resolving move.' : ''}</span>
       {notice && <p className="play-table-notice">{notice}</p>}

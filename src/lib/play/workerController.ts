@@ -1,11 +1,13 @@
 import { createEngineSession, type EngineCheckpoint } from './engineSession';
 import type { MatchRequest, MatchResponse, MatchSetup, MatchSnapshot, MatchSummary } from './protocol';
+import type { CircuitReceipt } from './circuit';
 
 export interface StoredMatch {
   version: 1;
   setup: MatchSetup;
   checkpoint: EngineCheckpoint;
   summary: MatchSummary;
+  circuitReceipt?: CircuitReceipt;
 }
 
 export function createMatchController(saved?: StoredMatch) {
@@ -30,6 +32,7 @@ export function createMatchController(saved?: StoredMatch) {
       if (!match || !setup || action.matchId !== match.matchId) throw new Error('That match is no longer active.');
       if (!match.isCurrent(action.stateID)) throw new Error('This match changed in another tab. Reload to continue from the saved turn.');
       if (action.type === 'rematch') {
+        setup = { ...setup, circuit: setup.circuit ?? { version: 1, rivalKey: 'legacy-rematch' } };
         match = createEngineSession(setup);
         return { id, snapshot: match.start() };
       }

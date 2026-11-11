@@ -1,9 +1,12 @@
 import { ReactiveRoom } from './ReactiveRoom';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ConfirmDialog, Masthead } from '../components/ui';
+import { ConfirmDialog } from '../components/ui';
 import type { DeckDraft } from '../lib/deckDraft';
 import type { Deck } from '../lib/store';
-import { PlaySetup } from './PlaySetup';
+import { CircuitHub } from './CircuitHub';
+import { equipTableFinish, readCircuitProgress } from '../lib/play/matchStorage';
+import { type CircuitProgress, type TableFinish } from '../lib/play/circuit';
+import { curatedOpponents } from '../lib/play/opponents';
 import { openPlayMatch, resumePlayMatch } from '../lib/play/matchClient';
 import type { MatchSnapshot, MatchSummary, Move, RivalSkill } from '../lib/play/protocol';
 import { visibleCards } from '../lib/play/matchView';
@@ -13,6 +16,7 @@ import { useTableSound } from './useTableSound';
 import { useMatchPresentation } from './useMatchPresentation';
 import './play-mode.css';
 import './play-tactics.css';
+import './circuit.css';
 
 type Client = Awaited<ReturnType<typeof openPlayMatch>>;
 type Confirm = 'replace' | 'restart' | 'concede';
@@ -27,18 +31,42 @@ export default function PlayMode({ scope, draft, saved, initialRival, initialOpp
   const [busy, setBusy] = useState(resume);
   const [error, setError] = useState<string>();
   const [confirm, setConfirm] = useState<Confirm>();
+  const [lobby, setLobby] = useState(false);
+  const [progress, setProgress] = useState<CircuitProgress>();
+  const [progressError, setProgressError] = useState<string>();
+  const [progressAttempt, setProgressAttempt] = useState(0);
+  const [equipping, setEquipping] = useState(false);
   const client = useRef<Client | null>(null);
   const generation = useRef(0);
   const locked = useRef(false);
-  const deck = draft?.deck;
-  const pendingStart = useRef<{ draft: DeckDraft; rival: Deck; skill: RivalSkill; key: string } | undefined>(undefined);
+  const hubDraft = draft ?? saved?.draft ?? { deck: curatedOpponents.find(item => item.key === 'curated:heist-reloaded')!.deck, dirty: false };
+  const pendingStart = useRef<{ draft: DeckDraft; rival: Deck; skill: RivalSkill; key: string; contractId?: string } | undefined>(undefined);
   const matchId = snapshot?.matchId;
   const presentation = useMatchPresentation(snapshot);
   const sound = useTableSound();
 
+  useEffect(() => {
+    let active = true;
+    const load = () => { void readCircuitProgress(scope).then(value => {
+      if (active) { setProgress(value); setProgressError(undefined); }
+    }).catch(cause => { if (active) setProgressError(cause instanceof Error ? cause.message : 'Could not load Circuit progress.'); }); };
+    load();
+    window.addEventListener('focus', load);
+    return () => { active = false; window.removeEventListener('focus', load); };
+  }, [scope, lobby, snapshot?.view.gameEnded, progressAttempt]);
+
+  async function equip(finish: TableFinish) {
+    setEquipping(true);
+    try { setProgress(await equipTableFinish(scope, finish)); setProgressError(undefined); }
+    catch (cause) { setProgressError(cause instanceof Error ? cause.message : 'Could not save this finish.'); }
+    finally { setEquipping(false); }
+  }
+
+  function openCircuit() { presentation.playback?.skip(); setProgress(undefined); setProgressError(undefined); setLobby(true); }
+
   useLayoutEffect(() => {
     if (matchId) window.scrollTo({ top: 0, behavior: 'instant' });
-  }, [matchId]);
+  }, [matchId, lobby]);
 
   // The whole rival turn arrives at once. Warm its art before the moves play.
   useEffect(() => {
@@ -96,8 +124,8 @@ export default function PlayMode({ scope, draft, saved, initialRival, initialOpp
     if (!pending) return;
     if (saved && !saved.ended && !replace) { setConfirm('replace'); return; }
     void run(async (isCurrent) => {
-      const next = await openPlayMatch(scope, pending.draft, pending.rival, saved?.matchId, pending.skill);
-      if (isCurrent()) { client.current = next; rememberRival(pending.key); }
+      const next = await openPlayMatch(scope, pending.draft, pending.rival, saved?.matchId, pending.skill, { rivalKey: pending.key, contractId: pending.contractId });
+      if (isCurrent()) { client.current?.close(); client.current = next; rememberRival(pending.key); setLobby(false); }
       else next.close();
       return next.opening;
     }, pending.draft);
@@ -115,12 +143,13 @@ export default function PlayMode({ scope, draft, saved, initialRival, initialOpp
 
   const live = snapshot && !(presentation.displayed ?? snapshot).view.gameEnded;
   return (
-    <section className="play-mode" onPointerDownCapture={sound.unlock} onKeyDownCapture={sound.unlock}>
+    <section className="play-mode" data-finish={progress?.finish ?? 'afterlife'} onPointerDownCapture={sound.unlock} onKeyDownCapture={sound.unlock}>
       <ReactiveRoom />
-      {snapshot ? <>
+      {snapshot && !lobby ? <>
         <PlayTable key={snapshot.matchId} scope={scope} snapshot={presentation.displayed ?? snapshot} names={snapshot.names}
           playback={presentation.playback} feedback={presentation.feedback} reduced={presentation.reduced} diceImpact={sound.impact} cue={sound.cue}
-          busy={busy || presentation.playing} error={error} send={send} rematch={rematch} edit={onEdit} controls={<>
+          busy={busy || presentation.playing} error={error} send={send} rematch={rematch} edit={onEdit} circuit={openCircuit} controls={<>
+            <button type="button" className="btn quiet" disabled={busy} onClick={openCircuit}>Circuit</button>
             <button type="button" className="btn quiet play-dice-sound" aria-label="Table sound" aria-pressed={sound.enabled}
               onClick={sound.toggle}>Sound <b>{sound.enabled ? 'On' : 'Off'}</b></button>
             <label className="play-sound-level" title="Game effects volume">FX <input type="range" aria-label="Game effects volume" min="0" max="1" step=".05" value={sound.volume} onChange={(e) => sound.changeVolume(Number(e.target.value))} /></label>
@@ -128,15 +157,11 @@ export default function PlayMode({ scope, draft, saved, initialRival, initialOpp
             {live && <button type="button" className="btn danger-ghost" disabled={busy || presentation.playing} onClick={() => setConfirm('concede')}>Concede</button>}
             <button type="button" className="btn quiet" disabled={busy} onClick={() => { presentation.playback?.skip(); onEdit(); }}>Back to draft</button>
           </>} />
-      </> : deck ? <>
-        <div className="play-entrance">
-          <Masthead eyebrow="The Afterlife / Practice table" title="Pick your matchup" sub="Local practice ◆ Best of one">
-            <button type="button" className="btn quiet" disabled={busy} onClick={onEdit}>Back to draft</button>
-          </Masthead>
-        </div>
-        <PlaySetup draft={draft!} savedDecks={savedDecks} initialRival={initialRival} initialOpponent={initialOpponent} busy={busy} error={error}
-          onStart={(draft, rival, skill, key) => { pendingStart.current = { draft, rival, skill, key }; start(); }} />
-      </> : <div className="panel">
+      </> : draft || lobby ? progress ? <CircuitHub progress={progress} draft={hubDraft} savedDecks={savedDecks} initialRival={initialRival} initialOpponent={initialOpponent}
+        busy={busy || equipping} error={error ?? progressError} equip={equip} onEdit={onEdit} onResume={snapshot ? () => setLobby(false) : undefined}
+        onStart={(draft, rival, skill, key, contractId) => { pendingStart.current = { draft, rival, skill, key, contractId }; start(); }} />
+        : <div className="panel" role="status"><h1>Opening the Circuit</h1>{progressError ? <><p className="play-error">{progressError}</p><button className="btn" onClick={() => setProgressAttempt(value => value + 1)}>Try again</button><button className="btn quiet" onClick={onEdit}>Back to draft</button></> : <p>Checking your standing…</p>}</div>
+      : <div className="panel">
         <h1 className="panel-title">Saved match</h1>
         {busy ? <p role="status">Restoring the table…</p> : <>
           {error && <p className="play-error" role="alert">{error}</p>}

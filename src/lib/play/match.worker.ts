@@ -1,16 +1,21 @@
 import { updateSavedMatch } from './matchStorage';
 import { createMatchController } from './workerController';
 import type { ScopedMatchRequest } from './protocol';
+import { validateCircuitSetup } from './circuitMatch';
 
 self.addEventListener('message', async ({ data }: MessageEvent<ScopedMatchRequest>) => {
   const { id, action, scope } = data;
   try {
-    const response = await updateSavedMatch(scope, (previous) => {
+    const response = await updateSavedMatch(scope, (previous, progress) => {
       if (action.type === 'start' && previous?.summary.matchId !== action.replaceMatchId) {
         return { response: { id, error: 'A different match was saved in another tab. Reload before starting a new match.' } };
       }
       if (action.type !== 'start' && previous && previous.version !== 1) {
         return { response: { id, error: 'This saved match is from a different version of Play Mode.' } };
+      }
+      if (action.type === 'start') {
+        try { validateCircuitSetup(action.setup, progress); }
+        catch (error) { return { response: { id, error: error instanceof Error ? error.message : 'Could not open this contract.' } }; }
       }
       const controller = createMatchController(action.type === 'start' ? undefined : previous);
       const response = controller.respond(data);
