@@ -10,6 +10,15 @@ const fresh = (): PlayerView => ({ players: {
   prompt: { status: 'waiting', choice: null, availableMoves: [] }, attackState: null });
 
 describe('public move presentation', () => {
+  it('names a visible ability source during chained choices without exposing a concealed source', () => {
+    const before = fresh(), after = structuredClone(before);
+    before.prompt = { status: 'choice', choice: { type: 'chooseTarget', payload: { source: { cardId: 'attacker' } } }, availableMoves: [] };
+    const command = { move: 'resolveTarget', args: { targetIds: ['defender'] } };
+    expect(describeBeat('rival', command, before, after)).toMatchObject({ source: { instanceId: 'attacker' }, text: 'attacker · effect resolved.', targetIds: ['defender'] });
+    before.players.rival.zones.field = [card('attacker', 'field', { definitionId: '', cardName: null, faceDown: true })];
+    after.players.rival.zones.field = before.players.rival.zones.field;
+    expect(describeBeat('rival', command, before, after).source).toBeUndefined();
+  });
   it('describes plays, equipment, power changes and defeats from actual public transitions', () => {
     const before = fresh(), after = structuredClone(before);
     after.players.rival.zones.field = [card('attacker', 'field', { effectivePower: 5 }), card('gear', 'field', { type: 'gear', attachedToId: 'attacker' })];

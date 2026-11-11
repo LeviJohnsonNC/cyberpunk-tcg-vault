@@ -34,6 +34,22 @@ export interface CardView {
   hasLag?: boolean;
   grantedRules?: string[];
   attachedToId?: string | null;
+  /** Already visibility-filtered by the engine. Presentation only. */
+  activeEffects?: CardEffectView[];
+  costEffects?: CardEffectView[];
+}
+
+export interface CardEffectView {
+  id: string;
+  sourceCardId?: string;
+  sourceName: string;
+  label: string;
+  detail: string;
+  modifierLabel?: string;
+  effectKind: string;
+  tone: 'buff' | 'debuff' | 'neutral';
+  durationLabel?: string;
+  defeatsAtEndOfTurn: boolean;
 }
 
 export interface SeatView {

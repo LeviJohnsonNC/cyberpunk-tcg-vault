@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode, type RefObject } from 'react';
 import { combatContext } from '../lib/play/matchPresentation';
-import type { PlayerView } from '../lib/play/protocol';
+import type { CardView, PlayerView } from '../lib/play/protocol';
 import { CardFace } from './PlayCard';
 
 type Line = { key: string; x1: number; y1: number; x2: number; y2: number };
@@ -50,19 +50,24 @@ export function CombatArrow({ view, root }: { view: PlayerView; root: RefObject<
 }
 
 /** The fight, stated on the table: who attacks, what they hit, and the power on each side. */
-export function CombatBanner({ view, controls, watching }: { view: PlayerView; controls?: ReactNode; watching: boolean }) {
+export function CombatBanner({ view, controls, watching, compact = false, inspect }: { view: PlayerView; controls?: ReactNode; watching: boolean; compact?: boolean; inspect?: (card: CardView, trigger: HTMLElement) => void }) {
   const combat = combatContext(view);
   if (!combat) return null;
   const { attacker, defender } = combat;
-  return <section className="play-combat-banner" aria-label="Combat" data-responding={combat.responding && !watching} data-attacker={combat.attackerSeat}>
-    <div className="play-versus" aria-hidden="true">
-      <span className="play-versus-side" data-role="attacker">{attacker && <CardFace card={attacker} />}<b>{attacker?.effectivePower ?? '?'}</b></span>
+  const stage = view.prompt.choice ? 'Effect choice' : view.attackState?.step === 'react' ? 'Response window'
+    : view.attackState?.step === 'attack' ? 'Attack declared' : 'Resolving combat';
+  const participant = (card: CardView | undefined, role: string) => card ? <button type="button" className="play-combat-card" disabled={watching || !inspect}
+    aria-label={`Inspect ${role}: ${card.cardName}, current power ${card.effectivePower}`} onClick={(event) => inspect?.(card, event.currentTarget)}>
+    <CardFace card={card} /><span><small>{role}</small><strong>{card.cardName}</strong></span><b>{card.effectivePower}</b></button> : <span>{role}</span>;
+  return <section className="play-combat-banner" aria-label="Combat" data-compact={compact} data-responding={combat.responding && !watching} data-attacker={combat.attackerSeat}>
+    <div className="play-combat-stage"><small>Combat</small><strong>{stage}</strong></div>
+    <div className="play-versus">
+      {participant(attacker, 'Attacker')}
       <i>vs</i>
-      <span className="play-versus-side" data-role="defender">{defender ? <><b>{defender.effectivePower}</b><CardFace card={defender} /></>
+      <span className="play-versus-side" data-role="defender">{defender ? participant(defender, 'Defender')
         : <em>{combat.defendingSeat === 'player' ? 'Your Gigs' : 'Rival Gigs'}</em>}</span>
     </div>
-    <div className="play-combat-copy"><h3>{combat.title}</h3><p>{combat.caption}</p></div>
-    <span className="play-combat-instruction">{watching ? 'Watching the rival’s move' : combat.hint}</span>
+    {!compact && <span className="play-combat-instruction">{watching ? 'Watching the move resolve' : combat.hint} <small>Power now, before further effects.</small></span>}
     <div className="play-combat-controls">{controls}</div>
   </section>;
 }

@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { CARD_BACK, Pip, Rules } from '../components/bits';
 import { imageUrl } from '../lib/data';
 import { vaultCard } from '../lib/play/cardDisplay';
+import { powerExplanation } from '../lib/play/tacticalInfo';
 import type { CardView } from '../lib/play/protocol';
 
 /** Table art loads at once: every card on the table is in view, and a late image would fly as a card back. */
@@ -12,8 +13,8 @@ export function CardFace({ card }: { card: CardView }) {
     : <img className="card-art" src={CARD_BACK} alt="" />;
 }
 
-export function CardInspection({ card, hostName, shortcuts, onClose }: {
-  card: CardView; hostName?: string; shortcuts: { label: string; select: () => void }[]; onClose: () => void;
+export function CardInspection({ card, cards = [], hostName, shortcuts, onClose }: {
+  card: CardView; cards?: CardView[]; hostName?: string; shortcuts: { label: string; select: () => void }[]; onClose: () => void;
 }) {
   const title = useId();
   const ref = useRef<HTMLDialogElement>(null);
@@ -27,6 +28,8 @@ export function CardInspection({ card, hostName, shortcuts, onClose }: {
 
   const known = !!card.definitionId;
   const cost = card.effectiveCost ?? card.cost;
+  const power = powerExplanation(card, cards);
+  const effects = [...(card.activeEffects ?? []), ...(card.costEffects ?? [])];
   return <dialog ref={ref} className="al-dialog play-inspect" aria-labelledby={title} onCancel={(event) => {
     event.preventDefault();
     dismiss();
@@ -42,14 +45,25 @@ export function CardInspection({ card, hostName, shortcuts, onClose }: {
           {known ? <>
             <p className="play-eyebrow">{printing && <Pip color={printing.color} bare />} {printing?.type ?? card.type}</p>
             <dl className="play-inspect-stats">
-              {cost != null && <div><dt>Cost</dt><dd>{cost} €$</dd></div>}
-              {card.zone === 'field' && card.type !== 'gear' && <div><dt>Power</dt><dd>{card.effectivePower}</dd></div>}
+              {cost != null && <div><dt>Current cost</dt><dd>{cost} €${cost !== card.cost && <small>Printed {card.cost} €$</small>}</dd></div>}
+              {power && <div><dt>Current power</dt><dd>{card.effectivePower}</dd></div>}
               {!!card.damage && <div><dt>Damage</dt><dd>{card.damage}</dd></div>}
             </dl>
+            {power && <div className="play-power-breakdown"><p>{power.text}</p>
+              {!power.exact && <small>Additional or conditional modifiers are included in current power.</small>}
+              {power.gear.length > 0 && <ul>{power.gear.map((gear) => <li key={gear.instanceId}>{gear.cardName} <b>{gear.power >= 0 ? '+' : ''}{gear.power}</b></li>)}</ul>}
+            </div>}
             {(card.spent || card.hasLag || hostName) && <p className="play-inspect-status">{[
               card.spent && 'Spent', card.hasLag && 'Lag', hostName && `Attached to ${hostName}`,
             ].filter(Boolean).join(' · ')}</p>}
-            {printing && <p className="play-inspect-rules"><Rules text={printing.text} /></p>}
+            {effects.length > 0 && <section className="play-effect-list" aria-label="Effects on this card"><h3>Effects on this card</h3>
+              {effects.map((effect, index) => <div key={`${effect.id}:${index}`} data-tone={effect.tone}>
+                <strong>{effect.label}</strong><p>{effect.detail}</p>
+                {effect.defeatsAtEndOfTurn && <b className="play-effect-warning">Defeated at end of turn</b>}
+              </div>)}
+            </section>}
+            {printing && <section className="play-printed-text"><h3>Printed rules</h3><p className="play-inspect-rules"><Rules text={printing.text} /></p></section>}
+            {!printing && <p className="play-choice-detail">Printed rules unavailable. Current values above are from this match.</p>}
             {shortcuts.length > 0 && <div className="play-actions">{shortcuts.map(({ label, select }) =>
               <button key={label} type="button" className="btn ghost" onClick={() => {
                 dismiss();

@@ -1,0 +1,71 @@
+/* Tactical information stays quiet; the cards remain the focal point. */
+.play-mode .play-inspect { width: min(860px, calc(100vw - 40px)); max-height: calc(100dvh - 40px); }
+.play-inspect .play-inspect-content { grid-template-columns: minmax(220px, 42%) minmax(0, 1fr); gap: 24px; align-items: start; }
+.play-inspect-art { position: sticky; top: 0; }
+.play-inspect .play-inspect-head h2 { font: 800 32px/1.05 var(--font-display); }
+.play-inspect-stats { padding: 12px 0; border-block: 1px solid var(--color-divider); gap: 24px; }
+.play-inspect-stats dd { font: 700 28px/1.1 var(--font-display); }
+.play-inspect-stats dd small { display: block; margin-top: 5px; color: var(--color-text-muted); font: 400 12px/1.4 var(--font-ui); }
+.play-power-breakdown { color: var(--color-ticket); font: 500 13px/1.5 var(--font-ui); }
+.play-power-breakdown p { margin: 10px 0 0; }
+.play-power-breakdown small { display: block; color: var(--color-text-muted); font-size: 12px; }
+.play-power-breakdown ul { margin: 8px 0 0; padding: 0; list-style: none; color: var(--color-text-muted); }
+.play-power-breakdown li { display: flex; justify-content: space-between; gap: 8px; }
+.play-power-breakdown b { color: var(--color-ticket); }
+.play-effect-list { display: grid; gap: 8px; margin-top: 18px; }
+.play-effect-list h3, .play-printed-text h3 { margin: 0; color: var(--color-text-muted); font: 500 11px/1.4 var(--font-mono); text-transform: uppercase; letter-spacing: .06em; }
+.play-effect-list > div { border-inline-start: 2px solid var(--color-ticket); padding: 4px 10px; background: var(--color-canvas-deep); }
+.play-effect-list > div[data-tone="buff"] { border-color: var(--color-success); }
+.play-effect-list > div[data-tone="debuff"] { border-color: var(--color-danger); }
+.play-effect-list strong { font: 600 13px/1.4 var(--font-ui); }
+.play-effect-list p { margin: 3px 0; color: var(--color-text-muted); font: 400 13px/1.5 var(--font-ui); }
+.play-effect-warning { display: block; margin-top: 5px; color: var(--color-danger); font-size: 12px; }
+.play-printed-text { margin-top: 20px; }
+.play-inspect-rules { font-size: 15px; line-height: 1.65; margin: 8px 0 0; }
+.play-hover-preview { width: 286px; height: 464px; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+.play-hover-preview .card-art { min-height: 0; flex: 1; width: 100%; max-height: 376px; }
+.play-hover-preview strong { padding: 0; line-height: 1.3; max-height: 32px; overflow: hidden; }
+.play-hover-preview p { margin: 0; font: 400 12px/1.4 var(--font-ui); color: var(--color-text-muted); }
+.play-hover-preview b { color: var(--color-ticket); }
+.play-hover-preview small { font: 400 10px/1.2 var(--font-ui); color: var(--color-text-muted); }
+.play-hover-copy { display: grid; gap: 5px; }
+.play-hover-preview[data-landscape="true"] { width: 440px; height: 360px; display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 10px; }
+.play-hover-preview[data-landscape="true"] .card-art { height: 100%; max-height: 342px; }
+.play-hover-preview[data-landscape="true"] .play-hover-copy { display: flex; flex-direction: column; min-height: 0; padding-block: 4px; }
+.play-hover-preview[data-landscape="true"] strong { max-height: none; font-size: 14px; }
+.play-hover-preview[data-landscape="true"] small { margin-top: auto; }
+.play-hover-rules { min-height: 0; overflow: hidden; white-space: pre-line; font: 400 12px/1.5 var(--font-ui); }
+.play-tray-source { padding: 0; border: 1px solid var(--color-divider); border-radius: 3px; background: none; cursor: pointer; }
+.play-payment-receipt { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 5px 10px; border-inline-start: 3px solid var(--color-ticket); background: var(--color-canvas-deep); font: 400 12px/1.4 var(--font-ui); }
+.play-payment-receipt > strong { color: var(--color-ticket); white-space: nowrap; }
+.play-payment-receipt > span { color: var(--color-text); }
+.play-payment-receipt summary { color: var(--color-text-muted); cursor: pointer; }
+.play-payment-receipt details[open] { flex-basis: 100%; }
+.play-payment-receipt p { color: var(--color-text-muted); margin: 8px 0 4px; }
+.play-payment-receipt ul { list-style: none; padding: 0; margin: 6px 0; max-width: 360px; }
+.play-payment-receipt li { display: flex; justify-content: space-between; gap: 20px; }
+.play-payment-receipt li span { color: var(--color-text-muted); }
+.play-decision-tray[data-compact="true"] .play-payment-receipt { order: 4; flex-basis: 100%; }
+.play-decision-tray[data-compact="true"] .play-picks > .play-choice-detail { order: 5; }
+.play-combat-stage { flex: none; display: grid; gap: 3px; min-width: 95px; }
+.play-combat-stage small { font: 500 9px/1 var(--font-mono); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .07em; }
+.play-combat-stage strong { font: 700 16px/1.1 var(--font-display); color: var(--color-ticket); }
+.play-combat-banner[data-responding="true"] .play-combat-stage strong { color: var(--color-accent); }
+.play-combat-card { display: flex; align-items: center; gap: 7px; padding: 2px 5px; min-width: 0; border: 1px solid transparent; border-radius: 3px; color: var(--color-text); background: transparent; cursor: pointer; }
+.play-combat-card:disabled { cursor: default; opacity: 1; }
+.play-combat-card:not(:disabled):hover { border-color: var(--color-accent); background: var(--color-surface-raised); }
+.play-mode .play-combat-card .card-art { height: 34px; width: 24px; object-fit: contain; border: 0; transform: none; border-radius: 2px; box-shadow: none; }
+.play-combat-card > span { display: grid; gap: 2px; text-align: left; min-width: 0; max-width: 150px; }
+.play-combat-card small { color: var(--color-text-muted); font: 400 10px/1 var(--font-ui); }
+.play-combat-card strong { font: 500 12px/1.25 var(--font-ui); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.play-combat-card > b { font: 800 28px/1 var(--font-display); color: var(--color-ticket); }
+.play-combat-instruction small { display: block; margin-top: 3px; font-size: 10px; }
+.play-combat-banner .play-versus { min-width: 0; gap: 5px; }
+.play-combat-banner[data-compact="true"] { gap: 10px; }
+.play-table-decision > .play-combat-banner { padding-bottom: 5px; margin-bottom: 6px; border-bottom: 1px solid var(--color-divider); }
+.play-opening-choices > .play-combat-banner { flex-basis: 100%; }
+@media (max-width: 1150px) {
+  .play-combat-card > span { max-width: 105px; }
+  .play-combat-instruction { font-size: 11px; }
+  .play-combat-stage { min-width: 80px; }
+}
