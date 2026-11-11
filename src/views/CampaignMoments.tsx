@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { CardImg, CARD_BACK, Rules } from '../components/bits';
-import { BY_SLUG } from '../lib/data';
+import { BY_SLUG, imageUrl } from '../lib/data';
 import { STARTERS } from '../lib/starters';
 import { CAMPAIGN_ACTS, campaignRecap, packCardContext } from '../lib/play/campaignPresentation';
 import { ENCOUNTERS, ENVIRONMENTS, type CampaignRun, type Environment } from '../lib/play/campaign';
@@ -21,6 +21,11 @@ export function CampaignPack({ run, busy, revealTo, choose, inspect }: {
 }) {
   const reward = run.rewards[run.encounter];
   const reveal = run.revealed ?? 0;
+  const artManifest = [...reward.cards, ...reward.offers].join('|');
+  useEffect(() => {
+    // Warm the browser cache behind the sealed pack; failures never gate a reveal.
+    for (const slug of artManifest.split('|')) { const image = new Image(); image.decoding = 'async'; image.src = imageUrl(slug); }
+  }, [artManifest]);
   const [selected, setSelected] = useState<{ index: number; reveal: number }>();
   const active = selected?.reveal === reveal ? selected.index : Math.max(0, reveal - 1);
   const slug = reward.cards[active];
@@ -67,22 +72,22 @@ export function CampaignArrival({ run, busy, continueToDeck }: { run: CampaignRu
 
 export function CampaignRecap({ run, inspect }: { run: CampaignRun; inspect: (slug: string) => void }) {
   const recap = campaignRecap(run);
-  return <section className="campaign-victory" style={roomStyle('arasaka')} aria-labelledby="campaign-victory-title"><div className="campaign-victory-copy"><p className="play-eyebrow">Afterlife / Nine tables cleared</p><h2 id="campaign-victory-title">You earned<br />your seat.</h2><p>Started with {STARTERS.find(item => item.key === run.starter)?.name}. Finished with a deck of your own.</p><dl className="campaign-victory-stats"><div><dt>Contracts won</dt><dd>{recap.clears}<small>/ 9</small></dd></div><div><dt>Cards earned</dt><dd>{recap.earnedCopies}<small>in {recap.packs} packs</small></dd></div><div><dt>Added to main</dt><dd>{recap.changedCopies}<small>copies beyond starter</small></dd></div></dl></div><div className="campaign-victory-crew"><span className="play-eyebrow">The crew that made it</span><div>{run.deck.legends.map(slug => <button key={slug} onClick={() => inspect(slug)} aria-label={`Inspect ${BY_SLUG.get(slug)?.display}`}><CardImg slug={slug} alt="" priority /><span>{BY_SLUG.get(slug)?.name}</span>{recap.recruits.includes(slug) && <small>Recruited</small>}</button>)}</div></div>
+  return <section className="campaign-victory" style={roomStyle('arasaka')} aria-labelledby="campaign-victory-title"><div className="campaign-victory-copy"><p className="play-eyebrow">Afterlife / Nine tables cleared</p><h2 id="campaign-victory-title">You earned<br />your seat.</h2><p>{recap.changedCopies || recap.recruits.length ? <>Started with {STARTERS.find(item => item.key === run.starter)?.name}. Finished with a deck of your own.</> : <>Took {STARTERS.find(item => item.key === run.starter)?.name} all the way. Nine contracts. One finished campaign.</>}</p><dl className="campaign-victory-stats"><div><dt>Contracts won</dt><dd>{recap.clears}<small>/ 9</small></dd></div><div><dt>Cards earned</dt><dd>{recap.earnedCopies}<small>in {recap.packs} packs</small></dd></div><div><dt>Added to main</dt><dd>{recap.changedCopies}<small>copies beyond starter</small></dd></div></dl></div><div className="campaign-victory-crew"><span className="play-eyebrow">The crew that made it</span><div>{run.deck.legends.map(slug => <button key={slug} onClick={() => inspect(slug)} aria-label={`Inspect ${BY_SLUG.get(slug)?.display}`}><CardImg slug={slug} alt="" priority /><span>{BY_SLUG.get(slug)?.name}</span>{recap.recruits.includes(slug) && <small>Recruited</small>}</button>)}</div></div>
     {!!recap.additions.length && <details className="campaign-deck-story"><summary>How your deck changed · {recap.additions.length} card identities</summary><p>Extra copies in your final main deck compared with the official starter.</p><div>{recap.additions.map(item => <button className="btn quiet" key={item.slug} onClick={() => inspect(item.slug)}>+{item.count} {BY_SLUG.get(item.slug)?.display}</button>)}</div></details>}
   </section>;
 }
 
-export function CampaignRooms({ rooms, selected, busy, onSelect, action }: { rooms: readonly Environment[]; selected?: Environment; busy: boolean; onSelect: (room: Environment) => void; action: 'claim' | 'equip' }) {
+export function CampaignRooms({ rooms, selected, busy, onSelect, action, allOwned = false }: { rooms: readonly Environment[]; selected?: Environment; busy: boolean; onSelect: (room: Environment) => void; action: 'claim' | 'equip'; allOwned?: boolean }) {
   const [preview, setPreview] = useState<Environment>();
   const dialog = useRef<HTMLDialogElement>(null);
   const [choice, setChoice] = useState<Environment>(selected ?? rooms[0] ?? 'booth');
   const current = rooms.includes(choice) ? choice : rooms[0];
   const item = ENVIRONMENTS.find(room => room.id === current)!;
   useEffect(() => { if (preview && !dialog.current?.open) dialog.current?.showModal(); if (!preview) dialog.current?.close(); }, [preview]);
-  return <section className="campaign-room-gallery panel"><div className="campaign-section-heading"><div><p className="play-eyebrow">{action === 'claim' ? 'Champion’s cache / Permanent unlock' : 'Your room keys'}</p><h2>{action === 'claim' ? 'Where will you play next?' : 'A room of your own.'}</h2></div><span>{action === 'claim' ? 'Choose one to keep' : 'Campaign + Free Play'}</span></div>
+  return <section className="campaign-room-gallery panel"><div className="campaign-section-heading"><div><p className="play-eyebrow">{action === 'claim' ? 'Champion’s cache / Permanent unlock' : 'Your room keys'}</p><h2>{action === 'claim' ? 'Where will you play next?' : 'A room of your own.'}</h2></div><span>{action === 'claim' ? allOwned ? 'All rooms already unlocked' : 'Choose one to keep' : 'Campaign + Free Play'}</span></div>
     <div className="campaign-room-options" role="group" aria-label="Room previews">{rooms.map(id => <button key={id} style={roomStyle(id)} data-environment={id} aria-pressed={current === id} onClick={() => setChoice(id)}><strong>{ENVIRONMENTS.find(room => room.id === id)?.name}</strong><span>{selected === id ? 'Equipped' : 'Preview room'}</span></button>)}</div>
-    <div className="campaign-room-hero" style={roomStyle(current)} data-environment={current}><div><p className="play-eyebrow">{action === 'claim' ? 'Your next home table' : selected === current ? 'Currently equipped' : 'Ready to equip'}</p><h3>{item.name}</h3><p>{ROOM_MOOD[current]}</p><div className="campaign-pack-actions"><button className="btn" disabled={busy || (action === 'equip' && selected === current)} onClick={() => onSelect(current)}>{action === 'claim' ? 'Claim this room' : selected === current ? 'Room equipped' : 'Equip this room'}</button><button className="btn quiet" onClick={() => setPreview(current)}>View room artwork</button></div></div></div>
-    {action === 'claim' && <p className="campaign-room-note">Yours across future runs and Free Play. Win another campaign to unlock another room.</p>}
+    <div className="campaign-room-hero" style={roomStyle(current)} data-environment={current}><div><p className="play-eyebrow">{action === 'claim' ? 'Your next home table' : selected === current ? 'Currently equipped' : 'Ready to equip'}</p><h3>{item.name}</h3><p>{ROOM_MOOD[current]}</p><div className="campaign-pack-actions"><button className="btn" disabled={busy || (action === 'equip' && selected === current)} onClick={() => onSelect(current)}>{action === 'claim' ? allOwned ? 'Finish in this room' : 'Claim this room' : selected === current ? 'Room equipped' : 'Equip this room'}</button><button className="btn quiet" onClick={() => setPreview(current)}>View room artwork</button></div></div></div>
+    {action === 'claim' && <p className="campaign-room-note">{allOwned ? 'Your full set of room keys stays yours. Choose a room to finish this run.' : 'Yours across future runs and Free Play. Win another campaign to unlock another room.'}</p>}
     <dialog ref={dialog} className="campaign-room-preview" aria-label="Room artwork preview" onClose={() => setPreview(undefined)}><button className="btn" onClick={() => setPreview(undefined)}>Close preview</button>{preview && <><img src={ROOM_ART[preview]} alt={`${ENVIRONMENTS.find(room => room.id === preview)?.name}. ${ROOM_MOOD[preview]}`} /><p>{ENVIRONMENTS.find(room => room.id === preview)?.name}</p></>}</dialog>
   </section>;
 }

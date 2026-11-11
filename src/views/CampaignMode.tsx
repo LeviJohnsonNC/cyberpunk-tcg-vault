@@ -31,6 +31,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   const [error, setError] = useState<string>();
   const [replace, setReplace] = useState<StarterKey>();
   const [undo, setUndo] = useState<Deck>();
+  const [editFeedback, setEditFeedback] = useState('');
   const [inspected, setInspected] = useState<string>();
   const [reviewed, setReviewed] = useState<string>();
   const hub = useRef<HTMLDivElement>(null);
@@ -103,7 +104,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   function create(starter: StarterKey, abandon = false) {
     if (run && run.phase !== 'completed' && !abandon) { setReplace(starter); return; }
     void apply(() => startCampaign(scope, starter, abandon), value => {
-      setRun(value.run); setProfile(value.profile); setShowTable(false); setSnapshot(undefined); setUndo(undefined);
+      setRun(value.run); setProfile(value.profile); setShowTable(false); setSnapshot(undefined); setUndo(undefined); setEditFeedback(''); setReviewed(undefined);
     });
   }
 
@@ -125,7 +126,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   function edit(deck: Deck, saved?: () => void) {
     if (!run) return;
     const before = structuredClone(run.deck);
-    void apply(() => saveCampaignDeck(scope, run.revision, deck), value => { setUndo(before); setRun(value.run); saved?.(); sound.cue('reward-lock'); });
+    void apply(() => saveCampaignDeck(scope, run.revision, deck), value => { setUndo(before); setRun(value.run); setEditFeedback(`Deck saved · ${totalCopies(value.run.deck.cards)} main cards · ${value.run.deck.legends.length} Legends`); saved?.(); sound.cue('reward-lock'); });
   }
 
   function quantity(slug: string, amount: number) {
@@ -188,7 +189,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
           choose={slug => void apply(() => chooseReward(scope, run.revision, slug), value => { setRun(value.run); sound.cue(needsActBriefing(value.run) ? 'act-arrival' : 'reward-lock'); window.scrollTo({ top: 0, behavior: 'instant' }); hub.current?.focus({ preventScroll: true }); })} />}
         {actPending && <CampaignArrival run={run} busy={busy} continueToDeck={() => void apply(() => acknowledgeCampaignAct(scope, run.revision), value => { setRun(value.run); hub.current?.focus({ preventScroll: true }); })} />}
         {['claimingFinish', 'completed'].includes(run.phase) && <CampaignRecap run={run} inspect={setInspected} />}
-        {run.phase === 'claimingFinish' && <CampaignRooms action="claim" rooms={ENVIRONMENTS.filter(item => !profile.environments.includes(item.id) || profile.environments.length === ENVIRONMENTS.length).map(item => item.id)} busy={busy}
+        {run.phase === 'claimingFinish' && <CampaignRooms action="claim" allOwned={profile.environments.length === ENVIRONMENTS.length} rooms={ENVIRONMENTS.filter(item => !profile.environments.includes(item.id) || profile.environments.length === ENVIRONMENTS.length).map(item => item.id)} busy={busy}
           onSelect={id => void apply(() => claimEnvironment(scope, run.revision, id), value => { setRun(value.run); setProfile(value.profile); sound.cue('reward-lock'); hub.current?.focus({ preventScroll: true }); })} />}
         {run.phase === 'completed' && <section className="panel hot campaign-finale"><p className="play-eyebrow">The next chapter is yours</p><h2>Keep the deck. Keep the room.</h2><p>Open your finished list in Deck Builder to save it and take it into Free Play. Campaign cards stay separate from your physical Vault.</p><button className="btn" onClick={takeDeckToBuilder}>Open deck as draft</button><button className="btn quiet" onClick={exit}>Go to Free Play</button><details><summary>Start another campaign</summary><p>New starter, new packs. Your room keys stay yours.</p>{STARTERS.map(starter => <button className="btn quiet" key={starter.key} onClick={() => create(starter.key)}>{starter.name}</button>)}</details></section>}
         {!actPending && ['preparing', 'upgrading', 'inMatch'].includes(run.phase) && <div className="campaign-workspace">
@@ -200,7 +201,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
             <small>Wins unlock the next table. Losses keep your cards{run.attempts > 1 ? ' · Review your reserve and try another legal swap.' : '.'}</small>
           </section>
           <section className="campaign-workshop panel"><div className="campaign-section-heading"><div><p className="play-eyebrow">Your campaign deck</p><h2>Make the next move.</h2></div><span>{totalCopies(run.deck.cards)} cards · {run.deck.legends.length} Legends</span></div>
-            <CampaignDeckNumbers deck={run.deck} /><div className="campaign-crew-art campaign-active-crew">{run.deck.legends.map(slug => <div key={slug}><CardImg slug={slug} alt={BY_SLUG.get(slug)?.display ?? slug} priority /><strong>{BY_SLUG.get(slug)?.name}</strong></div>)}</div>
+            <CampaignDeckNumbers deck={run.deck} /><p className="campaign-edit-feedback" role="status">{editFeedback}</p><div className="campaign-crew-art campaign-active-crew">{run.deck.legends.map(slug => <div key={slug}><CardImg slug={slug} alt={BY_SLUG.get(slug)?.display ?? slug} priority /><strong>{BY_SLUG.get(slug)?.name}</strong></div>)}</div>
             {run.phase !== 'inMatch' && <><CampaignNewCards run={run} review={setReviewed} /><div className="campaign-workshop-actions"><button className="btn quiet" disabled={!undo || busy} onClick={() => undo && edit(undo)}>Undo last edit</button><button className="btn quiet" disabled={busy} onClick={() => edit(structuredClone(run.lastLegal))}>Restore last legal deck</button></div>
               <p>Your full reserve. Compare a card before adding or swapping it, or adjust copies directly.</p>
               <div className="campaign-inventory">{inventory?.map(card => <article key={card.slug} data-new={!!run.rewards[run.encounter - 1]?.cards.includes(card.slug) || run.rewards[run.encounter - 1]?.choice === card.slug}>

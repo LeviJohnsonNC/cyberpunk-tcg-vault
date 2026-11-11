@@ -240,6 +240,8 @@ Target meaningful deck change over a run rather than raw inventory size. Record 
 
 ### PR 3: Balance, presentation and release
 
+Status (2026-11-11): encounter/reward tuning shipped in PR #57. The following presentation pass implements pack reveals, act arrivals, actual-deck recap, three generated room environments, and before/after workshop comparisons. See `docs/qa/campaign-presentation.md` for verification evidence and remaining human-playtest limits. This pass changes no encounter lists, reward constraints, AI or game rules.
+
 - Tune actual opponent and reward content using the evidence above; commit reproducible results.
 - Finish the pack opening, act transitions, starter art treatment, result recap and three unlockable environments. Keep effects skippable and preserve the table's established readability.
 - Verify desktop at 1280×800, 1440×900 and a wide display, plus browser zoom, keyboard, reduced motion, muted audio, slow/missing art and interrupted storage. Mobile retains the existing desktop-only message.

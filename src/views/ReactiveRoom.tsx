@@ -11,14 +11,14 @@ export function ReactiveRoom() {
     document.addEventListener('visibilitychange', visibility);
     visibility();
     const unsubscribe = subscribeMusic((signal) => {
-    const el = root.current;
-    if (!el) return;
-    const on = signal.active && signal.room;
-    el.dataset.active = String(on);
-    el.dataset.atmosphere = signal.room ? 'on' : 'off';
-    el.style.setProperty('--room-bass', String(on ? signal.bass : 0));
-    el.style.setProperty('--room-air', String(on ? signal.air : 0));
-    el.style.setProperty('--room-pulse', String(on ? signal.pulse : 0));
+      const el = root.current;
+      if (!el) return;
+      const on = signal.active && signal.room;
+      el.dataset.active = String(on);
+      el.dataset.atmosphere = signal.room ? 'on' : 'off';
+      el.style.setProperty('--room-bass', String(on ? signal.bass : 0));
+      el.style.setProperty('--room-air', String(on ? signal.air : 0));
+      el.style.setProperty('--room-pulse', String(on ? signal.pulse : 0));
     });
     return () => { unsubscribe(); document.removeEventListener('visibilitychange', visibility); };
   }, []);

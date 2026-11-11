@@ -163,6 +163,18 @@ Payment receipts use the legal prompt's effective cost and chosen sources. The r
 
 ### Afterlife Circuit
 
+The starter campaign now uses nine contracts in three acts. Its presentation is described below; the six-job Circuit treatment remains relevant only to legacy progression.
+
 The setup hub is a contract wall: one cinematic hero, a quiet reputation strip, six jobs arranged in three acts, and a cream-topped selected-job brief. Locked jobs remain inspectable and explain the prerequisite. Earned marks never disappear. Practice remains a peer tab; the locker and match record are secondary. REP is account progression, distinct from the Street Cred used inside a match.
 
 The result is a receipt, not a second game: settle progress with the checkpoint, then reveal the reward after match presentation finishes. Enamel-style SVG seals, a short reputation fill and stamped marks celebrate the result; motion preferences apply to all three. Table finishes only change the mat's material lighting and trim. Never recolor card art, semantic action controls or ownership indicators. Progress storage limits must remain visible in the hub.
+
+### Starter campaign moments
+
+Packs are physical Afterlife supply drops: plum foil, a cream tear strip, one large straight card, and concise rules and deck-fit context. Reveal next and Reveal all are always explicit controls. Presentation never grants cards or rerolls the manifest. The saved reveal count survives refresh. The eighth-card choice shows all three offers with their actual rules; choosing a card adds it to reserve without editing the deck.
+
+The workshop's latest-pack shelf opens a before/after comparison. Show the incoming and returned cards, printed abilities, main-deck count, cost, composition, sellable count and RAM. A same-colour Legend swap is explicit. Confirm only a legal proposal through the existing atomic deck save; preserve Undo and report success only after persistence.
+
+Act arrivals and the final recap use room photography, large cream typography and the player's actual crew. Arrivals have an immediate continue action and a durable acknowledgement. Recap statistics come from saved rewards and the final deck, never invented match highlights. Keep the cards straight, without the global poster tilt or cream frames.
+
+Unlockable rooms have separate scenes and lighting: intimate pink leather booth, cyan rainy rooftop, and champagne-lit black-marble suite. Edge-only ambience yields to reduced motion, the Room motion switch, and hidden tabs. Card targets and the mat stay still. Previewing art never equips or grants a room; claiming and equipping are explicit saved actions. Artwork source prompts live in `docs/art/campaign-rooms.md`.

@@ -151,3 +151,14 @@
 .campaign-sealed-pack strong { font: italic 900 64px/.9 var(--font-display); color: var(--color-accent); }
 .campaign-pack-code, .campaign-pack-count { font: 10px/1.6 var(--font-mono); letter-spacing: .12em; }
 .campaign-pack-seal { display: block; margin-inline: -24px; text-align: center; background: var(--color-ticket); color: var(--color-ticket-ink); font-family: var(--font-mono); text-transform: uppercase; }
+/* The campaign is a working card table, so global poster frames do not apply. */
+.campaign-mode .card-art { border: 0; border-radius: 4px; transform: none; box-shadow: none; object-fit: contain; }
+.campaign-choice:focus { outline: none; }
+.campaign-upgrade-dialog header { margin-bottom: 18px; }
+.campaign-edit-proposal label { margin: 12px 0 8px; }
+.campaign-compare-stats { margin: 14px 0 10px; }
+.campaign-compare-stats th, .campaign-compare-stats td { padding: 5px 8px; }
+.campaign-upgrade-dialog .campaign-fit { padding: 8px 0; }
+.campaign-prior-rules summary { cursor: pointer; color: var(--color-text-muted); font-size: 12px; padding-block: 8px; }
+.campaign-edit-feedback { color: var(--color-success) !important; font: 12px var(--font-mono); }
+.campaign-edit-feedback:empty { display: none; }
