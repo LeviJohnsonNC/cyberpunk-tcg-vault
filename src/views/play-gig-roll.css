@@ -1,0 +1,40 @@
+.play-gig-roll-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: clip;
+  pointer-events: none;
+}
+.play-gig-roll > * { position: absolute; left: 0; top: 0; opacity: 0; }
+.play-gig-roll canvas { width: 176px; height: 176px; }
+.play-gig-shadow {
+  width: 100px;
+  height: 28px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, var(--color-canvas-deep) 16%, transparent 72%);
+}
+.play-gig-roll-label {
+  padding: 4px 8px;
+  border: 1px solid var(--play-edge);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas-deep);
+  color: var(--color-ticket);
+  font: 500 10px/1 var(--font-mono);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.play-gig-roll[data-seat="rival"] .play-gig-roll-label { color: var(--color-accent); }
+.play-gig-roll[data-decisive="true"] .play-gig-roll-label { border-color: var(--color-ticket); color: var(--color-ticket); }
+.play-gig-roll[data-decisive="true"] canvas { filter: drop-shadow(0 0 13px color-mix(in srgb, var(--color-ticket) 34%, transparent)); }
+.play-mat-fixer .play-roll-source { visibility: hidden; flex: none; }
+.play-die[data-roll-pending] > * { visibility: hidden; }
+.play-die[data-roll-docked] { border-color: var(--color-ticket); box-shadow: 0 0 9px color-mix(in srgb, var(--color-ticket) 38%, transparent); }
+.play-die[data-roll-docked="decisive"] { box-shadow: 0 0 14px var(--color-ticket); }
+.play-roll-wait { display: none; }
+.play-grid:has(.play-gig-roll[data-phase="air"]) .play-roll-wait { display: block; }
+.play-grid:has(.play-gig-roll[data-phase="air"]) .play-roll-outcome { display: none; }
+.play-grid:has(.play-gig-roll[data-phase="air"]) .play-gigs .play-gig-cred b,
+.play-grid:has(.play-gig-roll[data-phase="air"]) .play-gigs h3 span { visibility: hidden; }
+.play-dice-sound b { color: var(--color-text-muted); font-weight: 500; }
+.play-dice-sound[aria-pressed="true"] b { color: var(--color-accent); }

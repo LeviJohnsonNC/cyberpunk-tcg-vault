@@ -255,84 +255,6 @@
 .play-die[aria-pressed="true"], .play-die[data-target="true"]:hover { background: color-mix(in srgb, var(--color-accent) 24%, var(--color-canvas-deep)); }
 .play-die[aria-pressed="true"] .play-die-shell { stroke-width: 2.8px; }
 
-.play-roll-stage {
-  position: absolute;
-  z-index: 3;
-  inset: 47% var(--space-3) auto;
-  translate: 0 -50%;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--space-2);
-  pointer-events: none;
-}
-.play-roll-receipt {
-  position: relative;
-  display: grid;
-  justify-items: center;
-  gap: var(--space-2);
-  min-width: 132px;
-  padding: var(--space-3);
-  color: var(--color-ticket);
-  background: var(--play-scrim);
-  border: 1px solid var(--play-edge);
-  border-block-start: 2px solid currentColor;
-  border-radius: 6px;
-  box-shadow: 0 10px 26px var(--color-canvas-deep);
-  perspective: 320px;
-  animation: play-roll-receipt 1.55s both;
-}
-.play-roll-receipt[data-seat="rival"] { color: var(--color-accent); }
-.play-roll-receipt .play-die-face {
-  width: 86px;
-  height: 86px;
-  filter: drop-shadow(0 0 7px color-mix(in srgb, currentColor 28%, transparent));
-  animation: play-die-tumble .72s both;
-}
-.play-roll-receipt .play-die-number { animation: play-roll-number .72s both; }
-.play-roll-caption {
-  font: 500 11px/1.2 var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: .04em;
-  color: var(--color-text);
-}
-.play-roll-caption b { color: inherit; }
-.play-roll-shadow {
-  position: absolute;
-  top: 89px;
-  width: 66px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--color-canvas-deep);
-  filter: blur(4px);
-  animation: play-die-shadow .72s both;
-}
-@keyframes play-roll-receipt {
-  0% { opacity: 0; }
-  13%, 81% { opacity: 1; }
-  100% { opacity: 0; visibility: hidden; }
-}
-@keyframes play-die-tumble {
-  0% { transform: translate3d(-50px, -57px, 20px) rotateX(180deg) rotateY(-240deg) rotateZ(-120deg) scale(.67); }
-  37% { transform: translate3d(17px, 5px, 0) rotateX(70deg) rotateY(-104deg) rotateZ(40deg) scale(1.08, .84); animation-timing-function: ease-out; }
-  57% { transform: translate3d(9px, -17px, 12px) rotateX(28deg) rotateY(-37deg) rotateZ(-17deg); animation-timing-function: ease-in; }
-  78% { transform: translate3d(-3px, 4px, 0) rotateX(-8deg) rotateY(11deg) rotateZ(5deg) scale(1.06, .94); animation-timing-function: ease-out; }
-  100% { transform: none; }
-}
-@keyframes play-roll-number {
-  0%, 62% { opacity: 0; }
-  100% { opacity: 1; }
-}
-@keyframes play-die-shadow {
-  0% { transform: translateX(-30px) scale(.45); opacity: .3; }
-  37% { transform: translateX(10px) scale(1.15); opacity: 1; }
-  57% { transform: translateX(5px) scale(.66); opacity: .55; }
-  100% { transform: none; opacity: 1; }
-}
-@keyframes play-roll-still {
-  to { visibility: hidden; }
-}
-
 .play-card-row {
   display: flex;
   align-items: flex-start;
@@ -582,11 +504,6 @@
   .play-mat-field .play-card-row { padding-block: 2px; min-height: calc(1.4 * var(--play-card-width) + 13px); }
   .play-mat .play-eyebrow { font-size: 9px; }
   .play-match-identity h1 { font-size: 32px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .play-roll-receipt { animation: play-roll-still 1.55s steps(1, end) both; }
-  .play-roll-receipt .play-die-face, .play-roll-receipt .play-die-number, .play-roll-shadow { animation: none; }
 }
 
 @media (prefers-reduced-motion: no-preference) {

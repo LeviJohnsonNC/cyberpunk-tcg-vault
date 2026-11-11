@@ -82,6 +82,8 @@ export interface GigRoll {
   result: number;
   seat: Seat;
   origin: 'gainGig' | 'reroll';
+  fixerIndex?: number;
+  decisive?: boolean;
 }
 
 export interface MatchFrame {

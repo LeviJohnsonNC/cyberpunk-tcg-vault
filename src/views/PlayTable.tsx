@@ -6,7 +6,8 @@ import { visibleCards, zoneCards } from '../lib/play/matchView';
 import type { CardView, MatchBeat, MatchSnapshot, Move, Seat } from '../lib/play/protocol';
 import { CardFace, CardInspection } from './PlayCard';
 import { vaultCard } from '../lib/play/cardDisplay';
-import { GigRollDisplay } from './PlayDice';
+import { GigRollAnnouncement } from './PlayDice';
+import { PlayGigRoll } from './PlayGigRoll';
 import { GigZones, PlayMat } from './PlayMat';
 import { PlayChoices } from './PlayChoices';
 import { useTableDrag } from './useTableDrag';
@@ -53,7 +54,8 @@ function ContextMenu({ context, children, close }: { context: Context; children:
   </div>, document.body);
 }
 
-export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, edit, playback, feedback }: {
+export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, edit, playback, feedback, diceImpact }: {
+  diceImpact?: (type: string, soft: boolean) => (() => void) | undefined;
   playback?: MatchPlayback; feedback?: MatchBeat; scope: string; snapshot: MatchSnapshot; names: Record<Seat, string>; busy: boolean; error?: string;
   send: (move: Move) => void; rematch: () => void; edit: () => void;
 }) {
@@ -70,6 +72,8 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
   const [allActions, setAllActions] = useState(false);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const grid = useRef<HTMLDivElement>(null);
+  const rolls = playback?.beat.gigRolls;
+  const rolling = !!rolls?.length;
   const submitLock = useRef<string | undefined>(undefined);
   const focusAfter = useRef(false);
   const focusReturn = useRef<HTMLElement | undefined>(undefined);
@@ -101,7 +105,7 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
   const defender = cards.find((card) => card.instanceId === combat?.defenderId);
   const attackingPlayer = zoneCards(view.players.player, 'field').some((card) => card.instanceId === combat?.attackerId);
   const combatCaption = attacker?.cardName && `${attacker.cardName} attacks ${defender?.cardName ?? (attackingPlayer ? 'the rival’s Gigs' : 'your Gigs')}.`;
-  const decisionTitle = playback ? 'Watching moves' : view.gameEnded ? view.winnerId === 'player' ? 'You win' : view.winnerId === 'rival' ? 'Rival wins' : 'Match complete'
+  const decisionTitle = rolling ? 'Rolling Gigs' : playback ? 'Watching moves' : view.gameEnded ? view.winnerId === 'player' ? 'You win' : view.winnerId === 'rival' ? 'Rival wins' : 'Match complete'
     : waiting ? 'Rival is deciding' : choice?.type === 'chooseFirstPlayer' ? 'Choose turn order'
     : view.gamePhase === 'setup' ? 'Opening hand' : choice ? actions[0]?.label ?? 'Resolve a choice'
     : combatStep === 'React' ? 'Reaction window' : combatStep ?? 'Your move';
@@ -245,7 +249,7 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
     <aside className="play-rail" aria-label="Match controls">
       <section className="panel play-decision" aria-label="Current decision" data-result={view.gameEnded ? view.winnerId ?? 'draw' : undefined}>
         <div className="play-decision-heading"><span className="play-eyebrow">{playback ? 'Public moves' : view.gameEnded ? 'Match report' : busy ? 'Resolving move' : waiting ? 'Rival decision' : 'Practice table'}</span>
-          <h2 aria-live="polite">{decisionTitle}</h2><p className="play-combat-caption">{playback ? 'The table is showing public moves. Skip to the next decision when ready.' : combatCaption ?? (view.gameEnded ? winReasons[view.winReason ?? ''] ?? 'Match ended' : choice || selected ? 'Follow the decision on the mat.' : 'Select a card to act. Drag it to a highlighted destination.')}</p></div>
+          <h2 aria-live="polite">{decisionTitle}</h2><p className="play-combat-caption">{rolling ? 'Skip to see the settled result.' : playback ? 'The table is showing public moves. Skip to the next decision when ready.' : combatCaption ?? (view.gameEnded ? winReasons[view.winReason ?? ''] ?? 'Match ended' : choice || selected ? 'Follow the decision on the mat.' : 'Select a card to act. Drag it to a highlighted destination.')}</p></div>
         {error && <p className="play-error" role="alert">{error}</p>}
         {view.gameEnded ? <><dl className="play-result-score"><div><dt>Your Gigs</dt><dd>{view.players.player.gigCount}</dd></div><div><dt>Rival Gigs</dt><dd>{view.players.rival.gigCount}</dd></div></dl>
           <div className="play-actions"><button type="button" className="btn" disabled={busy} onClick={rematch}>Rematch</button><button type="button" className="btn quiet" disabled={busy} onClick={edit}>Edit draft</button></div></>
@@ -266,12 +270,12 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
         })}
       </section>}
       <section className="panel play-log" aria-label="Match activity"><div className="play-log-heading"><h3>Last move</h3></div>
-        {latest ? <><p className="play-latest"><b>{latest.seat === 'player' ? 'You' : 'Rival'}</b>{latest.text}</p><details className="play-history"><summary>Action log <span>{log.length}</span></summary>
+        {latest ? <><p className="play-latest play-roll-wait">Roll in progress</p><p className="play-latest play-roll-outcome"><b>{latest.seat === 'player' ? 'You' : 'Rival'}</b>{latest.text}</p><details className="play-history play-roll-outcome"><summary>Action log <span>{log.length}</span></summary>
           <ol>{log.slice().reverse().map((entry) => <li key={entry.id}><small>T{entry.turn} · {entry.seat === 'player' ? 'You' : 'Rival'}</small><span>{entry.text}</span></li>)}</ol></details></> : <p className="play-empty">Match events appear here.</p>}
       </section>
     </aside>
-    <div className="play-table"><GigRollDisplay rolls={snapshot.gigRolls} stateID={view.stateID} />
-      <PlayMat seat="rival" name={names.rival} active={view.activePlayerId === 'rival' && view.gamePhase !== 'setup' && !view.gameEnded} {...targeting} renderCard={renderCard} renderFace={(card) => <CardFace card={card} />} />
+    <div className="play-table"><GigRollAnnouncement rolls={snapshot.gigRolls} />
+      <PlayMat rolls={rolls} seat="rival" name={names.rival} active={view.activePlayerId === 'rival' && view.gamePhase !== 'setup' && !view.gameEnded} {...targeting} renderCard={renderCard} renderFace={(card) => <CardFace card={card} />} />
       <GigZones {...targeting} />
       {combat ? <CombatBanner view={view} watching={!!playback} controls={<>{playback && <button type="button" className="btn quiet" onClick={playback.skip}>Skip moves</button>}{special.filter(({ action }) => action.id === 'resolveAttack').map(({ index }) => actionButton(index))}</>} /> : <div className="play-table-strip" tabIndex={-1} data-combat={!!combat}><span>{view.gamePhase === 'setup' ? 'Opening setup' : `Turn ${view.turnNumber} · ${view.activePlayerId === 'player' ? 'Your turn' : 'Rival turn'}`}</span><span>{playback ? `Watching move ${playback.index + 1}/${playback.count}` : combatStep ?? (view.overtimeActive ? 'Overtime' : 'Best of one')}</span></div>}
       {!playback && !view.gameEnded && view.gamePhase !== 'setup' && (selected || choice) && <div className="play-table-decision" key={stateKey}>
@@ -282,12 +286,13 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
           inspect={inspect} alternatives={choice ? special.map(({ index }) => actionButton(index)) : null} />
           : <div className="play-opening-choices"><h3>{decisionTitle}</h3>{actions.map((_, index) => actionButton(index))}</div>}
       </div>}
-      <PlayMat seat="player" fieldControls={!playback && view.gamePhase === 'setup' ? <div className="play-opening-choices"><h3>{decisionTitle}</h3>{actions.map((_, index) => actionButton(index))}</div> : undefined} name={names.player} active={view.activePlayerId === 'player' && view.gamePhase !== 'setup' && !view.gameEnded} {...targeting} renderCard={renderCard} renderFace={(card) => <CardFace card={card} />} />
+      <PlayMat rolls={rolls} seat="player" fieldControls={!playback && view.gamePhase === 'setup' ? <div className="play-opening-choices"><h3>{decisionTitle}</h3>{actions.map((_, index) => actionButton(index))}</div> : undefined} name={names.player} active={view.activePlayerId === 'player' && view.gamePhase !== 'setup' && !view.gameEnded} {...targeting} renderCard={renderCard} renderFace={(card) => <CardFace card={card} />} />
       {(dropZones.has('program')) && <div className="play-program-drop" data-drop-zone="program" data-drop-available="true" data-drop-over={dropOver === 'program'}>Play Program</div>}
       <section className="play-hand" aria-label="Your hand"><div className="play-hand-heading"><h2 className="play-eyebrow">Your hand <span>{hand.length}</span></h2><span className="play-eyebrow">Private</span></div>
         <div className="play-card-row">{hand.length ? hand.map((card) => renderCard(card)) : <span className="play-empty">No cards in hand</span>}</div></section>
       <span className="sr-only" role="status">{notice}{busy ? ' Resolving move.' : ''}</span>
       {notice && <p className="play-table-notice">{notice}</p>}
+      {rolling && <PlayGigRoll key={view.stateID} rolls={rolls} impact={diceImpact} />}
     </div>
     {menu && <ContextMenu context={menu} close={closeMenu}>{menu.intents.map((intent, index) => <button key={index} type="button" className="btn ghost" data-context-action={actions[intent.action].id}
       onClick={() => beginIntent(intent, true)}>{intentLabel(actions[intent.action], intent.picks, menu.card)}</button>)}

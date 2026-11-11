@@ -64,7 +64,11 @@ describe('public move presentation', () => {
   it('keeps dice results readable while bounding ordinary move pacing', () => {
     expect(beatDuration(1, { gigRolls: [] })).toBe(950);
     expect(beatDuration(30, { gigRolls: [] })).toBeLessThan(300);
-    expect(beatDuration(10, { gigRolls: [{ dieId: 'die', dieType: 'd6', result: 3, seat: 'rival', origin: 'gainGig' }] })).toBe(1550);
+    const roll = { dieId: 'die', dieType: 'd6', result: 3, seat: 'rival', origin: 'gainGig' } as const;
+    const ordinary = beatDuration(10, { gigRolls: [roll] });
+    expect(ordinary).toBeGreaterThan(1000);
+    expect(ordinary).toBeLessThan(1400);
+    expect(beatDuration(10, { gigRolls: [{ ...roll, decisive: true }] })).toBeGreaterThan(ordinary + 300);
   });
 });
 

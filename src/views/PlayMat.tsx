@@ -1,7 +1,7 @@
 import { useId, useRef, type ReactNode } from 'react';
 import { CARD_BACK } from '../components/bits';
 import { zoneCards, zoneCount } from '../lib/play/matchView';
-import type { CardView, MatchSnapshot, Seat } from '../lib/play/protocol';
+import type { CardView, GigRoll, MatchSnapshot, Seat } from '../lib/play/protocol';
 import { DieFace } from './PlayDice';
 
 type Targeting = { effectIds?: Set<string>; dropZones?: Set<string>; dropOver?: string; targetIds: Set<string>; chosenIds: Set<string>; onPick: (id: string) => void };
@@ -61,12 +61,19 @@ function MatTrash({ own, trash, removed, renderCard, renderFace }: {
   </div>;
 }
 
-export function PlayMat({ seat, snapshot, name, active, renderCard, renderFace, fieldControls, ...targeting }: Targeting & {
-  seat: Seat; snapshot: MatchSnapshot; name: string; active: boolean; renderCard: CardTile; renderFace: (card: CardView) => ReactNode; fieldControls?: ReactNode;
+export function PlayMat({ seat, snapshot, name, active, renderCard, renderFace, fieldControls, rolls, ...targeting }: Targeting & {
+  seat: Seat; snapshot: MatchSnapshot; name: string; active: boolean; renderCard: CardTile; renderFace: (card: CardView) => ReactNode; fieldControls?: ReactNode; rolls?: GigRoll[];
 }) {
   const view = snapshot.view.players[seat];
   const own = seat === 'player';
   const fixer = zoneCards(view, 'fixerArea');
+  const fixerSlots = fixer.map((card) => ({ id: card.instanceId, card } as { id: string; card?: CardView }));
+  for (const roll of rolls ?? []) {
+    if (roll.seat === seat && roll.fixerIndex !== undefined && !fixerSlots.some(({ id }) => id === roll.dieId)) {
+      fixerSlots.splice(roll.fixerIndex, 0, { id: roll.dieId });
+    }
+  }
+  if (!own) fixerSlots.reverse();
   const legends = zoneCards(view, 'legendArea');
   const field = zoneCards(view, 'field');
   const resolving = zoneCards(view, 'resolvingProgram');
@@ -102,7 +109,9 @@ export function PlayMat({ seat, snapshot, name, active, renderCard, renderFace, 
     <div className="play-mat">
       <section className="play-mat-fixer" aria-label={own ? 'Your Fixer dice' : 'Rival Fixer dice'}>
         <h3 className="play-eyebrow">Fixer</h3>
-        <div className="play-dice">{(own ? fixer : fixer.slice().reverse()).map((card) => <MatDie key={card.instanceId} card={card} fixer {...targeting} />)}</div>
+        <div className="play-dice">{fixerSlots.map(({ id, card }) => card
+          ? <MatDie key={id} card={card} fixer {...targeting} />
+          : <span key={id} className="play-die play-die-fixer play-roll-source" data-roll-source={id} aria-hidden="true" />)}</div>
       </section>
       <div className="play-mat-field" data-drop-zone={`field:${seat}`} data-drop-available={targeting.dropZones?.has(`field:${seat}`)} data-drop-over={targeting.dropOver === `field:${seat}`} data-resolving={resolving.length > 0}>
         <section className="play-field" aria-label="Field">
