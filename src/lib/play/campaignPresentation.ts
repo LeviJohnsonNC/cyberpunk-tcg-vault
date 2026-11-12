@@ -1,4 +1,5 @@
 import { BY_SLUG, fitsRam, ramLimits } from '../data';
+import { campaignPulls, type CampaignPull } from './campaignPack';
 import { campaignDeckIssues, makeStarterDeck, type CampaignRun } from './campaign';
 
 export const CAMPAIGN_ACTS = [
@@ -12,9 +13,9 @@ export function needsActBriefing(run: CampaignRun) {
     && (run.briefedAct ?? 0) < Math.floor(run.encounter / 3);
 }
 
-export function latestPack(run: CampaignRun): string[] {
+export function latestPack(run: CampaignRun): CampaignPull[] {
   const pack = run.rewards[run.phase === 'rewardPending' ? run.encounter : run.encounter - 1];
-  return pack ? [...pack.cards, ...(pack.choice ? [pack.choice] : [])] : [];
+  return pack ? [...campaignPulls(pack), ...(pack.choice ? [{ slug: pack.choice }] : [])] : [];
 }
 
 /** A proposed edit only. Storage still authorizes and commits the whole deck atomically. */
@@ -41,6 +42,7 @@ export function previewCampaignEdit(run: CampaignRun, incoming: string, outgoing
 export function packCardContext(run: CampaignRun, slug: string) {
   const card = BY_SLUG.get(slug);
   if (!card) return 'Card details unavailable.';
+  if (!run.deck.legends.some(legend => BY_SLUG.get(legend)?.color === card.color)) return `Outside your starter’s colours · ${card.color}`;
   if (card.type === 'Legend') return `${card.color} crew option · ${card.ram ?? 0} RAM`;
   const fits = fitsRam(card, ramLimits(run.deck.legends));
   const used = run.deck.cards[slug] ?? 0;

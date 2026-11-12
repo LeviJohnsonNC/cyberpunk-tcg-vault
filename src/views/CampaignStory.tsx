@@ -144,6 +144,6 @@ export function CampaignRivalSeat(props: DossierProps) {
 export function CampaignRivalFarewell({ encounter, quote }: { encounter: EncounterId; quote: NonNullable<Quote> }) {
   return <figure className="campaign-rival-farewell">
     <RivalPortrait encounter={encounter} />
-    <div><blockquote>“{quote.text}”</blockquote><figcaption>{campaignChapters[encounter].rival}</figcaption></div>
+    <figcaption><strong>{campaignChapters[encounter].rival}</strong><blockquote>“{quote.text}”</blockquote></figcaption>
   </figure>;
 }

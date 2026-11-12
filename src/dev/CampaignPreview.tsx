@@ -1,6 +1,9 @@
 /** Preview/development-only fixtures. Isolated scope; never reads a user's Vault or grants real rewards. */
 import { createRoot } from 'react-dom/client';
 import { useState } from 'react';
+import { CampaignRivalFarewell } from '../views/CampaignStory';
+import { MatchResult } from '../views/PlayResult';
+import type { PlayerView } from '../lib/play/protocol';
 import { CampaignMode } from '../views/CampaignMode';
 import { ENCOUNTERS, emptyProfile, generateReward, newCampaign, type CampaignRun } from '../lib/play/campaign';
 import { updateCampaign } from '../lib/play/campaignStorage';
@@ -10,37 +13,53 @@ import '../views/play-mode.css';
 
 const scope = 'qa:campaign-presentation';
 function fixture(starter: StarterKey, state: string, contract: number): CampaignRun {
-  const run = newCampaign(starter, 'visual-qa', 'presentation-fixture-2026');
+  // This seed exercises a real Iconic Secret pull through the production reward generator.
+  const run = newCampaign(starter, 'visual-qa', state === 'chase pack' ? 'retail-pack-qa-12' : 'presentation-fixture-2026');
+  const openingPack = state === 'pack' || state === 'chase pack';
   const count = state === 'contract' ? contract : state === 'retry' ? 0 : state === 'finale' || state === 'complete' ? 8 : state === 'act3' ? 6 : state === 'act2' ? 3 : state === 'recruit' ? 2 : state === 'start' ? 0 : 1;
   for (let index = 0; index < count; index++) {
     run.encounter = index;
     const reward = generateReward(run);
     for (const slug of reward.cards) run.inventory[slug] = (run.inventory[slug] ?? 0) + 1;
-    if (!(state === 'pack' && index === count - 1)) { reward.choice = reward.offers[0]; run.inventory[reward.choice] = (run.inventory[reward.choice] ?? 0) + 1; }
+    if (!(openingPack && index === count - 1)) { reward.choice = reward.offers[0]; run.inventory[reward.choice] = (run.inventory[reward.choice] ?? 0) + 1; }
     run.rewards[index] = reward;
   }
   run.encounter = count;
   run.phase = count ? 'upgrading' : 'preparing';
   if (state === 'retry') run.attempts = 1;
-  if (state === 'pack') { run.encounter = 0; run.phase = 'rewardPending'; }
+  if (openingPack) { run.encounter = 0; run.phase = 'rewardPending'; }
   if (state === 'recruit') { run.encounter = 2; const reward = generateReward(run); for (const slug of reward.cards) run.inventory[slug] = (run.inventory[slug] ?? 0) + 1; run.rewards[2] = reward; run.phase = 'rewardPending'; run.revealed = 7; }
   if (state === 'finale' || state === 'complete') { run.encounter = 8; run.phase = state === 'complete' ? 'completed' : 'claimingFinish'; run.completedAt = Date.now(); }
   return run;
 }
+function ReportPreview({ openPack }: { openPack: () => void }) {
+  const seat = { firstPlayer: true, zones: {}, eddies: 0, availableEddies: 0, gigCount: 10, streetCred: 0 };
+  const view: PlayerView = { players: { player: seat, rival: { ...seat, firstPlayer: false, gigCount: 2 } },
+    gamePhase: 'main', turnNumber: 14, activePlayerId: 'player', overtimeActive: false, gameEnded: true,
+    winnerId: 'player', winReason: 'gig_victory', stateID: 50, prompt: { status: 'waiting', availableMoves: [], choice: null } };
+  return <div className="play-mode campaign-mode"><div className="play-table" style={{ position: 'relative', minHeight: '85vh' }}>
+    <MatchResult view={view} title="You win" reason="Seven Gigs secured" busy={false} rematch={openPack} edit={openPack}
+      continueLabel="Open your pack" report={{ turns: 14, played: 10, sold: 4, lost: { player: 0, rival: 3 }, stuck: [],
+        gigs: [{ turn: 1, player: 0, rival: 1 }, { turn: 7, player: 4, rival: 3 }, { turn: 14, player: 10, rival: 2 }] }}
+      rivalFarewell={<CampaignRivalFarewell encounter="first-call" quote={{ text: 'Take the pack. Check the signature.', moment: 'playerWon', sequence: 1 }} />} />
+  </div></div>;
+}
+
 export function Preview() {
   const [key, setKey] = useState(0);
   const [starter, setStarter] = useState<StarterKey>('the-heist');
   const [error, setError] = useState('');
   const [contract, setContract] = useState(0);
+  const [showReport, setShowReport] = useState(false);
   async function load(state: string) {
     try {
       const profile = { ...emptyProfile(), environments: ['booth', 'rooftop', 'arasaka'] as const, equipped: 'booth' as const };
       await updateCampaign(scope, () => ({ run: fixture(starter, state, contract), profile: { ...profile, environments: state === 'finale' ? [] : [...profile.environments] }, value: undefined }));
-      setKey(value => value + 1); setError('');
+      setKey(value => value + 1); setError(''); setShowReport(false);
     } catch (cause) { setError(String(cause)); }
   }
-  return <><nav style={{ padding: 12, display: 'flex', flexWrap: 'wrap', gap: 8, background: 'var(--color-canvas-deep)', position: 'relative', zIndex: 2 }} aria-label="QA fixtures"><strong>Visual QA · Fixture data</strong><button className="btn quiet" onClick={() => setStarter(starter === 'the-heist' ? 'embracing-power' : 'the-heist')}>{starter}</button>{['start', 'retry', 'pack', 'recruit', 'workshop', 'act2', 'act3', 'finale', 'complete'].map(state => <button className="btn quiet" key={state} onClick={() => void load(state)}>{state}</button>)}<label>Contract <select value={contract} onChange={event => setContract(Number(event.target.value))}>
+  return <><nav style={{ padding: 12, display: 'flex', flexWrap: 'wrap', gap: 8, background: 'var(--color-canvas-deep)', position: 'relative', zIndex: 2 }} aria-label="QA fixtures"><strong>Visual QA · Fixture data</strong><button className="btn quiet" onClick={() => setStarter(starter === 'the-heist' ? 'embracing-power' : 'the-heist')}>{starter}</button>{['start', 'retry', 'pack', 'chase pack', 'recruit', 'workshop', 'act2', 'act3', 'finale', 'complete'].map(state => <button className="btn quiet" key={state} onClick={() => void load(state)}>{state}</button>)}<label>Contract <select value={contract} onChange={event => setContract(Number(event.target.value))}>
     {ENCOUNTERS.map((encounter, index) => <option key={encounter.id} value={index}>{index + 1}. {encounter.title}</option>)}
-  </select></label><button className="btn quiet" onClick={() => void load('contract')}>Load contract</button><span role="status">{error}</span></nav><CampaignMode key={key} scope={scope} exit={() => setError('Free Play navigation requested.')} openInBuilder={() => setError('Deck Builder handoff requested.')} /></>;
+  </select></label><button className="btn quiet" onClick={() => void load('contract')}>Load contract</button><button className="btn quiet" onClick={() => setShowReport(true)}>Win report</button><span role="status">{error}</span></nav>{showReport ? <ReportPreview openPack={() => void load('chase pack')} /> : <CampaignMode key={key} scope={scope} exit={() => setError('Free Play navigation requested.')} openInBuilder={() => setError('Deck Builder handoff requested.')} />}</>;
 }
 if (import.meta.env.DEV || import.meta.env.VAULT_PLAY_PREVIEW) createRoot(document.getElementById('root')!).render(<Preview />);

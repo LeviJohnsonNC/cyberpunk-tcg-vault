@@ -12,7 +12,7 @@
 .campaign-reveal-count { display: block; font: 12px var(--font-mono); margin: 20px 0 14px; }
 .campaign-pack-actions .btn { min-height: 42px; }
 .campaign-reveal-spotlight { min-height: 365px; position: relative; display: grid; place-items: center; perspective: 1000px; isolation: isolate; }
-.campaign-reveal-spotlight::before { content: ''; position: absolute; inset: 10% -20%; z-index: -1; background: radial-gradient(ellipse, color-mix(in srgb, var(--color-accent) 15%, transparent), transparent 67%); }
+.campaign-reveal-spotlight::before { content: ''; position: absolute; inset: 10% -20%; z-index: -1; background: radial-gradient(ellipse, color-mix(in srgb, var(--pack-light, var(--color-accent)) 18%, transparent), transparent 67%); }
 .campaign-sealed-pack { width: 245px; height: 350px; min-height: 0; margin: 0; transform: rotate(-6deg); transition: transform .22s ease, filter .22s ease; box-shadow: none; }
 .campaign-sealed-pack:hover { transform: rotate(-3deg) translateY(-4px); }
 .campaign-sealed-pack::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 15%, color-mix(in srgb, var(--color-ticket) 18%, transparent) 34%, transparent 49%); }
@@ -20,8 +20,66 @@
 .campaign-sealed-pack strong { position: relative; font-size: 64px; }
 .campaign-pack-seal { font-size: 12px; padding: 9px; letter-spacing: .06em; }
 .campaign-reveal-art { display: grid; justify-items: center; width: min(100%, 255px); border: 0; padding: 0; color: var(--color-text-muted); background: transparent; cursor: zoom-in; position: relative; }
-.campaign-reveal-art img { width: 100%; aspect-ratio: 5/7; object-fit: contain; filter: drop-shadow(0 12px 20px var(--color-canvas-deep)); }
-.campaign-reveal-art > span { font: 11px var(--font-mono); margin-top: 12px; }
+.campaign-reveal-art .campaign-reward-art { width: 100%; --pack-halo: 26px; }
+.campaign-reveal-art .campaign-inspect-caption { font: 11px var(--font-mono); margin-top: 12px; }
+.campaign-mode [data-rarity="Uncommon"] { --pack-light: #94dbb5; }
+.campaign-mode [data-rarity="Rare"] { --pack-light: #72d3f6; }
+.campaign-mode [data-rarity="Epic"] { --pack-light: #c4a0ff; }
+.campaign-mode [data-rarity="Secret"] { --pack-light: #ffcd86; }
+.campaign-mode [data-rarity="Iconic Other"], .campaign-mode [data-rarity="Iconic Legend"] {
+  --pack-light: #ff9dcd;
+  --pack-foil: linear-gradient(136deg, #c8f5ff, #ff9dcd 36%, #9c7fff 69%, #9ce8e1);
+}
+.campaign-mode [data-rarity="Iconic Secret"] {
+  --pack-light: #ffe2a4;
+  --pack-foil: linear-gradient(136deg, #fff2c4, #f990c0 29%, #b2a0ff 52%, #8ee7e1 75%, #ffe2a4);
+}
+.campaign-reward-art {
+  display: block;
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  aspect-ratio: 5/7;
+  border-radius: 5px;
+  background: var(--color-canvas-deep);
+  box-shadow: 0 0 0 1px var(--pack-light, var(--color-divider)),
+    0 0 var(--pack-halo, 10px) color-mix(in srgb, var(--pack-light, transparent) 35%, transparent),
+    0 8px 16px var(--play-shadow, var(--color-canvas-deep));
+}
+.campaign-reward-art .printing-inline { display: block; position: relative; height: 100%; border-radius: inherit; }
+.campaign-mode .campaign-reward-art img { display: block; width: 100%; height: 100%; border-radius: inherit; }
+.campaign-reward-art .printing-inline small {
+  position: absolute; inset: auto 0 0; padding: 4px;
+  background: var(--color-canvas-deep); color: var(--color-text); text-align: center;
+  font: 10px/1.35 var(--font-mono);
+}
+.campaign-reward-art::before {
+  content: ''; position: absolute; z-index: -1; inset: -2px;
+  border-radius: 7px; background: var(--pack-foil, transparent);
+}
+.campaign-reveal-art .campaign-reward-art[data-rarity^="Iconic "] { --pack-halo: 42px; }
+.campaign-reveal-art .campaign-reward-art[data-rarity^="Iconic "]::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(115deg, transparent 36%, #beaff94a 46%, #fff5d17a 50%, #94e8ee3b 54%, transparent 64%) 100% 0 / 260% 100% no-repeat;
+  opacity: 0;
+}
+.campaign-reveal-copy .campaign-reveal-rarity {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin: 10px 0 0;
+  color: var(--pack-light, var(--color-text-muted)); font: 500 12px/1.35 var(--font-mono);
+}
+.campaign-reveal-rarity b { padding: 4px 8px; border: 1px solid color-mix(in srgb, currentColor 52%, transparent); border-radius: 3px; }
+.campaign-reveal-rarity span { color: var(--color-text-muted); }
+.campaign-variant-label { color: var(--color-ticket); font: 600 11px/1.4 var(--font-mono); }
+@media (prefers-reduced-motion: no-preference) {
+  .campaign-reveal-art .campaign-reward-art[data-rarity^="Iconic "]:has([data-printing-loaded])::after {
+    animation: campaign-foil-sweep 1.35s .18s cubic-bezier(.22, .62, .32, 1) both;
+  }
+  @keyframes campaign-foil-sweep {
+    0% { opacity: 0; background-position-x: 100%; }
+    25%, 62% { opacity: 1; }
+    100% { opacity: 0; background-position-x: 0%; }
+  }
+}
 .campaign-reveal-copy h3 { font: 800 clamp(26px, 3vw, 42px)/1.05 var(--font-display); margin: 12px 0; }
 .campaign-reveal-copy > p:not(.play-eyebrow) { line-height: 1.6; }
 .campaign-reveal-copy small { color: var(--color-text-faint); font: 11px var(--font-mono); }
@@ -35,7 +93,7 @@
 .campaign-pack-pocket:hover { background: var(--color-surface-raised); }
 .campaign-pack-pocket[data-selected=true] { border-color: var(--color-accent); background: var(--color-surface); }
 .campaign-pack-pocket:disabled { opacity: .55; cursor: default; }
-.campaign-pack-pocket img { width: min(100%, 95px); aspect-ratio: 5/7; object-fit: contain; }
+.campaign-pack-pocket > img, .campaign-pack-pocket > .campaign-reward-art { width: min(100%, 95px); aspect-ratio: 5/7; object-fit: contain; }
 .campaign-pack-pocket span { font-size: 11px; line-height: 1.4; text-align: center; overflow-wrap: anywhere; }
 .campaign-choice { margin-top: 24px; padding-top: 26px; border-top: 1px solid var(--color-divider); }
 .campaign-choice h3, .campaign-new-cards h3 { font: italic 800 36px/1 var(--font-display); margin: 8px 0 12px; text-transform: uppercase; }
@@ -55,10 +113,10 @@
 .campaign-new-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 20px; }
 .campaign-new-grid > button { min-width: 0; padding: 10px; display: flex; flex-direction: column; gap: 8px; align-items: center; border: 1px solid var(--color-divider); background: var(--color-surface); color: var(--color-text); cursor: pointer; transition: border-color .2s, background .2s; }
 .campaign-new-grid > button:hover { border-color: var(--color-accent); background: var(--color-surface-raised); }
-.campaign-new-grid img { width: min(100%, 105px); aspect-ratio: 5/7; object-fit: contain; }
+.campaign-new-grid .campaign-reward-art { width: min(100%, 105px); }
 .campaign-new-grid strong { font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
 .campaign-new-grid small { font: 10px/1.5 var(--font-mono); color: var(--color-text-muted); margin-top: auto; }
-.campaign-new-grid span { color: var(--color-accent); font-size: 11px; }
+.campaign-new-grid > button > span:not(.campaign-reward-art, .campaign-variant-label) { color: var(--color-accent); font-size: 11px; }
 .campaign-deck-numbers { display: flex; flex-wrap: wrap; gap: 10px 20px; margin: 16px 0 24px; padding-block: 14px; border-block: 1px solid var(--color-divider); }
 .campaign-deck-numbers span { font: 11px var(--font-mono); color: var(--color-text-muted); }
 .campaign-deck-numbers strong { color: var(--color-ticket); }
@@ -69,7 +127,8 @@
 .campaign-upgrade-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
 .campaign-compare-art { display: flex; align-items: center; justify-content: center; gap: 12px; }
 .campaign-compare-art > div { min-width: 0; flex: 1; max-width: 210px; }
-.campaign-compare-art img { width: 100%; aspect-ratio: 5/7; object-fit: contain; margin: 10px 0; }
+.campaign-compare-art .campaign-reward-art { margin-block: 10px; }
+.campaign-compare-art .campaign-outgoing img { width: 100%; aspect-ratio: 5/7; object-fit: contain; margin: 10px 0; }
 .campaign-compare-art strong { display: block; font-size: 12px; line-height: 1.5; }
 .campaign-compare-art .play-eyebrow { font-size: 10px; }
 .campaign-swap-arrow { color: var(--color-accent); font-size: 25px; }
