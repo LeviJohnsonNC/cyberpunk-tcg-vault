@@ -46,17 +46,6 @@
   border-radius: 4px;
   background: var(--color-surface) url('../assets/play/last-call-rival-atlas.webp') var(--portrait-x) var(--portrait-y) / 300% 300% no-repeat;
 }
-.campaign-rival-brief {
-  display: grid;
-  grid-template-columns: clamp(52px, 6vw, 84px) minmax(0, 1fr);
-  gap: 12px;
-  padding: 12px 0;
-  border-block: 1px solid var(--color-divider);
-  margin: 14px 0;
-}
-.campaign-rival-brief h3 { margin: 2px 0 3px; color: var(--color-ticket); font: 800 25px/1 var(--font-display); }
-.campaign-rival-brief p:last-child { font-size: 12px; line-height: 1.45; margin: 0; }
-
 .play-bench-piles:has(> .campaign-rival-seat) { container-type: inline-size; }
 .campaign-rival-seat { align-self: center; flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; max-width: 245px; }
 .campaign-rival-trigger {
@@ -76,7 +65,6 @@
 @container (max-width: 335px) {
   .campaign-rival-caption { display: none; }
 }
-.campaign-rival-brief .campaign-rival-trigger { width: 100%; align-self: start; }
 .al-dialog.campaign-rival-dialog { width: min(800px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; }
 .campaign-dossier-layout { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: clamp(18px, 3vw, 32px); align-items: start; }
 .campaign-dossier-art { border: 1px solid var(--color-divider); border-radius: 5px; overflow: hidden; }
