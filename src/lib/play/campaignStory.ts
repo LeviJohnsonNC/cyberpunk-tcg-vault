@@ -19,7 +19,9 @@ interface CampaignChapter {
 
 export const campaignInvitation = {
   title: 'Last Call',
-  text: 'The Afterlife’s house fixer is missing. Your first contract arrives on a dead phone, with your crew’s name already filled in. The payout is a pack of cards and an invitation upstairs. The invitation was printed three days before you agreed to play.',
+  setup: 'The Afterlife’s house fixer is missing. Your first contract arrives on a dead phone, with your crew’s name already filled in.',
+  payout: 'The payout is a pack of cards and an invitation upstairs.',
+  reveal: 'The invitation was printed three days before you agreed to play.',
 };
 
 export const campaignActStory = {

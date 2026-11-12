@@ -62,4 +62,9 @@ export function Preview() {
     {ENCOUNTERS.map((encounter, index) => <option key={encounter.id} value={index}>{index + 1}. {encounter.title}</option>)}
   </select></label><button className="btn quiet" onClick={() => void load('contract')}>Load contract</button><button className="btn quiet" onClick={() => setShowReport(true)}>Win report</button><span role="status">{error}</span></nav>{showReport ? <ReportPreview openPack={() => void load('chase pack')} /> : <CampaignMode key={key} scope={scope} exit={() => setError('Free Play navigation requested.')} openInBuilder={() => setError('Deck Builder handoff requested.')} />}</>;
 }
-if (import.meta.env.DEV || import.meta.env.VAULT_PLAY_PREVIEW) createRoot(document.getElementById('root')!).render(<Preview />);
+if (import.meta.env.DEV || import.meta.env.VAULT_PLAY_PREVIEW) {
+  const opener = new URLSearchParams(location.search).has('opener');
+  createRoot(document.getElementById('root')!).render(opener
+    ? <CampaignMode scope="qa:campaign-opener" exit={() => location.assign('./campaign-preview.html')} openInBuilder={() => {}} />
+    : <Preview />);
+}

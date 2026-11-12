@@ -6,7 +6,6 @@
   border-top: 3px solid var(--color-ticket);
   background: var(--color-canvas-deep);
 }
-.campaign-story-intro { min-height: 440px; display: grid; align-items: center; }
 .campaign-story-scene > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: right center; z-index: -2; }
 .campaign-story-scene::after {
   content: '';
