@@ -16,7 +16,7 @@ export const ENVIRONMENTS = [
   { id: 'arasaka', name: 'Arasaka Night Suite', description: 'A cold view from the top floor.' },
 ] as const;
 export type Environment = typeof ENVIRONMENTS[number]['id'];
-export const ENCOUNTERS: { id: string; title: string; brief: string; rival: string; skill: RivalSkill }[] = [
+export const ENCOUNTERS = [
   { id: 'first-call', title: 'First Call', brief: 'Another new crew is looking for the same seat.', rival: 'other-starter', skill: 'standard' },
   { id: 'chrome-debt', title: 'Chrome Debt', brief: 'Watch the Gear before it turns small threats into big ones.', rival: 'chrome-syndicate', skill: 'standard' },
   { id: 'dead-drop', title: 'Dead Drop', brief: 'Efficient bodies and a clean curve. Bring your first upgrades.', rival: 'heist-reloaded', skill: 'standard' },
@@ -26,7 +26,9 @@ export const ENCOUNTERS: { id: string; title: string; brief: string; rival: stri
   { id: 'mosh-pit', title: 'Mosh Pit', brief: 'Expect quick pressure. Leave room for early answers.', rival: 'mosh-pit', skill: 'sharp' },
   { id: 'hostile-takeover', title: 'Hostile Takeover', brief: 'They have answers of their own. Make every card count.', rival: 'streetkid-braindance', skill: 'sharp' },
   { id: 'last-call', title: 'Last Call', brief: 'Arasaka has the best table in the house. Take it.', rival: 'arasaka-nines', skill: 'masterful' },
-];
+] as const satisfies readonly { id: string; title: string; brief: string; rival: string; skill: RivalSkill }[];
+
+export type EncounterId = typeof ENCOUNTERS[number]['id'];
 
 export type CampaignPhase = 'preparing' | 'inMatch' | 'rewardPending' | 'upgrading' | 'claimingFinish' | 'completed';
 export interface CampaignReward { id: string; cards: string[]; offers: string[]; choice?: string; }
