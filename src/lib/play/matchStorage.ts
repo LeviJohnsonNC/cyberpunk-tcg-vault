@@ -56,6 +56,32 @@ export async function readCircuitProgress(scope: string) {
   });
 }
 
+export async function resetFreePlay(scope: string) {
+  const db = await openDatabase();
+  return new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction([matches, summaries, circuits], 'readwrite', { durability: 'strict' });
+    const circuit = transaction.objectStore(circuits);
+    const request = circuit.get(scope);
+    request.onsuccess = () => {
+      try {
+        const { campaignFinishes } = readProgress(request.result);
+        if (campaignFinishes?.length) {
+          circuit.put({ ...emptyCircuit(), campaignFinishes }, scope);
+        } else {
+          circuit.delete(scope);
+        }
+        transaction.objectStore(matches).delete(scope);
+        transaction.objectStore(summaries).delete(scope);
+      } catch (error) {
+        transaction.abort();
+        reject(error);
+      }
+    };
+    transaction.oncomplete = () => resolve();
+    transaction.onabort = () => reject(transaction.error);
+  });
+}
+
 export async function equipTableFinish(scope: string, finish: TableFinish) {
   const db = await openDatabase();
   return new Promise<CircuitProgress>((resolve, reject) => {

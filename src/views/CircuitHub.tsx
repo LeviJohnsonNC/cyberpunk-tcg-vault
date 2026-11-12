@@ -75,10 +75,10 @@ function Record({ progress }: { progress: CircuitProgress }) {
   </section>;
 }
 
-export function CircuitHub({ progress, draft, savedDecks, initialRival, initialOpponent, busy, error, onStart, onResume, onEdit, equip }: {
-  progress: CircuitProgress; draft?: DeckDraft; savedDecks: Deck[]; initialRival?: string; initialOpponent?: Deck; busy: boolean; error?: string;
+export function CircuitHub({ scope, progress, draft, savedDecks, initialRival, initialOpponent, busy, error, onStart, onResume, onReset, onEdit, equip }: {
+  scope: string; progress: CircuitProgress; draft?: DeckDraft; savedDecks: Deck[]; initialRival?: string; initialOpponent?: Deck; busy: boolean; error?: string;
   onStart: (draft: DeckDraft, rival: Deck, skill: RivalSkill, key: string, contractId?: string) => void;
-  onResume?: () => void; onEdit: () => void; equip: (finish: TableFinish) => void;
+  onResume?: () => void; onReset: () => void; onEdit: () => void; equip: (finish: TableFinish) => void;
 }) {
   const [tab, setTab] = useState<HubTab>('practice');
   const [selected, setSelected] = useState(() => CIRCUIT_CONTRACTS.find(contract => !contractCleared(progress, contract.id))?.id ?? CIRCUIT_CONTRACTS[0].id);
@@ -95,7 +95,30 @@ export function CircuitHub({ progress, draft, savedDecks, initialRival, initialO
   const contractIndex = CIRCUIT_CONTRACTS.indexOf(contract);
   return <div className="circuit-hub">
     <header className="circuit-hero"><Masthead eyebrow="The Afterlife / Open table" title="Free Play" sub="Bring any deck. Choose any rival." />
-      <div className="circuit-hero-actions">{onResume && <button type="button" className="btn" disabled={busy} onClick={onResume}>Return to match</button>}<button type="button" className="btn quiet" disabled={busy} onClick={onEdit}>Deck Builder</button></div>
+      <div className="circuit-hero-actions">
+        {onResume && <button type="button" className="btn" disabled={busy} onClick={onResume}>Return to match</button>}
+        <details className="circuit-more" onBlur={event => {
+          if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false;
+        }} onKeyDown={event => {
+          if (event.key !== 'Escape' || !event.currentTarget.open) return;
+          event.preventDefault();
+          event.currentTarget.open = false;
+          event.currentTarget.querySelector('summary')?.focus();
+        }}>
+          <summary className="btn quiet" aria-label="More Free Play options">…</summary>
+          <div className="circuit-more-actions">
+            <button type="button" className="btn danger-ghost" disabled={busy} onClick={event => {
+              const menu = event.currentTarget.closest('details');
+              if (menu) {
+                menu.open = false;
+                menu.querySelector('summary')?.focus();
+              }
+              onReset();
+            }}>Reset Free Play</button>
+          </div>
+        </details>
+        <button type="button" className="btn quiet" disabled={busy} onClick={onEdit}>Deck Builder</button>
+      </div>
       <div className="circuit-credential"><CircuitSeal level={rank} /><div><span>Current standing</span><strong>{CIRCUIT_RANKS[rank].name}</strong><small>{CIRCUIT_RANKS[rank].line}</small></div></div>
     </header>
     <div className="circuit-standing"><ReputationBar rep={progress.rep} /><dl><div><dt>Contracts</dt><dd>{clears}<small>/6</small></dd></div><div><dt>Marks</dt><dd>{marks}<small>/18</small></dd></div><div><dt>Wins</dt><dd>{progress.wins}</dd></div><div><dt>Win streak</dt><dd>{progress.streak}</dd></div></dl></div>
@@ -129,7 +152,7 @@ export function CircuitHub({ progress, draft, savedDecks, initialRival, initialO
           <details className="circuit-briefing"><summary>Read the briefing</summary><p>{contract.briefing}</p><p>All rival levels play from public information. Standard rules, best of one. No card or stat bonuses.</p></details>
         </aside>
       </div></>}
-      {tab === 'practice' && <PlaySetup draft={draft} savedDecks={savedDecks} initialRival={initialRival} initialOpponent={initialOpponent} busy={busy} onStart={onStart} />}
+      {tab === 'practice' && <PlaySetup scope={scope} draft={draft} savedDecks={savedDecks} initialRival={initialRival} initialOpponent={initialOpponent} busy={busy} onStart={onStart} />}
       {tab === 'locker' && <Locker progress={progress} busy={busy} equip={equip} />}
       {tab === 'record' && <><Record progress={progress} /><div className="circuit-legacy-entry"><p>The original six-contract Circuit and its marks are still here.</p><button className="btn quiet" onClick={() => setTab('circuit')}>Open classic contracts</button></div></>}
     </div>
