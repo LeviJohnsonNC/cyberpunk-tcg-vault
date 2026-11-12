@@ -16,10 +16,22 @@ import { ReactiveRoom } from './ReactiveRoom';
 import { needsActBriefing } from '../lib/play/campaignPresentation';
 import { CampaignArrival, CampaignPack, CampaignRecap, CampaignRooms } from './CampaignMoments';
 import { CampaignNewCards, CampaignDeckNumbers, CampaignUpgradeDialog } from './CampaignDeckReview';
+import { CampaignInvitation, CampaignRivalBrief, CampaignRivalFarewell, CampaignRivalSeat, CampaignStoryJournal } from './CampaignStory';
+import { useRivalDialogue } from './useRivalDialogue';
 import './campaign.css';
 import './campaign-moments.css';
 
 export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; exit: () => void; openInBuilder: (deck: Deck) => void }) {
+  const introKey = `cptv.campaign.lastCallIntro:${scope}`;
+  const dialogueKey = `cptv.campaign.rivalDialogue:${scope}`;
+  const [introSeen, setIntroSeen] = useState(() => {
+    try { return localStorage.getItem(introKey) === 'seen'; } catch { return false; }
+  });
+  const [dialogue, setDialogue] = useState(() => {
+    try { return localStorage.getItem(dialogueKey) !== 'off'; } catch { return true; }
+  });
+  const [opening, setOpening] = useState<{ matchId: string; retry: boolean }>();
+  const focusStarter = useRef(false);
   const [run, setRun] = useState<CampaignRun>();
   const [profile, setProfile] = useState<CampaignProfile>();
   const [snapshot, setSnapshot] = useState<MatchSnapshot>();
@@ -41,6 +53,19 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   const requests = useRef(new Map<number, { resolve: (data: CampaignWorkerResponse) => void; reject: (error: Error) => void }>());
   const presentation = useMatchPresentation(snapshot);
   const sound = useTableSound();
+  const encounter = run && ENCOUNTERS[run.encounter];
+  const quote = useRivalDialogue(encounter?.id, snapshot, opening, presentation.playing, presentation.playback?.beat);
+
+  function proceedToStarters() {
+    focusStarter.current = true;
+    setIntroSeen(true);
+    try { localStorage.setItem(introKey, 'seen'); } catch { /* Optional preference. */ }
+  }
+
+  function toggleDialogue() {
+    setDialogue(!dialogue);
+    try { localStorage.setItem(dialogueKey, dialogue ? 'off' : 'on'); } catch { /* Optional preference. */ }
+  }
 
   const send = useCallback((action: { type: 'start'; revision: number } | { type: 'resume' } | { type: 'move'; matchId: string; stateID: number; move: Move }) =>
     new Promise<CampaignWorkerResponse>((resolve, reject) => {
@@ -112,6 +137,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
     if (!run) return;
     void apply(() => send({ type: 'start', revision: run.revision }), value => {
       setRun(value.run); setProfile(value.profile); setSnapshot(value.snapshot); setShowTable(true);
+      if (value.snapshot) setOpening({ matchId: value.snapshot.matchId, retry: run.attempts > 0 });
       window.scrollTo({ top: 0, behavior: 'instant' });
     });
   }
@@ -153,7 +179,6 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
     }, value => { setRun(value.run); setProfile(value.profile); setSnapshot(value.snapshot); setShowTable(!!value.snapshot); });
   }
 
-  const encounter = run && ENCOUNTERS[run.encounter];
   const actPending = run ? needsActBriefing(run) : false;
   const issues = run ? campaignDeckIssues(run, run.deck) : [];
   const inventory = run && CARDS.filter(card => (run.inventory[card.slug] ?? 0) > 0 && card.type !== 'Legend')
@@ -163,6 +188,12 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
     <ReactiveRoom />
     {showTable && snapshot ? <PlayTable key={snapshot.matchId} scope={`${scope}:campaign`} snapshot={presentation.displayed ?? snapshot} names={snapshot.names}
       playback={presentation.playback} feedback={presentation.feedback} reduced={presentation.reduced} diceImpact={sound.impact} cue={sound.cue}
+      campaign={encounter && {
+        title: encounter.title,
+        rival: <CampaignRivalSeat encounter={encounter.id} quote={quote} dialogue={dialogue} toggle={toggleDialogue} />,
+        farewell: dialogue && quote && ['playerWon', 'rivalWon', 'draw'].includes(quote.moment)
+          ? <CampaignRivalFarewell encounter={encounter.id} quote={quote} /> : undefined,
+      }}
       busy={busy || presentation.playing} error={error} send={move} rematch={() => { presentation.playback?.skip(); setShowTable(false); window.scrollTo({ top: 0, behavior: 'instant' }); }}
       edit={() => setShowTable(false)} resultContinueLabel={snapshot.view.winnerId === 'player' ? run?.phase === 'claimingFinish' ? 'Open Champion’s Cache' : 'Open your pack' : 'Review deck and retry'}
       controls={<><button className="btn quiet" onClick={() => { presentation.playback?.skip(); setShowTable(false); window.scrollTo({ top: 0, behavior: 'instant' }); }}>Campaign board</button>
@@ -172,15 +203,20 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
         <label className="play-sound-level">FX <input type="range" aria-label="Game effects volume" min="0" max="1" step=".05" value={sound.volume} onChange={e => sound.changeVolume(Number(e.target.value))} /></label></>} />
     : <div className="campaign-hub" ref={hub} tabIndex={-1}>
       <header className="campaign-head"><Masthead eyebrow="The Afterlife / A deck to make your own" title="Campaign" sub="Two starters. Nine tables. One seat at the top." />
-        <div className="campaign-hub-tools"><button className="btn quiet" onClick={sound.toggle}>Sound {sound.enabled ? 'On' : 'Off'}</button><p className="campaign-save-note">Saved in this browser for this Vault.<br />Campaign cards stay in this run.</p></div></header>
+        <div className="campaign-hub-tools">{run && <CampaignStoryJournal run={run} />}<button className="btn quiet" onClick={sound.toggle}>Sound {sound.enabled ? 'On' : 'Off'}</button><p className="campaign-save-note">Saved in this browser for this Vault.<br />Campaign cards stay in this run.</p></div></header>
       {error && <div className="play-error" role="alert">{error} <button className="btn quiet" onClick={reloadSavedState}>{workerFailed.current ? 'Reload page' : 'Reload campaign'}</button></div>}
       {busy && !profile && <p role="status">Opening the table…</p>}
-      {!busy && profile && !run && <div className="campaign-starters">{STARTERS.map(starter => <article key={starter.key}>
+      {!busy && profile && !run && (!introSeen ? <CampaignInvitation proceed={proceedToStarters} /> : <section aria-labelledby="campaign-starter-title">
+        <h2 id="campaign-starter-title" className="campaign-starter-heading" tabIndex={-1} ref={node => {
+          if (node && focusStarter.current) { focusStarter.current = false; node.focus(); }
+        }}>Choose your crew</h2>
+        <button type="button" className="btn quiet campaign-intro-revisit" onClick={() => setIntroSeen(false)}>Read the introduction</button>
+        <div className="campaign-starters">{STARTERS.map(starter => <article key={starter.key}>
         <div className="campaign-crew-art">{starter.legends.map(slug => <CardImg key={slug} slug={slug} alt="" priority />)}</div>
         <p className="play-eyebrow">Official starter / {starter.colors.join(' + ')}</p><h2>{starter.name}</h2>
         <p>{starter.key === 'the-heist' ? 'Blue and Yellow. Gear, tempo and a crew that knows how to improvise.' : 'Green and Red. Arasaka power and the patience to hit back harder.'}</p>
         <button className="btn" disabled={busy} onClick={() => create(starter.key)}>Start with {starter.name}</button>
-      </article>)}</div>}
+      </article>)}</div></section>)}
       {run && profile && <>
         <div className="campaign-progress"><span>ACT {Math.floor(run.encounter / 3) + 1} / 3</span><strong>{campaignStatus(run)}</strong><span>{Math.min(run.encounter + 1, 9)} / 9</span></div>
         <ol className="campaign-route" aria-label="Nine campaign contracts">{ENCOUNTERS.map((item, index) => <li key={item.id} data-state={index < run.encounter || ['claimingFinish', 'completed'].includes(run.phase) ? 'cleared' : index === run.encounter ? 'current' : 'locked'} title={`${index + 1}. ${item.title}`} aria-label={`Contract ${index + 1}, ${item.title}: ${index < run.encounter || ['claimingFinish', 'completed'].includes(run.phase) ? 'cleared' : index === run.encounter ? run.phase === 'rewardPending' ? 'pack ready' : 'current' : 'upcoming'}`}><span>{String(index + 1).padStart(2, '0')}</span></li>)}</ol>
@@ -194,6 +230,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
         {run.phase === 'completed' && <section className="panel hot campaign-finale"><p className="play-eyebrow">The next chapter is yours</p><h2>Keep the deck. Keep the room.</h2><p>Open your finished list in Deck Builder to save it and take it into Free Play. Campaign cards stay separate from your physical Vault.</p><button className="btn" onClick={takeDeckToBuilder}>Open deck as draft</button><button className="btn quiet" onClick={exit}>Go to Free Play</button><details><summary>Start another campaign</summary><p>New starter, new packs. Your room keys stay yours.</p>{STARTERS.map(starter => <button className="btn quiet" key={starter.key} onClick={() => create(starter.key)}>{starter.name}</button>)}</details></section>}
         {!actPending && ['preparing', 'upgrading', 'inMatch'].includes(run.phase) && <div className="campaign-workspace">
           <section className="campaign-brief panel hot"><p className="play-eyebrow">Contract {run.encounter + 1} / {ENCOUNTERS.length} · {encounterSkill(run)}</p><h2>{encounter?.title}</h2><p>{encounter?.brief}</p>
+            {encounter && <CampaignRivalBrief encounter={encounter.id} />}
             <p className="play-eyebrow">Rival crew · {run.opponents[run.encounter]?.name}</p><div className="campaign-rival-crew">{run.opponents[run.encounter]?.legends.map(slug => <button key={slug} title={`Inspect ${BY_SLUG.get(slug)?.display}`} onClick={() => setInspected(slug)}><CardImg slug={slug} alt={BY_SLUG.get(slug)?.display ?? slug} /></button>)}</div>
             {run.phase === 'inMatch' ? <button className="btn" disabled={busy} onClick={() => void apply(() => send({ type: 'resume' }), value => { setSnapshot(value.snapshot); setShowTable(true); })}>Return to match</button>
               : <button className="btn" disabled={busy || issues.length > 0} onClick={launch}>{run.attempts ? 'Retry contract' : 'Take the contract'}</button>}

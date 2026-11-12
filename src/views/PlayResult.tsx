@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { vaultCard } from '../lib/play/cardDisplay';
 import type { MatchReport, PlayerView } from '../lib/play/protocol';
 import { CardFace } from './PlayCard';
@@ -25,9 +26,9 @@ function GigTimeline({ gigs }: { gigs: MatchReport['gigs'] }) {
 }
 
 /** The end of the match, on the table: the result, how it went, and what never got played. */
-export function MatchResult({ view, report, receipt, circuit, title, reason, busy, rematch, edit, continueLabel }: {
+export function MatchResult({ view, report, receipt, circuit, title, reason, busy, rematch, edit, continueLabel, rivalFarewell }: {
   view: PlayerView; report?: MatchReport; title: string; reason: string; busy: boolean; rematch: () => void; edit: () => void;
-  receipt?: CircuitReceipt; circuit?: () => void; continueLabel?: string;
+  receipt?: CircuitReceipt; circuit?: () => void; continueLabel?: string; rivalFarewell?: ReactNode;
 }) {
   const reportBody = report && <div className="play-result-body">
     {report.gigs.length > 1 && <GigTimeline gigs={report.gigs} />}
@@ -43,6 +44,7 @@ export function MatchResult({ view, report, receipt, circuit, title, reason, bus
     <h2>{title}</h2>
     <p className="play-result-reason">{reason}</p>
     <dl className="play-result-score"><div><dt>Your Gigs</dt><dd>{view.players.player.gigCount}</dd></div><div><dt>Rival Gigs</dt><dd>{view.players.rival.gigCount}</dd></div></dl>
+    {rivalFarewell}
     {receipt && <CircuitPayout receipt={receipt} />}
     {receipt ? <details className="circuit-match-detail"><summary>Inspect match report</summary>{reportBody}</details> : reportBody}
     <div className="play-actions">{circuit && <button type="button" className="btn" disabled={busy} onClick={circuit}>{receipt?.marks.includes('clear') && receipt.contractId !== CIRCUIT_CONTRACTS.at(-1)?.id ? 'Next contract' : 'Back to Circuit'}</button>}<button type="button" className={`btn ${circuit ? 'ghost' : ''}`} disabled={busy} onClick={rematch}>{continueLabel ?? 'Rematch'}</button>{!continueLabel && <button type="button" className="btn quiet" disabled={busy} onClick={edit}>Edit draft</button>}</div>

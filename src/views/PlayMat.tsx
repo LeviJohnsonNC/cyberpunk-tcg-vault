@@ -177,12 +177,13 @@ function Piles({ seat, snapshot, renderCard, renderFace }: { seat: Seat; snapsho
 type BenchProps = MatProps & { active: boolean; renderFace: (card: CardView) => ReactNode };
 
 /** The rival's side of the table edge: piles, a hand of card backs and the crew. */
-export function RivalBench({ snapshot, name, active, renderCard, renderFace, outcome, rolls, ...targeting }: BenchProps & { name: string }) {
+export function RivalBench({ snapshot, name, active, renderCard, renderFace, outcome, rolls, portrait, ...targeting }: BenchProps & { name: string; portrait?: ReactNode }) {
   const hand = zoneCount(snapshot.view.players.rival, 'hand');
   return <section className="play-bench" data-seat="rival" data-active={active} aria-label="Rival bench">
     <div className="play-bench-piles">
       <Piles seat="rival" snapshot={snapshot} renderCard={renderCard} renderFace={renderFace} />
       <Fixer seat="rival" snapshot={snapshot} rolls={rolls} {...targeting} />
+      {portrait}
     </div>
     <div className="play-bench-seat">
       <div className="play-rival-hand" data-anchor="hand:rival" role="img" aria-label={`${hand} cards in the rival’s hand`}>

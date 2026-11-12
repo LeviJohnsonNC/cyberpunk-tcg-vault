@@ -61,7 +61,8 @@ function ContextMenu({ context, children, close }: { context: Context; children:
   </div>, document.body);
 }
 
-export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, edit, circuit, playback, feedback, reduced, controls, diceImpact, cue, resultContinueLabel }: {
+export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, edit, circuit, playback, feedback, reduced, controls, diceImpact, cue, resultContinueLabel, campaign }: {
+  campaign?: { title: string; rival: ReactNode; farewell?: ReactNode };
   cue?: (name: TableCue, delayMs?: number) => (() => void) | undefined;
   diceImpact?: (type: string, soft: boolean, launch?: boolean) => (() => void) | undefined;
   playback?: MatchPlayback; feedback?: MatchBeat; scope: string; snapshot: MatchSnapshot; names: Record<Seat, string>; busy: boolean; error?: string;
@@ -314,7 +315,7 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
     <header className="play-match-header">
       <div className="play-match-identity">
         {contract ? <button type="button" className="play-eyebrow circuit-contract-trigger" aria-expanded={panel === 'contract'} aria-controls={`${panelId}-contract`} onClick={() => setPanel(panel === 'contract' ? undefined : 'contract')} title="View contract objective">◆ {contract.title} <span>/</span> Autosaved</button>
-          : <p className="play-eyebrow" title="Match saved in this browser">Practice table <span>/</span> Autosaved</p>}
+          : <p className="play-eyebrow" title="Match saved in this browser">{campaign?.title ?? 'Practice table'} <span>/</span> Autosaved</p>}
         <h1 title={`${names.player} vs. ${names.rival}`}>{names.player} <span>vs.</span> {names.rival}</h1>
       </div>
       <div className="play-header-actions">
@@ -351,7 +352,7 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
     </aside>}
     <div ref={table} className="play-table" data-turn={playing ? view.activePlayerId : undefined} data-combat={!!combat} data-ended={view.gameEnded}>
       <GigRollAnnouncement rolls={snapshot.gigRolls} />
-      <RivalBench rolls={rolls} name={names.rival} active={playing && !yourTurn} {...targeting} renderCard={renderCard} renderFace={face} />
+      <RivalBench portrait={campaign?.rival} rolls={rolls} name={names.rival} active={playing && !yourTurn} {...targeting} renderCard={renderCard} renderFace={face} />
       <SeatField seat="rival" active={playing && !yourTurn} {...targeting} renderCard={renderCard} />
       <GigZones {...targeting} />
       <div className="play-command" data-seat={playing ? view.activePlayerId : undefined} data-state={playback ? 'playback' : selected || choice || setup ? 'decision' : combat ? 'combat' : 'idle'}>
@@ -396,7 +397,7 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
       {playing && turnKey !== firstTurn && <div className="play-turn-banner" key={turnKey} data-seat={view.activePlayerId} aria-hidden="true">
         <span>Turn {view.turnNumber}</span><strong>{yourTurn ? 'Your turn' : 'Rival turn'}</strong>
       </div>}
-      {view.gameEnded && <MatchResult view={view} report={snapshot.report} receipt={snapshot.circuit?.receipt} circuit={circuit} title={decisionTitle} reason={winReasons[view.winReason ?? ''] ?? 'Match ended'} busy={busy} rematch={rematch} edit={edit} continueLabel={resultContinueLabel} />}
+      {view.gameEnded && <MatchResult view={view} report={snapshot.report} receipt={snapshot.circuit?.receipt} circuit={circuit} title={decisionTitle} reason={winReasons[view.winReason ?? ''] ?? 'Match ended'} busy={busy} rematch={rematch} edit={edit} continueLabel={resultContinueLabel} rivalFarewell={campaign?.farewell} />}
       {intro && <div className="play-intro" aria-hidden="true"><span>Practice table</span><strong>{names.player}</strong><i>vs.</i><strong>{names.rival}</strong></div>}
       <span className="sr-only" role="status">{notice}{busy ? ' Resolving move.' : ''}</span>
       {notice && <p className="play-table-notice">{notice}</p>}

@@ -3,6 +3,8 @@ import { CardImg, CARD_BACK, Rules } from '../components/bits';
 import { BY_SLUG, imageUrl } from '../lib/data';
 import { STARTERS } from '../lib/starters';
 import { CAMPAIGN_ACTS, campaignRecap, packCardContext } from '../lib/play/campaignPresentation';
+import { campaignActStory } from '../lib/play/campaignStory';
+import { CampaignDispatch, CampaignEpilogue } from './CampaignStory';
 import { ENCOUNTERS, ENVIRONMENTS, type CampaignRun, type Environment } from '../lib/play/campaign';
 import booth from '../assets/play/campaign-booth.webp';
 import rooftop from '../assets/play/campaign-rooftop.webp';
@@ -44,6 +46,7 @@ export function CampaignPack({ run, busy, revealTo, choose, inspect }: {
   }
   return <section className="campaign-reward campaign-pack panel hot" aria-label="Earned pack">
     <div className="campaign-section-heading"><div><p className="play-eyebrow">{ENCOUNTERS[run.encounter].title} / Contract cleared</p><h2>Your take.</h2></div><span className="campaign-stamp">PAID IN CARDS</span></div>
+    <CampaignDispatch encounter={ENCOUNTERS[run.encounter].id} />
     <div className="campaign-pack-stage" data-opening={opening}>
       <aside className="campaign-pack-receipt"><span className="play-eyebrow">AF / SUPPLY DROP {String(run.encounter + 1).padStart(2, '0')}</span><strong>7 yours.<br />1 your call.</strong><p>Seven cards for your reserve. Then choose the eighth to shape your next match.</p><span className="campaign-reveal-count" role="status">{reveal} / 7 revealed</span>
         <div className="campaign-pack-actions"><button className="btn" disabled={busy} onClick={() => { if (reveal < 7) open(reveal + 1); else { choicePanel.current?.scrollIntoView({ block: 'start' }); choicePanel.current?.focus({ preventScroll: true }); } }}>{reveal === 0 ? 'Tear the seal' : reveal < 7 ? 'Reveal next card' : 'Choose your eighth card ↓'}</button><button className="btn quiet" disabled={busy || reveal >= 7} onClick={() => open(7)}>Reveal all</button></div>
@@ -66,13 +69,15 @@ export function CampaignPack({ run, busy, revealTo, choose, inspect }: {
 }
 
 export function CampaignArrival({ run, busy, continueToDeck }: { run: CampaignRun; busy: boolean; continueToDeck: () => void }) {
-  const act = CAMPAIGN_ACTS[Math.floor(run.encounter / 3)];
-  return <section className="campaign-arrival" style={roomStyle(act.room)} aria-labelledby="act-title"><div className="campaign-arrival-content"><p className="play-eyebrow">{act.kicker}</p><h2 id="act-title">{act.title}</h2><p>{act.text}</p><div className="campaign-arrival-stats"><span><strong>{run.encounter}</strong> contracts cleared</span><span><strong>{campaignRecap(run).earnedCopies}</strong> cards earned</span><span><strong>{9 - run.encounter}</strong> tables to go</span></div><button className="btn" disabled={busy} onClick={continueToDeck}>Review my new cards</button><p className="campaign-arrival-next">Next contract / {ENCOUNTERS[run.encounter].title}</p><small>Room artwork preview. Your permanent room unlocks after the final table.</small></div><span className="campaign-act-number" aria-hidden="true">{String(Math.floor(run.encounter / 3) + 1).padStart(2, '0')}</span></section>;
+  const index = run.encounter === 3 ? 1 : 2;
+  const act = CAMPAIGN_ACTS[index];
+  return <section className="campaign-arrival" style={roomStyle(act.room)} aria-labelledby="act-title"><div className="campaign-arrival-content"><p className="play-eyebrow">{act.kicker}</p><h2 id="act-title">{act.title}</h2><p>{campaignActStory[index]}</p><div className="campaign-arrival-stats"><span><strong>{run.encounter}</strong> contracts cleared</span><span><strong>{campaignRecap(run).earnedCopies}</strong> cards earned</span><span><strong>{9 - run.encounter}</strong> tables to go</span></div><button className="btn" disabled={busy} onClick={continueToDeck}>Review my new cards</button><p className="campaign-arrival-next">Next contract / {ENCOUNTERS[run.encounter].title}</p><small>Room artwork preview. Your permanent room unlocks after the final table.</small></div><span className="campaign-act-number" aria-hidden="true">{String(Math.floor(run.encounter / 3) + 1).padStart(2, '0')}</span></section>;
 }
 
 export function CampaignRecap({ run, inspect }: { run: CampaignRun; inspect: (slug: string) => void }) {
   const recap = campaignRecap(run);
   return <section className="campaign-victory" style={roomStyle('arasaka')} aria-labelledby="campaign-victory-title"><div className="campaign-victory-copy"><p className="play-eyebrow">Afterlife / Nine tables cleared</p><h2 id="campaign-victory-title">You earned<br />your seat.</h2><p>{recap.changedCopies || recap.recruits.length ? <>Started with {STARTERS.find(item => item.key === run.starter)?.name}. Finished with a deck of your own.</> : <>Took {STARTERS.find(item => item.key === run.starter)?.name} all the way. Nine contracts. One finished campaign.</>}</p><dl className="campaign-victory-stats"><div><dt>Contracts won</dt><dd>{recap.clears}<small>/ 9</small></dd></div><div><dt>Cards earned</dt><dd>{recap.earnedCopies}<small>in {recap.packs} packs</small></dd></div><div><dt>Added to main</dt><dd>{recap.changedCopies}<small>copies beyond starter</small></dd></div></dl></div><div className="campaign-victory-crew"><span className="play-eyebrow">The crew that made it</span><div>{run.deck.legends.map(slug => <button key={slug} onClick={() => inspect(slug)} aria-label={`Inspect ${BY_SLUG.get(slug)?.display}`}><CardImg slug={slug} alt="" priority /><span>{BY_SLUG.get(slug)?.name}</span>{recap.recruits.includes(slug) && <small>Recruited</small>}</button>)}</div></div>
+    <CampaignEpilogue />
     {!!recap.additions.length && <details className="campaign-deck-story"><summary>How your deck changed · {recap.additions.length} card identities</summary><p>Extra copies in your final main deck compared with the official starter.</p><div>{recap.additions.map(item => <button className="btn quiet" key={item.slug} onClick={() => inspect(item.slug)}>+{item.count} {BY_SLUG.get(item.slug)?.display}</button>)}</div></details>}
   </section>;
 }
