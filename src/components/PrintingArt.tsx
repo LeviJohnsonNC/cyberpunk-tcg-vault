@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { getPrintingArt, prioritizePrintingArt } from '../lib/printingArt';
 import { CARD_BACK } from './bits';
 
@@ -34,7 +34,7 @@ function observeArt(element: Element, load: (visible: boolean) => void) {
   };
 }
 
-export function PrintingArt({ slug, printingId, alt, pocket = false, inline = false }: { slug: string; printingId: string; alt: string; pocket?: boolean; inline?: boolean }) {
+export function PrintingArt({ slug, printingId, alt, pocket = false, inline = false, fallback }: { slug: string; printingId: string; alt: string; pocket?: boolean; inline?: boolean; fallback?: ReactNode }) {
   const image = useRef<HTMLImageElement>(null);
   const [loadedSrc, setLoadedSrc] = useState<string>();
   const [art, setArt] = useState<{ printingId: string; src: string | null }>();
@@ -78,6 +78,7 @@ export function PrintingArt({ slug, printingId, alt, pocket = false, inline = fa
       onError={src ? () => setArt({ printingId, src: null }) : undefined}
     />
   );
+  if (inline && !loading && !src && fallback) return fallback;
   if (inline) return <span className="printing-inline" aria-busy={loading}>{img}{!loading && !src && <small role="status">Printing art unavailable</small>}</span>;
   if (pocket) {
     return <span className="binder-art-frame">{img}{!loading && !src && <span className="binder-art-status">Art unavailable</span>}</span>;
