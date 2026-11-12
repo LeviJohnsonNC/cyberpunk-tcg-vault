@@ -79,8 +79,26 @@
 @container (max-width: 335px) {
   .campaign-rival-caption { display: none; }
 }
-.campaign-rival-dialog header { display: grid; grid-template-columns: 64px 1fr; gap: 14px; align-items: center; }
-.campaign-rival-dialog header h2 { margin: 2px 0 0; }
+.campaign-rival-brief .campaign-rival-trigger { width: 100%; align-self: start; }
+.al-dialog.campaign-rival-dialog { width: min(800px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; }
+.campaign-dossier-layout { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: clamp(18px, 3vw, 32px); align-items: start; }
+.campaign-dossier-art { border: 1px solid var(--color-divider); border-radius: 5px; overflow: hidden; }
+.campaign-rival-dialog[open] .campaign-dossier-art .campaign-rival-portrait {
+  background-image: url('../assets/play/last-call-rival-atlas-detail.webp'), url('../assets/play/last-call-rival-atlas.webp');
+}
+.campaign-dossier-copy h2 { margin: 6px 0 12px; font-size: clamp(38px, 5vw, 64px); }
+.campaign-dossier-copy h2:focus { outline: none; }
+.campaign-dossier-bio { margin: 0 0 18px; font-size: 15px; line-height: 1.5; }
+.campaign-dossier-copy h3 { margin: 0 0 8px; color: var(--color-ticket); font: 700 20px/1.15 var(--font-display); }
+.campaign-dossier-copy ul { margin: 0; padding-inline-start: 17px; color: var(--color-text-muted); font-size: 13px; line-height: 1.45; }
+.campaign-dossier-copy li + li { margin-top: 7px; }
+.campaign-dossier-copy li::marker { color: var(--color-accent); }
+.campaign-dossier-copy blockquote { margin: 14px 0 0; padding-inline-start: 10px; border-inline-start: 2px solid var(--color-divider); color: var(--color-text-muted); font-size: 13px; font-style: italic; }
+.campaign-rival-dialog .al-dialog-actions { flex-wrap: wrap; margin-top: 16px; }
+@media (max-width: 620px) {
+  .campaign-dossier-layout { grid-template-columns: 1fr; }
+  .campaign-dossier-art { width: min(100%, 260px); }
+}
 .campaign-rival-farewell { display: grid; grid-template-columns: 42px 1fr; align-items: center; gap: 12px; margin: 12px auto; max-width: 450px; text-align: left; }
 .campaign-rival-farewell blockquote { margin: 0; font-size: 13px; line-height: 1.4; }
 .campaign-rival-farewell figcaption { margin-top: 3px; color: var(--color-ticket); font: 11px var(--font-mono); }
