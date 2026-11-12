@@ -9,6 +9,7 @@ import { CIRCUIT_CONTRACTS, CIRCUIT_RANKS, TABLE_FINISHES, circuitMarks, contrac
   type CircuitMark, type CircuitProgress, type CircuitReceipt, type TableFinish } from '../lib/play/circuit';
 import { DEFAULT_PLAY_DECK_KEY, curatedOpponents, opponentIssues } from '../lib/play/opponents';
 import type { RivalSkill } from '../lib/play/protocol';
+import { PlayResetMenu } from './PlayResetMenu';
 import { PlaySetup } from './PlaySetup';
 
 const tabs = [{ id: 'practice', label: 'Free Play' }, { id: 'locker', label: 'Your locker' }, { id: 'record', label: 'Match record' }] as const;
@@ -97,26 +98,7 @@ export function CircuitHub({ scope, progress, draft, savedDecks, initialRival, i
     <header className="circuit-hero"><Masthead eyebrow="The Afterlife / Open table" title="Free Play" sub="Bring any deck. Choose any rival." />
       <div className="circuit-hero-actions">
         {onResume && <button type="button" className="btn" disabled={busy} onClick={onResume}>Return to match</button>}
-        <details className="circuit-more" onBlur={event => {
-          if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false;
-        }} onKeyDown={event => {
-          if (event.key !== 'Escape' || !event.currentTarget.open) return;
-          event.preventDefault();
-          event.currentTarget.open = false;
-          event.currentTarget.querySelector('summary')?.focus();
-        }}>
-          <summary className="btn quiet" aria-label="More Free Play options">…</summary>
-          <div className="circuit-more-actions">
-            <button type="button" className="btn danger-ghost" disabled={busy} onClick={event => {
-              const menu = event.currentTarget.closest('details');
-              if (menu) {
-                menu.open = false;
-                menu.querySelector('summary')?.focus();
-              }
-              onReset();
-            }}>Reset Free Play</button>
-          </div>
-        </details>
+        <PlayResetMenu mode="Free Play" disabled={busy} onReset={onReset} />
         <button type="button" className="btn quiet" disabled={busy} onClick={onEdit}>Deck Builder</button>
       </div>
       <div className="circuit-credential"><CircuitSeal level={rank} /><div><span>Current standing</span><strong>{CIRCUIT_RANKS[rank].name}</strong><small>{CIRCUIT_RANKS[rank].line}</small></div></div>

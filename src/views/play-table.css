@@ -87,7 +87,6 @@
 .play-eddie:last-child { flex-shrink: 0; }
 .play-eddie-card { display: block; position: relative; width: calc(var(--play-legend-width) * .44); aspect-ratio: 5/7; border-radius: 3px; outline: 2px solid transparent; outline-offset: 1px; }
 .play-eddie-card img { display: block; width: 100%; height: 100%; border: 1px solid var(--color-ticket-muted); border-radius: 3px; }
-.play-eddie-card b { display: grid; place-items: center; position: absolute; inset: 28% 6%; background: var(--play-scrim); color: var(--color-ticket); font: 600 clamp(7px, calc(var(--play-legend-width) * .15), 12px)/1 var(--font-mono); white-space: nowrap; border-radius: 2px; }
 .play-eddie[data-spent="true"] .play-eddie-card { rotate: 90deg; scale: .86; opacity: .5; }
 .play-eddie[data-target="true"] { cursor: pointer; }
 .play-eddie[data-target="true"] .play-eddie-card { outline-color: var(--color-accent); }

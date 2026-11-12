@@ -1,5 +1,6 @@
 import { useId, useRef, type CSSProperties, type PointerEvent, type ReactNode } from 'react';
 import { CARD_BACK } from '../components/bits';
+import eddiesBack from '../assets/play/eddies-back.webp';
 import { zoneCards, zoneCount } from '../lib/play/matchView';
 import type { CardView, GigRoll, MatchChange, MatchSnapshot, Seat, SeatView } from '../lib/play/protocol';
 import { DieFace } from './PlayDice';
@@ -143,7 +144,7 @@ function Eddies({ seat, snapshot, outcome, ...targeting }: Targeting & { seat: S
         return <button key={card.instanceId} type="button" className="play-eddie" aria-label={label} title={label}
           data-card-id={card.instanceId} data-spent={card.spent} data-target={target} disabled={!target}
           aria-pressed={target ? targeting.chosenIds.has(card.instanceId) : undefined} onClick={() => targeting.onPick(card.instanceId)}>
-          <span className="play-eddie-card"><img src={CARD_BACK} alt="" /><b aria-hidden="true">€$</b></span>
+          <span className="play-eddie-card"><img src={eddiesBack} alt="" /></span>
         </button>;
       })}{!eddies.length && !pool.length && <p className="play-empty">{own ? 'Sell a card to add an Eddie.' : 'No Eddies yet'}</p>}</div>
       <p className="play-eddies-split">{view.eddies} ready <span>·</span> {spent} spent <span>·</span> +{fromLegends} from Legends</p>

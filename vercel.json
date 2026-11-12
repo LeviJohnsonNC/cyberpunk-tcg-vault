@@ -16,7 +16,7 @@
   },
   "headers": [
     {
-      "source": "/assets/card-back-:hash.webp",
+      "source": "/assets/:art(card-back|eddies-back|legend-back)-:hash.webp",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
     }
   ],

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
 import { CARD_BACK } from '../components/bits';
+import legendBack from '../assets/play/legend-back.webp';
 import { planMotion, tableAccents } from '../lib/play/matchMotion';
 import type { MatchBeat, PlayerView } from '../lib/play/protocol';
 import type { TableCue } from '../lib/play/tableSound';
@@ -139,7 +140,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
     };
 
     const arrivals = new Map<string, number>();
-    function fly(piece: Piece, from: Spot, options: { delay?: number; faceDown?: boolean; showcase?: boolean; duration?: number; cue?: TableCue } = {}) {
+    function fly(piece: Piece, from: Spot, options: { delay?: number; back?: string; showcase?: boolean; duration?: number; cue?: TableCue } = {}) {
       if (piece.el.dataset.cardId) arrivals.set(piece.el.dataset.cardId, (options.delay ?? 0) + time(options.showcase ? 1080 : options.duration ?? 420));
       if (options.cue) say(options.cue, (options.delay ?? 0) + (options.cue === 'draw' ? 0 : time(options.showcase ? 1080 : (options.duration ?? 420) * .8)), piece.zone.endsWith('rival') ? .24 : -.24);
       const to = piece.spot;
@@ -149,10 +150,10 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       const flip = document.createElement('div');
       flip.className = 'play-flight-flip';
       flip.append(clone(piece.el, to));
-      if (options.faceDown) {
+      if (options.back) {
         const back = document.createElement('div');
         back.className = 'play-flight-back';
-        back.style.backgroundImage = `url(${CARD_BACK})`;
+        back.style.backgroundImage = `url(${options.back})`;
         flip.append(back);
       }
       wrap.append(flip);
@@ -169,12 +170,12 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
           { transform: start, easing: EASE }, { transform: stage, offset: 0.3 },
           { transform: stage, offset: 0.7, easing: 'cubic-bezier(.5, 0, .3, 1)' }, { transform: end },
         ], { duration: time(1150), delay, fill: 'backwards' }));
-        if (options.faceDown) animations.push(flip.animate([{ transform: 'rotateY(180deg)' }, { transform: 'none', offset: 0.26 }, { transform: 'none' }],
+        if (options.back) animations.push(flip.animate([{ transform: 'rotateY(180deg)' }, { transform: 'none', offset: 0.26 }, { transform: 'none' }],
           { duration: time(1150), delay, fill: 'backwards', easing: 'ease-out' }));
       } else {
         const duration = time(options.duration ?? 420);
         animations.push(wrap.animate([{ transform: start }, { transform: end }], { duration, delay, fill: 'backwards', easing: EASE }));
-        if (options.faceDown) animations.push(flip.animate([{ transform: 'rotateY(180deg)' }, { transform: 'none' }],
+        if (options.back) animations.push(flip.animate([{ transform: 'rotateY(180deg)' }, { transform: 'none' }],
           { duration, delay, fill: 'backwards', easing: 'ease-out' }));
       }
       track(animations, () => { wrap.remove(); delete piece.el.dataset.inFlight; });
@@ -209,7 +210,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       if (deal) {
         const deck = anchor('deck:player');
         let dealt = 0;
-        for (const piece of next.values()) if (deck && piece.zone === 'hand:player') fly(piece, deck, { delay: 1150 + 90 * dealt++, faceDown: true, duration: 460, cue: 'draw' });
+        for (const piece of next.values()) if (deck && piece.zone === 'hand:player') fly(piece, deck, { delay: 1150 + 90 * dealt++, back: CARD_BACK, duration: 460, cue: 'draw' });
       }
       return;
     }
@@ -245,7 +246,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       const earlier = before.get(id);
       if (earlier) {
         if (accents.some((accent) => accent.kind === 'legend' && accent.cardId === id)) {
-          fly(piece, piece.spot, { faceDown: true, duration: 400, cue: 'call' });
+          fly(piece, piece.spot, { back: legendBack, duration: 400, cue: 'call' });
           continue;
         }
         const moved = Math.hypot(earlier.spot.x - piece.spot.x, earlier.spot.y - piece.spot.y);
@@ -263,7 +264,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       if (id.startsWith('pool:')) continue;
       const [kind, seat] = piece.zone.split(':');
       const from = kind === 'hand' ? anchor('deck:player') : seat === 'rival' && ['field', 'resolving', 'eddies'].includes(kind) ? anchor('hand:rival') : undefined;
-      if (from) fly(piece, from, { delay: 70 * entered++, faceDown: kind !== 'eddies', showcase: plan.showcase.includes(id),
+      if (from) fly(piece, from, { delay: 70 * entered++, back: kind !== 'eddies' ? CARD_BACK : undefined, showcase: plan.showcase.includes(id),
         cue: kind === 'hand' ? 'draw' : kind === 'eddies' ? 'eddie' : arrivalCue(id) });
       else track([piece.el.animate([{ transform: 'scale(.6)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: time(260), easing: EASE })], () => undefined);
     }

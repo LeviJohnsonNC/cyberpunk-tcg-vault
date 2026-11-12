@@ -2,7 +2,7 @@ import type { Deck } from '../store';
 import { BY_SLUG } from '../data';
 import { sortLegacyPack } from './campaignPack';
 import { openDatabase } from './matchStorage';
-import { emptyCircuit, type CircuitProgress, type TableFinish } from './circuit';
+import { emptyCircuit, finishUnlocked, type CircuitProgress, type TableFinish } from './circuit';
 import { CAMPAIGN_VERSION, ENCOUNTERS, ENVIRONMENTS, campaignDeckIssues, emptyProfile, newCampaign,
   type CampaignProfile, type CampaignRun, type Environment } from './campaign';
 import type { StarterKey } from '../starters';
@@ -54,6 +54,34 @@ export async function updateCampaign<T>(scope: string, change: (run: CampaignRun
     };
     tx.oncomplete = () => resolve(value);
     tx.onabort = () => reject(tx.error ?? new Error('Campaign changes were not saved.'));
+  });
+}
+
+export async function resetCampaign(scope: string, expected: Pick<CampaignRun, 'id' | 'revision'>) {
+  const db = await openDatabase();
+  return new Promise<CampaignProfile>((resolve, reject) => {
+    const tx = db.transaction([STORE, 'circuits'], 'readwrite', { durability: 'strict' });
+    const store = tx.objectStore(STORE), runRead = store.get(runKey(scope));
+    const circuits = tx.objectStore('circuits'), circuitRead = circuits.get(scope);
+    circuitRead.onsuccess = () => {
+      try {
+        const run = runRead.result as CampaignRun | undefined;
+        if (run?.id !== expected.id || run.revision !== expected.revision)
+          throw new Error('The campaign changed in another tab. Reload it before resetting.');
+        const saved = circuitRead.result as CircuitProgress | undefined;
+        if (run.version !== CAMPAIGN_VERSION || (saved && saved.version !== 1))
+          throw new Error('This campaign needs a newer Vault version.');
+        store.delete(runKey(scope));
+        store.delete(profileKey(scope));
+        if (saved?.campaignFinishes) {
+          const { campaignFinishes: _, ...progress } = saved;
+          if (!finishUnlocked(progress, progress.finish)) progress.finish = 'afterlife';
+          circuits.put(progress, scope);
+        }
+      } catch (cause) { tx.abort(); reject(cause); }
+    };
+    tx.oncomplete = () => resolve(emptyProfile());
+    tx.onabort = () => reject(tx.error ?? new Error('The campaign couldn’t be reset. Try again.'));
   });
 }
 
