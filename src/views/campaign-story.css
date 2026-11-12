@@ -64,7 +64,7 @@
 .campaign-rival-seat { align-self: center; flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; max-width: 245px; }
 .campaign-rival-trigger {
   flex: none;
-  width: clamp(34px, calc(var(--play-die) * 1.55), 64px);
+  width: clamp(42px, calc(var(--play-die) * 2), 72px);
   padding: 1px;
   background: var(--color-canvas-deep);
   border: 1px solid var(--play-edge);
@@ -87,6 +87,12 @@
 @media (prefers-reduced-motion: no-preference) {
   .campaign-rival-caption p { animation: campaign-rival-line-in .2s ease-out; }
   @keyframes campaign-rival-line-in { from { opacity: .4; } }
+}
+@media (max-height: 760px) {
+  .campaign-story-intro { min-height: 320px; }
+  .campaign-story-intro .campaign-story-copy { padding-block: 22px; }
+  .campaign-story-intro .campaign-story-copy h2 { font-size: clamp(48px, 6vw, 72px); }
+  .campaign-story-intro .play-actions { margin-top: 14px; }
 }
 @media (max-width: 850px) {
   .campaign-story-scene::after { background: linear-gradient(90deg, var(--color-canvas-deep), color-mix(in srgb, var(--color-canvas-deep) 68%, transparent)); }

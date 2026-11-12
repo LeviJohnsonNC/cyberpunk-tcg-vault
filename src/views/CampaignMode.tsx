@@ -129,7 +129,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   function create(starter: StarterKey, abandon = false) {
     if (run && run.phase !== 'completed' && !abandon) { setReplace(starter); return; }
     void apply(() => startCampaign(scope, starter, abandon), value => {
-      setRun(value.run); setProfile(value.profile); setShowTable(false); setSnapshot(undefined); setUndo(undefined); setEditFeedback(''); setReviewed(undefined);
+      setRun(value.run); setProfile(value.profile); setShowTable(false); setSnapshot(undefined); setOpening(undefined); setUndo(undefined); setEditFeedback(''); setReviewed(undefined);
     });
   }
 

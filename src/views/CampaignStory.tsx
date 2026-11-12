@@ -100,9 +100,9 @@ export function CampaignRivalSeat({ encounter, quote, dialogue, toggle }: {
       <strong>{rival}</strong>
       <div aria-live="polite">{dialogue && quote && <p key={quote.sequence}>“{quote.text}”</p>}</div>
     </div>
-    <dialog className="al-dialog campaign-rival-dialog" ref={detail} aria-labelledby={titleId} onClick={event => {
-      if (event.target === event.currentTarget) event.currentTarget.close();
-    }}>
+    <dialog className="al-dialog campaign-rival-dialog" ref={detail} aria-labelledby={titleId}
+      onKeyDown={event => { if (event.key === 'Escape') event.stopPropagation(); }}
+      onClick={event => { if (event.target === event.currentTarget) event.currentTarget.close(); }}>
       <div className="al-dialog-body">
         <header><RivalPortrait encounter={encounter} /><div><p className="play-eyebrow">{role}</p><h2 id={titleId}>{rival}</h2></div></header>
         <div className="al-dialog-content"><p>{!dialogue ? 'Rival dialogue is off.' : quote ? `“${quote.text}”` : 'No lines yet in this match.'}</p></div>
