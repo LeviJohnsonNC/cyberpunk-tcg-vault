@@ -45,8 +45,12 @@ export function CampaignCrewPick({ titleRef, arriving, busy, current, starting, 
           const printingId = starter.printings.retail[slug];
           return <button key={slug} type="button" className="campaign-crew-card" aria-label={`Inspect ${card.display}`} aria-haspopup="dialog"
             disabled={busy} onClick={() => inspect(slug, printingId)}>
-            <PrintingArt slug={slug} printingId={printingId} alt="" inline />
-            <span className="campaign-crew-card-name" aria-hidden="true">{card.name}</span>
+            <PrintingArt slug={slug} printingId={printingId} alt="" inline fallback={
+              <span className="campaign-crew-card-fallback">
+                <strong>{card.name}</strong>
+                <small role="status">Printing art unavailable</small>
+              </span>
+            } />
           </button>;
         })}</div>
         <div className="campaign-crew-details">
