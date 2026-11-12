@@ -97,14 +97,12 @@ function withGear(attached: CardView[], renderCard: CardTile, card: CardView, la
 /** One side of the field: the Units a crew has in play, large enough to read. */
 export function SeatField({ seat, snapshot, active, renderCard, overlay, ...targeting }: MatProps & { seat: Seat; active: boolean; overlay?: ReactNode }) {
   const view = snapshot.view.players[seat];
-  const { legends, field, attached, units } = crew(view);
+  const { attached, units } = crew(view);
   const resolving = zoneCards(view, 'resolvingProgram');
-  const onLegends = attached.filter((card) => legends.some((legend) => legend.instanceId === card.attachedToId)).length;
   return <section className="play-field" data-seat={seat} data-active={active} data-zone={`field:${seat}`} data-resolving={resolving.length > 0}
     data-drop-zone={`field:${seat}`} data-drop-available={targeting.dropZones?.has(`field:${seat}`)} data-drop-over={targeting.dropOver === `field:${seat}`}
     aria-label={seat === 'player' ? 'Your field' : 'Rival field'}>
-    <h3 className="play-zone-label">Field <b>{field.length - onLegends}</b></h3>
-    <div className="play-card-row">{units.length ? units.map((card) => withGear(attached, renderCard, card)) : <span className="play-empty">Field is clear</span>}</div>
+    {units.length > 0 && <div className="play-card-row">{units.map(card => withGear(attached, renderCard, card))}</div>}
     {resolving.length > 0 && <div className="play-resolving" data-zone={`resolving:${seat}`} role="group" aria-label="Resolving Programs">
       <h3 className="play-zone-label">Resolving</h3><div className="play-card-row">{resolving.map((card) => renderCard(card))}</div>
     </div>}
