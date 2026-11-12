@@ -1,5 +1,5 @@
-/** Short synthesised sounds for things that happen on the table. No audio files. */
-export type TableCue = 'draw' | 'play' | 'eddie' | 'hit' | 'defeat' | 'gig' | 'turn' | 'win' | 'lose' | 'equip' | 'program' | 'call' | 'attack' | 'select' | 'ready' | 'pack-open' | 'pack-reveal' | 'reward-lock' | 'act-arrival';
+/** Short synthesised table cues, including fallbacks for recorded effects. */
+export type TableCue = 'dice-roll' | 'card-play' | 'unit-kill' | 'draw' | 'play' | 'eddie' | 'hit' | 'defeat' | 'gig' | 'turn' | 'win' | 'lose' | 'equip' | 'program' | 'call' | 'attack' | 'select' | 'ready' | 'pack-open' | 'pack-reveal' | 'reward-lock' | 'act-arrival';
 
 const TAU = Math.PI * 2;
 const tone = (hz: number, t: number) => Math.sin(TAU * hz * t);
@@ -9,7 +9,8 @@ const note = (hz: number, t: number, at: number, decay: number) => t < at ? 0 : 
 const fall = (from: number, floor: number, rate: number, t: number) => TAU * (floor * t + from / rate * (1 - Math.exp(-rate * t)));
 
 interface Recipe { seconds: number; gain: number; smooth: number; voice: (t: number, noise: number) => number }
-const recipes: Record<TableCue, Recipe> = {
+const recordedFallback = { 'dice-roll': 'gig', 'card-play': 'play', 'unit-kill': 'defeat' } as const;
+const recipes: Record<Exclude<TableCue, keyof typeof recordedFallback>, Recipe> = {
   // Foil tear, a glassy reveal, and a quiet lock-in. Shared mute and voice limits apply.
   'pack-open': { seconds: .55, gain: .4, smooth: .22, voice: (t, n) => n * Math.sin(Math.PI * t / .55) ** 2 * (1 + .35 * tone(43, t)) + note(196, t, .3, 12) * .6 },
   'pack-reveal': { seconds: .36, gain: .28, smooth: .5, voice: (t, n) => n * Math.exp(-24 * t) * .6 + note(880, t, .04, 14) * .6 + note(1320, t, .09, 16) * .3 },
@@ -43,7 +44,7 @@ const recipes: Record<TableCue, Recipe> = {
 
 /** Renders one cue to mono samples in [-1, 1], with no click at either end. */
 export function renderCue(cue: TableCue, sampleRate: number, variant = 0): Float32Array {
-  const { seconds, gain, smooth, voice } = recipes[cue];
+  const { seconds, gain, smooth, voice } = recipes[cue in recordedFallback ? recordedFallback[cue as keyof typeof recordedFallback] : cue as keyof typeof recipes];
   const samples = new Float32Array(Math.ceil(seconds * sampleRate));
   let seed = 1759 + variant * 977, low = 0;
   for (let i = 0; i < samples.length; i++) {
@@ -57,7 +58,7 @@ export function renderCue(cue: TableCue, sampleRate: number, variant = 0): Float
   return samples;
 }
 
-export const tableCues = Object.keys(recipes) as TableCue[];
+export const tableCues = [...Object.keys(recipes), ...Object.keys(recordedFallback)] as TableCue[];
 
 /** Resin dice on felt: size changes the body resonance; softer contacts have a shorter tail. */
 export function renderDice(type: string, soft: boolean, launch: boolean, sampleRate: number): Float32Array {

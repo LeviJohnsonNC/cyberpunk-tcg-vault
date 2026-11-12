@@ -200,7 +200,7 @@ function FreePlayMode({ scope, draft, saved, initialRival, initialOpponent, save
       <ReactiveRoom />
       {snapshot && !lobby ? <>
         <PlayTable key={snapshot.matchId} scope={scope} snapshot={presentation.displayed ?? snapshot} names={snapshot.names}
-          playback={presentation.playback} feedback={presentation.feedback} reduced={presentation.reduced} diceImpact={sound.impact} cue={sound.cue}
+          playback={presentation.playback} feedback={presentation.feedback} reduced={presentation.reduced} cue={sound.cue}
           busy={busy || presentation.playing} error={error} send={send} rematch={rematch} edit={onEdit} circuit={openCircuit} controls={<>
             <button type="button" className="btn quiet" disabled={busy} onClick={openCircuit}>Free Play</button>
             <button type="button" className="btn quiet play-dice-sound" aria-label="Table sound" aria-pressed={sound.enabled}

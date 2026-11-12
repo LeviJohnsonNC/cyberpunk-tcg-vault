@@ -401,7 +401,7 @@ hr.cut { border: 0; border-top: 1px dashed var(--color-divider); margin: var(--s
 }
 
 /* ---------- card back + empty hero ---------- */
-img.card-art { background: var(--color-canvas-deep) url('/img/card-back.webp') center / cover no-repeat; }
+img.card-art { background: var(--color-canvas-deep) url('./assets/card-back.webp') center / cover no-repeat; }
 .empty-hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: var(--space-5); margin-bottom: var(--space-4); padding: var(--space-4) var(--space-5); background: var(--color-canvas-deep); border: 1px solid var(--color-divider); border-top: 3px solid var(--color-ticket); }
 .empty-hero img { width: 100%; max-width: 480px; height: auto; display: block; justify-self: center; -webkit-mask-image: radial-gradient(ellipse 50% 48% at 50% 52%, #000 62%, transparent 100%); mask-image: radial-gradient(ellipse 50% 48% at 50% 52%, #000 62%, transparent 100%); }
 .empty-hero h2 { margin: 0 0 var(--space-3); font: 800 italic 40px/0.95 var(--font-display); text-transform: uppercase; transform: skewX(-4deg); color: var(--color-text); }

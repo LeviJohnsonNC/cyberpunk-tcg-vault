@@ -13,6 +13,20 @@ function view(): PlayerView {
     ], payment: { eddieIds: ['eddie-a', 'eddie-b'], eddies: 2, legendIds: ['legend'], effectGearHosts: {}, costs: { playCard: { unit: { amount: 2 }, gear: { amount: 1 }, program: { amount: 1 } } } } } };
 }
 describe('direct table intents', () => {
+  it('selects only a legal Gig die when dropped onto the player field', () => {
+    const state = view();
+    const die = { ...card('d8', 'die'), zone: 'fixerArea' };
+    state.players.player.zones.fixerArea = [die];
+    state.prompt = { status: 'choice', choice: { type: 'gainGig', payload: { allowedDieIds: [die.instanceId] } },
+      availableMoves: [{ moveId: 'gainGig', inputSpec: { type: 'gainGig' } }] };
+    const actions = matchActions(state);
+    const [intent] = dropIntents(actions, die, { key: 'field:player' });
+    expect(intent).toEqual({ action: 0, picks: { target: ['d8'] } });
+    expect(actions[intent.action].move(intent.picks)).toEqual({ move: 'gainGig', args: { dieId: 'd8' } });
+    expect(dropIntents(actions, die, { key: 'field:rival' })).toEqual([]);
+    expect(dropIntents(actions, die, { key: 'gigs:player' })).toEqual([]);
+    expect(dropIntents(actions, { ...die, instanceId: 'unavailable' }, { key: 'field:player' })).toEqual([]);
+  });
   it('suggests a payment of Eddies before Legends and never overrides the player', () => {
     const actions = matchActions(view());
     const [play] = dropIntents(actions, card('unit'), { key: 'field:player' });

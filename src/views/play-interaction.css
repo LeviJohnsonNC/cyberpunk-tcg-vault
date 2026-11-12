@@ -2,8 +2,8 @@
 .play-table [data-drop-available="true"] { outline: 2px dashed var(--color-accent); outline-offset: -2px; background-color: color-mix(in srgb, var(--color-accent) 9%, transparent); }
 .play-table [data-drop-over="true"] { outline: 3px solid var(--color-ticket); outline-offset: -2px; background-color: color-mix(in srgb, var(--color-ticket) 16%, transparent); }
 .play-card[data-drop-available="true"] { outline: 0; background: none; }
-.play-card[data-drop-available="true"] .play-card-art { outline: 2px dashed var(--color-accent); }
-.play-card[data-drop-over="true"] .play-card-art { outline: 3px solid var(--color-ticket); scale: 1.05; }
+.play-card[data-drop-available="true"] .play-card-art { --card-ring-width: 2px; --card-ring: var(--color-accent); }
+.play-card[data-drop-over="true"] .play-card-art { --card-ring-width: 3px; --card-ring: var(--color-ticket); scale: 1.05; }
 .play-program-drop { position: absolute; inset: 4px; z-index: 4; display: grid; place-items: center; border-radius: 8px; background-color: color-mix(in srgb, var(--color-surface) 82%, transparent); font: 800 28px/1 var(--font-display); text-transform: uppercase; }
 
 /* The tray lives in the command bar. Ordinary decisions stay on one line so the table never shifts. */
@@ -73,6 +73,9 @@
 .play-drag-ghost { position: fixed; z-index: 100; pointer-events: none; filter: drop-shadow(0 14px 12px var(--color-canvas-deep)); rotate: 4deg; }
 .play-drag-ghost .card-art { width: 100%; aspect-ratio: 5/7; object-fit: contain; display: block; border: 2px solid var(--color-ticket); border-radius: 6px; transform: none; box-shadow: none; }
 .play-drag-ghost > span { display: block; width: 180px; padding: 5px 8px; margin-top: 6px; color: var(--color-ticket-ink); background: var(--color-ticket); border-radius: 3px; font: 500 11px/1.4 var(--font-ui); rotate: -4deg; }
+.play-drag-ghost[data-kind="die"] { color: var(--color-ticket); rotate: none; }
+.play-drag-ghost[data-kind="die"] .play-die-face { width: 50px; height: 50px; }
+.play-drag-ghost[data-kind="die"] > span { width: max-content; rotate: none; }
 .play-target-arrow { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 65; pointer-events: none; overflow: visible; }
 .play-target-arrow > path { fill: none; stroke: var(--color-ticket); stroke-width: 3px; }
 .play-target-arrow marker path { fill: var(--color-ticket); stroke: none; }
@@ -80,7 +83,9 @@
 
 @media (max-width: 900px) { .play-tray-head { flex-wrap: wrap; } }
 @media (prefers-reduced-motion: no-preference) {
-  .play-card[data-target="true"]:not([aria-pressed="true"]) .play-card-art, .play-eddie[data-target="true"]:not([aria-pressed="true"]) .play-eddie-card { animation: play-target-pulse 1.3s ease-in-out infinite; }
+  .play-card[data-target="true"]:not([aria-pressed="true"]) .play-card-art { animation: play-card-target-pulse 1.3s ease-in-out infinite; }
+  @keyframes play-card-target-pulse { 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 35%, transparent), var(--card-depth, 0 3px 9px var(--play-shadow)); } }
+  .play-eddie[data-target="true"]:not([aria-pressed="true"]) .play-eddie-card { animation: play-target-pulse 1.3s ease-in-out infinite; }
   @keyframes play-target-pulse { 50% { outline-color: color-mix(in srgb, var(--color-accent) 35%, transparent); outline-offset: 4px; } }
   .play-table [data-drop-available="true"] { animation: play-drop-pulse 1s ease-in-out infinite; }
   @keyframes play-drop-pulse { 50% { background-color: color-mix(in srgb, var(--color-accent) 18%, transparent); } }

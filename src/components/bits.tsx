@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { imageUrl, textSegments, type Card } from '../lib/data';
 
-export const CARD_BACK = '/img/card-back.webp';
+import cardBack from '../assets/card-back.webp';
+
+export const CARD_BACK = cardBack;
 
 // Reserve priority for the small group of cards a player is about to see.
 const visibleImages = new WeakMap<Element, () => void>();

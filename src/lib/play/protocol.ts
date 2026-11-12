@@ -85,6 +85,8 @@ export interface Prompt {
   payment?: PaymentPrompt;
 }
 
+export type FightResult = 'attackerWins' | 'defenderWins' | 'mutual';
+
 export interface PlayerView {
   players: Record<Seat, SeatView>;
   gamePhase: string;
@@ -96,7 +98,7 @@ export interface PlayerView {
   winReason: string | null;
   stateID: number;
   prompt: Prompt;
-  attackState?: { attackerId: string; defenderId?: string; step: string; rivalId?: Seat } | null;
+  attackState?: { attackerId: string; defenderId?: string; step: string; rivalId?: Seat; fightResolution?: { result: FightResult } } | null;
 }
 
 export interface MatchLogEntry { id: number; turn: number; seat: Seat; text: string }
@@ -135,6 +137,8 @@ export interface MatchBeat extends MatchFrame {
   source?: CardView;
   targetIds: string[];
   changes: MatchChange[];
+  playedCardIds?: string[];
+  combatKillId?: string;
 }
 
 /** Running public facts about a match, kept with the saved game. */

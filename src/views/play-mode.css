@@ -112,6 +112,16 @@
 .play-die[aria-pressed="true"], .play-die[data-target="true"]:hover { background: color-mix(in srgb, var(--color-accent) 24%, var(--color-canvas-deep)); }
 .play-die[aria-pressed="true"] .play-die-shell { stroke-width: 2.8px; }
 
+.play-die[data-roll-available="true"] { cursor: grab; color: var(--color-ticket); border-color: color-mix(in srgb, var(--color-ticket) 42%, transparent); }
+.play-die[data-roll-available="true"]:active { cursor: grabbing; }
+.play-die[data-roll-available="true"] .play-die-face { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--color-ticket) 58%, transparent)); }
+@media (prefers-reduced-motion: no-preference) {
+  .play-die[data-roll-available="true"][aria-pressed="false"] .play-die-face { animation: play-roll-ready 1.9s ease-in-out infinite; }
+  @keyframes play-roll-ready {
+    50% { filter: drop-shadow(0 0 7px color-mix(in srgb, var(--color-ticket) 85%, transparent)); }
+  }
+}
+
 /* ---------- decision forms ---------- */
 .play-picks { display: grid; gap: var(--space-2); }
 .play-picks fieldset { border: 0; min-width: 0; padding: 0; margin: 0; }

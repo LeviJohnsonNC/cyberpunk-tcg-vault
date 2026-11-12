@@ -26,7 +26,7 @@ function clone(el: HTMLElement, spot: Spot) {
  * them, on a layer above the table, and always ends on what React rendered.
  */
 export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
-  key: string; view: PlayerView; beat?: MatchBeat; enabled: boolean; pace: number; deal: boolean;
+  key: string; view: PlayerView; beat?: MatchBeat; reducedBeats?: MatchBeat[]; hasRolls?: boolean; enabled: boolean; pace: number; deal: boolean;
   sound?: (cue: TableCue, delayMs?: number, pan?: number) => (() => void) | undefined;
 }) {
   const sounds = useRef<(() => void)[]>([]);
@@ -79,7 +79,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
     for (const finish of [...running.current]) finish();
     // Sounds queued for motion that was just cut short would arrive late and out of place.
     for (const stop of sounds.current.splice(0)) stop();
-    const { view, beat, enabled, pace, deal, sound } = live.current;
+    const { view, beat, reducedBeats, hasRolls, enabled, pace, deal, sound } = live.current;
     const before = pieces.current, previousView = lastView.current;
     const next = measure(table);
     pieces.current = next;
@@ -90,11 +90,19 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       if (previousView) {
         const accents = tableAccents(previousView, view);
         const plan = planMotion(previousView, view, beat);
-        const cues = new Set<TableCue>(accents.map((accent) => accent.kind === 'cash' ? 'eddie' : accent.kind === 'legend' ? 'call' : 'play'));
-        for (const change of beat?.changes ?? []) if (change.kind === 'played') cues.add(change.card?.type === 'program' ? 'program' : change.card?.attachedToId ? 'equip' : 'play');
-        if (plan.strike) cues.add('hit');
-        if (plan.defeated.length) cues.add('defeat');
-        if (beat?.gigRolls.length) cues.add('gig');
+        const cues = new Set<TableCue>();
+        const combatKills = new Set(reducedBeats?.flatMap((beat) => beat.combatKillId ? [beat.combatKillId] : []));
+        const playedCard = reducedBeats?.some((beat) => beat.playedCardIds?.length);
+        if (hasRolls) cues.add('dice-roll');
+        if (combatKills.size) cues.add('unit-kill');
+        if (playedCard) cues.add('card-play');
+        for (const accent of accents) {
+          if (accent.kind === 'cash') cues.add('eddie');
+          else if (accent.kind === 'legend') cues.add('call');
+          else if (!playedCard) cues.add('play');
+        }
+        if (plan.strike && !combatKills.size) cues.add('hit');
+        if (plan.defeated.some((id) => !combatKills.has(id))) cues.add('defeat');
         const oldHand = previousView.players.player.zones.hand;
         const newHand = view.players.player.zones.hand;
         if (Array.isArray(oldHand) && Array.isArray(newHand) && newHand.some((card) => !oldHand.some((old) => old.instanceId === card.instanceId))) cues.add('draw');
@@ -172,8 +180,8 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       track(animations, () => { wrap.remove(); delete piece.el.dataset.inFlight; });
     }
 
-    function leave(piece: Piece, to: Spot | undefined, options: { defeated: boolean; delay: number }) {
-      if (options.defeated) say('defeat', options.delay + time(140));
+    function leave(piece: Piece, to: Spot | undefined, options: { defeated: boolean; delay: number; combatKill: boolean }) {
+      if (options.defeated && !options.combatKill) say('defeat', options.delay + time(140));
       const from = piece.spot;
       const wrap = document.createElement('div');
       wrap.className = 'play-flight';
@@ -212,12 +220,12 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
     const plan = planMotion(previousView, view, beat);
     const accents = tableAccents(previousView, view);
     const publicCards = Object.values(view.players).flatMap((seat) => Object.values(seat.zones).flatMap((zone) => Array.isArray(zone) ? zone : []));
+    const playedCards = new Set(beat?.playedCardIds);
     const arrivalCue = (id: string): TableCue => {
+      if (playedCards.delete(id)) return 'card-play';
       const card = publicCards.find((card) => card.instanceId === id);
       return card?.attachedToId ? 'equip' : card?.type === 'program' ? 'program' : card?.type === 'legend' ? 'call' : 'play';
     };
-    // Instant Programs can go hand → trash in one public frame, with no landing on the mat.
-    for (const change of beat?.changes ?? []) if (change.kind === 'played' && change.card?.type === 'program' && !next.has(change.card.instanceId)) say('program', time(80), change.seat === 'rival' ? .24 : -.24);
     if (!previousView.attackState && view.attackState) say('attack', 0);
     if (previousView.turnNumber === view.turnNumber && publicCards.some((card) => !card.spent && Object.values(previousView.players).some((seat) => Object.values(seat.zones).some((zone) => Array.isArray(zone) && zone.some((old) => old.instanceId === card.instanceId && old.spent))))) say('ready', 0);
 
@@ -259,6 +267,9 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
         cue: kind === 'hand' ? 'draw' : kind === 'eddies' ? 'eddie' : arrivalCue(id) });
       else track([piece.el.animate([{ transform: 'scale(.6)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: time(260), easing: EASE })], () => undefined);
     }
+
+    // An instant Program may go straight to trash without a landing animation.
+    if (playedCards.size) say('card-play', time(80), beat?.seat === 'rival' ? .24 : -.24);
 
     // Short, local finishes ride alongside the existing journey. They never extend a beat or own input.
     for (const accent of accents) {
@@ -309,13 +320,15 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       track(animations, () => finish.remove());
     }
 
+    const combatKillId = beat?.combatKillId;
     const ghosts = new Map<string, HTMLElement>();
     for (const [id, piece] of before) {
       if (next.has(id) || id.startsWith('pool:') || !moves(piece.zone)) continue;
       const defeated = plan.defeated.includes(id);
-      ghosts.set(id, leave(piece, anchor(plan.destinations[id]), { defeated, delay: striker && (defeated || id === strike?.attackerId) ? impact + time(id === strike?.attackerId ? 260 : 0) : 0 }));
+      ghosts.set(id, leave(piece, anchor(plan.destinations[id]), { defeated, combatKill: id === combatKillId, delay: striker && (defeated || id === strike?.attackerId) ? impact + time(id === strike?.attackerId ? 260 : 0) : 0 }));
     }
 
+    if (combatKillId) say('unit-kill', striker && struck ? impact : time(140));
     if (strike && striker && struck) {
       const dx = struck.x - striker.spot.x, dy = struck.y - striker.spot.y;
       const reach = Math.min(0.62, 230 / Math.max(1, Math.hypot(dx, dy)));
@@ -329,7 +342,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
         track([lunge], () => { delete body.dataset.striking; });
       }
       const burst = document.createElement('div');
-      say('hit', impact);
+      if (!combatKillId) say('hit', impact);
       burst.className = 'play-impact';
       burst.style.cssText = `left:${struck.x}px;top:${struck.y}px;animation-delay:${impact}ms;animation-duration:${time(520)}ms;`;
       layer.append(burst);

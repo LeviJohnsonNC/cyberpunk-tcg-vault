@@ -10,7 +10,7 @@ export function CardFace({ card }: { card: CardView }) {
   const slug = vaultCard(card)?.slug;
   const [failed, setFailed] = useState<string>();
   return slug && failed !== slug ? <img className="card-art" src={imageUrl(slug)} alt="" decoding="async" onError={() => setFailed(slug)} />
-    : <img className="card-art" src={CARD_BACK} alt="" />;
+    : <img className="card-art" src={CARD_BACK} data-card-back="" alt="" />;
 }
 
 export function CardInspection({ card, cards = [], hostName, shortcuts, onClose }: {
