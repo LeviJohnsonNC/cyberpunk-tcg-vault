@@ -1,24 +1,30 @@
-/* The invitation fills the Play surface beneath the existing app and mode navigation. */
+/* Campaign onboarding fills the space beneath the app header. */
 .app--play.page:has(.campaign-mode[data-onboarding]) {
-  --campaign-shell-height: 104px;
+  --campaign-header-height: 61px;
+  --campaign-shell-height: var(--campaign-header-height);
   max-width: none;
   padding: 0;
 }
 
-.play-mode-tabs:has(+ .campaign-mode[data-onboarding]) {
+.app--play.page:has(.campaign-mode[data-onboarding='invitation']) {
+  --campaign-shell-height: calc(var(--campaign-header-height) + 43px);
+}
+
+.play-mode-tabs:has(+ .campaign-mode[data-onboarding='crews']) { display: none; }
+.play-mode-tabs:has(+ .campaign-mode[data-onboarding='invitation']) {
   max-width: none;
   margin: 0;
   padding: 5px clamp(16px, 4vw, 72px);
   border-bottom: 1px solid var(--color-divider);
   background: var(--color-canvas-deep);
 }
-.play-mode-tabs:has(+ .campaign-mode[data-onboarding]) .play-mode-explainer { display: none; }
-.play-mode-tabs:has(+ .campaign-mode[data-onboarding]) .btn {
+.play-mode-tabs:has(+ .campaign-mode[data-onboarding='invitation']) .play-mode-explainer { display: none; }
+.play-mode-tabs:has(+ .campaign-mode[data-onboarding='invitation']) .btn {
   min-height: 32px;
   padding: 4px 12px;
   font-size: 12px;
 }
-.play-mode-tabs:has(+ .campaign-mode[data-onboarding]) .btn[aria-current] {
+.play-mode-tabs:has(+ .campaign-mode[data-onboarding='invitation']) .btn[aria-current] {
   border-color: color-mix(in srgb, var(--color-accent) 50%, var(--color-divider));
   background: var(--color-surface);
   color: var(--color-text);
@@ -129,7 +135,7 @@
   @keyframes campaign-invitation-entry { from { opacity: .45; } to { opacity: 1; } }
 }
 @media (max-width: 1100px) {
-  .app--play.page:has(.campaign-mode[data-onboarding]) { --campaign-shell-height: 147px; }
+  .app--play.page:has(.campaign-mode[data-onboarding]) { --campaign-header-height: 104px; }
 }
 @media (min-width: 781px) and (max-height: 660px) {
   .campaign-invitation { min-block-size: max(420px, calc(100svh - var(--campaign-shell-height, 0px))); }
