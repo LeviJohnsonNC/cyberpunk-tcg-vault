@@ -197,9 +197,9 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
     <ReactiveRoom />
     {showTable && snapshot && !newRunFrom ? <PlayTable key={snapshot.matchId} scope={`${scope}:campaign`} snapshot={presentation.displayed ?? snapshot} names={snapshot.names}
       playback={presentation.playback} feedback={presentation.feedback} reduced={presentation.reduced} diceImpact={sound.impact} cue={sound.cue}
-      campaign={encounter && {
+      campaign={run && encounter && {
         title: encounter.title,
-        rival: <CampaignRivalSeat encounter={encounter.id} quote={quote} dialogue={dialogue} toggle={toggleDialogue} />,
+        rival: <CampaignRivalSeat encounter={encounter.id} starter={run.starter} quote={quote} dialogue={dialogue} toggle={toggleDialogue} />,
         farewell: dialogue && quote && ['playerWon', 'rivalWon', 'draw'].includes(quote.moment)
           ? <CampaignRivalFarewell encounter={encounter.id} quote={quote} /> : undefined,
       }}
@@ -241,7 +241,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
         {run.phase === 'completed' && <section className="panel hot campaign-finale"><p className="play-eyebrow">The next chapter is yours</p><h2>Keep the deck. Keep the room.</h2><p>Open your finished list in Deck Builder to save it and take it into Free Play. Campaign cards stay separate from your physical Vault.</p><button className="btn" onClick={takeDeckToBuilder}>Open deck as draft</button><button className="btn quiet" onClick={exit}>Go to Free Play</button><button type="button" className="btn quiet" disabled={busy} onClick={openNewCampaign}>Start another campaign</button></section>}
         {!actPending && ['preparing', 'upgrading', 'inMatch'].includes(run.phase) && <div className="campaign-workspace">
           <section className="campaign-brief panel hot"><p className="play-eyebrow">Contract {run.encounter + 1} / {ENCOUNTERS.length} · {encounterSkill(run)}</p><h2>{encounter?.title}</h2><p>{encounter?.brief}</p>
-            {encounter && <CampaignRivalBrief encounter={encounter.id} />}
+            {encounter && <CampaignRivalBrief encounter={encounter.id} starter={run.starter} />}
             <p className="play-eyebrow">Rival crew · {run.opponents[run.encounter]?.name}</p><div className="campaign-rival-crew">{run.opponents[run.encounter]?.legends.map(slug => <button key={slug} title={`Inspect ${BY_SLUG.get(slug)?.display}`} onClick={() => setInspected(slug)}><CardImg slug={slug} alt={BY_SLUG.get(slug)?.display ?? slug} /></button>)}</div>
             {run.phase === 'inMatch' ? <button className="btn" disabled={busy} onClick={() => void apply(() => send({ type: 'resume' }), value => { setSnapshot(value.snapshot); setShowTable(true); })}>Return to match</button>
               : <button className="btn" disabled={busy || issues.length > 0} onClick={launch}>{run.attempts ? 'Retry contract' : 'Take the contract'}</button>}
