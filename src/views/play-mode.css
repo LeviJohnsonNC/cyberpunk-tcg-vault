@@ -22,8 +22,9 @@
 .play-more { position: relative; }
 .play-more > summary.btn { display: grid; place-items: center; min-width: 36px; padding-inline: 8px; font-size: 19px; line-height: 1; list-style: none; }
 .play-more > summary::-webkit-details-marker { display: none; }
-.play-more-actions { position: absolute; z-index: 2; inset: calc(100% + 6px) 0 auto auto; padding: 4px; background: var(--color-canvas-deep); border: 1px solid var(--color-divider); box-shadow: 0 8px 20px var(--play-shadow); }
-.play-more-actions .btn { color: var(--color-danger); white-space: nowrap; }
+.play-more-actions { position: absolute; z-index: 2; inset: calc(100% + 6px) 0 auto auto; display: grid; gap: 4px; padding: 4px; background: var(--color-canvas-deep); border: 1px solid var(--color-divider); box-shadow: 0 8px 20px var(--play-shadow); }
+.play-more-actions .btn { white-space: nowrap; }
+.play-more-actions .danger-ghost { color: var(--color-danger); }
 
 .play-eyebrow {
   color: var(--color-text-muted);

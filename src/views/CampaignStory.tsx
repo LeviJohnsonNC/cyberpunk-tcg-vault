@@ -1,12 +1,15 @@
-import { useId, useRef, type CSSProperties } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { ENCOUNTERS, type CampaignRun, type EncounterId } from '../lib/play/campaign';
 import { campaignChapters, campaignInvitation, unlockedCampaignChapters } from '../lib/play/campaignStory';
 import type { StarterKey } from '../lib/starters';
 import { campaignRivalIntel } from '../lib/play/campaignRivalIntel';
 import type { RivalDialogueState } from '../lib/play/rivalDialogue';
-import invitation from '../assets/play/last-call-invitation.webp';
+import invitation from '../assets/play/last-call-afterlife.webp';
+import compactInvitation from '../assets/play/last-call-afterlife-compact.webp';
+import { PlayOptionsMenu } from './PlayResetMenu';
 import ledger from '../assets/play/last-call-ledger.webp';
 import './campaign-story.css';
+import './campaign-invitation.css';
 
 type Quote = RivalDialogueState['line'];
 
@@ -16,17 +19,41 @@ function RivalPortrait({ encounter }: { encounter: EncounterId }) {
   return <span className="campaign-rival-portrait" style={style} aria-hidden="true" />;
 }
 
-export function CampaignInvitation({ proceed }: { proceed: () => void }) {
-  return <section className="campaign-story-scene campaign-story-intro" aria-labelledby="campaign-invitation-title">
-    <img src={invitation} alt="A cracked phone and a sealed envelope on a rain-lit booth table" fetchPriority="high" />
-    <div className="campaign-story-copy">
-      <p className="play-eyebrow">The Afterlife / A contract for your crew</p>
-      <h2 id="campaign-invitation-title">{campaignInvitation.title}.</h2>
-      <p>{campaignInvitation.text}</p>
-      <div className="play-actions">
-        <button type="button" className="btn" onClick={proceed}>Choose your crew</button>
-        <button type="button" className="btn quiet" onClick={proceed}>Skip intro</button>
+export function CampaignInvitation({ scope, proceed, onBack, onReset, busy }: {
+  scope: string; proceed: () => void; onBack?: () => void; onReset?: () => void; busy: boolean;
+}) {
+  const entranceKey = `cptv.campaign.introEntrance:${scope}`;
+  const [animate] = useState(() => {
+    try { return sessionStorage.getItem(entranceKey) !== 'shown'; } catch { return false; }
+  });
+  useEffect(() => {
+    if (!animate) return;
+    try { sessionStorage.setItem(entranceKey, 'shown'); } catch { /* Entrance stays optional. */ }
+  }, [animate, entranceKey]);
+
+  return <section className="campaign-invitation" aria-labelledby="campaign-invitation-title" data-enter={animate || undefined}>
+    <picture className="campaign-invitation-art">
+      <source media="(max-width: 780px)" srcSet={compactInvitation} />
+      <img src={invitation} width="1672" height="941" alt="" fetchPriority="high" />
+    </picture>
+    <div className="campaign-invitation-copy">
+      <p className="campaign-invitation-eyebrow">The Afterlife <span aria-hidden="true">//</span><span className="sr-only"> – </span> The Invitation</p>
+      <h1 id="campaign-invitation-title" tabIndex={-1}>{campaignInvitation.title}<span>.</span></h1>
+      <div className="campaign-invitation-story">
+        <p>{campaignInvitation.setup}</p>
+        <p>{campaignInvitation.payout}</p>
+        <p className="campaign-invitation-reveal">{campaignInvitation.reveal}</p>
       </div>
+      <button className="campaign-invitation-cta" type="button" onClick={proceed} disabled={busy}>
+        Choose your crew <span aria-hidden="true">→</span>
+      </button>
+    </div>
+    <div className="campaign-invitation-options">
+      <PlayOptionsMenu label="More Campaign options" options={[
+        { label: 'Skip intro', onSelect: proceed, disabled: busy },
+        ...(onBack ? [{ label: 'Back to current campaign', onSelect: onBack, disabled: busy }] : []),
+        ...(onReset ? [{ label: 'Reset campaign', onSelect: onReset, disabled: busy, danger: true }] : []),
+      ]} />
     </div>
   </section>;
 }
@@ -62,7 +89,7 @@ export function CampaignStoryJournal({ run }: { run: CampaignRun }) {
       <div className="al-dialog-body">
         <header><h2 id={titleId}>Story so far</h2><button type="button" className="btn quiet" onClick={() => journal.current?.close()}>Close</button></header>
         <div className="campaign-journal-chapters">
-          <article><h3>The invitation</h3><p>{campaignInvitation.text}</p></article>
+          <article><h3>The invitation</h3><p>{campaignInvitation.setup} {campaignInvitation.payout} {campaignInvitation.reveal}</p></article>
           {unlockedCampaignChapters(run).map(contract => {
             const { victory } = campaignChapters[contract.id];
             return <article key={contract.id}>

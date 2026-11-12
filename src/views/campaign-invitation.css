@@ -1,0 +1,158 @@
+/* The invitation fills the Play surface beneath the existing app and mode navigation. */
+.app--play.page:has(.campaign-mode[data-onboarding]) {
+  --campaign-shell-height: 104px;
+  max-width: none;
+  padding: 0;
+}
+
+.play-mode-tabs:has(+ .campaign-mode[data-onboarding]) {
+  max-width: none;
+  margin: 0;
+  padding: 5px clamp(16px, 4vw, 72px);
+  border-bottom: 1px solid var(--color-divider);
+  background: var(--color-canvas-deep);
+}
+.play-mode-tabs:has(+ .campaign-mode[data-onboarding]) .play-mode-explainer { display: none; }
+.play-mode-tabs:has(+ .campaign-mode[data-onboarding]) .btn {
+  min-height: 32px;
+  padding: 4px 12px;
+  font-size: 12px;
+}
+.play-mode-tabs:has(+ .campaign-mode[data-onboarding]) .btn[aria-current] {
+  border-color: color-mix(in srgb, var(--color-accent) 50%, var(--color-divider));
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.campaign-mode .campaign-hub--onboarding { max-width: none; padding: 0; }
+.campaign-hub--onboarding > :is(.play-error, [role="status"]) { margin: 12px clamp(16px, 4vw, 72px); }
+
+.campaign-invitation {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-items: center;
+  min-block-size: max(480px, calc(100svh - var(--campaign-shell-height, 0px)));
+  background: var(--color-canvas-deep);
+}
+.campaign-invitation-art { position: absolute; inset: 0; overflow: hidden; z-index: -1; }
+.campaign-invitation-art img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; object-position: center 56%; }
+.campaign-invitation-art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--color-canvas-deep) 44%, transparent), color-mix(in srgb, var(--color-canvas-deep) 60%, transparent) 35%, transparent 64%),
+    linear-gradient(0deg, color-mix(in srgb, var(--color-canvas-deep) 56%, transparent), transparent 32%);
+}
+.campaign-invitation-copy {
+  inline-size: min(58%, 900px);
+  padding: clamp(40px, 7svh, 84px) 16px clamp(52px, 8svh, 96px) clamp(28px, 6.2vw, 115px);
+}
+.campaign-invitation-eyebrow {
+  margin: 0 0 16px;
+  color: var(--color-accent);
+  font: 500 clamp(12px, 1.2vw, 15px)/1.4 var(--font-mono);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.campaign-invitation-eyebrow [aria-hidden] { margin-inline: 4px; color: var(--color-accent-deep); }
+.campaign-invitation h1 {
+  margin: 0 0 clamp(22px, 3.6svh, 38px);
+  color: var(--color-ticket);
+  font: italic 800 clamp(60px, min(9vw, 16svh), 148px)/.86 var(--font-display);
+  letter-spacing: -.015em;
+  text-transform: uppercase;
+}
+.campaign-invitation h1 span { color: var(--color-accent); }
+.campaign-invitation h1:focus { box-shadow: none; }
+.campaign-invitation-story {
+  max-inline-size: min(43ch, 45vw);
+  color: var(--color-text);
+  font-size: clamp(15px, 1.25vw, 19px);
+  line-height: 1.62;
+}
+.campaign-invitation-story p { margin: 0 0 .85em; }
+.campaign-invitation-story .campaign-invitation-reveal {
+  margin: 1.35em 0 0;
+  padding-inline-start: 14px;
+  border-inline-start: 2px solid var(--color-accent);
+  color: var(--color-ticket);
+  font-style: italic;
+}
+.campaign-invitation-cta {
+  isolation: isolate;
+  position: relative;
+  display: inline-flex;
+  gap: clamp(16px, 2.5vw, 42px);
+  align-items: center;
+  justify-content: space-between;
+  min-block-size: 56px;
+  max-inline-size: 100%;
+  margin-top: clamp(26px, 4.7svh, 48px);
+  padding: 10px clamp(18px, 2vw, 30px);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-accent-ink);
+  font: italic 800 clamp(21px, 2vw, 29px)/1 var(--font-display);
+  letter-spacing: .035em;
+  text-transform: uppercase;
+  text-align: start;
+  cursor: pointer;
+}
+.campaign-invitation-cta::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  clip-path: polygon(var(--cut-sm) 0, 100% 0, 100% calc(100% - var(--cut-sm)), calc(100% - var(--cut-sm)) 100%, 0 100%, 0 var(--cut-sm));
+  background: var(--color-accent);
+  box-shadow: inset 0 1px color-mix(in srgb, var(--color-text) 42%, transparent), inset 0 -2px var(--color-accent-deep);
+}
+.campaign-invitation-cta:hover::before { background: color-mix(in srgb, var(--color-accent) 82%, var(--color-text)); }
+.campaign-invitation-cta:active::before { background: color-mix(in srgb, var(--color-accent) 78%, var(--color-accent-deep)); }
+.campaign-invitation-cta:focus-visible { outline: 2px solid var(--color-ticket); outline-offset: 5px; box-shadow: none; }
+.campaign-invitation-cta:disabled { cursor: wait; opacity: .64; }
+.campaign-invitation-cta span { font: 500 1em/1 var(--font-ui); }
+.campaign-invitation-options { position: absolute; inset: 16px clamp(16px, 2.5vw, 36px) auto auto; }
+.campaign-invitation-options summary.btn { min-block-size: 42px; min-inline-size: 42px; background: var(--color-canvas-deep); }
+
+.campaign-crew-pick {
+  min-block-size: max(480px, calc(100svh - var(--campaign-shell-height, 0px)));
+  padding: clamp(24px, 5svh, 58px) clamp(16px, 6.2vw, 115px) 76px;
+  background: radial-gradient(ellipse at 75% 0%, color-mix(in srgb, var(--color-accent-deep) 13%, transparent), transparent 57%), var(--color-canvas-deep);
+}
+.campaign-crew-pick > header { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between; }
+.campaign-crew-pick .campaign-starter-heading {
+  margin: 0;
+  color: var(--color-ticket);
+  font: italic 800 clamp(38px, 5vw, 72px)/.95 var(--font-display);
+}
+.campaign-crew-pick .campaign-starters .campaign-crew-art { display: grid; grid-template-columns: repeat(3, minmax(0, 150px)); min-height: 0; }
+.campaign-crew-pick .campaign-starters .campaign-crew-art img { inline-size: 100%; }
+.campaign-crew-pick .campaign-starters article { border-top-color: var(--color-ticket-muted); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .campaign-invitation[data-enter] .campaign-invitation-art { animation: campaign-invitation-entry 360ms ease-out both; }
+  .campaign-invitation[data-enter]:not(:focus-within) .campaign-invitation-copy { animation: campaign-invitation-entry 330ms 45ms ease-out both; }
+  .campaign-invitation[data-enter]:not(:focus-within) .campaign-invitation-cta { animation: campaign-invitation-entry 300ms 140ms ease-out both; }
+  .campaign-invitation-cta, .campaign-invitation-cta span { transition: transform 120ms ease-out; }
+  .campaign-invitation-cta:hover span { transform: translateX(4px); }
+  .campaign-invitation-cta:active { transform: translateY(1px); }
+  .campaign-crew-pick[data-arriving] { animation: campaign-invitation-entry 220ms ease-out both; }
+  @keyframes campaign-invitation-entry { from { opacity: .45; } to { opacity: 1; } }
+}
+@media (max-width: 1100px) {
+  .app--play.page:has(.campaign-mode[data-onboarding]) { --campaign-shell-height: 147px; }
+}
+@media (max-width: 780px) {
+  .campaign-invitation { align-content: start; }
+  .campaign-invitation-art { position: relative; aspect-ratio: 1052/649; }
+  .campaign-invitation-art::after { background: linear-gradient(0deg, var(--color-canvas-deep), transparent 29%); }
+  .campaign-invitation-copy { inline-size: 100%; padding: 0 clamp(16px, 5vw, 40px) 56px; }
+  .campaign-invitation-eyebrow { margin-bottom: 12px; }
+  .campaign-invitation h1 { font-size: clamp(58px, 13vw, 96px); margin-bottom: 20px; }
+  .campaign-invitation-story { max-inline-size: 44ch; }
+  .campaign-invitation-options { inset-block-start: 10px; }
+}

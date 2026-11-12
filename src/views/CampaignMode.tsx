@@ -40,6 +40,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   });
   const [opening, setOpening] = useState<{ matchId: string; retry: boolean }>();
   const focusStarter = useRef(false);
+  const [crewArrival, setCrewArrival] = useState(false);
   const [run, setRun] = useState<CampaignRun>();
   const [profile, setProfile] = useState<CampaignProfile>();
   const [snapshot, setSnapshot] = useState<MatchSnapshot>();
@@ -69,7 +70,9 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
 
   function proceedToStarters() {
     focusStarter.current = true;
+    setCrewArrival(true);
     setIntroSeen(true);
+    window.scrollTo({ top: 0, behavior: 'instant' });
     try { localStorage.setItem(introKey, 'seen'); } catch { /* Optional preference. */ }
   }
 
@@ -137,11 +140,25 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
     finally { actionLock.current = false; setBusy(false); }
   }
 
+  function replayIntroduction() {
+    setCrewArrival(false);
+    setIntroSeen(false);
+    if (!run) {
+      try { localStorage.removeItem(introKey); } catch { /* Optional preference. */ }
+    }
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    requestAnimationFrame(() => hub.current?.querySelector<HTMLElement>('#campaign-invitation-title')?.focus({ preventScroll: true }));
+  }
+
+  function backToCampaign() {
+    setNewRunFrom(undefined);
+    requestAnimationFrame(() => hub.current?.focus({ preventScroll: true }));
+  }
+
   function openNewCampaign() {
     if (!run) return;
     setNewRunFrom({ id: run.id, revision: run.revision });
-    setIntroSeen(false);
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    replayIntroduction();
   }
 
   function openReset() {
@@ -225,6 +242,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   }
 
   const choosingStarter = !run || !!newRunFrom;
+  const showInvitation = !!profile && choosingStarter && !introSeen;
   const actPending = run ? needsActBriefing(run) : false;
   const issues = run ? campaignDeckIssues(run, run.deck) : [];
   const iconicPrintings = new Map<string, Printing>();
@@ -244,8 +262,8 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   const inventory = run && CARDS.filter(card => (run.inventory[card.slug] ?? 0) > 0 && card.type !== 'Legend')
     .sort((a, b) => (run.deck.cards[b.slug] ?? 0) - (run.deck.cards[a.slug] ?? 0) || (a.cost ?? 0) - (b.cost ?? 0) || a.display.localeCompare(b.display));
 
-  return <section className="play-mode campaign-mode" data-environment={profile?.equipped ?? 'default'} onPointerDownCapture={sound.unlock} onKeyDownCapture={sound.unlock}>
-    <ReactiveRoom />
+  return <section className="play-mode campaign-mode" data-onboarding={choosingStarter ? (showInvitation ? 'invitation' : 'crews') : undefined} data-environment={profile?.equipped ?? 'default'} onPointerDownCapture={sound.unlock} onKeyDownCapture={sound.unlock}>
+    {!choosingStarter && <ReactiveRoom />}
     {showTable && snapshot && !newRunFrom ? <PlayTable key={snapshot.matchId} scope={`${scope}:campaign`} snapshot={presentation.displayed ?? snapshot} names={snapshot.names}
       playback={presentation.playback} feedback={presentation.feedback} reduced={presentation.reduced} cue={sound.cue}
       campaign={run && encounter && {
@@ -262,21 +280,28 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
         <button className="btn quiet" onClick={exit}>Free Play</button>
         <button className="btn quiet" onClick={sound.toggle}>Sound {sound.enabled ? 'On' : 'Off'}</button>
         <label className="play-sound-level">FX <input type="range" aria-label="Game effects volume" min="0" max="1" step=".05" value={sound.volume} onChange={e => sound.changeVolume(Number(e.target.value))} /></label></>} />
-    : <div className="campaign-hub" ref={hub} tabIndex={-1}>
-      <header className="campaign-head"><Masthead eyebrow="The Afterlife / A deck to make your own" title="Campaign" sub="Two starters. Nine tables. One seat at the top." />
+    : <div className={choosingStarter ? "campaign-hub campaign-hub--onboarding" : "campaign-hub"} ref={hub} tabIndex={-1}>
+      {!choosingStarter && <header className="campaign-head"><Masthead eyebrow="The Afterlife / A deck to make your own" title="Campaign" sub="Two starters. Nine tables. One seat at the top." />
         <div className="campaign-hub-tools">
           {run?.phase === 'inMatch' && !choosingStarter && <button className="btn" disabled={busy} onClick={() => void apply(() => send({ type: 'resume' }), value => { setSnapshot(value.snapshot); setShowTable(true); })}>Return to match</button>}
           {run && <PlayResetMenu mode="Campaign" disabled={busy} onReset={openReset} />}
-          {run && <CampaignStoryJournal run={run} />}<button className="btn quiet" onClick={sound.toggle}>Sound {sound.enabled ? 'On' : 'Off'}</button><p className="campaign-save-note">Saved in this browser for this Vault.<br />Campaign cards stay in this run.</p></div></header>
+          {run && <CampaignStoryJournal run={run} />}<button className="btn quiet" onClick={sound.toggle}>Sound {sound.enabled ? 'On' : 'Off'}</button><p className="campaign-save-note">Saved in this browser for this Vault.<br />Campaign cards stay in this run.</p></div></header>}
       {error && <div className="play-error" role="alert">{error} <button className="btn quiet" onClick={reloadSavedState}>{workerFailed.current ? 'Reload page' : 'Reload campaign'}</button></div>}
       {busy && !profile && <p role="status">Opening the table…</p>}
-      {newRunFrom && <button type="button" className="btn quiet campaign-intro-revisit" disabled={busy}
-        onClick={() => { setNewRunFrom(undefined); hub.current?.focus(); }}>Back to current campaign</button>}
-      {profile && choosingStarter && (!introSeen ? <CampaignInvitation proceed={proceedToStarters} /> : <section aria-labelledby="campaign-starter-title">
-        <h2 id="campaign-starter-title" className="campaign-starter-heading" tabIndex={-1} ref={node => {
-          if (node && focusStarter.current) { focusStarter.current = false; node.focus(); }
-        }}>Choose your crew</h2>
-        <button type="button" className="btn quiet campaign-intro-revisit" onClick={() => setIntroSeen(false)}>Read the introduction</button>
+      {profile && choosingStarter && (showInvitation
+        ? <CampaignInvitation scope={scope} proceed={proceedToStarters} busy={busy}
+          onBack={newRunFrom ? backToCampaign : undefined} onReset={run ? openReset : undefined} />
+        : <section className="campaign-crew-pick" aria-labelledby="campaign-starter-title" data-arriving={crewArrival || undefined}>
+        <header>
+          <h1 id="campaign-starter-title" className="campaign-starter-heading" tabIndex={-1} ref={node => {
+            if (node && focusStarter.current) { focusStarter.current = false; node.focus({ preventScroll: true }); }
+          }}>Choose your crew</h1>
+          <div className="play-actions">
+            <button type="button" className="btn quiet" disabled={busy} onClick={replayIntroduction}>Read the introduction</button>
+            {newRunFrom && <button type="button" className="btn quiet" disabled={busy} onClick={backToCampaign}>Back to current campaign</button>}
+            {run && <PlayResetMenu mode="Campaign" disabled={busy} onReset={openReset} />}
+          </div>
+        </header>
         <div className="campaign-starters">{STARTERS.map(starter => <article key={starter.key}>
         <div className="campaign-crew-art">{starter.legends.map(slug => <CardImg key={slug} slug={slug} alt="" priority />)}</div>
         <p className="play-eyebrow">{run?.starter === starter.key ? 'Current starter' : 'Official starter'} / {starter.colors.join(' + ')}</p><h2>{starter.name}</h2>
@@ -321,7 +346,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
         {!!profile.history?.length && <details className="campaign-history panel"><summary>Previous runs · {profile.history.length}</summary><div>{[...profile.history].reverse().map(item => <article key={item.id}><span>{item.completed ? 'Cleared all nine tables' : `Stopped after ${item.cleared} wins`} · {STARTERS.find(starter => starter.key === item.starter)?.name}</span>{item.completed && <button className="btn quiet" onClick={() => openInBuilder(item.deck)}>Open finished deck as draft</button>}</article>)}</div></details>}
         {!['completed', 'claimingFinish'].includes(run.phase) && <div className="campaign-restart"><button className="btn danger-ghost" disabled={busy} onClick={openNewCampaign}>Start a new campaign</button></div>}
       </>}
-      <button className="btn quiet campaign-free-link" onClick={exit}>Free Play · Any deck, any opponent</button>
+      {!choosingStarter && <button className="btn quiet campaign-free-link" onClick={exit}>Free Play · Any deck, any opponent</button>}
     </div>}
     {reviewed && run && ['preparing', 'upgrading'].includes(run.phase) && <CampaignUpgradeDialog key={reviewed.slug} run={run} slug={reviewed.slug} printingId={reviewed.printingId} busy={busy} error={error} close={() => setReviewed(undefined)} commit={deck => edit(deck, () => setReviewed(undefined))} />}
     <dialog ref={inspection} className="campaign-inspection" onClose={() => setInspected(undefined)} aria-label={inspectedCard?.display ?? 'Card details'}>
