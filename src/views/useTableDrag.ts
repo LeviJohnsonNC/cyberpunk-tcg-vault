@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import type { CardView } from '../lib/play/protocol';
+import { pointerRelease, type PointerRelease, type PointerSample } from '../lib/play/diceThrow';
 import type { Destination } from '../lib/play/matchInteraction';
 
 export interface TableDrag { card: CardView; x: number; y: number; destination?: Destination; width: number; originX: number; originY: number }
@@ -19,7 +20,7 @@ export function useTableDrag({ stateKey, enabled, eligible, accept, drop, begin,
   stateKey: string; enabled: boolean;
   eligible: (card: CardView) => boolean;
   accept: (card: CardView, destination: Destination) => boolean;
-  drop: (card: CardView, destination: Destination) => void;
+  drop: (card: CardView, destination: Destination, release: PointerRelease) => void;
   begin: () => void; rejected: () => void;
 }) {
   const [drag, setDrag] = useState<TableDrag>();
@@ -42,6 +43,7 @@ export function useTableDrag({ stateKey, enabled, eligible, accept, drop, begin,
     const width = rect.width;
     let moved = false;
     let point = origin;
+    const samples: PointerSample[] = [{ ...origin, time: event.timeStamp }];
     let target: Destination | undefined;
     let frame = 0;
     function valid() { return live.current.enabled && live.current.stateKey === key; }
@@ -78,6 +80,10 @@ export function useTableDrag({ stateKey, enabled, eligible, accept, drop, begin,
     function move(e: PointerEvent) {
       if (e.pointerId !== event.pointerId) return;
       point = { x: e.clientX, y: e.clientY };
+      for (const sample of e.getCoalescedEvents?.() ?? [])
+        samples.push({ x: sample.clientX, y: sample.clientY, time: sample.timeStamp });
+      samples.push({ ...point, time: e.timeStamp });
+      if (samples.length > 64) samples.splice(0, samples.length - 64);
       if (!moved && Math.hypot(point.x - origin.x, point.y - origin.y) >= 6) {
         moved = true;
         source.setPointerCapture(event.pointerId);
@@ -92,7 +98,7 @@ export function useTableDrag({ stateKey, enabled, eligible, accept, drop, begin,
       target = destinationsAt(e.clientX, e.clientY).find((destination) => live.current.accept(card, destination));
       finish();
       if (moved && allowed) {
-        if (target) live.current.drop(card, target);
+        if (target) live.current.drop(card, target, pointerRelease(samples, { x: e.clientX, y: e.clientY, time: e.timeStamp }));
         else live.current.rejected();
       }
     }
