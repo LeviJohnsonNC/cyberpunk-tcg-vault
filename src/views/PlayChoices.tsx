@@ -42,7 +42,8 @@ export function PlayChoices({ view, action, picks, fields, active, cards, busy, 
       <div className="play-tray-head">
         <div className="play-tray-intent">
           {sourceCard && <button type="button" className="play-tray-source" aria-label={`Inspect ${sourceCard.cardName ?? 'selected card'}`} onClick={(event) => inspect(sourceCard, event.currentTarget)}><CardFace card={sourceCard} /></button>}
-          <div><h3>{action.label}</h3>{sourceCard && <p>{sourceCard.cardName ?? 'Selected Legend'}</p>}</div>
+          <div><h3>{action.label}</h3>{sourceCard ? <p>{sourceCard.cardName ?? 'Selected Legend'}</p>
+            : action.id === 'gainGig' && <p>Drag onto your field to roll.</p>}</div>
         </div>
         <div className="play-tray-actions">
           <button className="btn play-confirm" data-confirm-move={action.id} disabled={busy || !ready}>{commitLabel(action, picks)}</button>
@@ -66,7 +67,7 @@ export function PlayChoices({ view, action, picks, fields, active, cards, busy, 
           data-step={field.id} disabled={busy} onClick={() => step(field.id)}>
           <span>{index + 1}</span> {field.label} <b>{picks[field.id]?.length ?? 0}/{field.min === field.max ? field.min : `${field.min}–${field.max}`}</b>
         </button>)}</div>
-      {onMat ? <div className="play-on-mat-prompt"><span>{active?.id === 'payment' ? 'Select Eddies or Legends on the mat.' : 'Select a highlighted card or die on the mat.'}</span><details key={active?.id}><summary>Options</summary>{options}</details></div> : options}
+      {onMat ? <div className="play-on-mat-prompt"><span>{action.id === 'gainGig' ? 'Drag a die onto your field to roll, or select one and confirm.' : active?.id === 'payment' ? 'Select Eddies or Legends on the mat.' : 'Select a highlighted card or die on the mat.'}</span><details key={active?.id}><summary>Options</summary>{options}</details></div> : options}
       {placement && <div className="play-placement-review" aria-label="Placement review">
         {fields.map((field) => <div key={field.id}><strong>{field.label}</strong><span>{(picks[field.id] ?? []).map((id) => field.options.find((option) => option.id === id)?.label).join(' → ') || 'None selected'}</span></div>)}
         {unassigned.length > 0 && <div><strong>Unassigned</strong><span>{unassigned.map((card) => card.cardName ?? 'Revealed card').join(' · ')}. {action.detail?.split('Unassigned cards · ')[1] ?? 'Follow the remaining destination shown above.'}</span></div>}
