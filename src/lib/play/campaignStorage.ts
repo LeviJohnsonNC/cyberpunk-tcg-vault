@@ -56,9 +56,12 @@ export async function updateCampaign<T>(scope: string, change: (run: CampaignRun
   });
 }
 
-export function startCampaign(scope: string, starter: StarterKey, replace = false) {
+export function startCampaign(scope: string, starter: StarterKey, replace?: Pick<CampaignRun, 'id' | 'revision'>) {
   return updateCampaign(scope, (old, profile) => {
     if (old?.phase === 'claimingFinish') throw new Error('Choose your earned room before starting another campaign.');
+    if (replace && (old?.id !== replace.id || old.revision !== replace.revision)) {
+      throw new Error('The campaign changed in another tab. Reload the campaign before starting again.');
+    }
     if (old && old.phase !== 'completed' && !replace) throw new Error('Finish or abandon your current campaign first.');
     const run = newCampaign(starter, crypto.randomUUID(), crypto.randomUUID());
     const nextProfile = old ? { ...profile, history: [...(profile.history ?? []), {
