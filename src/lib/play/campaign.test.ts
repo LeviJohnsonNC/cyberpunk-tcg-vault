@@ -165,9 +165,11 @@ describe('starter campaign', () => {
     expect(second.profile.equipped).toBe('booth');
     expect(second.profile.history).toEqual([{ id: first.run.id, starter: 'the-heist', cleared: 9, completed: true, endedAt: 12345, deck: oldDeck }]);
     await expect(startCampaign(scope, 'the-heist')).rejects.toThrow('Finish or abandon');
-    const third = await startCampaign(scope, 'the-heist', true);
+    const third = await startCampaign(scope, 'the-heist', second.run);
     expect(third.profile.history?.at(-1)?.completed).toBe(false);
     expect(third.profile.history?.at(-1)?.deck).toEqual(second.run.deck);
+    await expect(startCampaign(scope, 'embracing-power', second.run)).rejects.toThrow('changed in another tab');
+    expect((await readCampaign(scope)).run?.id).toBe(third.run.id);
   });
 
   it.each(STARTERS)('persists all nine tables and workshop transitions for $name without touching Free Play', async starter => {
@@ -256,7 +258,7 @@ describe('starter campaign', () => {
     expect(finish.run?.phase).toBe('claimingFinish');
     expect(sawRecruit).toBe(true);
     expect(finish.profile.completions[starter.key]).toBe(1);
-    await expect(startCampaign(scope, starter.key, true)).rejects.toThrow('Choose your earned room');
+    await expect(startCampaign(scope, starter.key, finish.run!)).rejects.toThrow('Choose your earned room');
     const room = await claimEnvironment(scope, finish.run!.revision, 'rooftop');
     expect(room.run.phase).toBe('completed');
     expect((await readCampaign(scope)).profile.equipped).toBe('rooftop');
