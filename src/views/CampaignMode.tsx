@@ -20,6 +20,7 @@ import { needsActBriefing } from '../lib/play/campaignPresentation';
 import { CampaignArrival, CampaignPack, CampaignRecap, CampaignRooms } from './CampaignMoments';
 import { CampaignNewCards, CampaignDeckNumbers, CampaignUpgradeDialog } from './CampaignDeckReview';
 import { CampaignInvitation, CampaignRivalBrief, CampaignRivalFarewell, CampaignRivalSeat, CampaignStoryJournal } from './CampaignStory';
+import { CampaignCrewPick } from './CampaignCrewPick';
 import { useRivalDialogue } from './useRivalDialogue';
 import './campaign.css';
 import './campaign-moments.css';
@@ -40,6 +41,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   });
   const [opening, setOpening] = useState<{ matchId: string; retry: boolean }>();
   const focusStarter = useRef(false);
+  const focusBriefing = useRef(false);
   const [crewArrival, setCrewArrival] = useState(false);
   const [run, setRun] = useState<CampaignRun>();
   const [profile, setProfile] = useState<CampaignProfile>();
@@ -54,6 +56,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   const [resetTarget, setResetTarget] = useState<SavedRun>();
   const [resetError, setResetError] = useState<string>();
   const [replace, setReplace] = useState<StarterKey>();
+  const [startingCrew, setStartingCrew] = useState<StarterKey>();
   const [undo, setUndo] = useState<Deck>();
   const [editFeedback, setEditFeedback] = useState('');
   const [inspected, setInspected] = useState<CardSelection>();
@@ -190,7 +193,12 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
 
   function create(starter: StarterKey, abandon = false) {
     if (run && run.phase !== 'completed' && !abandon) { setReplace(starter); return; }
-    void apply(() => startCampaign(scope, starter, newRunFrom), value => {
+    void apply(async () => {
+      setStartingCrew(starter);
+      try { return await startCampaign(scope, starter, newRunFrom); }
+      finally { setStartingCrew(undefined); }
+    }, value => {
+      focusBriefing.current = true;
       setRun(value.run); setProfile(value.profile); setNewRunFrom(undefined); setShowTable(false); setSnapshot(undefined); setOpening(undefined); setUndo(undefined); setEditFeedback(''); setReviewed(undefined);
     });
   }
@@ -291,23 +299,11 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
       {profile && choosingStarter && (showInvitation
         ? <CampaignInvitation scope={scope} proceed={proceedToStarters} busy={busy}
           onBack={newRunFrom ? backToCampaign : undefined} onReset={run ? openReset : undefined} />
-        : <section className="campaign-crew-pick" aria-labelledby="campaign-starter-title" data-arriving={crewArrival || undefined}>
-        <header>
-          <h1 id="campaign-starter-title" className="campaign-starter-heading" tabIndex={-1} ref={node => {
+        : <CampaignCrewPick arriving={crewArrival} busy={busy} current={run?.starter} starting={startingCrew}
+          readIntroduction={replayIntroduction} back={newRunFrom ? backToCampaign : undefined} reset={run ? openReset : undefined}
+          inspect={inspectCard} start={create} titleRef={node => {
             if (node && focusStarter.current) { focusStarter.current = false; node.focus({ preventScroll: true }); }
-          }}>Choose your crew</h1>
-          <div className="play-actions">
-            <button type="button" className="btn quiet" disabled={busy} onClick={replayIntroduction}>Read the introduction</button>
-            {newRunFrom && <button type="button" className="btn quiet" disabled={busy} onClick={backToCampaign}>Back to current campaign</button>}
-            {run && <PlayResetMenu mode="Campaign" disabled={busy} onReset={openReset} />}
-          </div>
-        </header>
-        <div className="campaign-starters">{STARTERS.map(starter => <article key={starter.key}>
-        <div className="campaign-crew-art">{starter.legends.map(slug => <CardImg key={slug} slug={slug} alt="" priority />)}</div>
-        <p className="play-eyebrow">{run?.starter === starter.key ? 'Current starter' : 'Official starter'} / {starter.colors.join(' + ')}</p><h2>{starter.name}</h2>
-        <p>{starter.key === 'the-heist' ? 'Blue and Yellow. Gear, tempo and a crew that knows how to improvise.' : 'Green and Red. Arasaka power and the patience to hit back harder.'}</p>
-        <button className="btn" disabled={busy} onClick={() => create(starter.key)}>Start with {starter.name}</button>
-      </article>)}</div></section>)}
+          }} />)}
       {run && profile && !choosingStarter && <>
         <div className="campaign-progress"><span>ACT {Math.floor(run.encounter / 3) + 1} / 3</span><strong>{campaignStatus(run)}</strong><span>{Math.min(run.encounter + 1, 9)} / 9</span></div>
         <ol className="campaign-route" aria-label="Nine campaign contracts">{ENCOUNTERS.map((item, index) => <li key={item.id} data-state={index < run.encounter || ['claimingFinish', 'completed'].includes(run.phase) ? 'cleared' : index === run.encounter ? 'current' : 'locked'} title={`${index + 1}. ${item.title}`} aria-label={`Contract ${index + 1}, ${item.title}: ${index < run.encounter || ['claimingFinish', 'completed'].includes(run.phase) ? 'cleared' : index === run.encounter ? run.phase === 'rewardPending' ? 'pack ready' : 'current' : 'upcoming'}`}><span>{String(index + 1).padStart(2, '0')}</span></li>)}</ol>
@@ -320,7 +316,13 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
           onSelect={id => void apply(() => claimEnvironment(scope, run.revision, id), value => { setRun(value.run); setProfile(value.profile); sound.cue('reward-lock'); hub.current?.focus({ preventScroll: true }); })} />}
         {run.phase === 'completed' && <section className="panel hot campaign-finale"><p className="play-eyebrow">The next chapter is yours</p><h2>Keep the deck. Keep the room.</h2><p>Open your finished list in Deck Builder to save it and take it into Free Play. Campaign cards stay separate from your physical Vault.</p><button className="btn" onClick={takeDeckToBuilder}>Open deck as draft</button><button className="btn quiet" onClick={exit}>Go to Free Play</button><button type="button" className="btn quiet" disabled={busy} onClick={openNewCampaign}>Start another campaign</button></section>}
         {!actPending && ['preparing', 'upgrading', 'inMatch'].includes(run.phase) && <div className="campaign-workspace">
-          <section className="campaign-brief panel hot"><p className="play-eyebrow">Contract {run.encounter + 1} / {ENCOUNTERS.length} · {encounterSkill(run)}</p><h2>{encounter?.title}</h2><p>{encounter?.brief}</p>
+          <section className="campaign-brief panel hot"><p className="play-eyebrow">Contract {run.encounter + 1} / {ENCOUNTERS.length} · {encounterSkill(run)}</p><h2 tabIndex={-1} ref={node => {
+            if (node && focusBriefing.current) {
+              focusBriefing.current = false;
+              window.scrollTo({ top: 0, behavior: 'instant' });
+              node.focus({ preventScroll: true });
+            }
+          }}>{encounter?.title}</h2><p>{encounter?.brief}</p>
             {encounter && <CampaignRivalBrief encounter={encounter.id} starter={run.starter} />}
             <p className="play-eyebrow">Rival crew · {run.opponents[run.encounter]?.name}</p><div className="campaign-rival-crew">{run.opponents[run.encounter]?.legends.map(slug => <button key={slug} title={`Inspect ${BY_SLUG.get(slug)?.display}`} onClick={() => inspectCard(slug)}><CardImg slug={slug} alt={BY_SLUG.get(slug)?.display ?? slug} /></button>)}</div>
             {run.phase !== 'inMatch' && <button className="btn" disabled={busy || issues.length > 0} onClick={launch}>{run.attempts ? 'Retry contract' : 'Take the contract'}</button>}
@@ -351,10 +353,10 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
     {reviewed && run && ['preparing', 'upgrading'].includes(run.phase) && <CampaignUpgradeDialog key={reviewed.slug} run={run} slug={reviewed.slug} printingId={reviewed.printingId} busy={busy} error={error} close={() => setReviewed(undefined)} commit={deck => edit(deck, () => setReviewed(undefined))} />}
     <dialog ref={inspection} className="campaign-inspection" onClose={() => setInspected(undefined)} aria-label={inspectedCard?.display ?? 'Card details'}>
       <button className="btn quiet" onClick={() => setInspected(undefined)}>Close card</button>
-      {inspected && inspectedCard && <div><CampaignRewardArt pull={{ slug: inspected.slug, printing: inspectedPrinting }} alt={inspectedCard.display} /><section>
+      {inspected && inspectedCard && <div><CampaignRewardArt pull={{ slug: inspected.slug, printing: inspectedPrinting }} alt={inspectedCard.display} exact={choosingStarter} /><section>
         {inspectedPrinting && <p className="campaign-variant-label">{packRarityLabel(inspectedPrinting.rarity)} · No. {inspectedPrinting.num}</p>}
         <h2>{inspectedCard.display}</h2><p>{inspectedCard.text}</p>
-        {!!run?.inventory[inspected.slug] && <p>Earned {run.inventory[inspected.slug]} · In deck {run.deck.cards[inspected.slug] ?? (run.deck.legends.includes(inspected.slug) ? 1 : 0)}</p>}
+        {!choosingStarter && !!run?.inventory[inspected.slug] && <p>Earned {run.inventory[inspected.slug]} · In deck {run.deck.cards[inspected.slug] ?? (run.deck.legends.includes(inspected.slug) ? 1 : 0)}</p>}
       </section></div>}
     </dialog>
     <ConfirmDialog open={!!resetTarget} title="Reset campaign?" confirmLabel="Reset campaign" busy={busy}
