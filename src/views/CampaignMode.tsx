@@ -6,11 +6,12 @@ import { STARTERS, type StarterKey } from '../lib/starters';
 import type { Deck } from '../lib/store';
 import { totalCopies } from '../lib/deckDraft';
 import { ENCOUNTERS, ENVIRONMENTS, campaignDeckIssues, encounterSkill, type CampaignProfile, type CampaignRun } from '../lib/play/campaign';
-import { readCampaign, startCampaign, chooseReward, saveCampaignDeck, claimEnvironment, equipEnvironment, campaignStatus, revealCampaignPack, acknowledgeCampaignAct } from '../lib/play/campaignStorage';
+import { readCampaign, startCampaign, resetCampaign, chooseReward, saveCampaignDeck, claimEnvironment, equipEnvironment, campaignStatus, revealCampaignPack, acknowledgeCampaignAct } from '../lib/play/campaignStorage';
 import type { CampaignWorkerResponse } from '../lib/play/campaign.worker';
 import type { MatchSnapshot, Move } from '../lib/play/protocol';
 import { useMatchPresentation } from './useMatchPresentation';
 import { useTableSound } from './useTableSound';
+import { PlayResetMenu } from './PlayResetMenu';
 import { PlayTable } from './PlayTable';
 import { ReactiveRoom } from './ReactiveRoom';
 import { campaignPulls, packRarityLabel } from '../lib/play/campaignPack';
@@ -24,13 +25,16 @@ import './campaign.css';
 import './campaign-moments.css';
 
 type CardSelection = { slug: string; printingId?: string };
+type SavedRun = Pick<CampaignRun, 'id' | 'revision'>;
+
+function hasSeenIntro(key: string) {
+  try { return localStorage.getItem(key) === 'seen'; } catch { return false; }
+}
 
 export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; exit: () => void; openInBuilder: (deck: Deck) => void }) {
   const introKey = `cptv.campaign.lastCallIntro:${scope}`;
   const dialogueKey = `cptv.campaign.rivalDialogue:${scope}`;
-  const [introSeen, setIntroSeen] = useState(() => {
-    try { return localStorage.getItem(introKey) === 'seen'; } catch { return false; }
-  });
+  const [introSeen, setIntroSeen] = useState(() => hasSeenIntro(introKey));
   const [dialogue, setDialogue] = useState(() => {
     try { return localStorage.getItem(dialogueKey) !== 'off'; } catch { return true; }
   });
@@ -45,7 +49,9 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   const recoveryVersion = useRef(0);
   const workerFailed = useRef(false);
   const [error, setError] = useState<string>();
-  const [newRunFrom, setNewRunFrom] = useState<Pick<CampaignRun, 'id' | 'revision'>>();
+  const [newRunFrom, setNewRunFrom] = useState<SavedRun>();
+  const [resetTarget, setResetTarget] = useState<SavedRun>();
+  const [resetError, setResetError] = useState<string>();
   const [replace, setReplace] = useState<StarterKey>();
   const [undo, setUndo] = useState<Deck>();
   const [editFeedback, setEditFeedback] = useState('');
@@ -111,16 +117,16 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
       if (value.run?.phase === 'inMatch') {
         const resumed = await send({ type: 'resume' });
         if (active && !actionLock.current && version === recoveryVersion.current) { setSnapshot(resumed.snapshot); setShowTable(true); }
-      } else if (value.run?.match) {
-        // A second tab may have finished the match while this one was out of focus.
-        setShowTable(false);
+      } else {
+        setSnapshot(undefined); setShowTable(false);
+        if (!value.run) { setNewRunFrom(undefined); setIntroSeen(hasSeenIntro(introKey)); }
       }
     }
     const focus = () => { if (!actionLock.current) void recover().catch(() => {}); };
     window.addEventListener('focus', focus);
     return () => { active = false; window.removeEventListener('focus', focus); current.removeEventListener('message', receive); current.removeEventListener('error', failed); current.terminate(); worker.current = null;
       for (const request of pending.values()) request.reject(new Error('Campaign closed.')); pending.clear(); };
-  }, [scope, send]);
+  }, [scope, send, introKey]);
 
   async function apply<T>(task: () => Promise<T>, update: (value: T) => void) {
     if (busy || actionLock.current) return;
@@ -136,6 +142,33 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
     setNewRunFrom({ id: run.id, revision: run.revision });
     setIntroSeen(false);
     window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+
+  function openReset() {
+    if (!run || busy) return;
+    setResetError(undefined);
+    setResetTarget({ id: run.id, revision: run.revision });
+  }
+
+  async function reset() {
+    if (!resetTarget || busy || actionLock.current) return;
+    actionLock.current = true;
+    recoveryVersion.current++;
+    setBusy(true); setResetError(undefined);
+    try {
+      const cleared = await resetCampaign(scope, resetTarget);
+      try { localStorage.removeItem(introKey); } catch { /* Optional preference. */ }
+      presentation.playback?.skip();
+      setRun(undefined); setProfile(cleared); setSnapshot(undefined); setShowTable(false); setOpening(undefined);
+      setNewRunFrom(undefined); setResetTarget(undefined); setReplace(undefined); setUndo(undefined);
+      setInspected(undefined); setReviewed(undefined); setEditFeedback(''); setError(undefined); setIntroSeen(false);
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      requestAnimationFrame(() => hub.current?.focus({ preventScroll: true }));
+    } catch (cause) {
+      setResetError(cause instanceof Error ? cause.message : 'The campaign couldn’t be reset. Try again.');
+    } finally {
+      actionLock.current = false; setBusy(false);
+    }
   }
 
   function create(starter: StarterKey, abandon = false) {
@@ -224,13 +257,17 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
       busy={busy || presentation.playing} error={error} send={move} rematch={() => { presentation.playback?.skip(); setShowTable(false); window.scrollTo({ top: 0, behavior: 'instant' }); }}
       edit={() => setShowTable(false)} resultContinueLabel={snapshot.view.winnerId === 'player' ? run?.phase === 'claimingFinish' ? 'Open Champion’s Cache' : 'Open your pack' : 'Review deck and retry'}
       controls={<><button className="btn quiet" onClick={() => { presentation.playback?.skip(); setShowTable(false); window.scrollTo({ top: 0, behavior: 'instant' }); }}>Campaign board</button>
+        {run && <PlayResetMenu mode="Campaign" disabled={busy} onReset={openReset} />}
         {error && <button className="btn" onClick={reloadSavedState}>{workerFailed.current ? 'Reload page' : 'Reload saved match'}</button>}
         <button className="btn quiet" onClick={exit}>Free Play</button>
         <button className="btn quiet" onClick={sound.toggle}>Sound {sound.enabled ? 'On' : 'Off'}</button>
         <label className="play-sound-level">FX <input type="range" aria-label="Game effects volume" min="0" max="1" step=".05" value={sound.volume} onChange={e => sound.changeVolume(Number(e.target.value))} /></label></>} />
     : <div className="campaign-hub" ref={hub} tabIndex={-1}>
       <header className="campaign-head"><Masthead eyebrow="The Afterlife / A deck to make your own" title="Campaign" sub="Two starters. Nine tables. One seat at the top." />
-        <div className="campaign-hub-tools">{run && <CampaignStoryJournal run={run} />}<button className="btn quiet" onClick={sound.toggle}>Sound {sound.enabled ? 'On' : 'Off'}</button><p className="campaign-save-note">Saved in this browser for this Vault.<br />Campaign cards stay in this run.</p></div></header>
+        <div className="campaign-hub-tools">
+          {run?.phase === 'inMatch' && !choosingStarter && <button className="btn" disabled={busy} onClick={() => void apply(() => send({ type: 'resume' }), value => { setSnapshot(value.snapshot); setShowTable(true); })}>Return to match</button>}
+          {run && <PlayResetMenu mode="Campaign" disabled={busy} onReset={openReset} />}
+          {run && <CampaignStoryJournal run={run} />}<button className="btn quiet" onClick={sound.toggle}>Sound {sound.enabled ? 'On' : 'Off'}</button><p className="campaign-save-note">Saved in this browser for this Vault.<br />Campaign cards stay in this run.</p></div></header>
       {error && <div className="play-error" role="alert">{error} <button className="btn quiet" onClick={reloadSavedState}>{workerFailed.current ? 'Reload page' : 'Reload campaign'}</button></div>}
       {busy && !profile && <p role="status">Opening the table…</p>}
       {newRunFrom && <button type="button" className="btn quiet campaign-intro-revisit" disabled={busy}
@@ -261,8 +298,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
           <section className="campaign-brief panel hot"><p className="play-eyebrow">Contract {run.encounter + 1} / {ENCOUNTERS.length} · {encounterSkill(run)}</p><h2>{encounter?.title}</h2><p>{encounter?.brief}</p>
             {encounter && <CampaignRivalBrief encounter={encounter.id} starter={run.starter} />}
             <p className="play-eyebrow">Rival crew · {run.opponents[run.encounter]?.name}</p><div className="campaign-rival-crew">{run.opponents[run.encounter]?.legends.map(slug => <button key={slug} title={`Inspect ${BY_SLUG.get(slug)?.display}`} onClick={() => inspectCard(slug)}><CardImg slug={slug} alt={BY_SLUG.get(slug)?.display ?? slug} /></button>)}</div>
-            {run.phase === 'inMatch' ? <button className="btn" disabled={busy} onClick={() => void apply(() => send({ type: 'resume' }), value => { setSnapshot(value.snapshot); setShowTable(true); })}>Return to match</button>
-              : <button className="btn" disabled={busy || issues.length > 0} onClick={launch}>{run.attempts ? 'Retry contract' : 'Take the contract'}</button>}
+            {run.phase !== 'inMatch' && <button className="btn" disabled={busy || issues.length > 0} onClick={launch}>{run.attempts ? 'Retry contract' : 'Take the contract'}</button>}
             {issues.length > 0 && <p className="play-error">{issues.join(' ')}</p>}
             <small>Wins unlock the next table. Losses keep your cards{run.attempts > 1 ? ' · Review your reserve and try another legal swap.' : '.'}</small>
           </section>
@@ -296,6 +332,12 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
         {!!run?.inventory[inspected.slug] && <p>Earned {run.inventory[inspected.slug]} · In deck {run.deck.cards[inspected.slug] ?? (run.deck.legends.includes(inspected.slug) ? 1 : 0)}</p>}
       </section></div>}
     </dialog>
+    <ConfirmDialog open={!!resetTarget} title="Reset campaign?" confirmLabel="Reset campaign" busy={busy}
+      onCancel={() => setResetTarget(undefined)} onConfirm={() => void reset()}>
+      <p>This permanently clears your current run, saved match, earned cards, past runs, and campaign unlocks for this Vault in this browser.</p>
+      <p>You’ll return to the introduction. Your collection, saved decks, Free Play matches, and Circuit progress are kept.</p>
+      {resetError && <p className="play-error" role="alert">{resetError}</p>}
+    </ConfirmDialog>
     <ConfirmDialog open={!!replace} title={replace ? `Start with ${STARTERS.find(starter => starter.key === replace)?.name}?` : 'Start a new campaign?'} confirmLabel="Abandon and start new run" onCancel={() => setReplace(undefined)} onConfirm={() => { const starter = replace; setReplace(undefined); if (starter) create(starter, true); }}><p>Your current run and its cards will be replaced. Earned environments stay yours.</p></ConfirmDialog>
   </section>;
 }

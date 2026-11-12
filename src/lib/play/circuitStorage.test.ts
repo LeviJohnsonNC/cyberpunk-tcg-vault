@@ -1,8 +1,9 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
 import { equipTableFinish, readCircuitProgress, readMatchSummary, resetFreePlay, updateSavedMatch } from './matchStorage';
-import { readCampaign, startCampaign, updateCampaign } from './campaignStorage';
+import { readCampaign, resetCampaign, startCampaign, updateCampaign } from './campaignStorage';
 import { emptyCircuit } from './circuit';
+import { emptyProfile, generateReward } from './campaign';
 import { createMatchController, type StoredMatch } from './workerController';
 import { prepareMatchDeck } from './matchDeck';
 import { curatedOpponents } from './opponents';
@@ -104,5 +105,35 @@ describe('atomic Circuit storage', () => {
     expect(await readCampaign(scope)).toEqual(campaign);
     expect(await readMatchSummary('other-reset-vault')).toEqual(saved.summary);
     expect((await readCircuitProgress('other-reset-vault')).rep).toBe(225);
+  });
+  it.each(['gold', 'ghost'] as const)('resets Campaign while preserving Free Play and any independently earned %s finish', async finish => {
+    const scope = `reset-campaign-${finish}`;
+    const { run } = await startCampaign(scope, 'the-heist');
+    const other = await startCampaign(`${scope}-other`, 'embracing-power');
+    const { saved, snapshot } = fixture();
+    const active = { ...run, revision: 1, phase: 'inMatch' as const, match: saved, rewards: { 0: generateReward(run) } };
+    await updateCampaign(scope, (_, profile) => ({ run: active, profile: {
+      ...profile, completions: { ...profile.completions, 'the-heist': 1 }, environments: ['booth'], equipped: 'booth',
+      history: [{ id: 'prior', starter: 'the-heist', cleared: 9, completed: true, endedAt: 1, deck: run.deck }],
+    }, value: undefined }));
+    await updateSavedMatch(scope, () => ({ saved, response: response(snapshot) }));
+    const progress = await equipTableFinish(scope, finish);
+
+    await expect(resetCampaign(scope, run)).rejects.toThrow('changed in another tab');
+    expect((await readCampaign(scope)).run).toEqual(active);
+    await resetCampaign(scope, active);
+
+    expect(await readCampaign(scope)).toEqual({ run: undefined, profile: emptyProfile() });
+    expect((await readCampaign(`${scope}-other`)).run).toEqual(other.run);
+    expect(await readMatchSummary(scope)).toEqual(saved.summary);
+    await updateSavedMatch(scope, previous => {
+      expect(previous?.summary).toEqual(saved.summary);
+      return { response: { id: 3, error: 'Read only' } };
+    });
+    expect(await readCircuitProgress(scope)).toEqual({ ...progress, campaignFinishes: undefined, finish: finish === 'gold' ? 'afterlife' : 'ghost' });
+    const fresh = await startCampaign(scope, 'embracing-power');
+    expect(fresh.run).toMatchObject({ starter: 'embracing-power', encounter: 0, rewards: {} });
+    expect(fresh.run.id).not.toBe(run.id);
+    expect(fresh.profile).toEqual(emptyProfile());
   });
 });

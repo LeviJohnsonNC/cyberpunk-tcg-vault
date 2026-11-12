@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { CARD_BACK, Pip, Rules } from '../components/bits';
+import eddiesBack from '../assets/play/eddies-back.webp';
+import legendBack from '../assets/play/legend-back.webp';
 import { imageUrl } from '../lib/data';
 import { vaultCard } from '../lib/play/cardDisplay';
 import { powerExplanation } from '../lib/play/tacticalInfo';
@@ -9,8 +11,10 @@ import type { CardView } from '../lib/play/protocol';
 export function CardFace({ card }: { card: CardView }) {
   const slug = vaultCard(card)?.slug;
   const [failed, setFailed] = useState<string>();
-  return slug && failed !== slug ? <img className="card-art" src={imageUrl(slug)} alt="" decoding="async" onError={() => setFailed(slug)} />
-    : <img className="card-art" src={CARD_BACK} data-card-back="" alt="" />;
+  const back = card.zone === 'eddieArea' ? eddiesBack
+    : card.zone === 'legendArea' && card.faceDown && !slug ? legendBack : CARD_BACK;
+  return card.zone !== 'eddieArea' && slug && failed !== slug ? <img className="card-art" src={imageUrl(slug)} alt="" decoding="async" onError={() => setFailed(slug)} />
+    : <img className="card-art" src={back} data-card-back="" alt="" />;
 }
 
 export function CardInspection({ card, cards = [], hostName, shortcuts, onClose }: {
