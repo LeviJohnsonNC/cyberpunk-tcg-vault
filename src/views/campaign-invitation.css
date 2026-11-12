@@ -115,7 +115,8 @@
 .campaign-invitation-cta:focus-visible { outline: 2px solid var(--color-ticket); outline-offset: 5px; box-shadow: none; }
 .campaign-invitation-cta:disabled { cursor: wait; opacity: .64; }
 .campaign-invitation-cta span { font: 500 1em/1 var(--font-ui); }
-.campaign-invitation-options { position: absolute; inset: 16px clamp(16px, 2.5vw, 36px) auto auto; }
+.campaign-invitation-options { position: absolute; inset: auto clamp(16px, 2.5vw, 36px) 16px auto; }
+.campaign-invitation-options .play-more-actions { inset: auto 0 calc(100% + 6px) auto; }
 .campaign-invitation-options summary.btn { min-block-size: 42px; min-inline-size: 42px; background: var(--color-canvas-deep); }
 
 .campaign-crew-pick {
@@ -164,5 +165,5 @@
   .campaign-invitation-eyebrow { margin-bottom: 12px; }
   .campaign-invitation h1 { font-size: clamp(58px, 13vw, 96px); margin-bottom: 20px; }
   .campaign-invitation-story { max-inline-size: 44ch; }
-  .campaign-invitation-options { inset-block-start: 10px; }
+  .campaign-invitation-copy { padding-block-end: 72px; }
 }
