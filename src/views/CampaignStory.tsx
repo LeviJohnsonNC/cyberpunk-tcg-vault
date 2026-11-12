@@ -13,7 +13,7 @@ import './campaign-invitation.css';
 
 type Quote = RivalDialogueState['line'];
 
-function RivalPortrait({ encounter }: { encounter: EncounterId }) {
+export function CampaignRivalPortrait({ encounter }: { encounter: EncounterId }) {
   const index = ENCOUNTERS.findIndex(contract => contract.id === encounter);
   const style = { '--portrait-x': `${index % 3 * 50}%`, '--portrait-y': `${Math.floor(index / 3) * 50}%` } as CSSProperties;
   return <span className="campaign-rival-portrait" style={style} aria-hidden="true" />;
@@ -56,18 +56,6 @@ export function CampaignInvitation({ scope, proceed, onBack, onReset, busy }: {
       ]} />
     </div>
   </section>;
-}
-
-export function CampaignRivalBrief({ encounter, starter }: { encounter: EncounterId; starter: StarterKey }) {
-  const chapter = campaignChapters[encounter];
-  return <div className="campaign-rival-brief">
-    <CampaignRivalDossier encounter={encounter} starter={starter} />
-    <div>
-      <p className="play-eyebrow">{chapter.role}</p>
-      <h3>{chapter.rival}</h3>
-      <p>{chapter.briefing}</p>
-    </div>
-  </div>;
 }
 
 export function CampaignDispatch({ encounter }: { encounter: EncounterId }) {
@@ -120,25 +108,26 @@ type DossierProps = {
   quote?: Quote;
   dialogue?: boolean;
   toggle?: () => void;
+  textButton?: boolean;
 };
 
-function CampaignRivalDossier({ encounter, starter, quote, dialogue, toggle }: DossierProps) {
+export function CampaignRivalDossier({ encounter, starter, quote, dialogue, toggle, textButton }: DossierProps) {
   const { rival, role } = campaignChapters[encounter];
   const { bio, tips } = campaignRivalIntel(encounter, starter);
   const detail = useRef<HTMLDialogElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const titleId = useId();
   return <>
-    <button type="button" className="campaign-rival-trigger" aria-label={`View ${rival}’s profile`} aria-haspopup="dialog"
+    <button type="button" className={textButton ? "btn quiet campaign-board-dossier" : "campaign-rival-trigger"} aria-label={`View ${rival}’s profile`} aria-haspopup="dialog"
       onClick={() => { detail.current?.showModal(); heading.current?.focus({ preventScroll: true }); }}>
-      <RivalPortrait encounter={encounter} />
+      {textButton ? <>View profile <span aria-hidden="true">→</span></> : <CampaignRivalPortrait encounter={encounter} />}
     </button>
     <dialog className="al-dialog campaign-rival-dialog" ref={detail} aria-labelledby={titleId}
       onKeyDown={event => { if (event.key === 'Escape') event.stopPropagation(); }}
       onClick={event => { if (event.target === event.currentTarget) event.currentTarget.close(); }}>
       <div className="al-dialog-body">
         <div className="campaign-dossier-layout">
-          <div className="campaign-dossier-art"><RivalPortrait encounter={encounter} /></div>
+          <div className="campaign-dossier-art"><CampaignRivalPortrait encounter={encounter} /></div>
           <div className="campaign-dossier-copy">
             <p className="play-eyebrow">{role}</p>
             <h2 ref={heading} tabIndex={-1} id={titleId}>{rival}</h2>
@@ -170,7 +159,7 @@ export function CampaignRivalSeat(props: DossierProps) {
 
 export function CampaignRivalFarewell({ encounter, quote }: { encounter: EncounterId; quote: NonNullable<Quote> }) {
   return <figure className="campaign-rival-farewell">
-    <RivalPortrait encounter={encounter} />
+    <CampaignRivalPortrait encounter={encounter} />
     <figcaption><strong>{campaignChapters[encounter].rival}</strong><blockquote>“{quote.text}”</blockquote></figcaption>
   </figure>;
 }
