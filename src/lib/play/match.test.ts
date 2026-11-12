@@ -195,6 +195,25 @@ describe('play engine', () => {
     expect(session.start()).toMatchObject({ view: final.view, gigRolls: [] });
   });
 
+  it.each([
+    ['field-operator', true],
+    ['maelstrom-zealots', false],
+  ] as const)('marks a defending Unit defeated by %s only when the fight itself defeats it', (slug, combatKill) => {
+    const { state } = rulesFixture('player');
+    const attackerId = placeCard(state, 'player', slug, 'field');
+    const defenderId = placeCard(state, 'rival', 'corpo-security', 'field', true);
+    state.G.players.rival.zones.hand = [];
+    for (const id of state.G.players.rival.zones.legendArea) state.G.cardIndex[id].meta.spent = true;
+    const session = createEngineSession(setup('chrome-syndicate'), undefined, {
+      matchId: 'test', state, botRng: new SeededRNG('combat-sound').getState(),
+      known: new Map(), peeks: [], log: [], commandNumber: 20,
+    });
+    const before = session.start();
+    const after = session.move(before.view.stateID, { move: 'attackUnit', args: { attackerId, defenderId } });
+    expect(after.view.players.rival.zones.trash).toEqual(expect.arrayContaining([expect.objectContaining({ instanceId: defenderId })]));
+    expect(after.presentation?.feedback?.combatKillId).toBe(combatKill ? defenderId : undefined);
+  });
+
   it('delivers chronological read-only rival frames once without saving presentation in checkpoints', () => {
     const session = createEngineSession(setup('chrome-syndicate'), { shuffle: 'public-rival-presentation', bot: 'public-rival-presentation' });
     let snapshot = session.start();

@@ -25,6 +25,7 @@ export function dropIntents(actions: MatchActionForm[], card: CardView, destinat
       if (card.type === 'gear') return [];
       return destination.key === (card.type === 'program' ? 'program' : 'field:player') ? [intent] : [];
     }
+    if (action.id === 'gainGig') return destination.key === 'field:player' ? [intent] : [];
     if (action.id === 'goSolo') return destination.key === 'field:player' ? [intent] : [];
     if (action.id === 'sellCard') return destination.key === 'eddies:player' ? [intent] : [];
     if (action.id === 'attackRival') return destination.key === 'gigs:rival' ? [intent] : [];

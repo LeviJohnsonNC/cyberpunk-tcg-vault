@@ -4,7 +4,7 @@
 .play-flight-flip { position: absolute; inset: 0; transform-style: preserve-3d; }
 .play-flight-flip > * { backface-visibility: hidden; }
 .play-flight-back { position: absolute; inset: 0; border: 1px solid var(--color-ticket-muted); border-radius: 7px; background: center / cover no-repeat var(--color-canvas-deep); transform: rotateY(180deg); }
-.play-flight .play-card-art { translate: none; rotate: none; scale: none; filter: none; outline-color: transparent; }
+.play-flight .play-card-art { translate: none; rotate: none; scale: none; filter: none; --card-ring: transparent; }
 .play-flight .play-card-art > small, .play-flight .play-card-art::after { display: none; }
 .play-flight[data-kind="defeat"]::after {
   content: '';

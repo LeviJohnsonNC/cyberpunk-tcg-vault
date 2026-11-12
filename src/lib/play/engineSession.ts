@@ -1,7 +1,7 @@
 import { engineSlug } from './engineCards';
 import { chooseMove, createCardCatalog, createMatchState, LocalEngine, projectRevealedCardView, SeededRNG } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import type { EngineEvent, EngineHandle, EngineState } from '../../../vendor/cyberpunk-engine/engine.mjs';
-import { describeAction, hideConcealedTargets, zoneCards, zoneCount } from './matchView';
+import { describeAction, hideConcealedTargets, visibleCards, zoneCards, zoneCount } from './matchView';
 import { describeBeat, describeRolls, presentationView } from './matchPresentation';
 import { emptyTally, matchReport, recordMove } from './matchReport';
 import type { CardView, GigRoll, MatchBeat, MatchFrame, MatchLogEntry, MatchSetup, MatchSnapshot, MatchTally, Move, RivalSkill, Seat } from './protocol';
@@ -173,8 +173,22 @@ export function createEngineSession(
     if (described && beatText) {
       // Only the viewer's contemporary filtered state enters the transient queue.
       // Even a reroll that lands on the same face must retain its roll receipt.
+      const publicCards = visibleCards(after);
+      const playedCardIds = [...new Set(result.gameEvents.flatMap((event) => event.type === 'cardPlayed'
+        && publicCards.some((card) => card.instanceId === event.cardId && card.definitionId) ? [event.cardId] : []))];
+      const resolved = result.gameEvents.find((event) => event.type === 'attackResolved');
+      const priorFight = before.attackState?.step === 'fightResult' ? before.attackState : undefined;
+      const fight = resolved?.attackKind === 'fight' ? resolved : priorFight;
+      const outcome = resolved?.attackKind === 'fight' ? resolved.result : priorFight?.fightResolution?.result;
+      const field = seats.flatMap((side) => zoneCards(before.players[side], 'field'));
+      const combatKillId = (outcome === 'attackerWins' || outcome === 'mutual') && fight?.defenderId
+        && field.some((card) => card.instanceId === fight.attackerId && card.type === 'unit')
+        && field.some((card) => card.instanceId === fight.defenderId && card.type === 'unit')
+        && result.gameEvents.some((event) => event.type === 'cardDefeated' && event.cardId === fight.defenderId && event.defeatedBy === fight.attackerId)
+        ? fight.defenderId : undefined;
       const beat: MatchBeat = structuredClone({ ...frame(presentationView(after), rolls),
-        ...described, text: beatText, id: commandNumber, seat });
+        ...described, text: beatText, id: commandNumber, seat,
+        ...(playedCardIds.length && { playedCardIds }), ...(combatKillId && { combatKillId }) });
       if (seat === 'rival') beats.push(beat);
       else feedback = beat;
     }

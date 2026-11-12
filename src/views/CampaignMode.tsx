@@ -196,7 +196,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   return <section className="play-mode campaign-mode" data-environment={profile?.equipped ?? 'default'} onPointerDownCapture={sound.unlock} onKeyDownCapture={sound.unlock}>
     <ReactiveRoom />
     {showTable && snapshot && !newRunFrom ? <PlayTable key={snapshot.matchId} scope={`${scope}:campaign`} snapshot={presentation.displayed ?? snapshot} names={snapshot.names}
-      playback={presentation.playback} feedback={presentation.feedback} reduced={presentation.reduced} diceImpact={sound.impact} cue={sound.cue}
+      playback={presentation.playback} feedback={presentation.feedback} reduced={presentation.reduced} cue={sound.cue}
       campaign={run && encounter && {
         title: encounter.title,
         rival: <CampaignRivalSeat encounter={encounter.id} starter={run.starter} quote={quote} dialogue={dialogue} toggle={toggleDialogue} />,

@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from 'react';
 import { paintDie, type DicePalette } from '../lib/play/diceMesh';
 import { ROLL_CONTACT, ROLL_SETTLE, rollHold, rollOffset, rollTime } from '../lib/play/diceTiming';
+import type { TableCue } from '../lib/play/tableSound';
 import type { GigRoll } from '../lib/play/protocol';
 import './play-gig-roll.css';
 
@@ -84,9 +85,9 @@ function paletteFor(table: HTMLElement, roll: GigRoll): DicePalette {
   };
 }
 
-function RollingDie({ roll, index, seatIndex, seatCount, impact }: {
+function RollingDie({ roll, index, seatIndex, seatCount, cue }: {
   roll: GigRoll; index: number; seatIndex: number; seatCount: number;
-  impact?: (type: string, soft: boolean, launch?: boolean) => (() => void) | undefined;
+  cue?: (name: TableCue, delayMs?: number, pan?: number) => (() => void) | undefined;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -106,12 +107,10 @@ function RollingDie({ roll, index, seatIndex, seatCount, impact }: {
     surface.width = surface.height = SIZE * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const palette = paletteFor(mat, roll);
-    const sounds: (() => void)[] = [];
+    let stopSound: (() => void) | undefined;
     let route = layout(mat, roll, seatIndex, seatCount);
     let dirty = false;
     let launched = false;
-    let firstImpact = false;
-    let settled = false;
     let frame = 0;
     const start = performance.now();
     const resize = new ResizeObserver(() => { dirty = true; });
@@ -123,7 +122,10 @@ function RollingDie({ roll, index, seatIndex, seatCount, impact }: {
       const elapsed = now - start - rollOffset(index);
       if (dirty) { route = layout(mat, roll, seatIndex, seatCount); dirty = false; }
       if (route && elapsed >= 0) {
-        if (!launched) { launched = true; const stop = elapsed < 100 ? impact?.(roll.dieType, false, true) : undefined; if (stop) sounds.push(stop); }
+        if (!launched) {
+          launched = true;
+          if (elapsed < 100) stopSound = cue?.('dice-roll', 0, roll.seat === 'rival' ? .24 : -.24);
+        }
         const motion = pose(route, roll, elapsed);
         const { point, radius, lift, dock } = motion;
         const phase = elapsed < ROLL_SETTLE ? 'air' : dock < 1 ? 'landed' : 'docked';
@@ -135,16 +137,6 @@ function RollingDie({ roll, index, seatIndex, seatCount, impact }: {
         label.style.transform = `translate3d(${point.x}px, ${point.y + radius * .83 + 5}px, 0) translateX(-50%)`;
         label.style.opacity = elapsed < ROLL_SETTLE ? '0' : String(1 - dock);
         paintDie(ctx, roll.dieType, roll.result, [motion.x, motion.y, motion.z], radius, SIZE, palette, phase !== 'air');
-        if (!firstImpact && elapsed >= ROLL_CONTACT) {
-          firstImpact = true;
-          const stop = elapsed < ROLL_SETTLE ? impact?.(roll.dieType, false) : undefined;
-          if (stop) sounds.push(stop);
-        }
-        if (!settled && elapsed >= ROLL_SETTLE) {
-          settled = true;
-          const stop = elapsed < ROLL_SETTLE + 120 ? impact?.(roll.dieType, true) : undefined;
-          if (stop) sounds.push(stop);
-        }
         if (phase === 'docked') {
           target?.removeAttribute('data-roll-pending');
           target?.setAttribute('data-roll-docked', roll.decisive ? 'decisive' : '');
@@ -158,11 +150,11 @@ function RollingDie({ roll, index, seatIndex, seatCount, impact }: {
       cancelAnimationFrame(frame);
       resize.disconnect();
       window.removeEventListener('resize', remeasure);
-      sounds.forEach((stop) => stop());
+      stopSound?.();
       target?.removeAttribute('data-roll-pending');
       target?.removeAttribute('data-roll-docked');
     };
-  }, [roll, index, seatIndex, seatCount, impact]);
+  }, [roll, index, seatIndex, seatCount, cue]);
 
   return <div ref={root} className="play-gig-roll" data-phase="air" data-seat={roll.seat} data-die={roll.dieType}
     data-origin={roll.origin} data-result={roll.result} data-decisive={roll.decisive || undefined}>
@@ -172,13 +164,13 @@ function RollingDie({ roll, index, seatIndex, seatCount, impact }: {
   </div>;
 }
 
-export function PlayGigRoll({ rolls, impact }: {
-  rolls: GigRoll[]; impact?: (type: string, soft: boolean, launch?: boolean) => (() => void) | undefined;
+export function PlayGigRoll({ rolls, cue }: {
+  rolls: GigRoll[]; cue?: (name: TableCue, delayMs?: number, pan?: number) => (() => void) | undefined;
 }) {
   if (!rolls.length) return null;
   return <div className="play-gig-roll-layer" aria-hidden="true">
     {rolls.map((roll, index) => <RollingDie key={`${roll.dieId}:${index}`} roll={roll} index={index}
       seatIndex={rolls.slice(0, index).filter((other) => other.seat === roll.seat).length}
-      seatCount={rolls.filter((other) => other.seat === roll.seat).length} impact={impact} />)}
+      seatCount={rolls.filter((other) => other.seat === roll.seat).length} cue={cue} />)}
   </div>;
 }

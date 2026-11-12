@@ -1,10 +1,11 @@
-import { useId, useRef, type CSSProperties, type ReactNode } from 'react';
+import { useId, useRef, type CSSProperties, type PointerEvent, type ReactNode } from 'react';
 import { CARD_BACK } from '../components/bits';
 import { zoneCards, zoneCount } from '../lib/play/matchView';
 import type { CardView, GigRoll, MatchChange, MatchSnapshot, Seat, SeatView } from '../lib/play/protocol';
 import { DieFace } from './PlayDice';
 
-export type Targeting = { effectIds?: Set<string>; dropZones?: Set<string>; dropOver?: string; targetIds: Set<string>; chosenIds: Set<string>; onPick: (id: string) => void };
+type DieDrag = { start: (event: PointerEvent<HTMLElement>, die: CardView) => void; suppressClick: () => boolean };
+export type Targeting = { dieDrag?: DieDrag; effectIds?: Set<string>; dropZones?: Set<string>; dropOver?: string; targetIds: Set<string>; chosenIds: Set<string>; onPick: (id: string) => void };
 type CardTile = (card: CardView, label?: string) => ReactNode;
 /** The latest public outcome, shown where it happened. */
 export interface Outcome { id: number; changes: MatchChange[] }
@@ -20,12 +21,15 @@ export function ZoneFloat({ outcome, seat, kinds }: { outcome?: Outcome; seat: S
     <span key={change.kind} className="play-float" data-tone={(change.amount ?? 0) < 0 ? 'down' : 'up'}>{change.kind === 'eddies' ? change.label.replace(' available', '') : change.label}</span>)}</span>;
 }
 
-function MatDie({ card, fixer = false, effectIds, targetIds, chosenIds, onPick }: Targeting & { card: CardView; fixer?: boolean }) {
+function MatDie({ card, fixer = false, effectIds, targetIds, chosenIds, onPick, dieDrag }: Targeting & { card: CardView; fixer?: boolean }) {
   const target = targetIds.has(card.instanceId);
+  const rollAvailable = fixer && target && !!dieDrag;
   const label = fixer ? `Roll ${card.definitionId}` : `${card.definitionId} Gig · ${card.power}`;
   return <button type="button" className={`play-die${fixer ? ' play-die-fixer' : ''}`} aria-label={label} title={label}
-    data-card-id={card.instanceId} data-result={effectIds?.has(card.instanceId)} data-target={target} disabled={!target}
-    aria-pressed={target ? chosenIds.has(card.instanceId) : undefined} onClick={() => onPick(card.instanceId)}>
+    data-card-id={card.instanceId} data-result={effectIds?.has(card.instanceId)} data-target={target} data-roll-available={rollAvailable || undefined} disabled={!target}
+    aria-pressed={target ? chosenIds.has(card.instanceId) : undefined}
+    onPointerDown={rollAvailable ? (event) => dieDrag?.start(event, card) : undefined}
+    onClick={() => { if (!dieDrag?.suppressClick()) onPick(card.instanceId); }}>
     <DieFace type={card.definitionId} value={fixer ? undefined : card.power} />
     {!fixer && <small>{card.definitionId}</small>}
   </button>;
