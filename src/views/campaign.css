@@ -66,7 +66,7 @@
 .campaign-inspection::backdrop { background: color-mix(in srgb, var(--color-canvas-deep) 85%, transparent); }
 .campaign-inspection > button { display: block; margin-left: auto; margin-bottom: 16px; }
 .campaign-inspection > div { display: flex; align-items: start; gap: 22px; }
-.campaign-inspection img { width: min(46%, 300px); object-fit: contain; }
+.campaign-inspection .campaign-reward-art { flex: 0 0 min(46%, 300px); }
 .campaign-inspection h2 { font: 800 32px/1 var(--font-display); }
 .campaign-inspection p { line-height: 1.55; white-space: pre-line; }
 @media (max-width: 850px) { .campaign-starters, .campaign-workspace { grid-template-columns: 1fr; } .campaign-brief { position: static; } .campaign-environments { grid-template-columns: 1fr; } }

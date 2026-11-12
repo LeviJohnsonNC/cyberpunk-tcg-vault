@@ -3,6 +3,7 @@ import { validate } from '../decks';
 import { rating, synergy } from '../autobuild';
 import { STARTERS, starterAsDeck, type StarterKey } from '../starters';
 import { isEngineSupported } from './engineCards';
+import { rollCampaignPack } from './campaignPack';
 import type { Deck } from '../store';
 import type { StoredMatch } from './workerController';
 import type { RivalSkill } from './protocol';
@@ -31,7 +32,11 @@ export const ENCOUNTERS = [
 export type EncounterId = typeof ENCOUNTERS[number]['id'];
 
 export type CampaignPhase = 'preparing' | 'inMatch' | 'rewardPending' | 'upgrading' | 'claimingFinish' | 'completed';
-export interface CampaignReward { id: string; cards: string[]; offers: string[]; choice?: string; }
+export interface CampaignReward {
+  id: string; cards: string[]; offers: string[]; choice?: string;
+  /** Exact collectible printing per card slot. Older rewards have only gameplay slugs. */
+  printingIds?: string[];
+}
 export interface CampaignRun {
   version: 1; id: string; starter: StarterKey; seed: string; revision: number; phase: CampaignPhase;
   encounter: number; attempts: number; inventory: Record<string, number>; deck: Deck; lastLegal: Deck;
@@ -125,12 +130,19 @@ export function encounterSkill(run: CampaignRun): RivalSkill {
 
 // Rewards have their own seed. A loss changes match shuffle, never the pack waiting behind it.
 function hash(value: string) { let state = 2166136261; for (const letter of value) state = Math.imul(state ^ letter.charCodeAt(0), 16777619); return state >>> 0; }
-function shuffled<T>(array: T[], seed: string): T[] {
+function rewardRandom(seed: string) {
   let state = hash(seed) || 1;
+  return () => {
+    state ^= state << 13; state ^= state >>> 17; state ^= state << 5;
+    return (state >>> 0) / 4294967296;
+  };
+}
+
+function shuffled<T>(array: T[], seed: string): T[] {
+  const random = rewardRandom(seed);
   const out = [...array];
   for (let i = out.length - 1; i > 0; i--) {
-    state ^= state << 13; state ^= state >>> 17; state ^= state << 5;
-    const j = (state >>> 0) % (i + 1);
+    const j = Math.floor(random() * (i + 1));
     [out[i], out[j]] = [out[j], out[i]];
   }
   return out;
@@ -143,12 +155,10 @@ export function generateReward(run: CampaignRun): CampaignReward {
   const eligible = CARDS.filter(card => card.type !== 'Legend' && card.legal === 'legal' && isEngineSupported(card.slug)
     && colours.includes(card.color) && fitsRam(card, limits) && (run.inventory[card.slug] ?? 0) < 3);
   const recruits = recruitCandidates(run, colours);
-  const { cards, offers } = run.balanceVersion === 2
-    ? balancedPack(run, eligible, recruits, seed)
-    : legacyPack(run, eligible, recruits, seed);
-  if (cards.length !== 7 || offers.length !== 3 || new Set([...cards, ...offers]).size !== 10)
-    throw new Error('This reward pool cannot make a valid pack. Your campaign progress is still saved.');
-  return { id: `${run.id}:${run.encounter}`, cards, offers };
+  const offers = rewardOffers(run, eligible, recruits, seed);
+  const pulls = rollCampaignPack(rewardRandom(`${seed}:retail`), new Set(eligible.map(card => card.slug)), offers);
+  return { id: `${run.id}:${run.encounter}`, cards: pulls.map(pull => pull.slug),
+    printingIds: pulls.map(pull => pull.printing.id), offers };
 }
 
 const isRecruitment = (run: CampaignRun) => run.encounter === 2 || run.encounter === 5;
@@ -161,25 +171,7 @@ function recruitCandidates(run: CampaignRun, colours: readonly string[]) {
     && run.deck.legends.some(slug => BY_SLUG.get(slug)?.color === card.color && (BY_SLUG.get(slug)?.ram ?? 0) <= (card.ram ?? 0)));
 }
 
-function legacyPack(run: CampaignRun, eligible: Card[], recruits: Card[], seed: string) {
-  const ranked = shuffled(eligible, seed).sort((a, b) =>
-    (rating(b.slug).power + synergy(b, run.deck.legends)) - (rating(a.slug).power + synergy(a, run.deck.legends)));
-  const cards = [...ranked.slice(0, 2), ...shuffled(ranked.slice(2), `${seed}:cards`).slice(0, 5)].map(card => card.slug);
-  const remaining = ranked.filter(card => !cards.includes(card.slug));
-  const offerPool = shuffled(remaining.slice(0, 20), `${seed}:offers`);
-  const offers: string[] = [];
-  for (const type of shuffled(['Unit', 'Gear', 'Program'], `${seed}:roles`)) {
-    const candidate = offerPool.find(card => card.type === type && !offers.includes(card.slug));
-    if (candidate) offers.push(candidate.slug);
-  }
-  for (const card of offerPool) if (offers.length < 3 && !offers.includes(card.slug)) offers.push(card.slug);
-  return {
-    cards,
-    offers: isRecruitment(run) ? [...shuffled(recruits, `${seed}:legends`).slice(0, 2).map(card => card.slug), ...remaining.slice(0, 1).map(card => card.slug)] : offers,
-  };
-}
-
-function balancedPack(run: CampaignRun, eligible: Card[], recruits: Card[], seed: string) {
+function rewardOffers(run: CampaignRun, eligible: Card[], recruits: Card[], seed: string) {
   const themes = REWARD_THEMES[run.starter];
   const selected = new Set<string>();
   const slugOrder = (a: Card, b: Card) => a.slug.localeCompare(b.slug, 'en');
@@ -220,10 +212,7 @@ function balancedPack(run: CampaignRun, eligible: Card[], recruits: Card[], seed
   }
   while (offers.length < 3) offers.push(pick(`offer-flex-${offers.length}`, early ? economy : answer, economy));
 
-  const cards = themes.map((theme, index) => pick(`pack-theme-${index}`, card => theme.has(card.slug), early ? economy : answer));
-  cards.push(pick('pack-economy', economy, answer));
-  const wild = shuffled(sorted.filter(card => !selected.has(card.slug)), `${seed}:pack-wild`);
-  return { cards: [...cards, ...wild.slice(0, 7 - cards.length).map(card => card.slug)], offers };
+  return offers;
 }
 
 export function grantVictory(run: CampaignRun, profile: CampaignProfile, match: StoredMatch, winner: string | null) {

@@ -69,7 +69,8 @@ describe('campaign presentation and edit previews', () => {
   it('shows the pack being opened or the last claimed pack, never unchosen offers', () => {
     const run = rewarded();
     expect(latestPack(run)).toHaveLength(8);
-    expect(latestPack(run)).not.toContain(run.rewards[0].offers[1]);
+    expect(latestPack(run).map(pull => pull.slug)).not.toContain(run.rewards[0].offers[1]);
+    expect(latestPack(run)[0].printing?.id).toBe(run.rewards[0].printingIds?.[0]);
     run.phase = 'rewardPending'; run.encounter = 0; delete run.rewards[0].choice;
     expect(latestPack(run)).toHaveLength(7);
   });

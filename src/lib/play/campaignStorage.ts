@@ -1,5 +1,6 @@
 import type { Deck } from '../store';
 import { BY_SLUG } from '../data';
+import { sortLegacyPack } from './campaignPack';
 import { openDatabase } from './matchStorage';
 import { emptyCircuit, type CircuitProgress, type TableFinish } from './circuit';
 import { CAMPAIGN_VERSION, ENCOUNTERS, ENVIRONMENTS, campaignDeckIssues, emptyProfile, newCampaign,
@@ -89,7 +90,11 @@ export function revealCampaignPack(scope: string, expected: number, count: numbe
   return updateCampaign(scope, (run, profile) => {
     if (!run || run.revision !== expected || run.phase !== 'rewardPending' || !Number.isInteger(count) || count < (run.revealed ?? 0) || count > 7)
       throw new Error('The pack changed in another tab. Reload the campaign.');
-    const next = { ...run, revision: run.revision + 1, revealed: count };
+    const pack = run.rewards[run.encounter];
+    const rewards = pack && !pack.printingIds && !(run.revealed ?? 0) && count > 0
+      ? { ...run.rewards, [run.encounter]: { ...pack, cards: sortLegacyPack(pack.cards) } }
+      : run.rewards;
+    const next = { ...run, revision: run.revision + 1, revealed: count, rewards };
     return { run: next, value: { run: next, profile } };
   });
 }

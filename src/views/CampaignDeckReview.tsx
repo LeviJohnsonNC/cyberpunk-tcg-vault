@@ -1,16 +1,35 @@
 import { useEffect, useRef, useState } from 'react';
 import { CardImg, Rules } from '../components/bits';
 import { VaultSelect } from '../components/VaultSelect';
-import { BY_SLUG, ramLimits } from '../lib/data';
+import { BY_SLUG, PRINTING_INDEX, ramLimits } from '../lib/data';
 import { deckStats } from '../lib/handtest';
 import type { Deck } from '../lib/store';
 import type { CampaignRun } from '../lib/play/campaign';
+import { packRarityLabel } from '../lib/play/campaignPack';
+import { CampaignRewardArt } from './CampaignRewardArt';
 import { latestPack, packCardContext, previewCampaignEdit } from '../lib/play/campaignPresentation';
 
-export function CampaignNewCards({ run, review }: { run: CampaignRun; review: (slug: string) => void }) {
+export function CampaignNewCards({ run, review, inspect }: {
+  run: CampaignRun; review: (slug: string, printingId?: string) => void; inspect: (slug: string, printingId?: string) => void;
+}) {
   const pack = latestPack(run);
   if (!pack.length) return null;
-  return <section className="campaign-new-cards"><div className="campaign-section-heading"><div><p className="play-eyebrow">Your latest pack / {pack.length} cards earned</p><h3>What changes next?</h3></div><span>Compare before you commit</span></div><p>Choose a card to preview an addition or a one-for-one swap. Everything you take out stays in reserve.</p><div className="campaign-new-grid">{pack.map(slug => { const card = BY_SLUG.get(slug); const used = card?.type === 'Legend' ? Number(run.deck.legends.includes(slug)) : run.deck.cards[slug] ?? 0; return <button key={slug} onClick={() => review(slug)} aria-label={`Compare ${card?.display}`}><CardImg slug={slug} alt="" /><strong>{card?.name ?? slug}</strong><small>{used} in deck · {run.inventory[slug]} earned</small><span>{used >= run.inventory[slug] ? 'Review card' : card?.type === 'Legend' ? 'Compare crew' : 'Compare swap'} ↗</span></button>; })}</div></section>;
+  return <section className="campaign-new-cards"><div className="campaign-section-heading"><div><p className="play-eyebrow">Your latest pack / {pack.length} cards earned</p><h3>What changes next?</h3></div><span>Compare before you commit</span></div>
+    <p>Choose a card to view it or preview a deck change. Everything you take out stays in reserve.</p>
+    <div className="campaign-new-grid">{pack.map(pull => {
+      const { slug, printing } = pull;
+      const card = BY_SLUG.get(slug);
+      const used = card?.type === 'Legend' ? Number(run.deck.legends.includes(slug)) : run.deck.cards[slug] ?? 0;
+      const fitsColour = run.deck.legends.some(legend => BY_SLUG.get(legend)?.color === card?.color);
+      const label = fitsColour ? 'Compare' : 'Inspect';
+      return <button key={slug} onClick={() => (fitsColour ? review : inspect)(slug, printing?.id)} aria-label={`${label} ${card?.display ?? slug}`}>
+        <CampaignRewardArt pull={pull} alt="" /><strong>{card?.name ?? slug}</strong>
+        {printing?.rarity.startsWith('Iconic ') && <span className="campaign-variant-label">{packRarityLabel(printing.rarity)}</span>}
+        <small>{fitsColour ? `${used} in deck · ${run.inventory[slug]} earned` : 'Outside starter colours'}</small>
+        <span>{!fitsColour || used >= run.inventory[slug] ? 'View card' : card?.type === 'Legend' ? 'Compare crew' : 'Compare swap'} ↗</span>
+      </button>;
+    })}</div>
+  </section>;
 }
 
 export function CampaignDeckNumbers({ deck }: { deck: Deck }) {
@@ -20,8 +39,9 @@ export function CampaignDeckNumbers({ deck }: { deck: Deck }) {
 }
 
 /** Keyed by incoming card so a new review starts with a fresh, explicit proposal. */
-export function CampaignUpgradeDialog({ run, slug, busy, error, close, commit }: { run: CampaignRun; slug: string; busy: boolean; error?: string; close: () => void; commit: (deck: Deck) => void }) {
+export function CampaignUpgradeDialog({ run, slug, printingId, busy, error, close, commit }: { run: CampaignRun; slug: string; printingId?: string; busy: boolean; error?: string; close: () => void; commit: (deck: Deck) => void }) {
   const card = BY_SLUG.get(slug)!;
+  const printing = PRINTING_INDEX.get(printingId ?? '')?.printing;
   const isLegend = card.type === 'Legend';
   const alternatives = isLegend ? run.deck.legends.filter(item => BY_SLUG.get(item)?.color === card.color && item !== slug)
     : Object.keys(run.deck.cards).filter(item => item !== slug && run.deck.cards[item] > 0).sort((a, b) => {
@@ -44,7 +64,7 @@ export function CampaignUpgradeDialog({ run, slug, busy, error, close, commit }:
   ];
   return <dialog ref={dialog} className="campaign-upgrade-dialog" aria-labelledby="campaign-edit-title" onClose={close}>
     <header><div><p className="play-eyebrow">Workshop / Preview an edit</p><h2 id="campaign-edit-title">{available > 0 ? 'Make room for something new.' : 'Already working for your crew.'}</h2></div><button className="btn quiet" onClick={close}>Close</button></header>
-    <div className="campaign-upgrade-layout"><section><div className="campaign-compare-art"><div><span className="play-eyebrow">{available > 0 ? 'Into your deck' : 'In your deck'}</span><CardImg slug={slug} alt={card.display} priority /><strong>{card.display}</strong></div>{outgoing && <><span className="campaign-swap-arrow" aria-hidden="true">⇄</span><div className="campaign-outgoing"><span className="play-eyebrow">Back to reserve</span><CardImg slug={outgoing} alt={prior?.display ?? outgoing} priority /><strong>{prior?.display}</strong></div></>}</div><p className="campaign-card-facts">{card.color} · {card.type} · {isLegend ? '' : `Cost ${card.cost ?? '—'} · `}RAM {card.ram ?? '—'}</p><p className="campaign-rules"><Rules text={card.text} /></p><p className="campaign-fit">{packCardContext(run, slug)}</p>{prior && <details className="campaign-prior-rules"><summary>Abilities you would leave in reserve</summary><p className="campaign-rules"><Rules text={prior.text} /></p></details>}</section>
+    <div className="campaign-upgrade-layout"><section><div className="campaign-compare-art"><div><span className="play-eyebrow">{available > 0 ? 'Into your deck' : 'In your deck'}</span><CampaignRewardArt pull={{ slug, printing }} alt={card.display} /><strong>{card.display}</strong>{printing?.rarity.startsWith('Iconic ') && <small className="campaign-variant-label">{packRarityLabel(printing.rarity)} · No. {printing.num}</small>}</div>{outgoing && <><span className="campaign-swap-arrow" aria-hidden="true">⇄</span><div className="campaign-outgoing"><span className="play-eyebrow">Back to reserve</span><CardImg slug={outgoing} alt={prior?.display ?? outgoing} priority /><strong>{prior?.display}</strong></div></>}</div><p className="campaign-card-facts">{card.color} · {card.type} · {isLegend ? '' : `Cost ${card.cost ?? '—'} · `}RAM {card.ram ?? '—'}</p><p className="campaign-rules"><Rules text={card.text} /></p><p className="campaign-fit">{packCardContext(run, slug)}</p>{prior && <details className="campaign-prior-rules"><summary>Abilities you would leave in reserve</summary><p className="campaign-rules"><Rules text={prior.text} /></p></details>}</section>
       <section className="campaign-edit-proposal"><p>{used} in deck · {run.inventory[slug]} earned · {available} in reserve</p>{available > 0 ? <><label htmlFor="campaign-return">{isLegend ? 'Replace a same-colour Legend' : 'Return one copy to reserve'}</label><VaultSelect id="campaign-return" value={outgoing} onValueChange={setOutgoing} options={[...(!isLegend ? [{ value: '', label: 'Add a copy without removing a card' }] : []), ...alternatives.map(item => ({ value: item, label: `${BY_SLUG.get(item)?.display}${isLegend ? ` · RAM ${BY_SLUG.get(item)?.ram}` : ` · Cost ${BY_SLUG.get(item)?.cost ?? '—'}`}` }))]} />
         <table className="campaign-compare-stats"><caption>Your deck, before and after</caption><thead><tr><th scope="col">Deck</th><th scope="col">Now</th><th scope="col">After</th></tr></thead><tbody>{rows.map(([label, from, to]) => <tr key={label} data-changed={from !== to}><th scope="row">{label}</th><td>{from}</td><td>{to}</td></tr>)}</tbody></table>
         <details className="campaign-curve-compare"><summary>Cost curve, before and after</summary><div>{before.curve.map((bucket, index) => <div key={bucket.label}><span>Cost {bucket.label}</span><span>{bucket.value} → {after.curve[index].value}</span></div>)}</div></details>

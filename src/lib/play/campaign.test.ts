@@ -1,8 +1,9 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
-import { BY_SLUG, fitsRam, ramLimits } from '../data';
+import { BY_SLUG, fitsRam, ramLimits, PRINTING_INDEX } from '../data';
 import { STARTERS } from '../starters';
 import { ENCOUNTERS, campaignDeckIssues, encounterDeck, encounterSkill, generateReward, grantVictory, newCampaign } from './campaign';
+import { campaignPulls } from './campaignPack';
 import { matchDeckIssues, prepareMatchDeck } from './matchDeck';
 import { createMatchController } from './workerController';
 import { chooseReward, claimEnvironment, readCampaign, revealCampaignPack, saveCampaignDeck, startCampaign, updateCampaign } from './campaignStorage';
@@ -23,7 +24,11 @@ describe('starter campaign', () => {
     }
   });
 
-  it('generates complete packs for 1,000 reward paths for each starter without dead copies or rerolls', () => {
+  it('generates deterministic retail pulls and compatible picks across 1,000 reward paths per starter', () => {
+    const tier = ['Common', 'Uncommon', 'Rare', 'Epic', 'Secret', 'Iconic Other', 'Iconic Legend', 'Iconic Secret'];
+    const hits = { Epic: 0, Secret: 0, Iconic: 0 };
+    const iconics = new Set<string>();
+    let total = 0;
     for (const starter of STARTERS) for (let seed = 0; seed < 1000; seed++) {
       const run = newCampaign(starter.key, `run-${seed}`, `seed-${seed}`);
       const ram = ramLimits(run.deck.legends);
@@ -36,7 +41,22 @@ describe('starter campaign', () => {
         expect(new Set([...pack.cards, ...pack.offers]).size).toBe(10);
         const legends = pack.offers.filter(slug => BY_SLUG.get(slug)?.type === 'Legend');
         expect(legends).toHaveLength([2, 5].includes(encounter) ? 2 : 0);
-        for (const slug of [...pack.cards, ...pack.offers]) {
+        const pulls = campaignPulls(pack);
+        const rarities = pulls.map(pull => pull.printing!.rarity);
+        expect(rarities).toEqual([...rarities].sort((a, b) => tier.indexOf(a) - tier.indexOf(b)));
+        expect(rarities.slice(0, 5).every(rarity => rarity === 'Common' || rarity === 'Uncommon')).toBe(true);
+        expect([3, 4]).toContain(rarities.filter(rarity => rarity === 'Common').length);
+        expect(rarities.slice(5).every(rarity => tier.indexOf(rarity) >= 2)).toBe(true);
+        for (const { slug, printing } of pulls) {
+          expect(printing?.set).toBe('Welcome to Night City — Retail');
+          expect(PRINTING_INDEX.get(printing!.id)?.card.slug).toBe(slug);
+          if (printing!.rarity.startsWith('Iconic ')) iconics.add(printing!.id);
+        }
+        total++;
+        hits.Epic += Number(rarities.includes('Epic'));
+        hits.Secret += Number(rarities.includes('Secret'));
+        hits.Iconic += Number(rarities.some(rarity => rarity.startsWith('Iconic ')));
+        for (const slug of pack.offers) {
           const card = BY_SLUG.get(slug)!;
           if (!isEngineSupported(slug) || card.legal !== 'legal' || !starter.colors.includes(card.color)
             || (run.inventory[slug] ?? 0) >= (card.type === 'Legend' ? 1 : 3)
@@ -44,14 +64,14 @@ describe('starter campaign', () => {
             throw new Error(`${starter.key} seed ${seed}, pack ${encounter + 1}: ineligible ${slug}`);
           }
         }
-        if (encounter < 3) expect(pack.cards.some(slug => {
-          const card = BY_SLUG.get(slug)!;
-          return (card.cost ?? 9) <= 3 && (card.sellable || card.type === 'Unit');
-        })).toBe(true);
         const option = pack.offers[seed % 3];
         for (const slug of [...pack.cards, option]) run.inventory[slug] = (run.inventory[slug] ?? 0) + 1;
       }
     }
+    expect(Math.abs(hits.Epic / total - 1 / 4)).toBeLessThan(.015);
+    expect(Math.abs(hits.Secret / total - 1 / 24)).toBeLessThan(.008);
+    expect(Math.abs(hits.Iconic / total - 1 / 18)).toBeLessThan(.008);
+    expect(iconics.size).toBe(31);
   }, 60000);
 
   it.each(STARTERS)('fills a late $name pack when both authored reward pools have hit the copy cap', starter => {
@@ -61,18 +81,13 @@ describe('starter campaign', () => {
     for (const slug of saturated) run.inventory[slug] = 3;
     const pack = generateReward(run);
     expect(new Set([...pack.cards, ...pack.offers]).size).toBe(10);
-    expect([...pack.cards, ...pack.offers].some(slug => saturated.has(slug))).toBe(false);
+    expect(pack.offers.some(slug => saturated.has(slug))).toBe(false);
   });
 
-  it('keeps the original rewards, rival snapshots, and skill schedule for campaigns started before tuning', () => {
+  it('keeps rival snapshots and skill for campaigns started before tuning', () => {
     const legacy = newCampaign('the-heist', 'compat', 'compat');
     delete legacy.balanceVersion;
     legacy.opponents = [];
-    expect(generateReward(legacy)).toEqual({ id: 'compat:0',
-      cards: ['dying-night-v-s-pistol', 'towerfall', 'viktor-vektor-drop-your-illusions', 'mt0d12-flathead',
-        'rockn-rockerboy', 'trauma-team-operatives', 't-bug-amateur-philosopher'],
-      offers: ['augmented-negotiators', 'tetratronic-rippler', 'reboot-optics'],
-    });
     legacy.opponents = ENCOUNTERS.map((_, encounter) => encounterDeck({ ...legacy, encounter }));
     const current = newCampaign('the-heist', 'current', 'compat');
     expect(encounterDeck(legacy).cards).toEqual(STARTERS.find(starter => starter.key === 'embracing-power')?.cards);
@@ -107,6 +122,25 @@ describe('starter campaign', () => {
     expect(grantVictory(run, profile, match, 'rival').run.inventory).toEqual(run.inventory);
   });
 
+  it('opens an older sealed reward common-first without changing the awarded cards or offers', async () => {
+    const { run } = await startCampaign('legacy-pack-order', 'the-heist');
+    run.phase = 'rewardPending';
+    const pack = { id: 'compat:0',
+      cards: ['towerfall', 'mt0d12-flathead', 'floor-it', 'trauma-team-operatives', 't-bug-amateur-philosopher',
+        'dying-night-v-s-pistol', 'rockn-rockerboy'],
+      offers: ['augmented-negotiators', 'tetratronic-rippler', 'reboot-optics'] };
+    run.rewards[0] = pack;
+    await updateCampaign('legacy-pack-order', () => ({ run, value: undefined }));
+    const first = await revealCampaignPack('legacy-pack-order', run.revision, 1);
+    const opened = first.run.rewards[0];
+    expect([...opened.cards].sort()).toEqual([...pack.cards].sort());
+    expect(opened.offers).toEqual(pack.offers);
+    expect(first.run.inventory).toEqual(run.inventory);
+    expect(campaignPulls(opened)[0].printing?.rarity).toBe('Common');
+    const saved = await revealCampaignPack('legacy-pack-order', first.run.revision, 3);
+    expect(saved.run.rewards[0]).toEqual(opened);
+  });
+
   it('serializes reveal and choice across tabs, and preserves all awarded cards on a reload', async () => {
     const scope = 'campaign-tabs';
     const original = await startCampaign(scope, 'the-heist');
@@ -121,6 +155,7 @@ describe('starter campaign', () => {
     expect([one.status, two.status].sort()).toEqual(['fulfilled', 'rejected']);
     const saved = (await readCampaign(scope)).run!;
     expect([1, 7]).toContain(saved.revealed);
+    expect(saved.rewards[0].printingIds).toEqual(original.run.rewards[0].printingIds);
     const offer = saved.rewards[0].offers[0];
     const chosen = await chooseReward(scope, saved.revision, offer);
     await expect(chooseReward(scope, saved.revision, offer)).rejects.toThrow();
