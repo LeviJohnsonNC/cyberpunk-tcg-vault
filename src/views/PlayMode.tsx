@@ -4,7 +4,8 @@ import { ConfirmDialog } from '../components/ui';
 import { readDeckDraft, type DeckDraft } from '../lib/deckDraft';
 import type { Deck } from '../lib/store';
 import { CircuitHub } from './CircuitHub';
-import { equipTableFinish, readCircuitProgress } from '../lib/play/matchStorage';
+import { equipTableFinish, readCircuitProgress, resetFreePlay } from '../lib/play/matchStorage';
+import { freePlaySkillKey } from '../lib/play/freePlayPreferences';
 import { type CircuitProgress, type TableFinish } from '../lib/play/circuit';
 import { openPlayMatch, resumePlayMatch } from '../lib/play/matchClient';
 import type { MatchSnapshot, MatchSummary, Move, RivalSkill } from '../lib/play/protocol';
@@ -27,9 +28,11 @@ type Confirm = 'replace' | 'restart' | 'concede';
 type Props = {
   scope: string; draft?: DeckDraft; saved?: MatchSummary; initialRival?: string; initialOpponent?: Deck; savedDecks: Deck[]; rememberRival: (id: string) => void;
   onCheckpoint: (snapshot: MatchSnapshot, draft?: DeckDraft) => void; onEdit: () => void; onCampaignDeck: (deck: Deck) => void;
+  onFreePlayReset: () => void;
 };
 
 export default function PlayMode(props: Props) {
+  const [freePlaySession, setFreePlaySession] = useState(0);
   const handoff = !!(props.draft || props.initialOpponent);
   const [mode, setMode] = useState<'campaign' | 'free'>(() => {
     if (handoff) return 'free';
@@ -45,10 +48,13 @@ export default function PlayMode(props: Props) {
     try { localStorage.setItem(`cptv.playMode:${props.scope}`, next); } catch { /* optional preference */ }
   };
   return <><nav className="play-mode-tabs" aria-label="Play mode"><button className="btn" aria-current={mode === 'campaign' ? 'page' : undefined} onClick={() => choose('campaign')}>Campaign</button><button className="btn" aria-current={mode === 'free' ? 'page' : undefined} onClick={() => choose('free')}>Free Play</button><span className="play-mode-explainer">{mode === 'campaign' ? 'Grow an official starter through nine matches and earn a new room.' : 'Bring any legal deck, choose a rival, and practice without campaign stakes.'}</span></nav>
-    {mode === 'campaign' ? <CampaignMode scope={props.scope} exit={() => choose('free')} openInBuilder={props.onCampaignDeck} /> : <FreePlayMode {...props} />}</>;
+    {mode === 'campaign' ? <CampaignMode scope={props.scope} exit={() => choose('free')} openInBuilder={props.onCampaignDeck} /> : <FreePlayMode {...props} key={freePlaySession} onFreePlayReset={() => {
+      props.onFreePlayReset();
+      setFreePlaySession(session => session + 1);
+    }} />}</>;
 }
 
-function FreePlayMode({ scope, draft, saved, initialRival, initialOpponent, savedDecks, rememberRival, onCheckpoint, onEdit }: Props) {
+function FreePlayMode({ scope, draft, saved, initialRival, initialOpponent, savedDecks, rememberRival, onCheckpoint, onEdit, onFreePlayReset }: Props) {
   const [environment, setEnvironment] = useState<Environment>();
   useEffect(() => { let active = true; void readCampaign(scope).then(value => { if (active) setEnvironment(value.profile.equipped); }).catch(() => {}); return () => { active = false; }; }, [scope]);
   const [resume] = useState(!draft && !!saved);
@@ -58,6 +64,9 @@ function FreePlayMode({ scope, draft, saved, initialRival, initialOpponent, save
   const [busy, setBusy] = useState(resume);
   const [error, setError] = useState<string>();
   const [confirm, setConfirm] = useState<Confirm>();
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetError, setResetError] = useState<string>();
   const [lobby, setLobby] = useState(false);
   const [progress, setProgress] = useState<CircuitProgress>();
   const [progressError, setProgressError] = useState<string>();
@@ -90,6 +99,23 @@ function FreePlayMode({ scope, draft, saved, initialRival, initialOpponent, save
   }
 
   function openCircuit() { presentation.playback?.skip(); setProgress(undefined); setProgressError(undefined); setLobby(true); }
+
+  async function reset() {
+    if (locked.current || busy || equipping) return;
+    locked.current = true;
+    setResetting(true);
+    setResetError(undefined);
+    try {
+      await resetFreePlay(scope);
+    } catch {
+      setResetError('Free Play couldn’t be reset. Check that browser storage is available and try again.');
+      setResetting(false);
+      locked.current = false;
+      return;
+    }
+    try { localStorage.setItem(freePlaySkillKey(scope), 'sharp'); } catch { /* Optional preference. */ }
+    onFreePlayReset();
+  }
 
   useLayoutEffect(() => {
     if (matchId) window.scrollTo({ top: 0, behavior: 'instant' });
@@ -184,8 +210,9 @@ function FreePlayMode({ scope, draft, saved, initialRival, initialOpponent, save
             {live && <button type="button" className="btn danger-ghost" disabled={busy || presentation.playing} onClick={() => setConfirm('concede')}>Concede</button>}
             <button type="button" className="btn quiet" disabled={busy} onClick={() => { presentation.playback?.skip(); onEdit(); }}>Back to draft</button>
           </>} />
-      </> : !resume || lobby ? progress ? <CircuitHub progress={progress} draft={hubDraft} savedDecks={savedDecks} initialRival={initialRival} initialOpponent={initialOpponent}
+      </> : !resume || lobby ? progress ? <CircuitHub scope={scope} progress={progress} draft={hubDraft} savedDecks={savedDecks} initialRival={initialRival} initialOpponent={initialOpponent}
         busy={busy || equipping} error={error ?? progressError} equip={equip} onEdit={onEdit} onResume={snapshot ? () => setLobby(false) : undefined}
+        onReset={() => { setResetError(undefined); setResetOpen(true); }}
         onStart={(draft, rival, skill, key, contractId) => { pendingStart.current = { draft, rival, skill, key, contractId }; start(); }} />
         : <div className="panel" role="status"><h1>Opening the Circuit</h1>{progressError ? <><p className="play-error">{progressError}</p><button className="btn" onClick={() => setProgressAttempt(value => value + 1)}>Try again</button><button className="btn quiet" onClick={onEdit}>Back to draft</button></> : <p>Checking your standing…</p>}</div>
       : <div className="panel">
@@ -198,6 +225,7 @@ function FreePlayMode({ scope, draft, saved, initialRival, initialOpponent, save
               setError(undefined);
               setResumeAttempt((attempt) => attempt + 1);
             }}>Try again</button>
+            <button type="button" className="btn quiet" onClick={openCircuit}>Free Play lobby</button>
             <button type="button" className="btn quiet" onClick={onEdit}>Back to draft</button>
           </div>
         </>}
@@ -211,6 +239,12 @@ function FreePlayMode({ scope, draft, saved, initialRival, initialOpponent, save
           if (confirm === 'concede') send({ move: 'concede' });
         }}>
         <p>{confirm === 'concede' ? 'The rival wins this match.' : confirm === 'restart' ? 'The current match ends and both decks are shuffled again.' : 'Starting a new match replaces the one in progress for this Vault.'}</p>
+      </ConfirmDialog>
+      <ConfirmDialog open={resetOpen} title="Reset Free Play?" confirmLabel="Reset Free Play" busy={resetting}
+        onCancel={() => setResetOpen(false)} onConfirm={() => void reset()}>
+        <p>This permanently clears your saved Free Play match, REP, contract marks, match history, and Free Play unlocks for this Vault in this browser.</p>
+        <p>Your Campaign progress and rewards, collection, and Deck Builder decks are kept.</p>
+        {resetError && <p className="play-error" role="alert">{resetError}</p>}
       </ConfirmDialog>
     </section>
   );

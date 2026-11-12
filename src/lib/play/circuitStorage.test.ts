@@ -1,6 +1,8 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
-import { equipTableFinish, readCircuitProgress, readMatchSummary, updateSavedMatch } from './matchStorage';
+import { equipTableFinish, readCircuitProgress, readMatchSummary, resetFreePlay, updateSavedMatch } from './matchStorage';
+import { readCampaign, startCampaign, updateCampaign } from './campaignStorage';
+import { emptyCircuit } from './circuit';
 import { createMatchController, type StoredMatch } from './workerController';
 import { prepareMatchDeck } from './matchDeck';
 import { curatedOpponents } from './opponents';
@@ -77,5 +79,30 @@ describe('atomic Circuit storage', () => {
     const before = await readCircuitProgress('stale');
     await updateSavedMatch('stale', () => ({ response: { id: 3, error: 'That match is no longer active.' } }));
     expect(await readCircuitProgress('stale')).toEqual(before);
+  });
+  it('resets only this Vault’s Free Play data and preserves Campaign rewards', async () => {
+    const scope = 'reset-free-play';
+    await startCampaign(scope, 'the-heist');
+    await updateCampaign(scope, (_run, profile) => ({
+      profile: { ...profile, completions: { ...profile.completions, 'the-heist': 1 }, environments: ['booth'], equipped: 'booth' },
+      value: undefined,
+    }));
+    const campaign = await readCampaign(scope);
+    const { saved, snapshot } = fixture();
+    await updateSavedMatch(scope, () => ({ saved, response: response(snapshot) }));
+    await equipTableFinish(scope, 'ghost');
+    await updateSavedMatch('other-reset-vault', () => ({ saved, response: response(snapshot) }));
+
+    await resetFreePlay(scope);
+
+    expect(await readMatchSummary(scope)).toBeUndefined();
+    await updateSavedMatch(scope, previous => {
+      expect(previous).toBeUndefined();
+      return { response: { id: 3, error: 'No saved match.' } };
+    });
+    expect(await readCircuitProgress(scope)).toEqual({ ...emptyCircuit(), campaignFinishes: ['gold'] });
+    expect(await readCampaign(scope)).toEqual(campaign);
+    expect(await readMatchSummary('other-reset-vault')).toEqual(saved.summary);
+    expect((await readCircuitProgress('other-reset-vault')).rep).toBe(225);
   });
 });

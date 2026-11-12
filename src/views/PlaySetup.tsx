@@ -8,6 +8,7 @@ import type { Deck } from '../lib/store';
 import { DEFAULT_PLAY_DECK_KEY, curatedOpponents, deckColors, deckSize, IMPORT_LIMIT, opponentIssues, readOpponentText } from '../lib/play/opponents';
 import type { RivalSkill } from '../lib/play/protocol';
 import { preloadArt } from '../lib/play/cardArt';
+import { freePlaySkillKey } from '../lib/play/freePlayPreferences';
 import './play-setup.css';
 
 const sources = [{ id: 'curated', label: 'Curated decks' }, { id: 'saved', label: 'My decks' }, { id: 'import', label: 'Import list' }] as const;
@@ -17,8 +18,12 @@ const skills: { id: RivalSkill; label: string; note: string }[] = [
   { id: 'sharp', label: 'Sharp', note: 'Looks ahead and weighs likely replies.' },
   { id: 'masterful', label: 'Masterful', note: 'Looks ahead with ability-aware tactics.' },
 ];
-const skillKey = 'cptv.play.rival-skill.v1';
-function initialSkill(): RivalSkill { try { const value = localStorage.getItem(skillKey); if (skills.some(s => s.id === value)) return value as RivalSkill; } catch { /* Optional. */ } return 'sharp'; }
+function initialSkill(scope: string): RivalSkill {
+  try {
+    const value = localStorage.getItem(freePlaySkillKey(scope)) ?? localStorage.getItem(freePlaySkillKey());
+    return skills.find(skill => skill.id === value)?.id ?? 'sharp';
+  } catch { return 'sharp'; }
+}
 
 function Crew({ deck }: { deck: Deck }) {
   return <div className="opponent-crew">{deck.legends.map((slug, index) => <div key={`${slug}:${index}`}><CardImg slug={slug} alt="" /><span>{BY_SLUG.get(slug)?.name ?? slug}</span></div>)}</div>;
@@ -27,15 +32,15 @@ function ListDetails({ deck }: { deck: Deck }) {
   return <details className="opponent-list"><summary>Inspect decklist</summary><ul>{deck.legends.map((slug, i) => <li key={`${slug}:${i}`}><b>1</b> {BY_SLUG.get(slug)?.display ?? slug} <small>Legend</small></li>)}{Object.entries(deck.cards).map(([slug, count]) => <li key={slug}><b>{count}</b> {BY_SLUG.get(slug)?.display ?? slug}</li>)}</ul>{totalCopies(deck.sideboard) > 0 && <p>Sideboard is not used in best-of-one matches.</p>}</details>;
 }
 
-export function PlaySetup({ draft, savedDecks, initialRival, initialOpponent, busy, error, onStart }: {
-  draft?: DeckDraft; savedDecks: Deck[]; initialRival?: string; initialOpponent?: Deck; busy: boolean; error?: string;
+export function PlaySetup({ scope, draft, savedDecks, initialRival, initialOpponent, busy, error, onStart }: {
+  scope: string; draft?: DeckDraft; savedDecks: Deck[]; initialRival?: string; initialOpponent?: Deck; busy: boolean; error?: string;
   onStart: (draft: DeckDraft, rival: Deck, skill: RivalSkill, key: string) => void;
 }) {
   const [source, setSource] = useState<Source>('curated');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(initialOpponent ? 'external' : (curatedOpponents.some(r => r.key === initialRival || r.key === `curated:${initialRival}`) ? (initialRival!.startsWith('curated:') ? initialRival! : `curated:${initialRival}`) : 'curated:smasher-surge'));
   const [playerKey, setPlayerKey] = useState(initialOpponent ? '' : draft ? 'current' : DEFAULT_PLAY_DECK_KEY);
-  const [skill, setSkill] = useState(initialSkill);
+  const [skill, setSkill] = useState(() => initialSkill(scope));
   const [text, setText] = useState('');
   const [imported, setImported] = useState<ReturnType<typeof readOpponentText>>();
   const [fileError, setFileError] = useState('');
@@ -86,7 +91,7 @@ export function PlaySetup({ draft, savedDecks, initialRival, initialOpponent, bu
       {!!yourIssues.length && <div className="opponent-errors" role="alert"><strong>Your deck needs fixes</strong><ul>{yourIssues.map(issue => <li key={issue}>{issue}</li>)}</ul></div>}
       {rival ? <><div className="opponent-selected-heading"><span className="play-eyebrow">{selected === 'mirror' ? 'Mirror match' : selected === 'import' ? 'Imported rival' : 'Rival deck'}</span><h2>{rival.name}</h2></div><Crew deck={rival} /><p className="opponent-size">{deckSize(rival)}</p><ListDetails deck={rival} /></> : <p className="muted">Choose a rival or preview an imported list.</p>}
       {!!issues.length && <div className="opponent-errors" role="alert"><strong>Resolve these before playing</strong><ul>{issues.map(issue => <li key={issue}>{issue}</li>)}</ul></div>}
-      <fieldset className="opponent-skills" disabled={busy}><legend>Rival skill</legend><div className="opponent-skill-options">{skills.map(option => <label key={option.id} data-selected={skill === option.id}><input type="radio" name="rival-skill" checked={skill === option.id} onChange={() => { setSkill(option.id); try { localStorage.setItem(skillKey, option.id); } catch { /* Optional. */ } }} /><strong>{option.label}</strong></label>)}</div><p className="opponent-skill-note">{skills.find(option => option.id === skill)?.note}</p></fieldset>
+      <fieldset className="opponent-skills" disabled={busy}><legend>Rival skill</legend><div className="opponent-skill-options">{skills.map(option => <label key={option.id} data-selected={skill === option.id}><input type="radio" name="rival-skill" checked={skill === option.id} onChange={() => { setSkill(option.id); try { localStorage.setItem(freePlaySkillKey(scope), option.id); } catch { /* Optional. */ } }} /><strong>{option.label}</strong></label>)}</div><p className="opponent-skill-note">{skills.find(option => option.id === skill)?.note}</p></fieldset>
       {error && <p className="play-error" role="alert">{error}</p>}
       <button type="button" className="btn opponent-start" disabled={!canStart} onClick={() => { if (yourDeck && rival) onStart({ deck: structuredClone(yourDeck), dirty: playerKey === 'current' && !!draft?.dirty }, structuredClone(rival), skill, selected); }}>{busy ? 'Dealing…' : selected === 'mirror' ? 'Start mirror match' : 'Play against this deck'}</button>
       <p className="opponent-fair">All levels play fair: no peeking at your hand or deck order.</p>

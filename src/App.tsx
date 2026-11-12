@@ -269,6 +269,12 @@ export default function App() {
             <PlayMode key={scope} scope={scope} draft={matchDraft} saved={savedMatch} initialRival={playRival?.scope === scope ? playRival.id : undefined}
               savedDecks={store.decks} initialOpponent={playDraft?.scope === scope ? playDraft.opponent : undefined}
               rememberRival={(id) => setPlayRival({ scope, id })} onCheckpoint={acceptMatch} onEdit={returnToDraft}
+              onFreePlayReset={() => {
+                setPlayDraft(previous => previous?.scope === scope ? undefined : previous);
+                setPlayRival(previous => previous?.scope === scope ? undefined : previous);
+                setMatchLookup(previous => previous?.scope === scope ? { scope } : previous);
+                toast('Free Play reset.');
+              }}
               onCampaignDeck={(deck) => {
                 try {
                   sessionStorage.setItem(PENDING_DECK_KEY, JSON.stringify({ ...structuredClone(deck), id: crypto.randomUUID(), name: `${deck.name} · Campaign clear` }));
