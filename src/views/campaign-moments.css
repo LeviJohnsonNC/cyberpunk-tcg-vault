@@ -1,7 +1,6 @@
 /* Campaign celebrations keep controls still and information readable. */
 .campaign-hub:focus { outline: none; }
 .campaign-hub-tools { display: flex; align-items: center; gap: var(--space-4); }
-.campaign-stamp { padding: 9px 14px; color: var(--color-ticket) !important; border: 1px solid currentColor; transform: rotate(-5deg); letter-spacing: .12em; }
 .campaign-pack { overflow: hidden; background: linear-gradient(125deg, var(--color-surface), var(--color-canvas-deep)); }
 .campaign-pack .campaign-section-heading h2 { font-size: 52px; font-style: italic; }
 .campaign-pack-stage { display: grid; grid-template-columns: minmax(180px, .8fr) minmax(220px, 1fr) minmax(220px, 1.1fr); gap: clamp(20px, 3vw, 48px); align-items: center; padding: 14px 12px 24px; position: relative; }
@@ -13,12 +12,6 @@
 .campaign-pack-actions .btn { min-height: 42px; }
 .campaign-reveal-spotlight { min-height: 365px; position: relative; display: grid; place-items: center; perspective: 1000px; isolation: isolate; }
 .campaign-reveal-spotlight::before { content: ''; position: absolute; inset: 10% -20%; z-index: -1; background: radial-gradient(ellipse, color-mix(in srgb, var(--pack-light, var(--color-accent)) 18%, transparent), transparent 67%); }
-.campaign-sealed-pack { width: 245px; height: 350px; min-height: 0; margin: 0; transform: rotate(-6deg); transition: transform .22s ease, filter .22s ease; box-shadow: none; }
-.campaign-sealed-pack:hover { transform: rotate(-3deg) translateY(-4px); }
-.campaign-sealed-pack::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 15%, color-mix(in srgb, var(--color-ticket) 18%, transparent) 34%, transparent 49%); }
-.campaign-foil-mark { position: absolute; right: 14px; top: 75px; font-size: 170px; line-height: 1; color: color-mix(in srgb, var(--color-accent) 16%, transparent); }
-.campaign-sealed-pack strong { position: relative; font-size: 64px; }
-.campaign-pack-seal { font-size: 12px; padding: 9px; letter-spacing: .06em; }
 .campaign-reveal-art { display: grid; justify-items: center; width: min(100%, 255px); border: 0; padding: 0; color: var(--color-text-muted); background: transparent; cursor: zoom-in; position: relative; }
 .campaign-reveal-art .campaign-reward-art { width: 100%; --pack-halo: 26px; }
 .campaign-reveal-art .campaign-inspect-caption { font: 11px var(--font-mono); margin-top: 12px; }
@@ -86,8 +79,6 @@
 .campaign-card-facts { font: 12px/1.6 var(--font-mono); color: var(--color-ticket) !important; }
 .campaign-rules { white-space: pre-line; font: 14px/1.65 var(--font-ui); }
 .campaign-fit { font-size: 12px; line-height: 1.6; padding: 10px 0; color: var(--color-success) !important; border-top: 1px solid var(--color-divider); }
-.campaign-pack-line { display: block; width: 80px; height: 3px; background: var(--color-accent); margin-top: 28px; }
-.campaign-seal-tear { position: absolute; z-index: 2; top: 8px; left: 5%; width: 90%; background: var(--color-ticket); color: var(--color-ticket-ink); font: 11px var(--font-mono); padding: 13px; pointer-events: none; animation: campaign-tear .65s ease-in forwards; }
 .campaign-pack-fan { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 14px; border-top: 1px solid var(--color-divider); padding: 20px 12px 4px; }
 .campaign-pack-pocket { border: 1px solid transparent; background: transparent; padding: 8px; display: grid; justify-items: center; gap: 9px; color: var(--color-text-muted); cursor: pointer; min-width: 0; border-radius: var(--radius-sm); transition: background .15s; }
 .campaign-pack-pocket:hover { background: var(--color-surface-raised); }
@@ -182,7 +173,6 @@
 .campaign-room-preview img { width: 100%; display: block; object-fit: contain; max-height: calc(100dvh - 110px); }
 .campaign-room-preview > button { position: absolute; right: 16px; top: 16px; }
 .campaign-room-preview p { margin: 16px; font: 12px var(--font-mono); }
-@keyframes campaign-tear { to { opacity: 0; transform: translate3d(80px, -90px, 0) rotate(28deg); } }
 @keyframes campaign-reveal { from { opacity: 0; transform: perspective(1000px) rotateY(-75deg) translateY(20px) scale(.94); } to { opacity: 1; transform: perspective(1000px) rotateY(0) translateY(0) scale(1); } }
 @keyframes campaign-arrive { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: no-preference) {
@@ -190,15 +180,10 @@
   .campaign-arrival-content, .campaign-victory-copy { animation: campaign-arrive .7s cubic-bezier(.16, 1, .3, 1) both; }
   .campaign-victory-crew { animation: campaign-arrive .9s cubic-bezier(.16, 1, .3, 1) both; }
 }
-@media (prefers-reduced-motion: reduce) { .campaign-seal-tear { display: none; } .campaign-sealed-pack, .campaign-pack-pocket { transition: none; } .campaign-sealed-pack:hover { transform: rotate(-6deg); } }
+@media (prefers-reduced-motion: reduce) { .campaign-pack-pocket { transition: none; } }
 @media (max-width: 1200px) { .campaign-choice-grid article { grid-template-columns: 1fr; } .campaign-choice-art { width: 125px; justify-self: center; } .campaign-victory { gap: 24px; } }
 @media (max-width: 850px) { .campaign-pack-stage { grid-template-columns: 1fr 1fr; } .campaign-reveal-copy { grid-column: 1/-1; } .campaign-choice-grid { grid-template-columns: 1fr; } .campaign-choice-grid article { grid-template-columns: 120px 1fr; } .campaign-victory, .campaign-upgrade-layout { grid-template-columns: 1fr; } .campaign-edit-proposal { padding-left: 0; border-left: 0; } .campaign-act-number { opacity: .3; } .campaign-room-options { grid-template-columns: 1fr; } .campaign-room-options > button { min-height: 120px; } }
 @media (max-width: 500px) { .campaign-pack-stage { grid-template-columns: 1fr; } .campaign-pack-fan { gap: 4px; padding-inline: 0; } .campaign-pack-pocket { padding: 3px; } .campaign-pack-pocket span { font-size: 9px; } .campaign-pack-receipt { border-left: 0; padding-left: 0; } .campaign-section-heading > span { white-space: normal; } .campaign-room-hero { padding: 20px; } .campaign-room-hero h3 { font-size: 36px; } }
-.campaign-sealed-pack { position: relative; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; cursor: pointer; text-align: left; color: var(--color-ticket); border: 1px solid var(--color-ticket); clip-path: polygon(0 0, 94% 0, 100% 5%, 100% 100%, 6% 100%, 0 95%); background: repeating-linear-gradient(130deg, transparent 0 14px, color-mix(in srgb, var(--color-accent) 7%, transparent) 15px 16px), radial-gradient(at 80% 12%, color-mix(in srgb, var(--color-accent) 35%, transparent), transparent 55%), linear-gradient(140deg, var(--color-canvas-deep), var(--color-surface-raised) 55%, var(--color-canvas-deep)); }
-.campaign-sealed-pack::before { content: ''; position: absolute; inset: 8px; border: 1px solid color-mix(in srgb, var(--color-ticket) 45%, transparent); pointer-events: none; }
-.campaign-sealed-pack strong { font: italic 900 64px/.9 var(--font-display); color: var(--color-accent); }
-.campaign-pack-code, .campaign-pack-count { font: 10px/1.6 var(--font-mono); letter-spacing: .12em; }
-.campaign-pack-seal { display: block; margin-inline: -24px; text-align: center; background: var(--color-ticket); color: var(--color-ticket-ink); font-family: var(--font-mono); text-transform: uppercase; }
 /* The campaign is a working card table, so global poster frames do not apply. */
 .campaign-mode .card-art { border: 0; border-radius: 4px; transform: none; box-shadow: none; object-fit: contain; }
 .campaign-choice:focus { outline: none; }

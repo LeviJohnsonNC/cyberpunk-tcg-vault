@@ -1,0 +1,242 @@
+.campaign-seal-scene {
+  --seal-room: url('../assets/play/campaign-reward-counter.webp');
+  --seal-room-light: var(--color-accent);
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-items: center;
+  min-block-size: calc(100svh - var(--campaign-board-shell, 0px));
+  padding: clamp(16px, 2.6svh, 32px) clamp(18px, 6vw, 110px) clamp(22px, 3.7svh, 44px);
+  background-color: var(--color-canvas-deep);
+}
+.campaign-seal-scene[data-act='2'] {
+  --seal-room: url('../assets/play/campaign-rooftop.webp');
+  --seal-room-light: var(--color-card-blue);
+}
+.campaign-seal-scene[data-act='3'] {
+  --seal-room: url('../assets/play/campaign-arasaka.webp');
+  --seal-room-light: var(--color-ticket);
+}
+.campaign-seal-scene::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--color-canvas-deep) 72%, transparent), color-mix(in srgb, var(--color-canvas-deep) 62%, transparent) 36%, transparent 78%),
+    linear-gradient(0deg, color-mix(in srgb, var(--color-canvas-deep) 58%, transparent), transparent 37%, color-mix(in srgb, var(--color-canvas-deep) 35%, transparent)),
+    var(--seal-room) center / cover no-repeat;
+}
+.campaign-seal-layout {
+  --board-light: var(--seal-room-light);
+  width: min(100%, 1480px);
+  margin-inline: auto;
+  display: grid;
+  gap: clamp(10px, 1.65svh, 18px);
+}
+.campaign-seal-layout .campaign-board-header h1 { font-size: clamp(42px, min(6.5vw, 8svh), 96px); }
+.campaign-seal-layout .campaign-board-timeline { position: relative; grid-row: auto; }
+.campaign-seal-stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.13fr);
+  grid-template-areas: 'promise reward' 'story reward';
+  grid-template-rows: 1fr 1fr;
+  gap: clamp(12px, 2.6svh, 25px) clamp(20px, 5vw, 88px);
+  align-items: start;
+  width: min(100%, 1180px);
+  margin-inline: auto;
+}
+.campaign-seal-promise { grid-area: promise; align-self: end; }
+.campaign-seal-promise .play-eyebrow { color: var(--color-accent); font-size: clamp(11px, 1.1vw, 14px); }
+.campaign-seal-promise h2 {
+  margin: 12px 0 10px;
+  color: var(--color-ticket);
+  font: italic 800 clamp(44px, min(6.7vw, 9.4svh), 108px)/.89 var(--font-display);
+  text-transform: uppercase;
+}
+.campaign-seal-promise > p:last-child {
+  max-width: 34ch;
+  margin: 0;
+  color: var(--color-ticket);
+  font-size: clamp(15px, 1.45vw, 21px);
+  line-height: 1.48;
+}
+.campaign-seal-stage .campaign-dispatch { grid-area: story; margin: 0; max-width: 47ch; }
+.campaign-seal-stage .campaign-dispatch h3 { font-size: clamp(22px, 2vw, 28px); }
+.campaign-seal-stage .campaign-dispatch p { font-size: clamp(13px, 1.15vw, 16px); color: var(--color-text); }
+
+.campaign-seal-reward {
+  grid-area: reward;
+  display: grid;
+  justify-items: center;
+  gap: clamp(6px, 1.3svh, 15px);
+  min-width: 0;
+}
+.campaign-seal-prop {
+  --seal-pack-size: clamp(164px, min(27vw, 26svh), 335px);
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  justify-items: center;
+  width: min(100%, calc(var(--seal-pack-size) + 95px));
+  padding: 8px 16px 9px;
+}
+.campaign-seal-prop::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: auto 0 0;
+  height: 18%;
+  background: radial-gradient(ellipse at 49% 56%, black 12%, color-mix(in srgb, black 68%, transparent) 36%, transparent 69%);
+  pointer-events: none;
+}
+.campaign-seal-wrapper {
+  position: relative;
+  isolation: isolate;
+  width: var(--seal-pack-size);
+  max-width: 100%;
+  aspect-ratio: 545 / 980;
+  transform: perspective(850px) rotateY(-9deg) rotateX(7deg) rotateZ(8deg) skewX(-5deg);
+  filter: drop-shadow(13px 19px 15px color-mix(in srgb, black 75%, transparent));
+}
+.campaign-seal-wrapper > img {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+.campaign-seal-brand {
+  position: absolute;
+  inset: 13% 11% 14%;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  color: var(--color-ticket);
+  text-transform: uppercase;
+  text-shadow: 0 1px 4px var(--color-canvas-deep);
+  pointer-events: none;
+}
+.campaign-seal-brand span {
+  font: 500 clamp(8px, min(.88vw, 1.37svh), 13px)/1.2 var(--font-mono);
+  letter-spacing: .105em;
+  white-space: nowrap;
+}
+.campaign-seal-brand strong {
+  padding-top: 11%;
+  color: var(--color-accent);
+  font: italic 800 clamp(37px, min(6.35vw, 8.5svh), 84px)/.79 var(--font-display);
+}
+.campaign-seal-strip {
+  position: absolute;
+  inset: 64% 5% auto 4%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 5px;
+  border: 0;
+  color: var(--color-ticket-ink);
+  background: linear-gradient(110deg, var(--color-ticket-muted), var(--color-ticket) 8%, color-mix(in srgb, var(--color-ticket) 80%, var(--color-accent)) 92%);
+  box-shadow: 0 3px 5px color-mix(in srgb, black 45%, transparent);
+  font: italic 700 clamp(12px, 1.5vw, 19px)/1.1 var(--font-display);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.campaign-seal-strip::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 8%;
+  background: color-mix(in srgb, var(--color-ticket-muted) 45%, transparent);
+  clip-path: polygon(20% 0, 100% 0, 100% 100%, 40% 100%, 54% 68%, 15% 53%, 39% 28%);
+}
+.campaign-seal-strip:hover:not(:disabled) { background: var(--color-text); }
+.campaign-seal-strip:disabled { cursor: wait; }
+.campaign-seal-actions { display: grid; justify-items: center; gap: 4px; width: min(100%, 355px); }
+.campaign-seal-actions .campaign-invitation-cta { width: 100%; min-height: 48px; margin: 0; }
+.campaign-seal-link {
+  border: 0;
+  min-height: 32px;
+  padding: 3px 5px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font: 500 13px/1.4 var(--font-ui);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+.campaign-seal-link:hover:not(:disabled) { color: var(--color-text); }
+.campaign-seal-link:disabled { opacity: .58; cursor: wait; }
+.campaign-seal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: var(--color-text-muted);
+}
+.campaign-seal-footer small { font: 500 12px/1.4 var(--font-ui); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .campaign-seal-prop[data-peeling] .campaign-seal-wrapper { animation: campaign-pack-flex .33s ease-out both; }
+  .campaign-seal-prop[data-peeling] .campaign-seal-strip { animation: campaign-strip-peel .32s cubic-bezier(.22, .8, .4, 1) both; }
+  @keyframes campaign-pack-flex {
+    36% { transform: perspective(850px) rotateY(-16deg) rotateX(10deg) rotateZ(6deg) skewX(-5deg) scaleY(.975); }
+  }
+  @keyframes campaign-strip-peel {
+    25% { transform: translate3d(9%, -18%, 0) rotate(-4deg) skewX(-7deg); }
+    72% { opacity: 1; }
+    to { opacity: 0; transform: translate3d(68%, -125%, 0) rotate(-25deg) scaleY(.55); }
+  }
+}
+@media (min-width: 1050px) and (min-height: 710px) {
+  .campaign-seal-scene[data-encounter='first-call']::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: auto auto 0 0;
+    width: min(34vw, 470px);
+    height: min(38svh, 360px);
+    background:
+      url('../assets/play/crew-whiskey-glass.webp') left -53px bottom 67px / clamp(136px, 15vw, 218px) auto no-repeat,
+      url('../assets/play/campaign-reward-receipt.webp') left 10px bottom -65px / clamp(187px, 22vw, 335px) auto no-repeat;
+    pointer-events: none;
+  }
+  .campaign-seal-scene[data-encounter='first-call'] .campaign-seal-stage { padding-inline-start: clamp(40px, 5vw, 95px); }
+}
+@media (max-width: 800px) {
+  .campaign-seal-scene { align-items: start; padding-block: 20px 52px; }
+  .campaign-seal-scene::before { background-position: center, center, 64% top; }
+  .campaign-seal-stage {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'promise' 'reward' 'story';
+    grid-template-rows: auto;
+    gap: 14px;
+  }
+  .campaign-seal-promise h2 { font-size: clamp(37px, 8.8vw, 62px); margin-block: 7px; }
+  .campaign-seal-promise h2 br { display: none; }
+  .campaign-seal-prop { --seal-pack-size: clamp(158px, 40vw, 244px); }
+  .campaign-seal-brand strong { font-size: clamp(38px, 10vw, 64px); }
+  .campaign-seal-strip, .campaign-seal-link { min-height: 44px; }
+  .campaign-seal-stage .campaign-dispatch { margin-top: 4px; }
+  .campaign-seal-footer { justify-content: start; }
+}
+@media (max-width: 500px) {
+  .campaign-seal-layout .campaign-board-header h1 { font-size: clamp(40px, 11vw, 55px); }
+  .campaign-seal-layout .campaign-board-header { gap: 9px; }
+  .campaign-seal-layout .campaign-board-tools { align-self: center; }
+}
+
+@media (min-width: 801px) {
+  .app--play .campaign-seal-footer { padding-inline-end: 120px; }
+}
+@media (min-width: 801px) and (max-height: 820px) {
+  .campaign-seal-scene { padding-block: 14px 12px; }
+  .campaign-seal-scene[data-encounter='first-call']::after { background-position: left -53px bottom 67px, left -8px bottom -83px; }
+  .campaign-seal-prop { --seal-pack-size: clamp(151px, 24.4svh, 215px); }
+}
