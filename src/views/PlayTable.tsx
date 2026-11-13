@@ -128,6 +128,7 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
   const targetIds = new Set(step?.options.flatMap((option) => option.cardId ? [option.cardId] : []) ?? []);
   const chosenIds = new Set(step?.options.filter((option) => picks[step.id]?.includes(option.id)).flatMap((option) => option.cardId ? [option.cardId] : []) ?? []);
   const reveal = choice?.payload as { revealedCards?: CardView[]; cards?: CardView[]; source?: { cardId?: string } } | undefined;
+  const rememberedLegends = new Map(snapshot.knownLegends.map(card => [card.instanceId, card]));
   const cards = [...visibleCards(view), ...(reveal?.revealedCards ?? reveal?.cards ?? []), ...snapshot.peeks];
   const tableEffects = (['player', 'rival'] as const).flatMap((seat) => (view.players[seat].activeEffects ?? []).map((effect) => ({ seat, effect })));
   const hand = zoneCards(view.players.player, 'hand');
@@ -226,7 +227,7 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
     setContext({ state: stateKey, card, intents, x: point?.x ?? rect.right + 7, y: point?.y ?? rect.top, trigger });
   }
   function inspect(card: CardView, trigger?: HTMLElement) {
-    clearHover(); setContext(undefined); focusReturn.current = trigger; setInspection({ state: stateKey, card });
+    clearHover(); setContext(undefined); focusReturn.current = trigger; setInspection({ state: stateKey, card: !card.definitionId ? rememberedLegends.get(card.instanceId) ?? card : card });
   }
   function closeMenu() { context?.trigger?.focus({ preventScroll: true }); setContext(undefined); }
   function handleDrop(card: CardView, destination: Destination, release: PointerRelease) {
@@ -283,7 +284,8 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
     const effectTarget = playback?.beat.targetIds.includes(card.instanceId);
     const effectSource = playback?.beat.source?.instanceId === card.instanceId;
     const visibleRole = combatRole ?? (effectTarget ? 'Target' : effectSource ? 'Source' : undefined);
-    const state = [visibleRole, card.spent && 'Spent', card.hasLag && 'Lag', snapshot.knownLegends.some((legend) => legend.instanceId === card.instanceId) && 'Known', !!card.damage && `${card.damage} dmg`].filter(Boolean).join(' · ');
+    const remembered = rememberedLegends.has(card.instanceId);
+    const state = [visibleRole, card.spent && 'Spent', card.hasLag && 'Lag', remembered && 'Known', !!card.damage && `${card.damage} dmg`].filter(Boolean).join(' · ');
     const power = card.zone === 'field' && card.type !== 'gear' ? card.effectivePower : undefined;
     const cost = card.effectiveCost ?? card.cost;
     const repriced = inHand && cost != null && card.cost != null && cost !== card.cost;
@@ -299,7 +301,14 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
         onMouseEnter={(event) => enterCard(card, event.currentTarget)} onMouseLeave={clearHover}
         onFocus={(event) => { if (event.currentTarget.matches(':focus-visible')) enterCard(card, event.currentTarget); }} onBlur={clearHover}
         onKeyDown={(event) => { if (!playback && event.key.toLowerCase() === 'i') { event.preventDefault(); inspect(card, event.currentTarget); } }}
-        onClick={(event) => { if (playback || dragControl.suppressClick()) return; cue?.('select'); if (!pickOnBoard(card.instanceId)) { if (event.currentTarget.closest('dialog')) inspect(card, event.currentTarget); else showMenu(card, event.currentTarget); } }}>
+        onClick={(event) => {
+          if (playback || dragControl.suppressClick()) return;
+          cue?.('select');
+          if (pickOnBoard(card.instanceId)) return;
+          const intents = availableIntents(card);
+          if (event.currentTarget.closest('dialog') || (remembered && !intents.length)) inspect(card, event.currentTarget);
+          else showMenu(card, event.currentTarget, intents);
+        }}>
         <span className="play-card-art"><CardFace card={card} />
           {printing && <span className="play-art-fallback" aria-hidden="true"><b>{name}</b>{printing.type}</span>}
           {power != null && <span className="play-power" aria-hidden="true">{power}</span>}

@@ -118,14 +118,16 @@ export function createEngineSession(
   let feedback: MatchBeat | undefined;
 
   function frame(view: MatchFrame['view'], rolls: GigRoll[]): MatchFrame {
-    const concealed = new Set(Object.values(view.players).flatMap(({ zones }) => {
-      const legends = zones.legendArea;
-      return Array.isArray(legends) ? legends.filter((card) => card.faceDown).map((card) => card.instanceId) : [];
-    }));
-    return { view, peeks: [...peeks], log: [...log], gigRolls: rolls,
-      knownLegends: [...known].filter(([id]) => concealed.has(id))
-        .flatMap(([instanceId, viewers]) => [...viewers].map(seat => ({ instanceId, seat }))),
-    };
+    const state = engine.getState();
+    const knownLegends = seats.flatMap(seat => zoneCards(view.players[seat], 'legendArea')).flatMap(slot => {
+      if (!slot.faceDown || slot.definitionId || !known.get(slot.instanceId)?.has('player')) return [];
+      const revealed = projectRevealedCardView(state, slot.instanceId);
+      if (!revealed) return [];
+      const { definitionId, cardName, type, cost, power } = revealed;
+      // Keep the filtered slot's public status and attach only its remembered printed details.
+      return [{ ...slot, definitionId, cardName, type, cost, power, effectivePower: power }];
+    });
+    return { view, peeks: [...peeks], log: [...log], gigRolls: rolls, knownLegends };
   }
 
   function apply(seat: Seat, command: Move) {
@@ -183,14 +185,20 @@ export function createEngineSession(
       const fight = resolved?.attackKind === 'fight' ? resolved : priorFight;
       const outcome = resolved?.attackKind === 'fight' ? resolved.result : priorFight?.fightResolution?.result;
       const field = seats.flatMap((side) => zoneCards(before.players[side], 'field'));
-      const combatKillId = (outcome === 'attackerWins' || outcome === 'mutual') && fight?.defenderId
-        && field.some((card) => card.instanceId === fight.attackerId && card.type === 'unit')
-        && field.some((card) => card.instanceId === fight.defenderId && card.type === 'unit')
-        && result.gameEvents.some((event) => event.type === 'cardDefeated' && event.cardId === fight.defenderId && event.defeatedBy === fight.attackerId)
-        ? fight.defenderId : undefined;
+      const units = new Set(field.filter(card => card.type === 'unit').map(card => card.instanceId));
+      const combatKillIds: string[] = [];
+      if (fight?.defenderId && units.has(fight.attackerId) && units.has(fight.defenderId)) {
+        const { attackerId, defenderId } = fight;
+        for (const event of result.gameEvents) {
+          if (event.type !== 'cardDefeated') continue;
+          const defenderFell = (outcome === 'attackerWins' || outcome === 'mutual') && event.cardId === defenderId && event.defeatedBy === attackerId;
+          const attackerFell = (outcome === 'defenderWins' || outcome === 'mutual') && event.cardId === attackerId && event.defeatedBy === defenderId;
+          if (defenderFell || attackerFell) combatKillIds.push(event.cardId);
+        }
+      }
       const beat: MatchBeat = structuredClone({ ...frame(presentationView(after), rolls),
         ...described, text: beatText, id: commandNumber, seat,
-        ...(playedCardIds.length && { playedCardIds }), ...(combatKillId && { combatKillId }), ...(tableCues.length && { tableCues }) });
+        ...(playedCardIds.length && { playedCardIds }), ...(combatKillIds.length && { combatKillIds }), ...(tableCues.length && { tableCues }) });
       if (seat === 'rival') beats.push(beat);
       else feedback = beat;
     }

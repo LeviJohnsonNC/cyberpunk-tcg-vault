@@ -131,11 +131,15 @@ export function matchActions(view: PlayerView): MatchActionForm[] {
         actions = [form('resolveChooseEffect', 'Choose an effect', () => [field('effect', 'Effect', (payload.options as { id: string; label: string }[]).map(({ id, label }) => pick(id, label)))],
           (p) => ({ optionId: one(p, 'effect') }), detail)];
         break;
-      case 'chooseTrigger':
-        actions = [form('resolveTrigger', 'Resolve an ability', () => [field('trigger', 'Choose an ability', (payload.options as { triggerId: string; cardName: string; abilityText: string }[])
-          .map(({ triggerId, cardName, abilityText }) => pick(triggerId, cardName, abilityText)))], (p) => ({ triggerId: one(p, 'trigger') }))];
-        if (payload.canPass) actions.push(skip('resolveTrigger', 'Pass on abilities'));
+      case 'chooseTrigger': {
+        const triggers = payload.options as { triggerId: string; cardName: string; abilityText: string }[];
+        const multiple = triggers.length > 1;
+        actions = [form('resolveTrigger', multiple ? 'Order abilities' : 'Resolve an ability',
+          () => [field('trigger', multiple ? 'Choose what resolves first' : 'Choose an ability', triggers.map(({ triggerId, cardName, abilityText }) => pick(triggerId, cardName, abilityText)))],
+          (p) => ({ triggerId: one(p, 'trigger') }), multiple ? 'Resolve one ability at a time. The first can change what the others can do.' : undefined)];
+        if (payload.canPass) actions.push(skip('resolveTrigger', 'Pass on optional abilities'));
         break;
+      }
       case 'chooseGigsToSteal':
         actions = [form('resolveStealGigs', 'Steal Gigs', () => [field('gigs', 'Choose Gigs to steal',
           options((payload.eligibleDice as { dieId: string }[]).map(({ dieId }) => dieId)), payload.count as number)], (p) => ({ dieIds: p.gigs }), detail)];
