@@ -34,7 +34,7 @@ function observeArt(element: Element, load: (visible: boolean) => void) {
   };
 }
 
-export function PrintingArt({ slug, printingId, alt, pocket = false, inline = false, fallback }: { slug: string; printingId: string; alt: string; pocket?: boolean; inline?: boolean; fallback?: ReactNode }) {
+export function PrintingArt({ slug, printingId, alt, pocket = false, inline = false, fallback, placeholder }: { slug: string; printingId: string; alt: string; pocket?: boolean; inline?: boolean; fallback?: ReactNode; placeholder?: string }) {
   const image = useRef<HTMLImageElement>(null);
   const [loadedSrc, setLoadedSrc] = useState<string>();
   const [art, setArt] = useState<{ printingId: string; src: string | null }>();
@@ -65,6 +65,7 @@ export function PrintingArt({ slug, printingId, alt, pocket = false, inline = fa
 
   const loading = art?.printingId !== printingId;
   const src = loading ? null : art.src;
+  const loaded = !!src && loadedSrc === src;
   const img = (
     <img
       ref={image}
@@ -73,13 +74,18 @@ export function PrintingArt({ slug, printingId, alt, pocket = false, inline = fa
       alt={src ? alt : ''}
       decoding="async"
       referrerPolicy="no-referrer"
-      data-printing-loaded={inline && !!src && loadedSrc === src ? true : undefined}
+      data-printing-loaded={inline && loaded ? true : undefined}
+      hidden={!!placeholder && !loaded}
       onLoad={inline && src ? () => setLoadedSrc(src) : undefined}
       onError={src ? () => setArt({ printingId, src: null }) : undefined}
     />
   );
   if (inline && !loading && !src && fallback) return fallback;
-  if (inline) return <span className="printing-inline" aria-busy={loading}>{img}{!loading && !src && <small role="status">Printing art unavailable</small>}</span>;
+  if (inline) return <span className="printing-inline" aria-busy={loading || (!!placeholder && !!src && !loaded)}>
+    {img}
+    {placeholder && !loaded && <span className="printing-placeholder">{placeholder}</span>}
+    {!loading && !src && <small role="status">Printing art unavailable</small>}
+  </span>;
   if (pocket) {
     return <span className="binder-art-frame">{img}{!loading && !src && <span className="binder-art-status">Art unavailable</span>}</span>;
   }

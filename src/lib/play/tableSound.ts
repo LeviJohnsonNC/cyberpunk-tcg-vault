@@ -1,5 +1,5 @@
 /** Short synthesised table cues, including fallbacks for recorded effects. */
-export type TableCue = 'dice-roll' | 'card-play' | 'unit-kill' | 'deal' | 'draw' | 'play' | 'eddie' | 'hit' | 'defeat' | 'gig' | 'gig-steal' | 'turn' | 'win' | 'lose' | 'equip' | 'program' | 'call' | 'attack' | 'select' | 'ready' | 'pack-open' | 'pack-reveal' | 'pack-rare' | 'reward-lock' | 'act-arrival';
+export type TableCue = 'dice-roll' | 'card-play' | 'unit-kill' | 'deal' | 'draw' | 'play' | 'eddie' | 'hit' | 'defeat' | 'gig' | 'gig-steal' | 'turn' | 'win' | 'lose' | 'equip' | 'program' | 'call' | 'attack' | 'select' | 'ready' | 'pack-open' | 'pack-reveal' | 'pack-rare' | 'pack-foil' | 'reward-lock' | 'act-arrival';
 
 const TAU = Math.PI * 2;
 const tone = (hz: number, t: number) => Math.sin(TAU * hz * t);
@@ -16,6 +16,8 @@ const recipes: Record<Exclude<TableCue, keyof typeof recordedFallback>, Recipe> 
   'pack-reveal': { seconds: .36, gain: .28, smooth: .5, voice: (t, n) => n * Math.exp(-24 * t) * .6 + note(880, t, .04, 14) * .6 + note(1320, t, .09, 16) * .3 },
   'pack-rare': { seconds: .68, gain: .33, smooth: .75, voice: (t, n) => n * Math.exp(-22 * t) * .55
     + note(523.25, t, .03, 8) * .5 + note(783.99, t, .10, 8) * .56 + note(1174.66, t, .17, 10) * .4 },
+  'pack-foil': { seconds: .84, gain: .35, smooth: .68, voice: (t, n) => n * Math.exp(-19 * t) * .5
+    + note(392, t, .02, 7) * .5 + note(587.33, t, .09, 7) * .58 + note(880, t, .15, 9) * .52 + note(1174.66, t, .21, 11) * .33 },
   'reward-lock': { seconds: .4, gain: .35, smooth: .8, voice: (t, n) => note(180, t, 0, 30) + n * Math.exp(-70 * t) * .4 + note(659.25, t, .07, 12) * .6 + note(987.77, t, .12, 12) * .3 },
   'act-arrival': { seconds: 1.35, gain: .35, smooth: .9, voice: t => note(130.81, t, 0, 3) * .7 + note(261.63, t, .12, 4) * .6 + note(392, t, .25, 4) * .5 + note(523.25, t, .4, 4) * .4 },
   equip: { seconds: .28, gain: .5, smooth: .65, voice: (t, n) => note(1450, t, 0, 65) * .55 + note(2200, t, .055, 38) * .4 + n * Math.exp(-45 * t) * .3 },
