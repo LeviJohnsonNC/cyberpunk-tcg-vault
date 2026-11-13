@@ -27,12 +27,16 @@ html:has(.play-direct) { scrollbar-gutter: stable; }
   block-size: calc(var(--play-legend-width) * 1.4 + 9px);
 }
 .play-direct .play-bench[data-seat="player"] .play-legends > .play-card-row { justify-content: safe start; }
-.play-direct .play-eddie-row { block-size: calc(var(--play-legend-width) * .616 + 6px); }
+.play-direct .play-eddie-row { block-size: calc(var(--play-legend-width) * .616 + 6px); scrollbar-width: none; }
 .play-direct .play-fixer .play-dice {
   grid-template-rows: repeat(2, var(--play-die));
 }
+.play-direct .play-bench-piles > :is(.play-mat-deck, .play-mat-trash) { inline-size: max(42px, var(--play-pile-width)); }
+.play-direct .play-mat-trash .play-trash-trigger { inline-size: 100%; }
+.play-direct .play-trash-trigger > small { position: absolute; inset: auto 0 -10px; text-align: center; }
+.play-direct .play-trash-trigger { position: relative; }
 .play-direct .play-gigs { block-size: calc(var(--play-gig-die) + 10px); }
-.play-direct .play-gigs .play-dice { align-self: stretch; }
+.play-direct .play-gigs .play-dice { align-self: stretch; scrollbar-width: none; }
 .play-direct .play-hand .play-card-row {
   block-size: var(--play-hand-height);
   min-block-size: 0;
