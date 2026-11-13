@@ -34,7 +34,7 @@ function observeArt(element: Element, load: (visible: boolean) => void) {
   };
 }
 
-export function PrintingArt({ slug, printingId, alt, pocket = false, inline = false, fallback, placeholder }: { slug: string; printingId: string; alt: string; pocket?: boolean; inline?: boolean; fallback?: ReactNode; placeholder?: string }) {
+export function PrintingArt({ slug, printingId, alt, pocket = false, inline = false, fallback, placeholder, onReady }: { slug: string; printingId: string; alt: string; pocket?: boolean; inline?: boolean; fallback?: ReactNode; placeholder?: string; onReady?: (src: string) => void }) {
   const image = useRef<HTMLImageElement>(null);
   const [loadedSrc, setLoadedSrc] = useState<string>();
   const [art, setArt] = useState<{ printingId: string; src: string | null }>();
@@ -76,7 +76,7 @@ export function PrintingArt({ slug, printingId, alt, pocket = false, inline = fa
       referrerPolicy="no-referrer"
       data-printing-loaded={inline && loaded ? true : undefined}
       hidden={!!placeholder && !loaded}
-      onLoad={inline && src ? () => setLoadedSrc(src) : undefined}
+      onLoad={inline && src ? () => { setLoadedSrc(src); onReady?.(src); } : undefined}
       onError={src ? () => setArt({ printingId, src: null }) : undefined}
     />
   );

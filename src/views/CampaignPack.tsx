@@ -7,6 +7,7 @@ import { packCardContext } from '../lib/play/campaignPresentation';
 import { getPrintingArt } from '../lib/printingArt';
 import wrapperArt from '../assets/play/campaign-booster-foil.webp';
 import { CampaignTimeline, type CampaignInspect } from './CampaignHub';
+import { CampaignFeaturedCard } from './CampaignFeaturedCard';
 import { CampaignRewardArt } from './CampaignRewardArt';
 import { CampaignDispatch } from './CampaignStory';
 import './campaign-pack-scene.css';
@@ -53,6 +54,7 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
   const encounter = ENCOUNTERS[run.encounter];
   const act = Math.floor(run.encounter / 3) + 1;
   const [selected, setSelected] = useState<number>();
+  const [discovery, setDiscovery] = useState<number>();
   const [choice, setChoice] = useState<string>();
   const [opening, setOpening] = useState(false);
   const [requestPending, setRequestPending] = useState(false);
@@ -165,6 +167,7 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
         const face = front?.getBoundingClientRect() ?? slot.getBoundingClientRect();
         moveFrom.current = { card: face, lineup: row.getBoundingClientRect() };
       }
+      setDiscovery(animate ? turningSlot : undefined);
       setSelected(turningSlot);
       setFlip(undefined);
       flipLock.current = false;
@@ -225,6 +228,7 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
   async function selectSlot(slot: number) {
     if (!layout || busy || flipLock.current) return;
     if (revealed.includes(slot)) {
+      setDiscovery(undefined);
       setSelected(slot);
       return;
     }
@@ -341,14 +345,8 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
             <p className="campaign-tabletop-count" role="status">{visible.length} / {count} revealed</p>
             <div className="campaign-tabletop-progress" aria-hidden="true">{pulls.map((_, index) => <i key={index} data-filled={index < visible.length} />)}</div>
           </header>
-          <div className="campaign-tabletop-spotlight" data-rarity={pull?.printing?.rarity} data-tier={pull ? revealTier(pull.printing?.rarity) : undefined}>
-            {pull && <button ref={featured} type="button" className="campaign-tabletop-feature" onClick={() => inspect(pull.slug, pull.printing?.id)}
-              aria-label={`Inspect ${displayName(pull.slug)}`} key={active}>
-              <span className="campaign-tabletop-pose">
-                <CampaignRewardArt pull={pull} alt="" exact showNameWhileLoading />
-              </span>
-            </button>}
-          </div>
+          {pull ? <CampaignFeaturedCard key={active} pull={pull} buttonRef={featured} discovery={discovery === active}
+            inspect={() => inspect(pull.slug, pull.printing?.id)} /> : <div className="campaign-tabletop-spotlight" />}
           {pull && <div className="campaign-tabletop-copy" aria-live="polite">
             <p className="play-eyebrow" data-rarity={pull.printing?.rarity}>{[packRarityLabel(pull.printing?.rarity), BY_SLUG.get(pull.slug)?.color, BY_SLUG.get(pull.slug)?.type].filter(Boolean).join(' / ')}</p>
             <h2>{displayName(pull.slug)}</h2>
