@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { isReady, matchActions, type Picks } from '../lib/play/matchActions';
 import { activeStep, cardIntents, dropIntents, intentLabel, reorderPick, suggestPayment, updatePick, type Destination, type Intent } from '../lib/play/matchInteraction';
@@ -25,7 +25,9 @@ import { PlayPresentation, type MatchPlayback } from './PlayPresentation';
 import { MatchResult } from './PlayResult';
 import { CampaignMatchResult, type CampaignResultDetails } from './CampaignMatchResult';
 import { CIRCUIT_CONTRACTS } from '../lib/play/circuit';
+import { MatchRadioContainer } from '../lib/play/matchRadio';
 import './play-table.css';
+import './match-board.css';
 import './play-interaction.css';
 import './play-presentation.css';
 
@@ -83,13 +85,45 @@ function ContextMenu({ context, children, close }: { context: Context; children:
   </div>, document.body);
 }
 
-export function PlayTable({ scope, snapshot, names, busy: saving, error, send, rematch, edit, circuit, playback, feedback, reduced, controls, cue, campaign }: {
-  campaign?: CampaignResultDetails & { rival: ReactNode };
+export function PlayTable({ scope, snapshot, names, busy: saving, error, send, rematch, edit, circuit, playback, feedback, reduced, controls, navigation, audio, cue, campaign }: {
+  campaign?: CampaignResultDetails & { rival: ReactNode; act?: number };
   cue?: (name: TableCue, delayMs?: number) => (() => void) | undefined;
   playback?: MatchPlayback; feedback?: MatchBeat; scope: string; snapshot: MatchSnapshot; names: Record<Seat, string>; busy: boolean; error?: string;
-  send: (move: Move) => void; rematch: () => void; edit: () => void; circuit?: () => void; reduced: boolean; controls?: ReactNode;
+  send: (move: Move) => void; rematch: () => void; edit: () => void; circuit?: () => void; reduced: boolean; controls?: ReactNode; navigation?: ReactNode; audio?: ReactNode;
 }) {
   const { view } = snapshot;
+  const radioContainer = useContext(MatchRadioContainer);
+  const [radioOpen, setRadioOpen] = useState(false);
+  const radioPanel = useRef<HTMLElement>(null);
+  const menuRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    function outside(event: PointerEvent) {
+      if (menuRef.current?.open && event.target instanceof Node && !menuRef.current.contains(event.target)) menuRef.current.open = false;
+    }
+    document.addEventListener('pointerdown', outside);
+    return () => document.removeEventListener('pointerdown', outside);
+  }, []);
+  const closeOptions = useCallback(() => {
+    if (menuRef.current) menuRef.current.open = false;
+    menuRef.current?.querySelector('summary')?.focus({ preventScroll: true });
+  }, []);
+  const closeRadio = useCallback(() => {
+    setRadioOpen(false);
+    closeOptions();
+  }, [closeOptions]);
+  useEffect(() => {
+    const panel = radioPanel.current;
+    if (!radioOpen || !panel) return;
+    panel.focus({ preventScroll: true });
+    // The music controls belong to a portal, so listen on the actual panel.
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.stopPropagation();
+      closeRadio();
+    };
+    panel.addEventListener('keydown', escape);
+    return () => panel.removeEventListener('keydown', escape);
+  }, [radioOpen, closeRadio]);
   const setup = view.gamePhase === 'setup';
   const opening = useMatchOpening(!!snapshot.openingDeal && setup, reduced, cue);
   const busy = saving || opening.showing;
@@ -356,27 +390,47 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
   if (campaign && view.gameEnded) return <CampaignMatchResult details={campaign} snapshot={snapshot}
     busy={busy} error={error} onContinue={rematch} />;
 
-  return <div ref={grid} className="play-grid play-direct" data-match-id={snapshot.matchId} data-state-id={view.stateID} data-busy={busy} data-playback={!!playback}
+  return <div ref={grid} className="play-grid play-direct" data-match-id={snapshot.matchId} data-state-id={view.stateID} data-busy={busy} data-playback={!!playback} data-campaign={!!campaign}
     onKeyDown={(event) => {
       if (event.key === 'Escape' && opening.showing) { event.preventDefault(); opening.skip(); return; }
-      if (event.key !== 'Escape' || drag || inspected || menu) return;
+      if (event.key !== 'Escape' || drag || inspected || menu || (event.target as HTMLElement).closest('dialog[open]')) return;
       if (panel) setPanel(undefined);
       else { setChoice(choice ? defaultSelection : undefined, {}); clearHover(); }
     }}>
     <header className="play-match-header" inert={opening.showing}>
       <div className="play-match-identity">
         {contract ? <button type="button" className="play-eyebrow circuit-contract-trigger" aria-expanded={panel === 'contract'} aria-controls={`${panelId}-contract`} onClick={() => setPanel(panel === 'contract' ? undefined : 'contract')} title="View contract objective">◆ {contract.title} <span>/</span> Autosaved</button>
-          : <p className="play-eyebrow" title="Match saved in this browser">{campaign?.title ?? 'Practice table'} <span>/</span> Autosaved</p>}
+          : <p className="play-eyebrow" title="Match saved in this browser">{campaign?.title ?? 'Practice table'}{campaign?.act && <> <span>/</span> Act {campaign.act}</>} <small>Saved</small></p>}
         <h1 title={`${names.player} vs. ${names.rival}`}>{names.player} <span>vs.</span> {names.rival}</h1>
       </div>
       <div className="play-header-actions">
         {tableEffects.length > 0 && <button type="button" className="btn quiet" aria-expanded={panel === 'effects'} aria-controls={`${panelId}-effects`} onClick={() => setPanel(panel === 'effects' ? undefined : 'effects')}>Effects <b>{tableEffects.length}</b></button>}
         <button type="button" className="btn quiet" aria-expanded={panel === 'log'} aria-controls={`${panelId}-log`} onClick={() => setPanel(panel === 'log' ? undefined : 'log')}>Log <b>{log.length}</b></button>
-        {!view.gameEnded && <button type="button" className="btn quiet play-all-toggle" aria-expanded={panel === 'actions'} aria-controls={`${panelId}-actions`} disabled={!!playback}
-          onClick={() => setPanel(panel === 'actions' ? undefined : 'actions')}>All actions</button>}
-        {controls}
+        {navigation}
+        <details className="play-more play-match-options" ref={menuRef}
+          onBlur={event => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false; }}
+          onKeyDown={event => { if (event.key === 'Escape' && event.currentTarget.open) { event.stopPropagation(); event.preventDefault(); closeOptions(); } }}>
+          <summary className="btn quiet" aria-label="Match options">…</summary>
+          <div className="play-more-actions">
+            {!view.gameEnded && <button type="button" className="btn quiet" aria-expanded={panel === 'actions'} aria-controls={`${panelId}-actions`}
+              disabled={!!playback} onClick={() => { closeOptions(); setPanel(panel === 'actions' ? undefined : 'actions'); }}>All actions</button>}
+            {(audio || radioContainer) && <div className="play-match-audio" role="group" aria-label="Audio">
+              {radioContainer && <button type="button" className="btn quiet" aria-expanded={radioOpen} aria-controls={`${panelId}-radio`}
+                onClick={() => { closeOptions(); setRadioOpen(!radioOpen); }}>Afterhours Radio</button>}
+              {audio}
+            </div>}
+            {controls && <div className="play-match-utilities" role="group" aria-label="Match utilities" onClick={event => {
+              const button = (event.target as HTMLElement).closest('button');
+              if (button && !button.disabled) closeOptions();
+            }}>{controls}</div>}
+          </div>
+        </details>
       </div>
     </header>
+    {radioContainer && <section ref={radioPanel} tabIndex={-1} className="play-radio-panel" id={`${panelId}-radio`} hidden={!radioOpen} aria-label="Afterhours Radio">
+      <div ref={radioContainer} />
+      <button type="button" className="btn quiet" onClick={closeRadio}>Close radio</button>
+    </section>}
     {panel === 'contract' && contract && <section id={`${panelId}-contract`} className="play-drawer circuit-table-brief" aria-label="Contract objective">
       <div className="play-drawer-head"><h3>{contract.title}</h3>{closePanel}</div>
       <p>{contract.briefing}</p><div className="circuit-bonus"><span>◆ Bonus mark</span><p>{contract.bonus}</p></div>
@@ -431,7 +485,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
       <SeatField seat="player" active={playing && yourTurn} {...targeting} renderCard={renderCard}
         overlay={dropZones.has('program') && <div className="play-program-drop" data-drop-zone="program" data-drop-available="true" data-drop-over={dropOver === 'program'}>Play Program</div>} />
       <PlayerBench rolls={rolls} active={playing && yourTurn} {...targeting} dieDrag={gigChoice ? dragControl : undefined} renderCard={renderCard} renderFace={face}>
-        <section className="play-hand" data-zone="hand:player" aria-label="Your hand">
+        <section className="play-hand" data-zone="hand:player" data-crowded={hand.length > 9 || undefined} aria-label="Your hand">
           <div className="play-card-row">{hand.length ? hand.map((card, index) => renderCard(card, undefined, { index, count: hand.length })) : <span className="play-empty">No cards in hand</span>}</div>
         </section>
       </PlayerBench>

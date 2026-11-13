@@ -11,7 +11,6 @@ import type { CampaignWorkerResponse } from '../lib/play/campaign.worker';
 import type { MatchSnapshot, Move } from '../lib/play/protocol';
 import { useMatchPresentation } from './useMatchPresentation';
 import { useTableSound } from './useTableSound';
-import { PlayResetMenu } from './PlayResetMenu';
 import { PlayTable } from './PlayTable';
 import { ReactiveRoom } from './ReactiveRoom';
 import { campaignPulls, packRarityLabel } from '../lib/play/campaignPack';
@@ -401,6 +400,7 @@ export function CampaignMode({ scope, exit, openInBuilder, preparationOnly = fal
       playback={presentation.playback} feedback={presentation.feedback} reduced={presentation.reduced} cue={sound.cue}
       campaign={run && encounter && {
         title: encounter.title,
+        act: Math.floor(run.encounter / 3) + 1,
         rival: <CampaignRivalSeat encounter={encounter.id} starter={run.starter} quote={quote} dialogue={dialogue} toggle={toggleDialogue}
           legends={knownRivalLegendSlugs(displayedMatch).map(slug => ({ slug }))} inspect={inspectCard} />,
         encounter: encounter.id,
@@ -411,14 +411,16 @@ export function CampaignMode({ scope, exit, openInBuilder, preparationOnly = fal
       }}
       busy={busy || presentation.playing} error={error} send={move} rematch={continueResult}
       edit={() => leaveTable('workbench')}
-      controls={<><button className="btn quiet" onClick={() => leaveTable('hub')}>Campaign board</button>
+      navigation={<button className="btn quiet" onClick={() => leaveTable('hub')}>Campaign board</button>}
+      audio={<><button type="button" className="btn quiet" aria-pressed={sound.enabled} onClick={sound.toggle}>Game effects <b>{sound.enabled ? 'On' : 'Off'}</b></button>
+        <label className="play-sound-level">FX volume <input type="range" aria-label="Game effects volume" min="0" max="1" step=".05" value={sound.volume} onChange={e => sound.changeVolume(Number(e.target.value))} /></label></>}
+      controls={<>
+        {exit && <button className="btn quiet" onClick={exit}>Free Play</button>}
+        {error && <button className="btn quiet" onClick={reloadSavedState}>{workerFailed.current ? 'Reload page' : 'Reload saved match'}</button>}
         {!snapshot.view.gameEnded && <button type="button" className="btn danger-ghost" disabled={busy || presentation.playing}
           onClick={() => setConcede(true)}>Concede</button>}
-        {run && <PlayResetMenu mode="Campaign" disabled={busy} onReset={openReset} />}
-        {error && <button className="btn" onClick={reloadSavedState}>{workerFailed.current ? 'Reload page' : 'Reload saved match'}</button>}
-        {exit && <button className="btn quiet" onClick={exit}>Free Play</button>}
-        <button className="btn quiet" onClick={sound.toggle}>Sound {sound.enabled ? 'On' : 'Off'}</button>
-        <label className="play-sound-level">FX <input type="range" aria-label="Game effects volume" min="0" max="1" step=".05" value={sound.volume} onChange={e => sound.changeVolume(Number(e.target.value))} /></label></>} />
+        {run && <button type="button" className="btn danger-ghost" disabled={busy} onClick={openReset}>Reset campaign</button>}
+      </>} />
     : <div className={choosingStarter ? "campaign-hub campaign-hub--onboarding" : "campaign-hub"} ref={hub} tabIndex={-1}>
       {error && <div className="play-error" role="alert">{error} <button className="btn quiet" onClick={reloadSavedState}>{workerFailed.current ? 'Reload page' : 'Reload campaign'}</button></div>}
       {busy && !profile && <p role="status">Opening the table…</p>}
