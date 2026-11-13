@@ -7,6 +7,7 @@ import type { CardView, MatchBeat, MatchSnapshot, Move, Seat } from '../lib/play
 import { CardFace, CardInspection } from './PlayCard';
 import { vaultCard } from '../lib/play/cardDisplay';
 import { decisionSource, previewPosition } from '../lib/play/tacticalInfo';
+import { commandPresentation } from '../lib/play/commandPresentation';
 import { DieFace, GigRollAnnouncement } from './PlayDice';
 import { releaseOnField, type PointerRelease } from '../lib/play/diceThrow';
 import { PlayGigRoll } from './PlayGigRoll';
@@ -32,7 +33,6 @@ import './play-interaction.css';
 import './play-presentation.css';
 import './play-command.css';
 
-const combatSteps: Record<string, string> = { attack: 'Attack', react: 'React', fight: 'Fight', fightResult: 'Fight result', steal: 'Steal' };
 const winReasons: Record<string, string> = { gig_victory: 'Seven Gigs secured', overtime_majority: 'Majority of Gigs in overtime', deck_out_victory: 'Deck-out', concede: 'Concession', concession: 'Concession' };
 type SavedDecision = { matchId: string; state: number; selection?: number; picks: Picks; step?: string };
 type Context = { state: string; card: CardView; intents: Intent[]; x: number; y: number; trigger?: HTMLElement };
@@ -175,16 +175,13 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
   const hand = zoneCards(view.players.player, 'hand');
   const handIds = new Set(hand.map((card) => card.instanceId));
   const combat = view.attackState;
-  const combatStep = combat && combatSteps[combat.step];
   const waiting = !actions.length && view.prompt.status === 'waiting';
   const inspected = inspection?.state === stateKey ? inspection.card : undefined;
   const menu = context?.state === stateKey ? context : undefined;
   const hovered = preview?.state === stateKey ? preview : undefined;
   const sourceId = selected ? decisionSource(view, selected, picks, cards)?.instanceId : reveal?.source?.cardId;
-  const decisionTitle = rolling ? 'Rolling Gigs' : playback ? 'Watching moves' : view.gameEnded ? view.winnerId === 'player' ? 'You win' : view.winnerId === 'rival' ? 'Rival wins' : 'Match complete'
-    : waiting ? 'Rival is deciding' : choice?.type === 'chooseFirstPlayer' ? 'Choose turn order'
-    : view.gamePhase === 'setup' ? 'Opening hand' : choice ? actions[0]?.label ?? 'Resolve a choice'
-    : combatStep === 'React' ? 'Reaction window' : combatStep ?? 'Your move';
+  const command = commandPresentation({ view, actions, selected, active: step, busy, playback: !!playback, rolling });
+  const decisionTitle = command.title;
   const turnKey = setup ? 'setup' : `${view.turnNumber}:${view.activePlayerId}`;
   const [firstTurn] = useState(turnKey);
   useEffect(() => {
@@ -386,7 +383,6 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
   const resolveButtons = special.filter(({ action }) => action.id === 'resolveAttack').map(({ index }) => actionButton(index));
   const turnButtons = special.filter(({ action }) => !choice && ['passPhase', 'resolveAttack'].includes(action.id) && !(combat && action.id === 'resolveAttack'))
     .map(({ action, index }) => actionButton(index, undefined, action.id === 'passPhase' ? 'btn play-end-turn' : 'btn quiet'));
-  const mulligan = setup ? actions.find(action => action.id === 'mulligan') : undefined;
   const canSell = yourTurn && view.players.player.eddies === 0 && actions.some(action => action.id === 'sellCard');
   const hint = busy ? 'Resolving the move.' : waiting ? 'The rival is choosing a move.'
     : canSell ? 'Select a card to play it or sell it for an Eddie.' : 'Select a card or drag it to a highlighted destination.';
@@ -464,31 +460,31 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
       <RivalBench portrait={campaign?.rival} rolls={rolls} name={names.rival} active={playing && !yourTurn} {...targeting} renderCard={renderCard} renderFace={face} />
       <SeatField seat="rival" active={playing && !yourTurn} {...targeting} renderCard={renderCard} />
       <GigZones {...targeting} />
-      <div className="play-command" data-presentation={choice?.type === 'chooseFirstPlayer' ? 'turn-order' : mulligan ? 'opening-hand' : undefined} data-seat={playing ? view.activePlayerId : undefined} data-state={playback ? 'playback' : selected || choice || setup ? 'decision' : combat ? 'combat' : 'idle'}>
+      <div className="play-command" data-presentation={command.variant} data-attention={command.attention} data-reduced={reduced || undefined} data-seat={playing ? view.activePlayerId : undefined} data-state={playback ? 'playback' : selected || choice || setup ? 'decision' : combat ? 'combat' : 'idle'}>
         <div className="play-command-inner" tabIndex={-1}>
+          {command.attention === 'mandatory' && <span className="play-command-arrival" key={`${snapshot.matchId}:${command.cueKey}`} aria-hidden="true" />}
           <div className="play-turn-plate"><span>{setup ? 'Setup' : view.overtimeActive ? `Overtime · Turn ${view.turnNumber}` : `Turn ${view.turnNumber}`}</span>
-            <strong>{view.gameEnded ? 'Match over' : setup ? mulligan ? 'Opening hand' : 'Opening' : yourTurn ? 'Your turn' : 'Rival turn'}</strong></div>
+            <strong>{view.gameEnded ? 'Match over' : setup ? command.variant === 'opening-hand' ? 'Opening hand' : 'Opening' : yourTurn ? 'Your turn' : 'Rival turn'}</strong></div>
           <h2 className="sr-only" aria-live="polite">{decisionTitle}</h2>
           {view.gameEnded ? <div className="play-command-lead"><strong>{decisionTitle}</strong><p>{winReasons[view.winReason ?? ''] ?? 'Match ended'}</p></div>
             : playback ? <>{combat && <CombatBanner view={view} watching compact />}<PlayPresentation playback={playback} /></>
             : selected ? <div className="play-table-decision" key={stateKey}>
               {combat && <CombatBanner view={view} watching={false} compact inspect={inspect} />}
-              <PlayChoices view={view} action={selected} picks={picks} fields={fields} active={step} cards={cards} busy={busy} forced={!!choice} revealed={reveal?.revealedCards} select={chooseValue}
+              <PlayChoices presentation={command} view={view} action={selected} picks={picks} fields={fields} active={step} cards={cards} busy={busy} forced={!!choice} revealed={reveal?.revealedCards} select={chooseValue}
                 step={(id) => { clearHover(); setChoice(selection, picks, id); }} reorder={(field, ids) => { const next = reorderPick(selected, picks, field, ids); if (next) setChoice(selection, next, field); }}
                 submit={() => selection !== undefined && commit({ action: selection, picks })}
                 cancel={() => { setChoice(choice ? defaultSelection : undefined, {}); clearHover(); }}
-                inspect={inspect} alternatives={choice ? special.map(({ index }) => actionButton(index)) : null} /></div>
+                inspect={inspect} alternatives={choice ? special.map(({ index }) => actionButton(index)) : combat ? resolveButtons : null} /></div>
             : choice || setup ? <div className="play-opening-choices">
               {combat && <CombatBanner view={view} watching={false} compact inspect={inspect} />}
               <div className="play-command-lead">
-                <h3>{mulligan ? 'Keep this hand?' : decisionTitle}</h3>
-                {choice?.type === 'chooseFirstPlayer' && <p>Decide who takes the first turn.</p>}
-                {mulligan?.detail && <p>{mulligan.detail}</p>}
-                {choice && actions[0]?.detail && <p><Rules text={actions[0].detail} /></p>}
+                <h3>{decisionTitle}</h3>
+                {command.detail && <p><Rules text={command.detail} /></p>}
               </div>
               <div className="play-command-actions">{actions.map((action, index) => actionButton(index, undefined, action.id === 'keepHand' ? 'btn play-confirm' : 'btn quiet'))}</div>
             </div>
-            : combat ? <CombatBanner view={view} watching={false} inspect={inspect} controls={resolveButtons} />
+            : combat ? <div className="play-table-decision play-combat-decision"><div className="play-command-lead"><h3>{decisionTitle}</h3><p>{command.detail}</p></div>
+              <CombatBanner view={view} watching={false} compact inspect={inspect} controls={resolveButtons} /></div>
             : <><div className="play-command-lead"><strong>{decisionTitle}</strong>
               <p role="status">{feedback && !busy ? <><b>{feedback.seat === 'player' ? 'You' : 'Rival'}</b> {feedback.text}</> : hint}</p></div>{turnButtons.length > 0 && <div className="play-command-actions">{turnButtons}</div>}</>}
           {error && <p className="play-error" role="alert">{error}</p>}

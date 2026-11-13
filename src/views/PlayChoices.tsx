@@ -6,8 +6,10 @@ import type { CardView, PlayerView } from '../lib/play/protocol';
 import { decisionSource, paymentPreview } from '../lib/play/tacticalInfo';
 import { CardFace } from './PlayCard';
 import { DieFace } from './PlayDice';
+import type { CommandPresentation } from '../lib/play/commandPresentation';
 
-export function PlayChoices({ view, action, picks, fields, active, cards, busy, forced, select, step, submit, cancel, alternatives, reorder, inspect, revealed }: {
+export function PlayChoices({ presentation, view, action, picks, fields, active, cards, busy, forced, select, step, submit, cancel, alternatives, reorder, inspect, revealed }: {
+  presentation: CommandPresentation;
   view: PlayerView;
   revealed?: CardView[]; action: MatchActionForm; picks: Picks; fields: PickField[]; active?: PickField; cards: CardView[];
   inspect: (card: CardView, trigger: HTMLElement) => void; busy: boolean; forced: boolean; select: (field: string, value: string) => void;
@@ -43,8 +45,8 @@ export function PlayChoices({ view, action, picks, fields, active, cards, busy, 
       <div className="play-tray-head">
         <div className="play-tray-intent">
           {sourceCard && <button type="button" className="play-tray-source" aria-label={`Inspect ${sourceCard.cardName ?? 'selected card'}`} onClick={(event) => inspect(sourceCard, event.currentTarget)}><CardFace card={sourceCard} /></button>}
-          <div><h3>{action.label}</h3>{sourceCard ? <p>{sourceCard.cardName ?? 'Selected Legend'}</p>
-            : rollingGig && <p>Select a die or drag it onto your field.</p>}</div>
+          <div><h3>{presentation.title}</h3>{sourceCard ? <p>{action.label} · {sourceCard.cardName ?? 'Selected Legend'}</p>
+            : presentation.detail && <p>{presentation.detail}</p>}</div>
         </div>
         <div className="play-tray-actions">
           <button className="btn play-confirm" data-confirm-move={action.id} disabled={busy || !ready}>{rollingGig ? 'Roll die' : commitLabel(action, picks)}</button>
@@ -68,7 +70,7 @@ export function PlayChoices({ view, action, picks, fields, active, cards, busy, 
           data-step={field.id} disabled={busy} onClick={() => step(field.id)}>
           <span>{index + 1}</span> {field.label} <b>{picks[field.id]?.length ?? 0}/{field.min === field.max ? field.min : `${field.min}–${field.max}`}</b>
         </button>)}</div>
-      {onMat ? <div className="play-on-mat-prompt"><span>{action.id === 'gainGig' ? 'Drag a die onto your field to roll, or select one and confirm.' : active?.id === 'payment' ? 'Select Eddies or Legends on the mat.' : 'Select a highlighted card or die on the mat.'}</span><details key={active?.id}><summary>Options</summary>{options}</details></div> : options}
+      {onMat ? <div className="play-on-mat-prompt"><span>{presentation.detail ?? 'Select a highlighted card or die on the mat.'}</span><details key={active?.id}><summary>Options</summary>{options}</details></div> : options}
       {placement && <div className="play-placement-review" aria-label="Placement review">
         {fields.map((field) => <div key={field.id}><strong>{field.label}</strong><span>{(picks[field.id] ?? []).map((id) => field.options.find((option) => option.id === id)?.label).join(' → ') || 'None selected'}</span></div>)}
         {unassigned.length > 0 && <div><strong>Unassigned</strong><span>{unassigned.map((card) => card.cardName ?? 'Revealed card').join(' · ')}. {action.detail?.split('Unassigned cards · ')[1] ?? 'Follow the remaining destination shown above.'}</span></div>}

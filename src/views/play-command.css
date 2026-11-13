@@ -1,5 +1,5 @@
 /* Contextual guidance. Presentation only; choices and targets come from the engine. */
-.play-direct .play-command:is([data-presentation="turn-order"], [data-presentation="opening-hand"]) .play-command-inner {
+.play-direct .play-command[data-attention="mandatory"] .play-command-inner {
   min-height: 68px;
   gap: 10px clamp(14px, 1.7vw, 30px);
   padding: 8px 16px 8px 0;
@@ -13,9 +13,9 @@
   background: linear-gradient(115deg, #382333, #271b29);
   color: var(--color-ticket);
 }
-.play-direct .play-command .play-opening-choices {
+.play-direct .play-command:is([data-presentation="turn-order"], [data-presentation="opening-hand"]) .play-opening-choices {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, max-content) auto;
   gap: 16px clamp(18px, 3vw, 54px);
   max-width: 1320px;
 }
@@ -37,8 +37,9 @@
   max-width: 360px;
   font-size: 14px;
 }
-.play-direct .play-opening-choices .play-command-actions { margin: 0; gap: 12px; flex-wrap: nowrap; }
-.play-direct .play-command .play-opening-choices .btn {
+.play-direct .play-opening-choices .play-command-actions { margin: 0; gap: 12px; justify-self: start; }
+.play-direct .play-command:is([data-presentation="turn-order"], [data-presentation="opening-hand"]) .play-command-actions { flex-wrap: nowrap; }
+.play-direct .play-command:is([data-presentation="turn-order"], [data-presentation="opening-hand"]) .play-opening-choices .btn {
   width: clamp(150px, 11.5vw, 180px);
   min-height: 50px;
   padding: 10px 18px;
@@ -61,15 +62,76 @@
 .play-direct .play-command .play-opening-choices .btn:focus-visible { outline: 2px solid var(--color-ticket); outline-offset: 3px; }
 .play-direct .play-command .play-opening-choices .btn:not(:disabled):active { background: #633448; }
 .play-direct .play-table[data-setup-choice] > .play-field { filter: brightness(.82); }
+.play-direct .play-command[data-attention="selection"] .play-command-inner { border-color: #ff8cbb60; }
+.play-direct .play-command[data-attention="waiting"] .play-command-inner { border-color: var(--play-edge); }
+.play-direct .play-command .play-command-lead h3,
+.play-direct .play-command .play-tray-intent h3 {
+  margin: 0;
+  color: var(--color-ticket);
+  font: italic 800 clamp(22px, 1.7vw, 28px)/1.05 var(--font-display);
+  text-transform: uppercase;
+}
+.play-direct .play-command[data-attention="mandatory"] .play-turn-plate { margin-block: -8px; }
+.play-direct .play-command :is(.play-tray-actions, .play-combat-controls, .play-command-actions) .btn {
+  min-height: 44px;
+  padding: 8px 16px;
+  font-size: 14px;
+  white-space: normal;
+}
+.play-direct .play-command .play-tray-actions { align-items: center; gap: 8px; }
+.play-direct .play-command .play-table-decision { min-width: 0; }
+.play-direct .play-command .play-decision-tray .play-tray-intent { flex: 1 1 260px; }
+.play-direct .play-command .play-decision-tray[data-compact="true"] .play-tray-intent > div { display: grid; gap: 4px; }
+.play-direct .play-command .play-tray-intent p { max-width: 490px; font-size: 13px; line-height: 1.3; }
+.play-direct .play-command .play-choice-steps { gap: 6px; }
+.play-direct .play-command .play-choice-steps .btn { min-height: 36px; padding: 6px 9px; }
+.play-direct .play-command .play-choice-steps .btn[aria-pressed="true"] {
+  color: var(--color-ticket);
+  border-color: var(--color-accent);
+  background: #ff8cbb14;
+}
+.play-direct .play-command .play-payment-receipt { flex-basis: 100%; }
+.play-direct .play-command .play-combat-decision { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; }
+.play-direct .play-command .play-combat-decision > .play-command-lead { flex: 1 1 235px; }
+.play-direct .play-command .play-combat-banner { min-width: min(100%, 330px); }
+.play-direct .play-command .play-combat-banner[data-compact="true"] .play-combat-stage { display: none; }
+.play-direct .play-command .play-combat-controls:empty { display: none; }
+.play-direct .play-command .play-combat-decision .play-command-lead p { max-width: 470px; }
+.play-direct .play-command .btn:focus-visible { outline: 2px solid var(--color-ticket); outline-offset: 3px; }
+.play-command-arrival {
+  position: absolute;
+  inset: -1px;
+  z-index: 0;
+  border: 1px solid var(--color-accent);
+  border-radius: inherit;
+  box-shadow: inset 0 0 20px #ff8cbb14;
+  pointer-events: none;
+  opacity: 0;
+  animation: play-command-arrive 260ms ease-out both;
+}
+@keyframes play-command-arrive { from { opacity: .85; } to { opacity: 0; } }
+/* Available dice stay legible; selected and focused states are separate from availability. */
+.play-direct .play-die[data-roll-available] .play-die-face {
+  animation: none;
+  filter: drop-shadow(0 0 5px #f6dca98c);
+}
+.play-direct .play-die[data-roll-available][aria-pressed="true"] {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  color: var(--color-accent);
+}
 @media (max-width: 1200px) {
-  .play-direct .play-opening-choices .play-command-lead p { display: none; }
-  .play-direct .play-command .play-opening-choices { gap: 12px; }
+  .play-direct .play-command[data-presentation="turn-order"] .play-command-lead p { display: none; }
+  .play-direct .play-command:is([data-presentation="turn-order"], [data-presentation="opening-hand"]) .play-opening-choices { gap: 12px; }
+  .play-direct .play-command .play-tray-head { flex-wrap: wrap; }
 }
 @media (max-width: 760px) {
-  .play-direct .play-command .play-opening-choices { grid-template-columns: minmax(0, 1fr); }
+  .play-direct .play-command:is([data-presentation="turn-order"], [data-presentation="opening-hand"]) .play-opening-choices { grid-template-columns: minmax(0, 1fr); }
   .play-direct .play-opening-choices .play-command-actions { justify-content: start; flex-wrap: wrap; }
-  .play-direct .play-command .play-opening-choices .btn { flex: 1; width: auto; min-width: 120px; }
+  .play-direct .play-command:is([data-presentation="turn-order"], [data-presentation="opening-hand"]) .play-opening-choices .btn { flex: 1; width: auto; min-width: 120px; }
 }
+.play-command[data-reduced] .play-command-arrival { animation: none; }
 @media (prefers-reduced-motion: reduce) {
   .play-direct .play-command .btn { transition: none; }
+  .play-command-arrival { animation: none; }
 }
