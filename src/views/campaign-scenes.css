@@ -1,0 +1,106 @@
+.campaign-scene {
+  --scene-light: var(--color-accent);
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: calc(100svh - var(--campaign-board-shell, 58px));
+  padding: clamp(20px, 4vw, 58px) max(5vw, calc((100vw - 1450px) / 2));
+  background:
+    radial-gradient(ellipse at 78% 22%, color-mix(in srgb, var(--scene-light) 14%, transparent), transparent 58%),
+    var(--color-canvas-deep);
+  overflow: clip;
+}
+.campaign-scene[data-act='2'] { --scene-light: var(--color-rarity-rare); }
+.campaign-scene[data-act='3'] { --scene-light: var(--color-ticket); }
+.campaign-scene-header, .campaign-scene-footer {
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.campaign-scene-header > p { margin: 0; }
+.campaign-scene-stage {
+  display: grid;
+  grid-template-columns: minmax(0, .78fr) minmax(0, 1.22fr);
+  align-items: center;
+  gap: clamp(18px, 4vw, 64px);
+  padding-block: clamp(24px, 5vh, 56px);
+}
+.campaign-scene-frame {
+  position: relative;
+  grid-column: 2;
+  grid-row: 1;
+  margin: 0;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  background: var(--color-surface);
+  box-shadow: 0 30px 64px color-mix(in srgb, var(--color-canvas-deep) 75%, transparent);
+}
+.campaign-scene-frame::after {
+  position: absolute;
+  inset: 0;
+  border: 1px solid color-mix(in srgb, var(--scene-light) 34%, transparent);
+  background: linear-gradient(145deg, transparent 70%, color-mix(in srgb, var(--color-canvas-deep) 38%, transparent));
+  content: '';
+  pointer-events: none;
+}
+.campaign-scene-frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.campaign-scene-frame[data-encounter='first-call'][data-shot='rival'] img { object-position: 55% 30%; }
+.campaign-scene-frame .campaign-rival-portrait {
+  position: absolute;
+  inset: 50% 0 auto;
+  transform: translateY(-43%);
+  border-radius: 0;
+  background-image: url('../assets/play/last-call-rival-atlas-detail.webp');
+}
+.campaign-scene-copy { grid-column: 1; grid-row: 1; min-width: 0; }
+.campaign-scene-result, .campaign-scene-footer {
+  color: var(--scene-light);
+  font: 500 .75rem/1.4 var(--font-mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.campaign-scene-result { margin: 0 0 12px; }
+.campaign-scene :is(h1, h2) {
+  margin: 0;
+  color: var(--color-ticket);
+  font: italic 800 clamp(3rem, 6vw, 6.3rem)/.85 var(--font-display);
+  letter-spacing: -.025em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+.campaign-scene :is(h1, h2):focus { outline: none; box-shadow: none; }
+.campaign-scene :is(h1, h2) span { color: var(--color-accent); }
+.campaign-scene-text {
+  max-width: 43ch;
+  margin: clamp(20px, 4vh, 38px) 0 0;
+  padding-inline-start: 16px;
+  border-inline-start: 2px solid var(--scene-light);
+  color: var(--color-text);
+  font: 400 clamp(1rem, 1.35vw, 1.25rem)/1.6 var(--font-ui);
+}
+.campaign-scene-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: clamp(18px, 4vh, 36px); }
+.campaign-scene .campaign-invitation-cta { margin: 0; min-height: 48px; padding: 9px 22px; font-size: clamp(1.1rem, 2vw, 1.5rem); }
+.campaign-scene-footer { padding-block: 12px; border-top: 1px solid var(--color-divider); color: var(--color-text-muted); }
+.campaign-scene[data-replay] { min-height: min(74svh, 660px); padding: clamp(16px, 3vw, 36px); }
+.al-dialog.campaign-story-journal[data-replay] { width: min(1200px, calc(100vw - 32px)); }
+.campaign-story-journal .campaign-scene :is(h1, h2) { font-size: clamp(2.3rem, 6vw, 4.5rem); }
+.campaign-journal-chapters button { margin-top: 8px; }
+@media (prefers-reduced-motion: no-preference) {
+  .campaign-scene-stage { animation: campaign-scene-arrive 200ms ease-out both; }
+  @keyframes campaign-scene-arrive { from { opacity: .55; } }
+}
+@media (max-width: 720px) {
+  .campaign-scene { min-height: calc(100svh - 104px); padding: 18px 16px; }
+  .campaign-scene-stage { grid-template-columns: minmax(0, 1fr); gap: 18px; padding-block: 14px 20px; align-content: center; }
+  .campaign-scene-frame { grid-column: 1; grid-row: 1; aspect-ratio: 1.8; }
+  .campaign-scene-copy { grid-column: 1; grid-row: 2; }
+  .campaign-scene :is(h1, h2) { font-size: clamp(2.7rem, 10vw, 4rem); text-wrap: initial; }
+  .campaign-scene-result { margin-bottom: 6px; }
+  .campaign-scene-text { margin-top: 12px; padding-inline-start: 12px; font-size: .98rem; }
+  .campaign-scene-actions { margin-top: 14px; }
+  .campaign-scene-footer { font-size: .65rem; }
+}

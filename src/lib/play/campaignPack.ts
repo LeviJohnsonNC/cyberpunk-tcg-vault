@@ -10,6 +10,8 @@ type RetailPull = { slug: string; printing: Printing };
 const pool = CARDS.flatMap(card => card.printings
   .filter(printing => printing.set === retail && rank(printing.rarity) >= 0)
   .map(printing => ({ slug: card.slug, printing })));
+export const RETRY_PACK_SIZE = 5;
+
 const iconicPool = pool.filter(({ printing }) => printing.rarity.startsWith('Iconic '));
 
 // WeirdCo's published odds are per 12-card booster, with two Rare+ slots.
@@ -44,6 +46,29 @@ export function rollCampaignPack(random: () => number, compatible: ReadonlySet<s
       const rarity = roll < iconic + secret ? 'Secret' : roll < iconic + secret + epic ? 'Epic' : 'Rare';
       take(pool.filter(({ printing }) => printing.rarity === rarity));
     }
+  }
+  return pulls.sort((a, b) => rank(a.printing.rarity) - rank(b.printing.rarity));
+}
+
+/** The house's five-card retry pack uses playable crew cards and one Rare+ roll. */
+export function rollRetryPack(random: () => number, compatible: ReadonlySet<string>, inventory: Readonly<Record<string, number>>) {
+  const pulls: RetailPull[] = [];
+  const used = new Set<string>();
+  const candidates = pool.filter(pull => compatible.has(pull.slug));
+  const commonCount = random() < .5 ? 2 : 3;
+  const hit = random();
+  const rareSlot = hit < iconic ? 'Iconic' : hit < iconic + secret ? 'Secret' : hit < iconic + secret + epic ? 'Epic' : 'Rare';
+  const rarities = [...Array.from({ length: RETRY_PACK_SIZE - 1 }, (_, index) => index < commonCount ? 'Common' : 'Uncommon'), rareSlot];
+
+  for (const rarity of rarities) {
+    const available = candidates.filter(pull => !used.has(pull.slug));
+    const matching = available.filter(pull => pull.printing.rarity === rarity || (rarity === 'Iconic' && pull.printing.rarity.startsWith('Iconic ')));
+    const room = (pull: RetailPull) => (inventory[pull.slug] ?? 0) < 3;
+    const options = [matching.filter(room), available.filter(room), matching, available].find(group => group.length);
+    if (!options) throw new Error('There are too few playable cards for the house pack.');
+    const pull = options[Math.floor(random() * options.length)];
+    used.add(pull.slug);
+    pulls.push(pull);
   }
   return pulls.sort((a, b) => rank(a.printing.rarity) - rank(b.printing.rarity));
 }

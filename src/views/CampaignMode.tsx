@@ -5,8 +5,8 @@ import { STARTERS, type StarterKey } from '../lib/starters';
 import type { Deck } from '../lib/store';
 import { totalCopies } from '../lib/deckDraft';
 import { COPY_MAX, MAIN_MAX } from '../lib/decks';
-import { ENCOUNTERS, ENVIRONMENTS, campaignDeckIssues, type CampaignProfile, type CampaignRun } from '../lib/play/campaign';
-import { readCampaign, startCampaign, resetCampaign, chooseReward, saveCampaignDeck, claimEnvironment, equipEnvironment, revealCampaignPack, acknowledgeCampaignAct } from '../lib/play/campaignStorage';
+import { ENCOUNTERS, ENVIRONMENTS, campaignDeckIssues, pendingCampaignPack, type CampaignProfile, type CampaignRun } from '../lib/play/campaign';
+import { readCampaign, startCampaign, resetCampaign, chooseReward, saveCampaignDeck, claimEnvironment, equipEnvironment, revealCampaignPack, advanceCampaignScene, finishCampaignPack, acknowledgeCampaignAct } from '../lib/play/campaignStorage';
 import type { CampaignWorkerResponse } from '../lib/play/campaign.worker';
 import type { MatchSnapshot, Move } from '../lib/play/protocol';
 import { useMatchPresentation } from './useMatchPresentation';
@@ -22,7 +22,8 @@ import { CampaignPack } from './CampaignPack';
 import { CampaignUpgradeDialog } from './CampaignDeckReview';
 import { CampaignHub, CampaignHubTools, CampaignTimeline } from './CampaignHub';
 import { CampaignWorkbench } from './CampaignWorkbench';
-import { CampaignInvitation, CampaignRivalFarewell, CampaignRivalSeat } from './CampaignStory';
+import { aftermathBeats } from '../lib/play/campaignScenes';
+import { CampaignInvitation, CampaignRivalFarewell, CampaignRivalSeat, CampaignScene } from './CampaignStory';
 import { CampaignCrewPick } from './CampaignCrewPick';
 import { useRivalDialogue } from './useRivalDialogue';
 import './campaign.css';
@@ -30,7 +31,7 @@ import './campaign-moments.css';
 
 type CardSelection = { slug: string; printingId?: string };
 type SavedRun = Pick<CampaignRun, 'id' | 'revision'>;
-type CampaignSurface = 'hub' | 'workbench' | 'new-cards' | 'pack';
+type CampaignSurface = 'hub' | 'workbench' | 'new-cards' | 'pack' | 'scene';
 
 function hasSeenIntro(key: string) {
   try { return localStorage.getItem(key) === 'seen'; } catch { return false; }
@@ -59,6 +60,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   const [newRunFrom, setNewRunFrom] = useState<SavedRun>();
   const [resetTarget, setResetTarget] = useState<SavedRun>();
   const [resetError, setResetError] = useState<string>();
+  const [concede, setConcede] = useState(false);
   const [replace, setReplace] = useState<StarterKey>();
   const [startingCrew, setStartingCrew] = useState<StarterKey>();
   const [undo, setUndo] = useState<SavedRun & { deck: Deck }>();
@@ -128,8 +130,11 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
         const resumed = await send({ type: 'resume' });
         if (active && !actionLock.current && version === recoveryVersion.current) { setSnapshot(resumed.snapshot); if (reopenTable) setShowTable(true); }
       } else {
-        setSnapshot(undefined); setShowTable(false);
-        if (!value.run) { setSurface('hub'); setNewRunFrom(undefined); setIntroSeen(hasSeenIntro(introKey)); }
+        setSnapshot(previous => previous?.matchId === value.run?.match?.summary.matchId ? previous : undefined);
+        if (reopenTable && value.run && pendingCampaignPack(value.run)) {
+          setSurface(value.run.aftermath && !value.run.aftermath.sceneSeen ? 'scene' : 'pack');
+        }
+        if (!value.run) { setShowTable(false); setSurface('hub'); setNewRunFrom(undefined); setIntroSeen(hasSeenIntro(introKey)); }
       }
     }
     const focus = () => { if (!actionLock.current) void recover(false).catch(() => {}); };
@@ -259,7 +264,10 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
       const value = await readCampaign(scope);
       const resumed = value.run?.phase === 'inMatch' ? await send({ type: 'resume' }) : undefined;
       return { ...value, snapshot: resumed?.snapshot };
-    }, value => { setRun(value.run); setProfile(value.profile); setNewRunFrom(undefined); setSnapshot(value.snapshot); setShowTable(!!value.snapshot); setUndo(undefined); });
+    }, value => {
+      setRun(value.run); setProfile(value.profile); setNewRunFrom(undefined); setSnapshot(value.snapshot); setShowTable(!!value.snapshot); setUndo(undefined);
+      if (value.run && pendingCampaignPack(value.run)) changeSurface(value.run.aftermath && !value.run.aftermath.sceneSeen ? 'scene' : 'pack');
+    });
   }
 
   function changeSurface(next: CampaignSurface) {
@@ -278,6 +286,13 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   function resume() {
     void apply(() => send({ type: 'resume' }), value => {
       setRun(value.run); setProfile(value.profile); setSnapshot(value.snapshot); setShowTable(!!value.snapshot);
+    });
+  }
+
+  function continueScene(current: CampaignRun, skip = false) {
+    void apply(() => advanceCampaignScene(scope, current, skip), value => {
+      setRun(value.run);
+      if (value.run.aftermath?.sceneSeen) changeSurface('pack');
     });
   }
 
@@ -301,15 +316,23 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
       if (printing?.rarity.startsWith('Iconic ')) iconicPrintings.set(slug, printing);
     }
   }
+  if (run?.latestRetry) {
+    for (const { slug, printing } of campaignPulls(run.latestRetry)) {
+      if (printing?.rarity.startsWith('Iconic ')) iconicPrintings.set(slug, printing);
+    }
+  }
   const inspectCard = (slug: string, printingId?: string) => setInspected({ slug, printingId });
   const reviewCard = (slug: string, printingId = iconicPrintings.get(slug)?.id, outgoing?: string) => setReviewed({ slug, printingId, outgoing });
   const inspectedCard = inspected && BY_SLUG.get(inspected.slug);
   const inspectedPrinting = PRINTING_INDEX.get(inspected?.printingId ?? '')?.printing;
-  const tableOpen = showTable && !!snapshot && !newRunFrom;
+  const tableOpen = showTable && !!snapshot && snapshot.matchId === run?.match?.summary.matchId && !newRunFrom;
   const editable = run && !actPending && ['preparing', 'upgrading'].includes(run.phase);
   const workbench = editable && (surface === 'workbench' || surface === 'new-cards');
-  const earnedPack = run?.phase === 'rewardPending' ? run.rewards[run.encounter] : undefined;
-  const packOpen = !!earnedPack && surface === 'pack';
+  const earnedPack = run && pendingCampaignPack(run);
+  const scenePending = !!earnedPack && !!run?.aftermath && !run.aftermath.sceneSeen;
+  const aftermathSurface = scenePending ? 'scene' : 'pack';
+  const showAftermath = !!earnedPack && (surface === 'scene' || surface === 'pack');
+  const beats = run && showAftermath && scenePending ? aftermathBeats(run) : [];
   const finale = run?.phase === 'claimingFinish' || run?.phase === 'completed';
   const tools = run && profile && !choosingStarter && !tableOpen ? <CampaignHubTools run={run} profile={profile} busy={busy}
     soundEnabled={sound.enabled} toggleSound={sound.toggle} newRun={openNewCampaign} reset={openReset} exit={exit}
@@ -328,9 +351,12 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
         farewell: dialogue && quote && ['playerWon', 'rivalWon', 'draw'].includes(quote.moment)
           ? <CampaignRivalFarewell encounter={encounter.id} quote={quote} /> : undefined,
       }}
-      busy={busy || presentation.playing} error={error} send={move} rematch={() => leaveTable(run?.phase === 'rewardPending' ? 'pack' : run?.phase === 'preparing' ? 'workbench' : 'hub')}
-      edit={() => leaveTable('workbench')} resultContinueLabel={snapshot.view.winnerId === 'player' ? run?.phase === 'claimingFinish' ? 'Open Champion’s Cache' : 'Open your pack' : 'Review deck and retry'}
+      busy={busy || presentation.playing} error={error} send={move} rematch={() => leaveTable(earnedPack ? aftermathSurface : run?.phase === 'preparing' ? 'workbench' : 'hub')}
+      edit={() => leaveTable('workbench')} resultContinueLabel={scenePending ? 'Continue story' : earnedPack ? 'Open your pack'
+        : run?.phase === 'claimingFinish' ? 'Open Champion’s Cache' : 'Review deck and retry'}
       controls={<><button className="btn quiet" onClick={() => leaveTable('hub')}>Campaign board</button>
+        {!snapshot.view.gameEnded && <button type="button" className="btn danger-ghost" disabled={busy || presentation.playing}
+          onClick={() => setConcede(true)}>Concede</button>}
         {run && <PlayResetMenu mode="Campaign" disabled={busy} onReset={openReset} />}
         {error && <button className="btn" onClick={reloadSavedState}>{workerFailed.current ? 'Reload page' : 'Reload saved match'}</button>}
         <button className="btn quiet" onClick={exit}>Free Play</button>
@@ -352,9 +378,16 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
           fromPack={surface === 'new-cards'} printings={iconicPrintings} inspect={inspectCard} review={reviewCard} quantity={quantity}
           undo={() => { if (undo?.id === run.id && undo.revision === run.revision) edit(undo.deck); }} restore={() => edit(structuredClone(run.lastLegal))}
           back={() => changeSurface('hub')} />
-        : packOpen && earnedPack
-          ? <CampaignPack key={earnedPack.id} run={run} titleRef={focusTitle} tools={tools} busy={busy} inspect={inspectCard}
+        : showAftermath && scenePending && run.aftermath && encounter
+          ? <CampaignScene encounter={encounter.id} beats={beats} index={run.aftermath.beat} outcome={run.aftermath.outcome}
+            busy={busy} tools={tools} next={() => continueScene(run)} skip={() => continueScene(run, true)} />
+        : showAftermath && earnedPack
+          ? <CampaignPack key={earnedPack.id} run={run} reward={earnedPack} titleRef={focusTitle} tools={tools} busy={busy} inspect={inspectCard}
             back={() => changeSurface('hub')}
+            finish={() => void apply(() => finishCampaignPack(scope, run), value => {
+              setRun(value.run); sound.cue('reward-lock');
+              changeSurface(value.run.phase === 'claimingFinish' ? 'hub' : 'new-cards');
+            })}
             revealTo={count => apply(() => revealCampaignPack(scope, run.revision, count), value => {
               setRun(value.run); sound.cue((run.revealed ?? 0) === 0 ? 'pack-open' : 'pack-reveal');
             })}
@@ -385,7 +418,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
           </section>
           : <CampaignHub run={run} titleRef={focusTitle} tools={tools} issues={issues} busy={busy} printings={iconicPrintings}
             inspect={inspectCard} tune={() => changeSurface('workbench')} reviewNew={editable && latestPack(run).length ? () => changeSurface('new-cards') : undefined}
-            primary={earnedPack ? () => changeSurface('pack') : run.phase === 'inMatch' ? resume : launch} />)}
+            primary={earnedPack ? () => changeSurface(aftermathSurface) : run.phase === 'inMatch' ? resume : launch} />)}
     </div>}
     {reviewed && run && workbench && <CampaignUpgradeDialog key={reviewed.slug} run={run} slug={reviewed.slug} printingId={reviewed.printingId}
       initialOutgoing={reviewed.outgoing} busy={busy} error={error} close={() => setReviewed(undefined)} commit={deck => edit(deck, () => setReviewed(undefined))} />}
@@ -397,6 +430,10 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
         {!choosingStarter && !!run?.inventory[inspected.slug] && <p>Earned {run.inventory[inspected.slug]} · In deck {run.deck.cards[inspected.slug] ?? (run.deck.legends.includes(inspected.slug) ? 1 : 0)}</p>}
       </section></div>}
     </dialog>
+    <ConfirmDialog open={concede} title="Concede this match?" confirmLabel="Concede match" busy={busy}
+      onCancel={() => setConcede(false)} onConfirm={() => { setConcede(false); move({ move: 'concede' }); }}>
+      <p>The rival wins. Conceding ends the attempt without a pack. You can challenge this rival again.</p>
+    </ConfirmDialog>
     <ConfirmDialog open={!!resetTarget} title="Reset campaign?" confirmLabel="Reset campaign" busy={busy}
       onCancel={() => setResetTarget(undefined)} onConfirm={() => void reset()}>
       <p>This permanently clears your current run, saved match, earned cards, past runs, and campaign unlocks for this Vault in this browser.</p>

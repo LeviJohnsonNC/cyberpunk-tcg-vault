@@ -1,7 +1,7 @@
 import { useId, useRef, type ReactNode, type Ref } from 'react';
 import { BY_SLUG, PRINTING_INDEX, type Printing } from '../lib/data';
 import { totalCopies } from '../lib/deckDraft';
-import { ENCOUNTERS, encounterDeck, type CampaignProfile, type CampaignRun, type Environment } from '../lib/play/campaign';
+import { ENCOUNTERS, encounterDeck, pendingCampaignPack, type CampaignProfile, type CampaignRun, type Environment } from '../lib/play/campaign';
 import { CAMPAIGN_ACTS } from '../lib/play/campaignPresentation';
 import { campaignChapters } from '../lib/play/campaignStory';
 import { STARTERS } from '../lib/starters';
@@ -68,7 +68,7 @@ export function CampaignHubTools({ run, profile, busy, soundEnabled, toggleSound
       ...(profile.environments.length && run.phase !== 'claimingFinish' ? [{ label: 'Unlocked rooms', onSelect: () => rooms.current?.showModal() }] : []),
       ...(history.length ? [{ label: 'Previous runs', onSelect: () => archive.current?.showModal() }] : []),
       { label: 'Free Play', onSelect: exit, disabled: busy },
-      ...(run.phase !== 'claimingFinish' ? [{ label: 'Start a new campaign', onSelect: newRun, disabled: busy }] : []),
+      ...(run.phase !== 'claimingFinish' && !(run.phase === 'rewardPending' && run.completedAt) ? [{ label: 'Start a new campaign', onSelect: newRun, disabled: busy }] : []),
       { label: 'Reset campaign', onSelect: reset, disabled: busy, danger: true },
     ]} />
     <dialog ref={rooms} className="al-dialog campaign-board-library" aria-labelledby={roomTitle}>
@@ -97,7 +97,8 @@ export function CampaignHub({ run, titleRef, tools, issues, busy, printings, ins
   const chapter = campaignChapters[encounter.id];
   const rival = run.opponents?.[run.encounter] ?? encounterDeck(run);
   const actIndex = Math.floor(run.encounter / 3);
-  const pending = run.phase === 'rewardPending';
+  const pending = !!pendingCampaignPack(run);
+  const storyPending = pending && run.aftermath && !run.aftermath.sceneSeen;
   const resumable = run.phase === 'inMatch';
   const canTune = !pending && !resumable;
   const blocked = canTune && issues.length > 0;
@@ -131,7 +132,7 @@ export function CampaignHub({ run, titleRef, tools, issues, busy, printings, ins
         <h2 id="campaign-your-crew">{run.deck.name}</h2>
         <div className="campaign-board-crew-meta">
           <span>{colors?.join(' + ')} · {totalCopies(run.deck.cards)} main cards</span>
-          <span className="campaign-board-ready" data-needs-edit={blocked || undefined}>{blocked ? 'Deck needs edits' : resumable ? 'Match saved' : pending ? 'Contract won' : 'Ready to play'}</span>
+          <span className="campaign-board-ready" data-needs-edit={blocked || undefined}>{blocked ? 'Deck needs edits' : resumable ? 'Match saved' : pending ? run.phase === 'retryReward' ? 'House pack earned' : 'Contract won' : 'Ready to play'}</span>
         </div>
         <CampaignCrewCards deck={run.deck} printings={printings} inspect={inspect} label="Equipped Legends" />
         {canTune && <div className="campaign-board-crew-actions">
@@ -145,7 +146,7 @@ export function CampaignHub({ run, titleRef, tools, issues, busy, printings, ins
       <CampaignTimeline run={run} />
       <div className="campaign-board-launch">
         <button type="button" className="campaign-invitation-cta" onClick={primary} disabled={busy || blocked} aria-describedby={blocked ? 'campaign-launch-issue' : undefined}>
-          {pending ? 'Open your pack' : resumable ? 'Return to match' : run.attempts ? 'Retry contract' : 'Take the contract'} <span aria-hidden="true">→</span>
+          {pending ? storyPending ? 'Continue story' : 'Open your pack' : resumable ? 'Return to match' : run.attempts ? 'Retry contract' : 'Take the contract'} <span aria-hidden="true">→</span>
         </button>
         {blocked && <p id="campaign-launch-issue">{issues[0]}</p>}
       </div>

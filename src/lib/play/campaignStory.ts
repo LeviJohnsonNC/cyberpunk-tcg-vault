@@ -1,4 +1,4 @@
-import { ENCOUNTERS, type CampaignRun, type EncounterId } from './campaign';
+import { ENCOUNTERS, campaignClearedCount, type CampaignRun, type EncounterId } from './campaign';
 
 export type RivalMoment =
   | 'intro' | 'retry' | 'playerGig' | 'rivalGig' | 'playerLead' | 'rivalLead'
@@ -222,7 +222,5 @@ export const campaignChapters = {
 } satisfies Record<EncounterId, CampaignChapter>;
 
 export function unlockedCampaignChapters(run: CampaignRun) {
-  const finished = run.phase === 'claimingFinish' || run.phase === 'completed';
-  const count = finished ? ENCOUNTERS.length : run.encounter + Number(run.phase === 'rewardPending');
-  return ENCOUNTERS.slice(0, count);
+  return ENCOUNTERS.slice(0, campaignClearedCount(run));
 }

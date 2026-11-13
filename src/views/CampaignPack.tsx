@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 import { CardImg, CARD_BACK, Rules } from '../components/bits';
 import { BY_SLUG, imageUrl } from '../lib/data';
-import { ENCOUNTERS, type CampaignRun } from '../lib/play/campaign';
+import { ENCOUNTERS, type CampaignRun, type CampaignReward } from '../lib/play/campaign';
 import { campaignPulls, packRarityLabel } from '../lib/play/campaignPack';
 import { packCardContext } from '../lib/play/campaignPresentation';
 import { getPrintingArt } from '../lib/printingArt';
@@ -13,17 +13,22 @@ import './campaign-pack-scene.css';
 
 type PackProps = {
   run: CampaignRun;
+  reward: CampaignReward;
   busy: boolean;
   titleRef: Ref<HTMLHeadingElement>;
   tools: ReactNode;
   revealTo: (count: number) => Promise<boolean>;
   choose: (slug: string) => void;
+  finish: () => void;
   inspect: CampaignInspect;
   back: () => void;
 };
 
-export function CampaignPack({ run, busy, titleRef, tools, revealTo, choose, inspect, back }: PackProps) {
-  const reward = run.rewards[run.encounter];
+export function CampaignPack({ run, reward, busy, titleRef, tools, revealTo, choose, finish, inspect, back }: PackProps) {
+  const retry = run.phase === 'retryReward';
+  const hasChoice = reward.offers.length > 0;
+  const result = retry ? run.aftermath?.outcome === 'draw' ? 'Match drawn' : 'Contract lost' : 'Contract won';
+  const finishLabel = retry ? 'Review my new cards' : 'Open Champion’s Cache';
   const reveal = run.revealed ?? 0;
   const pulls = campaignPulls(reward);
   const count = pulls.length;
@@ -98,7 +103,7 @@ export function CampaignPack({ run, busy, titleRef, tools, revealTo, choose, ins
   const head = <header className="campaign-board-header">
     <div>
       <p className="campaign-invitation-eyebrow">The Afterlife <span aria-hidden="true">//</span> Campaign</p>
-      <h1 id="campaign-moment-title" tabIndex={-1} ref={titleRef}>Contract won<span aria-hidden="true">.</span></h1>
+      <h1 id="campaign-moment-title" tabIndex={-1} ref={titleRef}>{result}<span aria-hidden="true">.</span></h1>
     </div>
     {tools}
   </header>;
@@ -110,9 +115,9 @@ export function CampaignPack({ run, busy, titleRef, tools, revealTo, choose, ins
       <CampaignTimeline run={run} />
       <div className="campaign-seal-stage">
         <div className="campaign-seal-promise">
-          <p className="play-eyebrow">{encounter.title} / Contract cleared</p>
-          <h2>{count} yours.<br /> 1 your call.</h2>
-          <p>{count} cards for your reserve. Choose one more to shape your next match.</p>
+          <p className="play-eyebrow">{encounter.title} / {retry ? 'House pack' : 'Contract cleared'}</p>
+          <h2>{hasChoice ? <>{count} yours.<br /> 1 your call.</> : retry ? 'Another shot.' : 'The final take.'}</h2>
+          <p>{count} cards for your reserve.{hasChoice ? ' Choose one more to shape your next match.' : retry ? ' Open them before you challenge this rival again.' : ' Your room key is waiting in the Champion’s Cache.'}</p>
         </div>
         <div className="campaign-seal-reward">
           <div className="campaign-seal-prop" data-peeling={peeling || undefined}>
@@ -121,7 +126,7 @@ export function CampaignPack({ run, busy, titleRef, tools, revealTo, choose, ins
               <div className="campaign-seal-brand" aria-hidden="true">
                 <span>AF / Supply Drop {String(run.encounter + 1).padStart(2, '0')}</span>
                 <strong>Your<br />take.</strong>
-                <span>{String(count).padStart(2, '0')} cards + 01 choice</span>
+                <span>{String(count).padStart(2, '0')} cards{hasChoice ? ' + 01 choice' : ''}</span>
               </div>
               <button type="button" className="campaign-seal-strip" disabled={disabled} onClick={() => void open(1, true)}
                 aria-label="Tear the seal and reveal the first card">Tear the seal <span aria-hidden="true">→</span></button>
@@ -134,7 +139,7 @@ export function CampaignPack({ run, busy, titleRef, tools, revealTo, choose, ins
             <button type="button" className="campaign-seal-link" disabled={disabled} onClick={() => void open(count)}>Reveal all</button>
           </div>
         </div>
-        <CampaignDispatch encounter={encounter.id} />
+        {!run.aftermath && <CampaignDispatch encounter={encounter.id} />}
       </div>
       <footer className="campaign-seal-footer">
         <small>Your reward is saved. You can leave and come back.</small>
@@ -156,15 +161,16 @@ export function CampaignPack({ run, busy, titleRef, tools, revealTo, choose, ins
     <CampaignTimeline run={run} />
     <button type="button" className="btn quiet campaign-back-from-pack" disabled={busy} onClick={back}>← Back to contract</button>
     <section className="campaign-reward campaign-pack panel hot" aria-label="Earned pack">
-      <div className="campaign-section-heading"><div><p className="play-eyebrow">{encounter.title} / Contract cleared</p><h2>Your take.</h2></div></div>
+      <div className="campaign-section-heading"><div><p className="play-eyebrow">{encounter.title} / {retry ? 'House pack' : 'Contract cleared'}</p><h2>Your take.</h2></div></div>
       <div className="campaign-pack-stage">
         <aside className="campaign-pack-receipt">
           <span className="campaign-reveal-count" role="status">{reveal} / {count} revealed</span>
           <div className="campaign-pack-actions">
             <button ref={revealControl} className="btn" disabled={busy} onClick={() => {
               if (!allRevealed) void open(reveal + 1);
+              else if (!hasChoice) finish();
               else { choicePanel.current?.scrollIntoView({ block: 'start' }); choicePanel.current?.focus({ preventScroll: true }); }
-            }}>{allRevealed ? 'Choose your bonus card ↓' : 'Reveal next card'}</button>
+            }}>{allRevealed ? hasChoice ? 'Choose your bonus card ↓' : finishLabel : 'Reveal next card'}</button>
             {!allRevealed && <button className="btn quiet" disabled={busy} onClick={() => void open(count)}>Reveal all</button>}
           </div>
           <small>Your pack is saved. You can leave and come back.</small>
@@ -195,7 +201,7 @@ export function CampaignPack({ run, busy, titleRef, tools, revealTo, choose, ins
           <span>{index < reveal ? BY_SLUG.get(item.slug)?.name : 'Sealed'}</span>
         </button>)}
       </div>
-      {allRevealed && <div className="campaign-choice" ref={choicePanel} tabIndex={-1}>
+      {allRevealed && hasChoice && <div className="campaign-choice" ref={choicePanel} tabIndex={-1}>
         <div className="campaign-section-heading"><div><p className="play-eyebrow">One final decision</p><h3>Make the bonus count.</h3></div>
           <span>Choose 1 of {reward.offers.length}</span></div>
         <p>Pick one for your reserve. Your current deck stays as it is until you edit it.</p>
