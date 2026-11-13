@@ -77,7 +77,7 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, revealTo, cho
     }
   }, [sealed, busy, reveal]);
 
-  async function open(to: number, tear = false) {
+  async function open(to: number) {
     if (disabled || openingRequest.current) return;
     if (reveal) {
       if (to === count) transferFocus.current = true;
@@ -87,7 +87,7 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, revealTo, cho
     openingRequest.current = true;
     setRequestPending(true);
     transferFocus.current = true;
-    if (tear && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) setOpening(true);
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) setOpening(true);
     try {
       if (!await revealTo(to)) {
         setOpening(false);
@@ -105,7 +105,7 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, revealTo, cho
       <p className="campaign-invitation-eyebrow">The Afterlife <span aria-hidden="true">//</span> Campaign</p>
       <h1 id="campaign-moment-title" tabIndex={-1} ref={titleRef}>{result}<span aria-hidden="true">.</span></h1>
     </div>
-    {tools}
+    {!sealed && tools}
   </header>;
 
   if (sealed) return <section className="campaign-seal-scene" data-act={Math.floor(run.encounter / 3) + 1} data-encounter={encounter.id}
@@ -128,23 +128,16 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, revealTo, cho
                 <strong>Your<br />take.</strong>
                 <span>{String(count).padStart(2, '0')} cards{hasChoice ? ' + 01 choice' : ''}</span>
               </div>
-              <button type="button" className="campaign-seal-strip" disabled={disabled} onClick={() => void open(1, true)}
-                aria-label="Tear the seal and reveal the first card">Tear the seal <span aria-hidden="true">→</span></button>
+              <button ref={opener} type="button" className="campaign-seal-strip" disabled={disabled} onClick={() => void open(1)}
+                aria-label="Tear the seal and reveal the first card" aria-busy={requestPending || undefined}>
+                <span>{requestPending && !peeling ? 'Opening…' : 'Tear the seal'}</span>
+                <span className="campaign-seal-strip-arrow" aria-hidden="true">→</span>
+              </button>
             </div>
-          </div>
-          <div className="campaign-seal-actions">
-            <button ref={opener} type="button" className="campaign-invitation-cta" disabled={disabled} onClick={() => void open(1, true)}>
-              {requestPending ? 'Opening pack…' : 'Tear the seal'} <span aria-hidden="true">→</span>
-            </button>
-            <button type="button" className="campaign-seal-link" disabled={disabled} onClick={() => void open(count)}>Reveal all</button>
           </div>
         </div>
         {!run.aftermath && <CampaignDispatch encounter={encounter.id} />}
       </div>
-      <footer className="campaign-seal-footer">
-        <small>Your reward is saved. You can leave and come back.</small>
-        <button type="button" className="campaign-seal-link" disabled={disabled} onClick={back}>← Back to contract</button>
-      </footer>
     </div>
   </section>;
 
