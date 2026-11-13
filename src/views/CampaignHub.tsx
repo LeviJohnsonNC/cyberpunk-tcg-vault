@@ -9,19 +9,24 @@ import { STARTERS } from '../lib/starters';
 import type { Deck } from '../lib/store';
 import { CampaignRooms } from './CampaignMoments';
 import { CampaignRewardArt } from './CampaignRewardArt';
-import { CampaignRivalDossier, CampaignRivalPortrait, CampaignStoryJournal } from './CampaignStory';
+import { CampaignRivalPortrait, CampaignStoryJournal } from './CampaignStory';
+import { CampaignRivalDossier } from './CampaignRivalDossier';
 import { PlayOptionsMenu } from './PlayResetMenu';
 import './campaign-hub.css';
 
 export type CampaignInspect = (slug: string, printingId?: string) => void;
 
+function crewLegendPrintings(deck: Deck) {
+  const retail = STARTERS.find(starter => deck.id === `campaign:${starter.key}`)?.printings.retail;
+  return deck.legends.map(slug => ({ slug, printing: PRINTING_INDEX.get(retail?.[slug] ?? '')?.printing }));
+}
+
 export function CampaignCrewCards({ deck, printings, inspect, label }: {
   deck: Deck; printings?: ReadonlyMap<string, Printing>; inspect: CampaignInspect; label: string;
 }) {
-  const retail = STARTERS.find(starter => deck.id === `campaign:${starter.key}`)?.printings.retail;
   return <ul className="campaign-board-crew-cards" aria-label={label}>
-    {deck.legends.map(slug => {
-      const printing = printings?.get(slug) ?? PRINTING_INDEX.get(retail?.[slug] ?? '')?.printing;
+    {crewLegendPrintings(deck).map(({ slug, printing: retail }) => {
+      const printing = printings?.get(slug) ?? retail;
       const name = BY_SLUG.get(slug)?.display ?? slug;
       return <li key={slug}><button type="button" aria-haspopup="dialog" aria-label={`Inspect ${name}`} onClick={() => inspect(slug, printing?.id)}>
         <CampaignRewardArt pull={{ slug, printing }} alt="" />
@@ -123,7 +128,7 @@ export function CampaignHub({ run, titleRef, tools, issues, busy, printings, ins
           <p className="play-eyebrow">{chapter.role}</p>
           <h2 id="campaign-opponent-title">{chapter.rival}</h2>
           <p className="campaign-board-briefing">{chapter.briefing}</p>
-          <CampaignRivalDossier encounter={encounter.id} starter={run.starter} textButton />
+          <CampaignRivalDossier encounter={encounter.id} starter={run.starter} context="contract" legends={crewLegendPrintings(rival)} inspect={inspect} />
           <p className="campaign-board-rival-deck">{rival.name}</p>
           <CampaignCrewCards deck={rival} inspect={inspect} label="Rival Legends" />
         </div>

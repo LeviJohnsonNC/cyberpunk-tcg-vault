@@ -1,0 +1,226 @@
+.al-dialog.campaign-rival-dialog {
+  --dossier-cut: 16px;
+  --dossier-frame: color-mix(in srgb, var(--color-accent) 62%, var(--color-divider));
+  width: min(1120px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  padding: 2px;
+  border: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  clip-path: polygon(var(--dossier-cut) 0, calc(100% - var(--dossier-cut)) 0, 100% var(--dossier-cut), 100% calc(100% - var(--dossier-cut)), calc(100% - var(--dossier-cut)) 100%, var(--dossier-cut) 100%, 0 calc(100% - var(--dossier-cut)), 0 var(--dossier-cut));
+  background: linear-gradient(142deg, var(--dossier-frame), var(--color-divider) 47%, var(--dossier-frame));
+}
+.campaign-rival-dialog::backdrop { background: rgb(10 6 12 / .78); backdrop-filter: blur(4px); }
+.campaign-dossier-layout {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, .76fr) minmax(0, 1fr);
+  min-height: min(620px, calc(100dvh - 42px));
+  background: var(--color-canvas-deep);
+  clip-path: inherit;
+}
+.campaign-dossier-art { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--color-canvas); container-type: size; }
+.campaign-dossier-art > img, .campaign-dossier-art > .campaign-rival-portrait {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+.campaign-dossier-art > img { object-fit: cover; object-position: 48% 41%; }
+.campaign-dossier-art > .campaign-rival-portrait {
+  background-image: url('../assets/play/last-call-rival-atlas-detail.webp'), url('../assets/play/last-call-rival-atlas.webp');
+  /* Cover the square sprite with the portrait pane while keeping adjacent faces clipped. */
+  width: max(100%, 100cqh);
+  height: auto;
+  inset: 0 auto auto 50%;
+  translate: -50% 0;
+}
+.campaign-dossier-art::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+  background: linear-gradient(90deg, transparent 64%, var(--color-canvas-deep) 100%),
+    linear-gradient(0deg, var(--color-canvas-deep), transparent 24%);
+  pointer-events: none;
+}
+.campaign-dossier-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 13px;
+  padding: clamp(20px, 2.25vw, 34px) clamp(21px, 2.5vw, 38px) 23px clamp(13px, 1.65vw, 26px);
+  background: radial-gradient(ellipse at 96% 10%, color-mix(in srgb, var(--color-surface) 65%, transparent), transparent 70%);
+}
+.campaign-dossier-header .campaign-invitation-eyebrow { margin: 0 39px 6px 0; font-size: clamp(10px, 1.05vw, 14px); }
+.campaign-dossier-header .campaign-invitation-eyebrow::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 7px;
+  margin-inline-end: 9px;
+  background: var(--color-accent);
+  transform: skewX(-32deg);
+}
+.campaign-rival-dialog .campaign-dossier-header h2 {
+  margin: 0 0 9px;
+  color: var(--color-ticket);
+  font: italic 800 clamp(46px, 6.1vw, 92px)/.91 var(--font-display);
+  letter-spacing: -.015em;
+  overflow-wrap: anywhere;
+}
+.campaign-dossier-header h2:focus { outline: none; box-shadow: none; }
+.campaign-dossier-header h2 span { color: var(--color-accent); }
+.campaign-dossier-bio { margin: 0; max-width: 60ch; font-size: 15px; line-height: 1.47; }
+.campaign-dossier-intel {
+  display: grid;
+  gap: 6px;
+  padding-top: 11px;
+  border-top: 1px solid var(--color-divider);
+  position: relative;
+}
+.campaign-dossier-intel::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  width: 49px;
+  height: 3px;
+  background: var(--color-accent);
+  transform: skewX(40deg);
+}
+.campaign-dossier-intel-row {
+  display: grid;
+  grid-template-columns: 60px minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  min-height: 58px;
+  padding: 6px 11px 7px 5px;
+  border: 1px solid color-mix(in srgb, var(--color-divider) 80%, transparent);
+  border-radius: 4px;
+  background: linear-gradient(102deg, var(--color-surface), color-mix(in srgb, var(--color-surface) 42%, transparent));
+}
+.campaign-dossier-insignia-frame {
+  display: grid;
+  place-items: center;
+  height: 40px;
+  border-inline-end: 1px solid color-mix(in srgb, var(--color-accent) 36%, var(--color-divider));
+}
+.campaign-dossier-insignia { width: 43px; height: 38px; color: var(--color-accent); }
+.dossier-icon-accent { color: var(--color-ticket); opacity: .82; }
+.campaign-dossier-intel h3 {
+  margin: 0 0 2px;
+  color: var(--color-ticket);
+  font: 800 clamp(18px, 1.55vw, 22px)/1 var(--font-display);
+  letter-spacing: .022em;
+  text-transform: uppercase;
+}
+.campaign-dossier-intel h3 span { color: color-mix(in srgb, var(--color-ticket) 77%, var(--color-text-muted)); }
+.campaign-dossier-intel p { margin: 0; font-size: 14px; line-height: 1.34; color: var(--color-text); }
+.campaign-dossier-legends {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 9px;
+  border-top: 1px solid var(--color-divider);
+}
+.campaign-dossier-legends h3 {
+  flex: 0 0 9ch;
+  margin: 0;
+  color: var(--color-text-muted);
+  font: 500 11px/1.3 var(--font-mono);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.campaign-dossier-legends ul { display: flex; flex-wrap: wrap; gap: 9px; list-style: none; margin: 0; padding: 0; }
+.campaign-dossier-legends button {
+  display: block;
+  width: clamp(50px, 5vw, 67px);
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  cursor: zoom-in;
+}
+.campaign-dossier-legends .campaign-reward-art { --pack-halo: 0px; }
+.campaign-dossier-legends img[hidden] { display: none; }
+.campaign-dossier-legends .printing-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 4px;
+  border: 1px solid var(--color-divider);
+  border-radius: inherit;
+  color: var(--color-ticket);
+  background: var(--color-surface);
+  font: 600 12px/1.08 var(--font-display);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.campaign-dossier-legends .printing-inline small { font-size: 8px; }
+.campaign-dossier-copy blockquote {
+  margin: 0;
+  padding-inline-start: 9px;
+  border-inline-start: 1px solid var(--color-accent);
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.4;
+}
+.campaign-dossier-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-divider);
+}
+.campaign-dossier-footer .campaign-invitation-cta { min-height: 45px; margin: 0; padding-inline: 19px; font-size: 22px; }
+.campaign-dossier-dialogue { margin-inline-end: auto; font-size: 12px; }
+.campaign-dossier-dialogue span { color: var(--color-ticket); }
+.campaign-dossier-close {
+  position: absolute;
+  inset: 11px 12px auto auto;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--color-accent);
+  background: var(--color-canvas-deep);
+  cursor: pointer;
+}
+.campaign-dossier-close:is(:hover, :focus-visible) { border-color: var(--color-accent); }
+@media (max-width: 1000px) {
+  .campaign-dossier-layout { grid-template-columns: minmax(0, .66fr) minmax(0, 1fr); }
+}
+@media (max-width: 660px) {
+  .al-dialog.campaign-rival-dialog { width: calc(100vw - 16px); max-height: calc(100dvh - 18px); }
+  .campaign-dossier-layout { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .campaign-dossier-art { height: clamp(150px, 48vw, 230px); }
+  .campaign-dossier-art > .campaign-rival-portrait { translate: -50% -9%; }
+  .campaign-dossier-art > img { object-position: center 23%; }
+  .campaign-dossier-art::after { background: linear-gradient(0deg, var(--color-canvas-deep), transparent 36%); }
+  .campaign-dossier-copy { gap: 11px; padding: 8px 13px 15px; }
+  .campaign-dossier-header .campaign-invitation-eyebrow { margin-right: 0; }
+  .campaign-dossier-bio { font-size: 14px; }
+  .campaign-dossier-intel-row { grid-template-columns: 42px minmax(0, 1fr); gap: 7px; }
+  .campaign-dossier-insignia { width: 32px; }
+  .campaign-dossier-intel h3 { font-size: 17px; }
+  .campaign-dossier-intel p { font-size: 13px; }
+  .campaign-dossier-close { position: sticky; justify-self: end; grid-area: 1 / 1; top: 8px; margin: 8px 8px 0 0; z-index: 2; align-self: start; }
+  .campaign-dossier-art { grid-area: 1 / 1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .al-dialog.campaign-rival-dialog[open] { animation: campaign-dossier-in .23s ease-out both; }
+  .campaign-rival-dialog[open]::backdrop { animation: campaign-dossier-shade .23s ease-out both; }
+  @keyframes campaign-dossier-in { from { translate: 0 9px; opacity: 0; } }
+  @keyframes campaign-dossier-shade { from { opacity: 0; } }
+}
