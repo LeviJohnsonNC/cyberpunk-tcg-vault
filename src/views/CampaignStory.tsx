@@ -15,9 +15,6 @@ import key from '../assets/play/story/red-line.webp';
 import microphone from '../assets/play/story/mosh-pit.webp';
 import footage from '../assets/play/story/hostile-takeover.webp';
 import chair from '../assets/play/story/last-call.webp';
-import type { StarterKey } from '../lib/starters';
-import { campaignRivalIntel } from '../lib/play/campaignRivalIntel';
-import type { RivalDialogueState } from '../lib/play/rivalDialogue';
 import invitation from '../assets/play/last-call-afterlife.webp';
 import compactInvitation from '../assets/play/last-call-afterlife-compact.webp';
 import { PlayOptionsMenu } from './PlayResetMenu';
@@ -25,8 +22,6 @@ import ledger from '../assets/play/last-call-ledger.webp';
 import './campaign-story.css';
 import './campaign-invitation.css';
 import './campaign-scenes.css';
-
-type Quote = RivalDialogueState['line'];
 
 export function CampaignRivalPortrait({ encounter }: { encounter: EncounterId }) {
   const index = ENCOUNTERS.findIndex(contract => contract.id === encounter);
@@ -200,59 +195,4 @@ export function CampaignEpilogue() {
       <p>{victory.text}</p>
     </div>
   </section>;
-}
-
-type DossierProps = {
-  encounter: EncounterId;
-  starter: StarterKey;
-  quote?: Quote;
-  dialogue?: boolean;
-  toggle?: () => void;
-  textButton?: boolean;
-};
-
-export function CampaignRivalDossier({ encounter, starter, quote, dialogue, toggle, textButton }: DossierProps) {
-  const { rival, role } = campaignChapters[encounter];
-  const { bio, tips } = campaignRivalIntel(encounter, starter);
-  const detail = useRef<HTMLDialogElement>(null);
-  const heading = useRef<HTMLHeadingElement>(null);
-  const titleId = useId();
-  return <>
-    <button type="button" className={textButton ? "btn quiet campaign-board-dossier" : "campaign-rival-trigger"} aria-label={`View ${rival}’s profile`} aria-haspopup="dialog"
-      onClick={() => { detail.current?.showModal(); heading.current?.focus({ preventScroll: true }); }}>
-      {textButton ? <>View profile <span aria-hidden="true">→</span></> : <CampaignRivalPortrait encounter={encounter} />}
-    </button>
-    <dialog className="al-dialog campaign-rival-dialog" ref={detail} aria-labelledby={titleId}
-      onKeyDown={event => { if (event.key === 'Escape') event.stopPropagation(); }}
-      onClick={event => { if (event.target === event.currentTarget) event.currentTarget.close(); }}>
-      <div className="al-dialog-body">
-        <div className="campaign-dossier-layout">
-          <div className="campaign-dossier-art"><CampaignRivalPortrait encounter={encounter} /></div>
-          <div className="campaign-dossier-copy">
-            <p className="play-eyebrow">{role}</p>
-            <h2 ref={heading} tabIndex={-1} id={titleId}>{rival}</h2>
-            <p className="campaign-dossier-bio">{bio}</p>
-            <h3>How they play</h3>
-            <ul>{tips.map(tip => <li key={tip}>{tip}</li>)}</ul>
-            {dialogue && quote && <blockquote>“{quote.text}”</blockquote>}
-          </div>
-        </div>
-        <div className="al-dialog-actions">
-          {toggle && <button type="button" className="btn quiet" aria-pressed={dialogue} onClick={toggle}>Rival dialogue {dialogue ? 'on' : 'off'}</button>}
-          <button type="button" className="btn" onClick={() => detail.current?.close()}>Close</button>
-        </div>
-      </div>
-    </dialog>
-  </>;
-}
-
-export function CampaignRivalSeat(props: DossierProps) {
-  const { rival } = campaignChapters[props.encounter];
-  return <div className="campaign-rival-seat">
-    <CampaignRivalDossier {...props} />
-    <div className="campaign-rival-caption">
-      <strong>{rival}</strong>
-      <div aria-live="polite">{props.dialogue && props.quote && <p key={props.quote.sequence}>“{props.quote.text}”</p>}</div>
-    </div>
-  </div>;
 }

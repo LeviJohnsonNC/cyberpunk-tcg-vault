@@ -24,7 +24,9 @@ import { CampaignHub, CampaignHubTools, CampaignTimeline } from './CampaignHub';
 import { CampaignCrewEditor } from './CampaignCrewEditor';
 import { CampaignWorkbench } from './CampaignWorkbench';
 import { aftermathBeats } from '../lib/play/campaignScenes';
-import { CampaignInvitation, CampaignRivalSeat, CampaignScene } from './CampaignStory';
+import { CampaignInvitation, CampaignScene } from './CampaignStory';
+import { CampaignRivalSeat } from './CampaignRivalDossier';
+import { knownRivalLegendSlugs } from '../lib/play/campaignRivalIntel';
 import { CampaignCrewPick } from './CampaignCrewPick';
 import { useRivalDialogue } from './useRivalDialogue';
 import './campaign.css';
@@ -80,6 +82,7 @@ export function CampaignMode({ scope, exit, openInBuilder, preparationOnly = fal
   const serial = useRef(0);
   const requests = useRef(new Map<number, { resolve: (data: CampaignWorkerResponse) => void; reject: (error: Error) => void }>());
   const presentation = useMatchPresentation(snapshot);
+  const displayedMatch = presentation.displayed ?? snapshot;
   const sound = useTableSound();
   const encounter = run && ENCOUNTERS[run.encounter];
   const quote = useRivalDialogue(encounter?.id, snapshot, opening, presentation.playing, presentation.playback?.beat);
@@ -394,11 +397,12 @@ export function CampaignMode({ scope, exit, openInBuilder, preparationOnly = fal
     data-campaign-board={!choosingStarter && (!tableOpen || resultOpen) || undefined} data-environment={profile?.equipped ?? 'default'}
     onPointerDownCapture={sound.unlock} onKeyDownCapture={sound.unlock}>
     {tableOpen && !resultOpen && <ReactiveRoom />}
-    {tableOpen && snapshot ? <PlayTable key={snapshot.matchId} scope={`${scope}:campaign`} snapshot={presentation.displayed ?? snapshot} names={snapshot.names}
+    {tableOpen && snapshot && displayedMatch ? <PlayTable key={snapshot.matchId} scope={`${scope}:campaign`} snapshot={displayedMatch} names={snapshot.names}
       playback={presentation.playback} feedback={presentation.feedback} reduced={presentation.reduced} cue={sound.cue}
       campaign={run && encounter && {
         title: encounter.title,
-        rival: <CampaignRivalSeat encounter={encounter.id} starter={run.starter} quote={quote} dialogue={dialogue} toggle={toggleDialogue} />,
+        rival: <CampaignRivalSeat encounter={encounter.id} starter={run.starter} quote={quote} dialogue={dialogue} toggle={toggleDialogue}
+          legends={knownRivalLegendSlugs(displayedMatch).map(slug => ({ slug }))} inspect={inspectCard} />,
         encounter: encounter.id,
         dialogue,
         continueLabel,

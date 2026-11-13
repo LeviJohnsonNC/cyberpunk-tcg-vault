@@ -7,6 +7,8 @@ import { deckFromRecommended } from '../decks';
 import { botDecision, createEngineSession, engineCardId, initialEngineState, recordLegendPeeks } from './engineSession';
 import { isReady, matchActions } from './matchActions';
 import { prepareMatchDeck } from './matchDeck';
+import { knownRivalLegendSlugs } from './campaignRivalIntel';
+import { vaultCard } from './cardDisplay';
 import { hideConcealedTargets } from './matchView';
 import type { CardView, MatchSetup, Seat } from './protocol';
 import { createMatchController } from './workerController';
@@ -340,6 +342,30 @@ describe('play engine', () => {
         expect.objectContaining({ instanceId: unseen, definitionId: '', faceDown: true }),
       ]));
     }
+  });
+
+  it('lists only public and player-known rival Legends in the dossier', () => {
+    const config = setup('chrome-syndicate');
+    const { state } = rulesFixture('player');
+    const [publicSlot, knownSlot, privateSlot] = state.G.players.rival.zones.legendArea;
+    const [playerSlot] = state.G.players.player.zones.legendArea;
+    state.G.cardIndex[publicSlot].meta.faceDown = false;
+    const session = createEngineSession(config, undefined, {
+      matchId: 'dossier', state, botRng: new SeededRNG('dossier').getState(),
+      known: new Map([
+        [knownSlot, new Set<Seat>(['player'])],
+        [privateSlot, new Set<Seat>(['rival'])],
+        [playerSlot, new Set<Seat>(['player'])],
+      ]),
+      peeks: [], log: [], commandNumber: 20,
+    });
+    const snapshot = session.start();
+    const slug = (instanceId: string) => {
+      const slot = (snapshot.view.players.rival.zones.legendArea as CardView[]).find(card => card.instanceId === instanceId);
+      return vaultCard(slot?.definitionId ? slot : snapshot.knownLegends.find(card => card.instanceId === instanceId)!)!.slug;
+    };
+    expect(knownRivalLegendSlugs(snapshot)).toEqual([slug(publicSlot), slug(knownSlot)].sort());
+    expect(knownRivalLegendSlugs({ ...snapshot, knownLegends: [] })).toEqual([slug(publicSlot)]);
   });
 
   it('retains Sell for Turn after Bootleg Black Sapphire Show sells a deck card', () => {
