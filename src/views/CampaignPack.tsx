@@ -134,10 +134,18 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
       { transform: 'none', transformOrigin: 'top center' },
     ], { duration: 285, easing: 'cubic-bezier(.2,.75,.22,1)' });
     const spotlight = card.parentElement;
+    // The halo travels with the card; its shadow and light pool remain projected onto the table.
+    const lightMotion = [...(spotlight?.querySelectorAll<HTMLElement>('.campaign-material-halo, .campaign-material-shadow, .campaign-material-spill, .campaign-material-reflection') ?? [])].map(layer => {
+      const rest = getComputedStyle(layer).transform;
+      return layer.animate([
+        { transform: `translate(${x}px, ${y}px) scale(${scale}) ${rest === 'none' ? '' : rest}` },
+        { transform: rest },
+      ], { duration, easing });
+    });
     spotlight?.setAttribute('data-in-flight', '');
     const lower = () => spotlight?.removeAttribute('data-in-flight');
     void flight.finished.then(lower, lower);
-    const stop = () => { flight.cancel(); settlePose?.cancel(); slide?.cancel(); lower(); };
+    const stop = () => { flight.cancel(); settlePose?.cancel(); slide?.cancel(); lightMotion.forEach(animation => animation.cancel()); lower(); };
     const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
     document.addEventListener('visibilitychange', stop);
     motion.addEventListener('change', stop);
