@@ -385,7 +385,10 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
   const resolveButtons = special.filter(({ action }) => action.id === 'resolveAttack').map(({ index }) => actionButton(index));
   const turnButtons = special.filter(({ action }) => !choice && ['passPhase', 'resolveAttack'].includes(action.id) && !(combat && action.id === 'resolveAttack'))
     .map(({ action, index }) => actionButton(index, undefined, action.id === 'passPhase' ? 'btn play-end-turn' : 'btn quiet'));
-  const hint = busy ? 'Resolving the move.' : waiting ? 'The rival is choosing a move.' : 'Select a card to act, or drag it to a highlighted destination.';
+  const mulligan = setup ? actions.find(action => action.id === 'mulligan') : undefined;
+  const canSell = yourTurn && view.players.player.eddies === 0 && actions.some(action => action.id === 'sellCard');
+  const hint = busy ? 'Resolving the move.' : waiting ? 'The rival is choosing a move.'
+    : canSell ? 'Select a card to play it or sell it for an Eddie.' : 'Select a card or drag it to a highlighted destination.';
   const closePanel = <button type="button" className="btn quiet" aria-label="Close panel" onClick={() => setPanel(undefined)}>×</button>;
   if (campaign && view.gameEnded) return <CampaignMatchResult details={campaign} snapshot={snapshot}
     busy={busy} error={error} onContinue={rematch} />;
@@ -399,8 +402,8 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     }}>
     <header className="play-match-header" inert={opening.showing}>
       <div className="play-match-identity">
-        {contract ? <button type="button" className="play-eyebrow circuit-contract-trigger" aria-expanded={panel === 'contract'} aria-controls={`${panelId}-contract`} onClick={() => setPanel(panel === 'contract' ? undefined : 'contract')} title="View contract objective">◆ {contract.title} <span>/</span> Autosaved</button>
-          : <p className="play-eyebrow" title="Match saved in this browser">{campaign?.title ?? 'Practice table'}{campaign?.act && <> <span>/</span> Act {campaign.act}</>} <small>Saved</small></p>}
+        {contract ? <button type="button" className="play-eyebrow circuit-contract-trigger" aria-expanded={panel === 'contract'} aria-controls={`${panelId}-contract`} onClick={() => setPanel(panel === 'contract' ? undefined : 'contract')} title="View contract objective">◆ {contract.title} <span>/</span> {error ? 'Match alert' : saving ? 'Saving…' : 'Saved'}</button>
+          : <p className="play-eyebrow" title={error ? 'See the match alert below' : saving ? 'Saving the current match' : 'Match saved in this browser'}>{campaign?.title ?? 'Practice table'}{campaign?.act && <> <span>/</span> Act {campaign.act}</>} <small data-match-error={!!error || undefined}>{error ? 'Match alert' : saving ? 'Saving…' : 'Saved'}</small></p>}
         <h1 title={`${names.player} vs. ${names.rival}`}>{names.player} <span>vs.</span> {names.rival}</h1>
       </div>
       <div className="play-header-actions">
@@ -463,7 +466,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
       <div className="play-command" data-seat={playing ? view.activePlayerId : undefined} data-state={playback ? 'playback' : selected || choice || setup ? 'decision' : combat ? 'combat' : 'idle'}>
         <div className="play-command-inner" tabIndex={-1}>
           <div className="play-turn-plate"><span>{setup ? 'Setup' : view.overtimeActive ? `Overtime · Turn ${view.turnNumber}` : `Turn ${view.turnNumber}`}</span>
-            <strong>{view.gameEnded ? 'Match over' : setup ? 'Opening' : yourTurn ? 'Your turn' : 'Rival turn'}</strong></div>
+            <strong>{view.gameEnded ? 'Match over' : setup ? mulligan ? 'Opening hand' : 'Opening' : yourTurn ? 'Your turn' : 'Rival turn'}</strong></div>
           <h2 className="sr-only" aria-live="polite">{decisionTitle}</h2>
           {view.gameEnded ? <div className="play-command-lead"><strong>{decisionTitle}</strong><p>{winReasons[view.winReason ?? ''] ?? 'Match ended'}</p></div>
             : playback ? <>{combat && <CombatBanner view={view} watching compact />}<PlayPresentation playback={playback} /></>
@@ -474,11 +477,18 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
                 submit={() => selection !== undefined && commit({ action: selection, picks })}
                 cancel={() => { setChoice(choice ? defaultSelection : undefined, {}); clearHover(); }}
                 inspect={inspect} alternatives={choice ? special.map(({ index }) => actionButton(index)) : null} /></div>
-            : choice || setup ? <div className="play-opening-choices">{combat && <CombatBanner view={view} watching={false} compact inspect={inspect} />}<h3>{decisionTitle}</h3>{actions.map((_, index) => actionButton(index, undefined, setup && actions.length === 2 && index === 1 ? 'btn' : 'btn quiet'))}
-              {choice && actions[0]?.detail && <p className="play-choice-detail"><Rules text={actions[0].detail} /></p>}</div>
+            : choice || setup ? <div className="play-opening-choices">
+              {combat && <CombatBanner view={view} watching={false} compact inspect={inspect} />}
+              <div className="play-command-lead">
+                {!mulligan && <h3>{decisionTitle}</h3>}
+                {mulligan?.detail && <p>{mulligan.detail}</p>}
+                {choice && actions[0]?.detail && <p><Rules text={actions[0].detail} /></p>}
+              </div>
+              <div className="play-command-actions">{actions.map((action, index) => actionButton(index, undefined, action.id === 'keepHand' ? 'btn play-confirm' : 'btn quiet'))}</div>
+            </div>
             : combat ? <CombatBanner view={view} watching={false} inspect={inspect} controls={resolveButtons} />
             : <><div className="play-command-lead"><strong>{decisionTitle}</strong>
-              <p role="status">{feedback && !busy ? <><b>{feedback.seat === 'player' ? 'You' : 'Rival'}</b> {feedback.text}</> : hint}</p></div>{turnButtons}</>}
+              <p role="status">{feedback && !busy ? <><b>{feedback.seat === 'player' ? 'You' : 'Rival'}</b> {feedback.text}</> : hint}</p></div>{turnButtons.length > 0 && <div className="play-command-actions">{turnButtons}</div>}</>}
           {error && <p className="play-error" role="alert">{error}</p>}
         </div>
       </div>

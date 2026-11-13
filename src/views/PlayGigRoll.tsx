@@ -116,6 +116,12 @@ function RollingDie({ roll, index, seatIndex, seatCount, release, cue }: {
       return;
     }
     const target = mat.querySelector<HTMLElement>(`.play-gigs [data-card-id="${CSS.escape(roll.dieId)}"]`);
+    const dice = target?.parentElement;
+    if (target && dice && dice.scrollWidth > dice.clientWidth) {
+      const die = target.getBoundingClientRect(), row = dice.getBoundingClientRect();
+      if (die.right > row.right) dice.scrollLeft += die.right - row.right;
+      else if (die.left < row.left) dice.scrollLeft -= row.left - die.left;
+    }
     const dpr = Math.min(devicePixelRatio || 1, 2);
     surface.width = surface.height = SIZE * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -132,6 +138,7 @@ function RollingDie({ roll, index, seatIndex, seatCount, release, cue }: {
     if (field) resize.observe(field);
     const remeasure = () => { dirty = true; };
     window.addEventListener('resize', remeasure);
+    dice?.addEventListener('scroll', remeasure);
     target?.setAttribute('data-roll-pending', '');
     const animate = (now: number) => {
       const elapsed = now - start - rollOffset(index);
@@ -165,6 +172,7 @@ function RollingDie({ roll, index, seatIndex, seatCount, release, cue }: {
       cancelAnimationFrame(frame);
       resize.disconnect();
       window.removeEventListener('resize', remeasure);
+      dice?.removeEventListener('scroll', remeasure);
       stopSound?.();
       target?.removeAttribute('data-roll-pending');
       target?.removeAttribute('data-roll-docked');

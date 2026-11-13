@@ -32,7 +32,7 @@ function MatDie({ card, fixer = false, effectIds, targetIds, chosenIds, onPick, 
     onPointerDown={rollAvailable ? (event) => dieDrag?.start(event, card) : undefined}
     onClick={() => { if (!dieDrag?.suppressClick()) onPick(card.instanceId); }}>
     <DieFace type={card.definitionId} value={fixer ? undefined : card.power} />
-    {!fixer && <small>{card.definitionId}</small>}
+    {!fixer && <small aria-hidden="true">{card.definitionId}</small>}
   </button>;
 }
 
@@ -42,7 +42,7 @@ export function GigZones({ snapshot, outcome, ...targeting }: Targeting & { snap
     const gigs = zoneCards(view, 'gigArea');
     return <section key={seat} className="play-gigs" data-seat={seat} data-zone={`gigs:${seat}`} data-drop-zone={`gigs:${seat}`} data-drop-available={targeting.dropZones?.has(`gigs:${seat}`)} data-drop-over={targeting.dropOver === `gigs:${seat}`} aria-label={seat === 'player' ? 'Your Gigs' : 'Rival Gigs'}>
       <h3 className="play-gig-count play-eyebrow">{seat === 'player' ? 'Your Gigs' : 'Rival Gigs'} <span>{view.gigCount}</span></h3>
-      <div className="play-dice">{gigs.length ? gigs.map((card) => <MatDie key={card.instanceId} card={card} {...targeting} />) : <span className="play-gig-empty" aria-hidden="true"><i /><i /><i /></span>}</div>
+      <div className="play-dice">{gigs.map((card) => <MatDie key={card.instanceId} card={card} {...targeting} />)}</div>
       <span className="play-gig-cred" title="Street Cred is the total value of these Gig dice">Cred <b>{view.streetCred}</b></span>
       <ZoneFloat outcome={outcome} seat={seat} kinds={['gigs', 'cred']} />
     </section>;
@@ -128,27 +128,27 @@ function Legends({ seat, snapshot, renderCard }: { seat: Seat; snapshot: MatchSn
 function Eddies({ seat, snapshot, outcome, ...targeting }: Targeting & { seat: Seat; snapshot: MatchSnapshot; outcome?: Outcome }) {
   const view = snapshot.view.players[seat];
   const own = seat === 'player';
+  const breakdown = useId();
   const eddies = zoneCards(view, 'eddieArea');
   const ready = eddies.filter((card) => !card.spent).length;
   const spent = eddies.length - ready;
   const fromLegends = Math.max(0, view.availableEddies - view.eddies);
   const pool = Array.from({ length: Math.max(0, view.eddies - ready) }, (_, index) => ({ instanceId: `pool:${index}`, spent: false }));
-  return <section className="play-eddies" data-zone={`eddies:${seat}`} data-drop-zone={`eddies:${seat}`} data-drop-available={targeting.dropZones?.has(`eddies:${seat}`)} data-drop-over={targeting.dropOver === `eddies:${seat}`} aria-label={own ? 'Your Eddies' : 'Rival Eddies'}>
-    <div className="play-eddies-total" title={`${view.eddies} ready Eddies plus ${fromLegends} from eligible Legends`}>
+  return <section className="play-eddies" data-zone={`eddies:${seat}`} data-drop-zone={`eddies:${seat}`} data-drop-available={targeting.dropZones?.has(`eddies:${seat}`)} data-drop-over={targeting.dropOver === `eddies:${seat}`} aria-label={own ? 'Your Eddies' : 'Rival Eddies'} aria-describedby={breakdown}>
+    <div className="play-eddies-total" title={`${view.eddies} ready · ${spent} spent · ${fromLegends} from Legends`}>
       <b>{view.availableEddies}</b><span>€$ available</span>
     </div>
-    <div className="play-eddies-detail">
-      <div className="play-eddie-row">{[...eddies, ...pool].map((card, index) => {
-        const target = targeting.targetIds.has(card.instanceId) && (own || !card.instanceId.startsWith('pool:'));
-        const label = `${own ? 'Your' : 'Rival'} Eddie ${index + 1}, ${card.spent ? 'spent' : 'ready'}`;
-        return <button key={card.instanceId} type="button" className="play-eddie" aria-label={label} title={label}
-          data-card-id={card.instanceId} data-spent={card.spent} data-target={target} disabled={!target}
-          aria-pressed={target ? targeting.chosenIds.has(card.instanceId) : undefined} onClick={() => targeting.onPick(card.instanceId)}>
-          <span className="play-eddie-card"><img src={eddiesBack} alt="" /></span>
-        </button>;
-      })}{own && !eddies.length && !pool.length && <p className="play-empty">Sell a card to add an Eddie.</p>}</div>
-      <p className="play-eddies-split">{view.eddies} ready <span>·</span> {spent} spent <span>·</span> +{fromLegends} from Legends</p>
-    </div>
+    <span id={breakdown} className="sr-only">{view.availableEddies} Eddies available. {view.eddies} ready, {spent} spent, {fromLegends} from Legends.</span>
+    <p className="play-eddies-split" aria-hidden="true">{view.eddies} ready <span>·</span> +{fromLegends} Legends</p>
+    {(eddies.length > 0 || pool.length > 0) && <div className="play-eddie-row">{[...eddies, ...pool].map((card, index) => {
+      const target = targeting.targetIds.has(card.instanceId) && (own || !card.instanceId.startsWith('pool:'));
+      const label = `${own ? 'Your' : 'Rival'} Eddie ${index + 1}, ${card.spent ? 'spent' : 'ready'}`;
+      return <button key={card.instanceId} type="button" className="play-eddie" aria-label={label} title={label}
+        data-card-id={card.instanceId} data-spent={card.spent} data-target={target} disabled={!target}
+        aria-pressed={target ? targeting.chosenIds.has(card.instanceId) : undefined} onClick={() => targeting.onPick(card.instanceId)}>
+        <span className="play-eddie-card"><img src={eddiesBack} alt="" /></span>
+      </button>;
+    })}</div>}
     <ZoneFloat outcome={outcome} seat={seat} kinds={['eddies']} />
   </section>;
 }
@@ -192,7 +192,7 @@ export function RivalBench({ snapshot, name, active, renderCard, renderFace, out
       <div className="play-rival-hand" data-anchor="hand:rival" role="img" aria-label={`${hand} cards in the rival’s hand`}>
         {Array.from({ length: Math.min(hand, 12) }, (_, index) => <img key={index} src={CARD_BACK} alt="" style={{ '--i': index, '--n': Math.min(hand, 12) } as CSSProperties} />)}
       </div>
-      <div className="play-seat-name"><span className="play-eyebrow">Rival</span><h2 title={name}>{name}</h2><span className="play-seat-hand">{hand} in hand</span></div>
+      <div className="play-seat-name">{!portrait && <span className="play-eyebrow">Rival</span>}<h2 title={name}>{name}</h2><span className="play-seat-hand"><b>{hand}</b> in hand</span></div>
     </div>
     <div className="play-bench-crew">
       <Eddies seat="rival" snapshot={snapshot} outcome={outcome} {...targeting} />

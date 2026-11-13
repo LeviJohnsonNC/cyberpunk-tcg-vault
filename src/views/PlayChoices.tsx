@@ -44,7 +44,7 @@ export function PlayChoices({ view, action, picks, fields, active, cards, busy, 
         <div className="play-tray-intent">
           {sourceCard && <button type="button" className="play-tray-source" aria-label={`Inspect ${sourceCard.cardName ?? 'selected card'}`} onClick={(event) => inspect(sourceCard, event.currentTarget)}><CardFace card={sourceCard} /></button>}
           <div><h3>{action.label}</h3>{sourceCard ? <p>{sourceCard.cardName ?? 'Selected Legend'}</p>
-            : action.id === 'gainGig' && <p>Drag onto your field to roll.</p>}</div>
+            : rollingGig && <p>Select a die or drag it onto your field.</p>}</div>
         </div>
         <div className="play-tray-actions">
           <button className="btn play-confirm" data-confirm-move={action.id} disabled={busy || !ready}>{rollingGig ? 'Roll die' : commitLabel(action, picks)}</button>
