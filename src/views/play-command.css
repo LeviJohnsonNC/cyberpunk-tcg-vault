@@ -123,10 +123,13 @@
 .play-direct .play-command .play-decision-tray[data-compact="false"] .play-active-choice > legend {
   position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
 }
+.play-direct .play-command .play-decision-tray[data-compact="false"] .play-picks:has(.play-placement-review) { grid-template-columns: max-content minmax(0, 1.2fr) minmax(220px, 1fr); }
+.play-direct .play-command .play-decision-tray[data-compact="false"] .play-placement-review { grid-column: 3; grid-row: 2; align-self: center; }
 .play-direct .play-command:has(.play-decision-tray[data-compact="false"]) .play-turn-plate { align-self: start; min-height: 68px; margin-bottom: 0; }
 @media (max-width: 760px) {
-  .play-direct .play-command .play-decision-tray[data-compact="false"] .play-picks { grid-template-columns: minmax(0, 1fr); }
-  .play-direct .play-command .play-decision-tray[data-compact="false"] .play-active-choice { grid-column: 1; }
+  .play-direct .play-command .play-decision-tray[data-compact="false"] .play-picks,
+  .play-direct .play-command .play-decision-tray[data-compact="false"] .play-picks:has(.play-placement-review) { grid-template-columns: minmax(0, 1fr); }
+  .play-direct .play-command .play-decision-tray[data-compact="false"] :is(.play-active-choice, .play-placement-review) { grid-column: 1; grid-row: auto; }
 }
 /* Available dice stay legible; selected and focused states are separate from availability. */
 .play-direct .play-die[data-roll-available] .play-die-face {
