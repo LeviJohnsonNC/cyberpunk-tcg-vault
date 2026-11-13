@@ -60,9 +60,14 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
   useEffect(() => {
     const table = root.current;
     if (!table) return;
-    const observer = new ResizeObserver(() => { if (!running.current.size) pieces.current = measure(table); });
+    const remeasure = () => { if (!running.current.size) pieces.current = measure(table); };
+    const observer = new ResizeObserver(remeasure);
     observer.observe(table);
-    return () => observer.disconnect();
+    table.addEventListener('scroll', remeasure, true);
+    return () => {
+      observer.disconnect();
+      table.removeEventListener('scroll', remeasure, true);
+    };
   }, [root]);
 
   useEffect(() => () => {
@@ -372,8 +377,8 @@ function spotOf(el: HTMLElement | null, table: HTMLElement): Spot | undefined {
   for (let node: HTMLElement | null = el; node && node !== table;) {
     const parent = node.offsetParent as HTMLElement | null;
     if (!parent || !table.contains(parent)) return;
-    x += node.offsetLeft + (parent === table ? 0 : parent.clientLeft);
-    y += node.offsetTop + (parent === table ? 0 : parent.clientTop);
+    x += node.offsetLeft + (parent === table ? 0 : parent.clientLeft - parent.scrollLeft);
+    y += node.offsetTop + (parent === table ? 0 : parent.clientTop - parent.scrollTop);
     node = parent;
   }
   return { x, y, w: el.offsetWidth, h: el.offsetHeight };

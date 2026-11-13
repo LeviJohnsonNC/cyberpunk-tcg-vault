@@ -207,14 +207,15 @@ function FreePlayMode({ scope, draft, saved, initialRival, initialOpponent, save
       {snapshot && !lobby ? <>
         <PlayTable key={snapshot.matchId} scope={scope} snapshot={presentation.displayed ?? snapshot} names={snapshot.names}
           playback={presentation.playback} feedback={presentation.feedback} reduced={presentation.reduced} cue={sound.cue}
-          busy={busy || presentation.playing} error={error} send={send} rematch={rematch} edit={onEdit} circuit={openCircuit} controls={<>
-            <button type="button" className="btn quiet" disabled={busy} onClick={openCircuit}>Free Play</button>
-            <button type="button" className="btn quiet play-dice-sound" aria-label="Table sound" aria-pressed={sound.enabled}
-              onClick={sound.toggle}>Sound <b>{sound.enabled ? 'On' : 'Off'}</b></button>
-            <label className="play-sound-level" title="Game effects volume">FX <input type="range" aria-label="Game effects volume" min="0" max="1" step=".05" value={sound.volume} onChange={(e) => sound.changeVolume(Number(e.target.value))} /></label>
+          busy={busy || presentation.playing} error={error} send={send} rematch={rematch} edit={onEdit} circuit={openCircuit}
+          navigation={<button type="button" className="btn quiet" disabled={busy} onClick={openCircuit}>Free Play lobby</button>}
+          audio={<><button type="button" className="btn quiet" aria-label="Table sound" aria-pressed={sound.enabled}
+            onClick={sound.toggle}>Game effects <b>{sound.enabled ? 'On' : 'Off'}</b></button>
+            <label className="play-sound-level">FX volume <input type="range" aria-label="Game effects volume" min="0" max="1" step=".05" value={sound.volume} onChange={(e) => sound.changeVolume(Number(e.target.value))} /></label></>}
+          controls={<>
             {live && <button type="button" className="btn quiet" disabled={busy || presentation.playing} onClick={() => setConfirm('restart')}>Restart match</button>}
-            {live && <button type="button" className="btn danger-ghost" disabled={busy || presentation.playing} onClick={() => setConfirm('concede')}>Concede</button>}
             <button type="button" className="btn quiet" disabled={busy} onClick={() => { presentation.playback?.skip(); onEdit(); }}>Back to draft</button>
+            {live && <button type="button" className="btn danger-ghost" disabled={busy || presentation.playing} onClick={() => setConfirm('concede')}>Concede</button>}
           </>} />
       </> : !resume || lobby ? progress ? <CircuitHub scope={scope} progress={progress} draft={hubDraft} savedDecks={savedDecks} initialRival={initialRival} initialOpponent={initialOpponent}
         busy={busy || equipping} error={error ?? progressError} equip={equip} onEdit={onEdit} onResume={snapshot ? () => setLobby(false) : undefined}

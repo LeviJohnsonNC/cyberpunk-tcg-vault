@@ -85,7 +85,9 @@ export function CampaignRivalDossier(props: DossierProps) {
     <button ref={trigger} type="button" className={context === 'contract' ? 'btn quiet campaign-board-dossier' : 'campaign-rival-trigger'}
       aria-label={`View ${rival}’s profile`} aria-haspopup="dialog"
       onClick={() => { detail.current?.showModal(); setOpened(true); }}>
-      {context === 'contract' ? <>View profile <span aria-hidden="true">→</span></> : <CampaignRivalPortrait encounter={encounter} />}
+      {context === 'contract' ? <>View profile <span aria-hidden="true">→</span></> : <span className="campaign-rival-table-portrait" aria-hidden="true">
+        {dossierArt[encounter] ? <img src={dossierArt[encounter]} alt="" /> : <CampaignRivalPortrait encounter={encounter} />}
+      </span>}
     </button>
     <dialog className="al-dialog campaign-rival-dialog" ref={detail} aria-labelledby={titleId}
       onClose={() => { setOpened(false); trigger.current?.focus({ preventScroll: true }); }}
@@ -139,11 +141,12 @@ export function CampaignRivalDossier(props: DossierProps) {
 }
 
 export function CampaignRivalSeat(props: SharedProps & Omit<MatchProps, 'context'>) {
-  const { rival } = campaignChapters[props.encounter];
+  const { rival, role } = campaignChapters[props.encounter];
   return <div className="campaign-rival-seat">
     <CampaignRivalDossier {...props} context="match" />
     <div className="campaign-rival-caption">
-      <strong>{rival}</strong>
+      <p className="play-eyebrow">{role}</p>
+      <strong>{rival}<span aria-hidden="true">.</span></strong>
       <div aria-live="polite">{props.dialogue && props.quote && <p key={props.quote.sequence}>“{props.quote.text}”</p>}</div>
     </div>
   </div>;

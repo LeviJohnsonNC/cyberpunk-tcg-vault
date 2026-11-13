@@ -14,6 +14,7 @@ import { HowItWorks } from './views/HowItWorks';
 import { UpgradePlanner } from './views/UpgradePlanner';
 import { SharedDeck } from './views/SharedDeck';
 import { FeedbackDialog } from './components/Feedback';
+import { MatchRadioContainer } from './lib/play/matchRadio';
 import { MusicPlayer } from './components/MusicPlayer';
 import { MobileVaultNav } from './components/MobileVaultNav';
 import { CURRENCIES, getCurrency, setCurrency, type Currency } from './lib/currency';
@@ -42,6 +43,7 @@ export default function App() {
   const menu = useRef<HTMLDialogElement>(null);
   const menuAccount = useRef<HTMLHeadingElement>(null);
   const authTrigger = useRef<HTMLButtonElement>(null);
+  const [matchRadioContainer, setMatchRadioContainer] = useState<HTMLDivElement | null>(null);
   const [musicContainer, setMusicContainer] = useState<HTMLDivElement | null>(null);
   const sampleEntered = useRef(false);
   const [openCard, setOpenCard] = useState<{ slug: string; printingId?: string; identify?: boolean; opener?: HTMLElement } | null>(null);
@@ -268,21 +270,23 @@ export default function App() {
         {route.tab === 'shared' && <SharedDeck onPlayAgainst={PlayMode && !mobile ? practiceAgainst : undefined} token={route.deck} onOpen={showCard} goAdd={() => go('add')} />}
         {route.tab === 'play' && (PlayMode && store.ready && (mobile || matchInfo)
           ? <Suspense fallback={<p className="callout" role="status">Opening Play Mode…</p>}>
-            <PlayMode key={scope} scope={scope} preparationOnly={mobile} draft={matchDraft} saved={savedMatch} initialRival={playRival?.scope === scope ? playRival.id : undefined}
-              savedDecks={store.decks} initialOpponent={playDraft?.scope === scope ? playDraft.opponent : undefined}
-              rememberRival={(id) => setPlayRival({ scope, id })} onCheckpoint={acceptMatch} onEdit={returnToDraft}
-              onFreePlayReset={() => {
-                setPlayDraft(previous => previous?.scope === scope ? undefined : previous);
-                setPlayRival(previous => previous?.scope === scope ? undefined : previous);
-                setMatchLookup(previous => previous?.scope === scope ? { scope } : previous);
-                toast('Free Play reset.');
-              }}
-              onCampaignDeck={(deck) => {
-                try {
-                  sessionStorage.setItem(PENDING_DECK_KEY, JSON.stringify({ ...structuredClone(deck), id: crypto.randomUUID(), name: `${deck.name} · Campaign clear` }));
-                  go('builder', '__pending');
-                } catch { toast('Could not open the campaign deck. Your completed run is still saved.', 'err'); }
-              }} />
+            <MatchRadioContainer.Provider value={desktopPlay ? setMatchRadioContainer : undefined}>
+              <PlayMode key={scope} scope={scope} preparationOnly={mobile} draft={matchDraft} saved={savedMatch} initialRival={playRival?.scope === scope ? playRival.id : undefined}
+                savedDecks={store.decks} initialOpponent={playDraft?.scope === scope ? playDraft.opponent : undefined}
+                rememberRival={(id) => setPlayRival({ scope, id })} onCheckpoint={acceptMatch} onEdit={returnToDraft}
+                onFreePlayReset={() => {
+                  setPlayDraft(previous => previous?.scope === scope ? undefined : previous);
+                  setPlayRival(previous => previous?.scope === scope ? undefined : previous);
+                  setMatchLookup(previous => previous?.scope === scope ? { scope } : previous);
+                  toast('Free Play reset.');
+                }}
+                onCampaignDeck={(deck) => {
+                  try {
+                    sessionStorage.setItem(PENDING_DECK_KEY, JSON.stringify({ ...structuredClone(deck), id: crypto.randomUUID(), name: `${deck.name} · Campaign clear` }));
+                    go('builder', '__pending');
+                  } catch { toast('Could not open the campaign deck. Your completed run is still saved.', 'err'); }
+                }} />
+            </MatchRadioContainer.Provider>
           </Suspense>
           : PlayMode && (!store.ready || (!mobile && !matchInfo)) ? <p className="callout" role="status">Checking for a saved match…</p>
           : <section className="panel">
@@ -299,7 +303,7 @@ export default function App() {
         opener?.focus({ preventScroll: true });
         setOpenCard(null);
       }} />}
-      <MusicPlayer controlsContainer={mobile ? musicContainer : undefined} />
+      <MusicPlayer controlsContainer={mobile ? musicContainer : desktopPlay && matchRadioContainer ? matchRadioContainer : undefined} />
       <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} page={route.tab} />
 
       <div className="toasts" aria-live="polite">

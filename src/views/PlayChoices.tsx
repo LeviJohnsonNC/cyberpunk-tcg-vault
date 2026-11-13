@@ -14,6 +14,7 @@ export function PlayChoices({ view, action, picks, fields, active, cards, busy, 
   step: (id: string) => void; reorder: (field: string, ids: string[]) => void; submit: () => void; cancel: () => void; alternatives: ReactNode;
 }) {
   const ready = isReady(fields, picks);
+  const rollingGig = action.id === 'gainGig';
   const sourceCard = decisionSource(view, action, picks, cards);
   const payment = paymentPreview(view, action, picks);
   const placement = action.id === 'resolveScry';
@@ -38,7 +39,7 @@ export function PlayChoices({ view, action, picks, fields, active, cards, busy, 
         })}{!active.options.length && <p className="play-empty">No eligible options. Choose an earlier step to change your selection.</p>}</div>
       </fieldset>;
   return <section className="play-decision-tray" aria-label="Table decision" data-forced={forced} data-compact={onMat}>
-    <form className="play-picks" onSubmit={(event) => { event.preventDefault(); if (!busy && ready) submit(); }}>
+    <form className="play-picks" data-gig-decision={rollingGig || undefined} onSubmit={(event) => { event.preventDefault(); if (!busy && ready) submit(); }}>
       <div className="play-tray-head">
         <div className="play-tray-intent">
           {sourceCard && <button type="button" className="play-tray-source" aria-label={`Inspect ${sourceCard.cardName ?? 'selected card'}`} onClick={(event) => inspect(sourceCard, event.currentTarget)}><CardFace card={sourceCard} /></button>}
@@ -46,8 +47,8 @@ export function PlayChoices({ view, action, picks, fields, active, cards, busy, 
             : action.id === 'gainGig' && <p>Drag onto your field to roll.</p>}</div>
         </div>
         <div className="play-tray-actions">
-          <button className="btn play-confirm" data-confirm-move={action.id} disabled={busy || !ready}>{commitLabel(action, picks)}</button>
-          <button className="btn quiet" type="button" disabled={busy} onClick={cancel}>{forced ? 'Clear selections' : 'Cancel'}</button>
+          <button className="btn play-confirm" data-confirm-move={action.id} disabled={busy || !ready}>{rollingGig ? 'Roll die' : commitLabel(action, picks)}</button>
+          <button className="btn quiet" type="button" disabled={busy} onClick={cancel}>{forced ? rollingGig ? 'Clear' : 'Clear selections' : 'Cancel'}</button>
           {alternatives}
         </div>
       </div>

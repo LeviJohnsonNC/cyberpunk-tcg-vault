@@ -42,7 +42,7 @@ export function GigZones({ snapshot, outcome, ...targeting }: Targeting & { snap
     const gigs = zoneCards(view, 'gigArea');
     return <section key={seat} className="play-gigs" data-seat={seat} data-zone={`gigs:${seat}`} data-drop-zone={`gigs:${seat}`} data-drop-available={targeting.dropZones?.has(`gigs:${seat}`)} data-drop-over={targeting.dropOver === `gigs:${seat}`} aria-label={seat === 'player' ? 'Your Gigs' : 'Rival Gigs'}>
       <h3 className="play-gig-count play-eyebrow">{seat === 'player' ? 'Your Gigs' : 'Rival Gigs'} <span>{view.gigCount}</span></h3>
-      <div className="play-dice">{gigs.length ? gigs.map((card) => <MatDie key={card.instanceId} card={card} {...targeting} />) : <span className="play-empty">No Gigs yet</span>}</div>
+      <div className="play-dice">{gigs.length ? gigs.map((card) => <MatDie key={card.instanceId} card={card} {...targeting} />) : <span className="play-gig-empty" aria-hidden="true"><i /><i /><i /></span>}</div>
       <span className="play-gig-cred" title="Street Cred is the total value of these Gig dice">Cred <b>{view.streetCred}</b></span>
       <ZoneFloat outcome={outcome} seat={seat} kinds={['gigs', 'cred']} />
     </section>;
@@ -104,7 +104,7 @@ export function SeatField({ seat, snapshot, active, renderCard, overlay, ...targ
   const view = snapshot.view.players[seat];
   const { attached, units } = crew(view);
   const resolving = zoneCards(view, 'resolvingProgram');
-  return <section className="play-field" data-seat={seat} data-active={active} data-zone={`field:${seat}`} data-resolving={resolving.length > 0}
+  return <section className="play-field" data-seat={seat} data-active={active} data-zone={`field:${seat}`} data-resolving={resolving.length > 0} data-empty={!units.length && !resolving.length && !overlay || undefined}
     data-drop-zone={`field:${seat}`} data-drop-available={targeting.dropZones?.has(`field:${seat}`)} data-drop-over={targeting.dropOver === `field:${seat}`}
     aria-label={seat === 'player' ? 'Your field' : 'Rival field'}>
     {units.length > 0 && <div className="play-card-row">{units.map(card => withGear(attached, renderCard, card))}</div>}
@@ -146,7 +146,7 @@ function Eddies({ seat, snapshot, outcome, ...targeting }: Targeting & { seat: S
           aria-pressed={target ? targeting.chosenIds.has(card.instanceId) : undefined} onClick={() => targeting.onPick(card.instanceId)}>
           <span className="play-eddie-card"><img src={eddiesBack} alt="" /></span>
         </button>;
-      })}{!eddies.length && !pool.length && <p className="play-empty">{own ? 'Sell a card to add an Eddie.' : 'No Eddies yet'}</p>}</div>
+      })}{own && !eddies.length && !pool.length && <p className="play-empty">Sell a card to add an Eddie.</p>}</div>
       <p className="play-eddies-split">{view.eddies} ready <span>·</span> {spent} spent <span>·</span> +{fromLegends} from Legends</p>
     </div>
     <ZoneFloat outcome={outcome} seat={seat} kinds={['eddies']} />
@@ -182,11 +182,11 @@ type BenchProps = MatProps & { active: boolean; renderFace: (card: CardView) => 
 /** The rival's side of the table edge: piles, a hand of card backs and the crew. */
 export function RivalBench({ snapshot, name, active, renderCard, renderFace, outcome, rolls, portrait, ...targeting }: BenchProps & { name: string; portrait?: ReactNode }) {
   const hand = zoneCount(snapshot.view.players.rival, 'hand');
-  return <section className="play-bench" data-seat="rival" data-active={active} aria-label="Rival bench">
-    <div className="play-bench-piles">
+  return <section className="play-bench" data-seat="rival" data-portrait={!!portrait || undefined} data-active={active} aria-label="Rival bench">
+    {portrait}
+    <div className="play-bench-piles" role="group" aria-label="Rival Fixer dice, deck and trash">
       <Piles seat="rival" snapshot={snapshot} renderCard={renderCard} renderFace={renderFace} />
       <Fixer seat="rival" snapshot={snapshot} rolls={rolls} {...targeting} />
-      {portrait}
     </div>
     <div className="play-bench-seat">
       <div className="play-rival-hand" data-anchor="hand:rival" role="img" aria-label={`${hand} cards in the rival’s hand`}>
