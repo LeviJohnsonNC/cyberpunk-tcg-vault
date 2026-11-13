@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, useState } from 'react';
+import { useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { BY_SLUG, defaultPrinting, type Printing } from '../lib/data';
 import type { EncounterId } from '../lib/play/campaign';
 import { campaignChapters } from '../lib/play/campaignStory';
@@ -27,6 +27,17 @@ type MatchProps = {
 type DossierProps = SharedProps & ({ context: 'contract' } | MatchProps);
 
 const dossierArt: Partial<Record<EncounterId, string>> = { 'dead-drop': latch };
+const tablePortraitY: Record<EncounterId, string> = {
+  'first-call': '0%',
+  'chrome-debt': '-1%',
+  'dead-drop': '19%',
+  'night-drive': '-4%',
+  'dead-air': '0%',
+  'red-line': '-3%',
+  'mosh-pit': '0%',
+  'hostile-takeover': '-4%',
+  'last-call': '-2%',
+};
 
 function DossierPortrait({ encounter }: { encounter: EncounterId }) {
   const [failed, setFailed] = useState(false);
@@ -85,7 +96,7 @@ export function CampaignRivalDossier(props: DossierProps) {
     <button ref={trigger} type="button" className={context === 'contract' ? 'btn quiet campaign-board-dossier' : 'campaign-rival-trigger'}
       aria-label={`View ${rival}’s profile`} aria-haspopup="dialog"
       onClick={() => { detail.current?.showModal(); setOpened(true); }}>
-      {context === 'contract' ? <>View profile <span aria-hidden="true">→</span></> : <span className="campaign-rival-table-portrait" aria-hidden="true">
+      {context === 'contract' ? <>View profile <span aria-hidden="true">→</span></> : <span className="campaign-rival-table-portrait" style={{ '--rival-crop-y': tablePortraitY[encounter] } as CSSProperties} aria-hidden="true">
         {dossierArt[encounter] ? <img src={dossierArt[encounter]} alt="" /> : <CampaignRivalPortrait encounter={encounter} />}
       </span>}
     </button>

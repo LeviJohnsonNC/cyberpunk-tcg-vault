@@ -4,6 +4,8 @@
   --play-card-width: clamp(63px, min(8vw, calc((100svh - 302px) / 5.25)), 150px);
   --play-hand-width: calc(var(--play-card-width) * 1.12);
   --play-legend-width: calc(var(--play-card-width) * .59);
+  --play-fixer-die: clamp(44px, 3.3vw, 48px);
+  --play-gig-die: clamp(46px, 3.5vw, 54px);
 }
 .play-direct .play-match-header {
   position: relative;
@@ -14,13 +16,15 @@
 }
 .play-direct .play-match-identity { gap: clamp(8px, 1vw, 18px); }
 .play-direct .play-match-identity h1 { color: var(--color-ticket); font-style: italic; }
+.play-direct .play-header-actions .btn { font-size: 13px; }
 .play-match-identity small {
   margin-inline-start: 7px;
   color: var(--color-text-muted);
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0;
   text-transform: none;
 }
+.play-match-identity small[data-match-error] { color: var(--color-danger); }
 .play-direct .play-header-actions { flex-wrap: nowrap; gap: 6px; }
 .play-match-options .play-more-actions { width: min(230px, calc(100vw - 28px)); padding: 7px; }
 .play-match-options .play-more-actions .btn { width: 100%; text-align: start; }
@@ -61,8 +65,8 @@
     linear-gradient(var(--play-scrim), var(--play-scrim)),
     url('../assets/play/afterlife-table.webp') center / cover var(--color-canvas-deep);
   border-color: color-mix(in srgb, var(--color-accent) 33%, var(--color-divider));
-  padding: 6px clamp(7px, .9vw, 16px) 8px;
-  gap: 5px;
+  padding: 5px clamp(7px, .9vw, 16px) 6px;
+  gap: 4px;
 }
 .play-direct .play-bench[data-seat="rival"] {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
@@ -70,28 +74,52 @@
   gap: clamp(8px, 1vw, 18px);
 }
 .play-direct .play-bench[data-portrait] {
-  grid-template-columns: minmax(205px, 1.22fr) auto minmax(130px, .82fr) auto;
+  grid-template-columns: minmax(205px, 1.2fr) auto minmax(130px, .9fr) auto;
 }
 .play-direct .play-bench[data-seat="rival"] .play-bench-piles,
 .play-direct .play-bench[data-seat="rival"] .play-bench-crew { align-items: center; }
 .play-direct .play-bench[data-seat="rival"] .play-bench-crew { gap: clamp(8px, 1vw, 15px); }
-.play-direct .play-bench[data-seat="rival"] .play-eddies {
+.play-direct .play-bench-piles { gap: clamp(6px, .7vw, 13px); }
+.play-direct .play-bench[data-seat="rival"] .play-eddies { width: clamp(128px, 10vw, 170px); }
+.play-direct .play-eddies {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: max-content minmax(0, 1fr);
   align-content: center;
-  gap: 2px 8px;
-  width: clamp(114px, 10vw, 174px);
+  justify-items: start;
+  gap: 1px 5px;
+  padding: 4px 7px;
+  background: linear-gradient(115deg, var(--color-surface), var(--color-canvas-deep));
 }
-.play-direct .play-bench[data-seat="rival"] .play-eddies-detail { display: contents; }
-.play-direct .play-bench[data-seat="rival"] .play-eddie-row { overflow-x: auto; scrollbar-width: thin; padding: 3px; }
-.play-direct .play-bench[data-seat="rival"] .play-eddies-split { grid-column: 1 / -1; white-space: normal; text-align: center; }
+.play-direct .play-eddies-total { grid-area: 1 / 1; grid-template-columns: auto auto; align-items: center; gap: 5px; }
+.play-direct .play-eddies-total b { font-size: clamp(24px, 2.1vw, 36px); line-height: 1; }
+.play-direct .play-eddies-total span { font: 500 11px/1.1 var(--font-ui); letter-spacing: 0; }
+.play-direct .play-eddies-split { grid-column: 1 / -1; color: var(--color-text-muted); font: 500 12px/1.2 var(--font-ui); }
+.play-direct .play-eddie-row {
+  grid-area: 1 / 2;
+  width: 100%;
+  min-height: 0;
+  position: relative;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding: 3px;
+  align-self: center;
+}
+.play-direct .play-eddie { flex-basis: calc(var(--play-legend-width) * .49); flex-shrink: 0; }
+.play-direct .play-bench[data-seat="rival"] .play-eddie-row { grid-area: 3 / 1 / 4 / 3; }
+.play-direct .play-bench[data-seat="rival"] .play-eddies-split { overflow: visible; text-overflow: clip; }
+.play-direct .play-bench[data-seat="rival"] .play-eddies-total { margin-block-end: 2px; }
+.play-direct .play-eddie:focus-visible .play-eddie-card { outline-color: var(--color-ticket); }
+.play-direct .play-seat-hand { font: 500 12px/1.2 var(--font-ui); letter-spacing: 0; text-transform: none; }
+.play-direct .play-seat-hand b { color: var(--color-ticket); font: 700 17px/1 var(--font-display); }
+.play-direct .play-rival-hand { width: 100%; padding-inline: 0; }
 .play-direct .campaign-rival-seat {
   position: relative;
   isolation: isolate;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  min-height: clamp(80px, 10.6svh, 137px);
+  --rival-portrait-size: clamp(94px, 12.25svh, 130px);
+  min-height: var(--rival-portrait-size);
   width: 100%;
   max-width: none;
 }
@@ -109,27 +137,30 @@
 .campaign-rival-table-portrait {
   position: absolute;
   inset: 0 auto 0 0;
-  width: 58%;
+  width: min(47%, calc(var(--rival-portrait-size) * 1.22));
   display: block;
   overflow: hidden;
   border-radius: inherit;
-  mask-image: linear-gradient(90deg, #000 65%, transparent 100%);
+  mask-image: linear-gradient(90deg, #000 72%, transparent 100%);
 }
-.campaign-rival-table-portrait img { width: 100%; height: 100%; object-fit: cover; object-position: center 23%; }
-.campaign-rival-table-portrait .campaign-rival-portrait { translate: 0 -17%; }
-.play-direct .campaign-rival-caption { display: block; width: 54%; padding: 5px; pointer-events: none; }
-.play-direct .campaign-rival-caption > .play-eyebrow { display: block; margin: 0 0 2px; font-size: 9px; letter-spacing: .075em; }
+.campaign-rival-table-portrait img { width: 100%; height: 100%; object-fit: cover; object-position: center var(--rival-crop-y); }
+.campaign-rival-table-portrait .campaign-rival-portrait {
+  width: min(100%, calc(var(--rival-portrait-size) * 1.06));
+  translate: 0 var(--rival-crop-y);
+  background-image: url('../assets/play/last-call-rival-atlas-detail.webp');
+}
+.play-direct .campaign-rival-caption { display: block; width: max(55%, calc(100% - var(--rival-portrait-size) * 1.12)); padding: 5px; pointer-events: none; }
+.play-direct .campaign-rival-caption > .play-eyebrow { display: block; margin: 0 0 3px; font-size: 11px; letter-spacing: .055em; }
 .play-direct .campaign-rival-caption > strong {
   color: var(--color-ticket);
   font: italic 800 clamp(24px, 3vw, 49px)/.9 var(--font-display);
   text-transform: uppercase;
 }
 .play-direct .campaign-rival-caption strong span { color: var(--color-accent); }
-.play-direct .campaign-rival-caption > div { block-size: 2.6em; }
-.play-direct .campaign-rival-caption > div p { -webkit-line-clamp: 2; margin-top: 4px; color: var(--color-text-muted); font: italic 400 clamp(11px, .92vw, 15px)/1.22 var(--font-ui); }
-.play-direct .campaign-rival-caption > div { block-size: clamp(25px, 2.35vw, 37px); }
+.play-direct .campaign-rival-caption > div p { -webkit-line-clamp: 2; margin-top: 4px; color: var(--color-text-muted); font: italic 400 clamp(12px, 1vw, 15px)/1.22 var(--font-ui); }
+.play-direct .campaign-rival-caption > div { block-size: 2.65em; }
 .play-direct .play-bench[data-seat="player"] { gap: clamp(7px, .9vw, 17px); }
-.play-direct .play-bench[data-seat="player"] .play-bench-crew { align-self: stretch; justify-content: center; }
+.play-direct .play-bench[data-seat="player"] .play-bench-crew { align-self: stretch; justify-content: center; min-width: 156px; }
 .play-direct .play-bench[data-seat="player"] .play-bench-piles { align-self: center; }
 .play-direct .play-field { min-height: calc(var(--play-card-width) * 1.4 + 12px); padding-block: 5px; }
 .play-direct .play-command { height: auto; min-height: 49px; }
@@ -138,32 +169,38 @@
 .play-direct .play-tray-intent { min-width: min(210px, 100%); }
 .play-direct .play-hand .play-card-row { min-height: calc(var(--play-hand-width) * 1.4 + 6px); padding-top: 5px; }
 @media (max-width: 1120px) {
-  .play-match-identity small { display: none; }
+  .play-match-identity small:not([data-match-error]) { display: none; }
   .play-radio-panel .afterhours-radio { grid-template-columns: minmax(124px, .8fr) minmax(130px, 1fr) minmax(185px, 1.2fr) auto; gap: 5px 8px; }
   .play-direct .play-bench[data-portrait] { grid-template-columns: minmax(150px, 1fr) auto minmax(95px, .7fr) auto; gap: 6px; }
   .play-direct .play-bench-seat .play-eyebrow { display: none; }
   .play-direct .campaign-rival-caption > strong { font-size: clamp(23px, 3.15vw, 35px); }
 }
 
-/* The lights frame the cards. Field markings are ambience, with no slot geometry. */
+/* Low light keeps the cards and legal drop outlines in front. */
 .play-direct .play-field {
   border-radius: 9px;
   border-color: color-mix(in srgb, var(--color-accent) 23%, var(--color-divider));
   background:
     linear-gradient(var(--field-tint), var(--field-tint)),
-    linear-gradient(90deg, transparent, var(--field-center, rgb(16 10 20 / .25)) 29% 71%, transparent),
+    linear-gradient(90deg, transparent, var(--field-center, rgb(16 10 20 / .33)) 29% 71%, transparent),
     var(--field-surface) center / 100% 100% no-repeat,
     var(--color-canvas-deep);
-  box-shadow: inset 0 0 19px var(--play-shadow);
+  box-shadow: inset 0 1px rgb(255 229 194 / .08), inset 0 -12px 24px rgb(11 7 15 / .58);
 }
-.play-direct .play-field[data-seat="player"] { --field-center: rgb(12 11 21 / .22); }
+.play-direct .play-field[data-seat="player"] { --field-center: rgb(12 11 21 / .29); }
+.play-direct .play-field[data-empty] {
+  --field-center: rgb(14 9 21 / .12);
+  min-height: calc(var(--play-card-width) * 1.4 + 1px);
+}
 .play-direct .play-field[data-empty]::before {
   content: '';
   position: absolute;
-  inset: 13px 9%;
-  border-block: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
-  background: linear-gradient(90deg, transparent 49.9%, color-mix(in srgb, var(--color-ticket) 28%, transparent) 50%, transparent 50.1%) center / 100% 12px no-repeat;
-  mask-image: linear-gradient(90deg, transparent, #000 26% 74%, transparent);
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse at 76% 95%, rgb(202 76 138 / .1), transparent 48%),
+    radial-gradient(ellipse at 16% 88%, rgb(87 166 185 / .1), transparent 44%),
+    linear-gradient(90deg, transparent, rgb(248 165 193 / .12) 32% 68%, transparent) center 86% / 100% 1px no-repeat;
   pointer-events: none;
 }
 .play-direct .play-field[data-active="true"][data-seat="player"] { border-color: color-mix(in srgb, var(--color-ticket) 44%, var(--color-divider)); }
@@ -181,27 +218,59 @@
 .play-direct .play-field > .play-card-row:has(> :nth-child(5)):has(.play-equipped) > .play-card-shell {
   flex: none;
 }
+/* Fixer controls and rolled Gigs use independent sizes and share the same die faces. */
+.play-direct .play-fixer { --play-die: var(--play-fixer-die); gap: 2px; }
+.play-direct .play-fixer .play-dice { gap: 1px 2px; }
+.play-direct .play-die-fixer:disabled { color: var(--color-text-muted); }
+.play-direct .play-die-face { width: 92%; height: 92%; }
+.play-direct .play-die .play-die-shell { fill: color-mix(in srgb, currentColor 24%, var(--color-canvas-deep)); stroke-width: 1.5px; }
+.play-direct .play-die .play-die-front { fill: color-mix(in srgb, currentColor 10%, var(--color-canvas-deep)); }
+.play-direct .play-die .play-die-facets { opacity: .46; stroke-width: 1.2px; }
+.play-direct .play-die .play-die-type { font: 700 15px var(--font-mono); }
+.play-direct .play-die .play-die-number { font: 800 24px var(--font-display); }
+.play-direct .play-die[data-roll-available] .play-die-face {
+  animation: none;
+  filter: drop-shadow(0 2px 2px var(--play-shadow)) drop-shadow(0 0 3px color-mix(in srgb, var(--color-ticket) 45%, transparent));
+}
+.play-direct .play-die[data-target="true"]:hover { background: color-mix(in srgb, var(--color-ticket) 13%, var(--color-canvas-deep)); }
+.play-direct .play-die[aria-pressed="true"] { background: color-mix(in srgb, var(--color-accent) 22%, var(--color-canvas-deep)); border-color: var(--color-accent); }
+.play-direct .play-die[aria-pressed="true"] .play-die-shell { stroke-width: 2.8px; }
+.play-direct .play-die:focus-visible { outline: 2px solid var(--color-text); outline-offset: -1px; }
 .play-direct .play-gigs {
+  --play-die: var(--play-gig-die);
+  min-height: calc(var(--play-die) + 6px);
+  padding: 2px 9px;
   border: 1px solid color-mix(in srgb, var(--color-accent) 30%, var(--color-divider));
   background: linear-gradient(108deg, var(--color-surface), var(--color-canvas-deep) 54%);
 }
-.play-direct .play-gig-count { gap: clamp(8px, 1vw, 16px); color: var(--color-text); font-size: 11px; }
-.play-direct .play-gig-count span { font-size: clamp(23px, calc(var(--play-die) * .85), 39px); }
-.play-gig-empty { display: flex; gap: 5px; padding-inline: 5px; pointer-events: none; }
-.play-gig-empty i { width: 15px; height: 7px; transform: skewX(-26deg); border: 1px solid color-mix(in srgb, var(--color-accent) 31%, var(--color-divider)); border-radius: 2px; }
-.play-direct .play-gig-cred { color: var(--color-text-muted); font-size: 10px; }
-.play-direct .play-eddies { background: linear-gradient(115deg, var(--color-surface), var(--color-canvas-deep)); }
-.play-direct .play-zone-label { color: var(--color-text-muted); }
-.play-direct .play-zone-label b { font-weight: 600; }
+.play-direct .play-gigs .play-dice { position: relative; overflow-x: auto; scrollbar-width: thin; }
+.play-direct .play-gigs .play-die { flex: none; }
+.play-direct .play-gigs .play-die[data-result="true"] { outline-offset: -2px; }
+.play-direct .play-gigs .play-die small { inset: auto 0 0 auto; font-size: 10px; line-height: 1; }
+.play-direct .play-gig-count { gap: 8px; color: var(--color-text); font-size: 12px; letter-spacing: .025em; }
+.play-direct .play-gig-count span { font-size: clamp(28px, 2.55vw, 42px); }
+.play-direct .play-gigs:has(.play-floats) .play-gig-count span { text-shadow: 0 0 9px color-mix(in srgb, currentColor 45%, transparent); }
+.play-direct .play-gig-cred { color: var(--color-text-muted); font-size: 11px; letter-spacing: 0; }
+.play-direct .play-gig-cred b { font: 700 18px/1 var(--font-display); }
+.play-direct .play-zone-label { color: var(--color-text-muted); font-size: 11px; letter-spacing: .05em; }
+.play-direct .play-zone-label b { font: 700 15px/1 var(--font-display); }
 .play-direct .play-command-inner { background: linear-gradient(95deg, var(--color-surface), var(--color-canvas-deep)); }
 .play-direct .play-command[data-seat="player"] .play-command-inner { border-color: color-mix(in srgb, var(--color-ticket) 36%, var(--color-divider)); }
 .play-direct .play-tray-intent h3, .play-direct .play-opening-choices h3, .play-direct .play-command-lead strong {
   color: var(--color-text);
   font: italic 800 clamp(19px, 1.55vw, 26px)/1 var(--font-display);
 }
-.play-direct .play-tray-intent p { font-size: 12px; }
+.play-direct .play-command-actions { display: flex; flex-wrap: wrap; justify-content: end; gap: 6px; margin-inline-start: auto; }
+.play-direct .play-opening-choices > .play-command-lead { min-width: min(100%, 195px); }
+.play-direct .play-tray-intent p, .play-direct .play-command-lead p { font-size: 14px; line-height: 1.23; }
+.play-direct .play-command-lead p { white-space: normal; overflow-wrap: anywhere; }
+.play-direct .play-combat-instruction { font-size: 14px; }
+.play-direct .play-turn-plate span { font-size: 11px; letter-spacing: .04em; }
+.play-direct .play-command .btn:not(.play-end-turn) { font-size: 13px; }
+.play-direct .play-command .play-choice-steps .btn, .play-direct .play-on-mat-prompt summary { font-size: 13px; }
+.play-direct .play-command .play-error { color: var(--color-text); background: color-mix(in srgb, var(--color-danger) 20%, var(--color-canvas-deep)); border-inline-start: 2px solid var(--color-danger); padding: 5px 8px; font-size: 14px; }
 .play-direct .play-command .play-confirm:not(:disabled) { box-shadow: 0 0 15px color-mix(in srgb, var(--color-accent) 27%, transparent); }
-.play-direct .play-command .play-confirm:disabled { background: var(--color-surface-raised); color: var(--color-text-muted); border-color: var(--color-divider); opacity: 1; }
+.play-direct .play-command :is(.play-confirm, .play-end-turn):disabled { background: var(--color-surface-raised); color: var(--color-text-muted); border-color: var(--color-divider); opacity: 1; }
 .play-direct .play-picks[data-gig-decision] .play-choice-steps .btn > span { display: none; }
 .play-direct .play-hand .play-card-shell { --card-gap: 11px; }
 .play-direct .play-hand .play-card-shell:is(:hover, :focus-within) > .play-card { translate: 0 calc(var(--w) * -.12); scale: 1.085; }
@@ -222,3 +291,29 @@
 .play-direct .play-hand[data-crowded] .play-card-shell:last-child { flex-basis: var(--w); }
 .play-direct .play-hand[data-crowded] .play-card-shell:is(:hover, :focus-within) > .play-card { scale: 1; translate: 0 -4px; }
 .play-direct .play-hand[data-crowded] .play-card-shell:is(:hover, :focus-within) > .play-details { translate: 0 -4px; }
+
+
+@media (max-width: 1060px) {
+  .play-direct .play-bench[data-portrait] {
+    grid-template-columns: minmax(155px, 1fr) auto auto;
+  }
+  .play-direct .play-bench[data-portrait] .play-bench-seat {
+    grid-column: 1;
+    grid-row: 2;
+    justify-items: start;
+  }
+  .play-direct .play-bench[data-portrait] .play-rival-hand { display: none; }
+  .play-direct .play-bench[data-seat="player"] { grid-template-columns: auto 1fr; }
+  .play-direct .play-bench[data-seat="player"] .play-hand { grid-row: 2; grid-column: 1 / -1; }
+  .play-direct .play-bench[data-seat="player"] .play-bench-crew { justify-self: start; }
+  .play-direct .play-combat-banner, .play-direct .play-tray-head { flex-wrap: wrap; }
+}
+@media (max-width: 900px) {
+  .play-direct .play-bench[data-portrait] { grid-template-columns: minmax(140px, 1fr) auto; }
+  .play-direct .play-bench[data-portrait] .play-bench-crew { grid-column: 2; grid-row: 2; }
+  .play-direct .play-bench[data-seat="rival"]:not([data-portrait]) { grid-template-columns: minmax(120px, 1fr) auto; }
+  .play-direct .play-bench[data-seat="rival"]:not([data-portrait]) .play-bench-seat { grid-row: 2; }
+  .play-direct .play-match-identity .play-eyebrow:not(button) { display: none; }
+  .play-radio-panel .afterhours-radio { grid-template-columns: minmax(120px, 1fr) minmax(180px, 1fr); }
+  .play-radio-panel :is(.radio-timeline, .radio-transport, .radio-footer) { grid-row: auto; }
+}
