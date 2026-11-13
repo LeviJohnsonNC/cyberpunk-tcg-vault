@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { CARD_BACK } from '../components/bits';
 import { BY_SLUG, defaultPrinting } from '../lib/data';
 import { ENCOUNTERS, campaignPackLayout, type CampaignRun, type CampaignReward } from '../lib/play/campaign';
@@ -21,14 +21,21 @@ type PackProps = {
   tearSeal: () => Promise<boolean>;
   flipSlot: (slot: number) => Promise<boolean>;
   showBonus: (show: boolean) => Promise<boolean>;
-  revealSound: (rare: boolean) => void;
+  revealSound: (tier: RevealTier) => void;
   choose: (slug: string) => void;
   finish: () => void;
   inspect: CampaignInspect;
   back: () => void;
 };
 
-const richRarity = (rarity?: string) => !!rarity && !['Common', 'Uncommon'].includes(rarity);
+type RevealTier = 'standard' | 'rare' | 'foil';
+function revealTier(rarity?: string): RevealTier {
+  if (!rarity || rarity === 'Common' || rarity === 'Uncommon') return 'standard';
+  return rarity === 'Rare' ? 'rare' : 'foil';
+}
+
+const flipDuration = 505;
+const faceTime = 266;
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const displayName = (slug: string) => BY_SLUG.get(slug)?.display ?? slug;
 
@@ -54,9 +61,10 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
   const stageTitle = useRef<HTMLHeadingElement>(null);
   const featured = useRef<HTMLButtonElement>(null);
   const firstSlot = useRef<HTMLButtonElement>(null);
-  const moveFrom = useRef<DOMRect>(undefined);
+  const lineup = useRef<HTMLDivElement>(null);
+  const moveFrom = useRef<{ card: DOMRect; lineup: DOMRect }>(undefined);
   const openingRequest = useRef(false);
-  const focusStage = useRef(false);
+  const focusStage = useRef<'heading' | 'first-card'>(undefined);
   const flipLock = useRef(false);
   const sealed = !layout || opening;
   const peeling = opening && !!layout;
@@ -65,6 +73,8 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
   const active = selected !== undefined && visible.includes(selected) ? selected
     : visible.findLast(slot => slot !== flip?.slot);
   const pull = layout && active !== undefined ? pulls[layout.order[active]] : undefined;
+  const openingSpread = !pull && !bonus;
+  const turningSlot = flip && flip.phase !== 'saving' ? flip.slot : undefined;
 
   useEffect(() => {
     // Warm exact printing art without making a save depend on the artwork host.
@@ -88,9 +98,9 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
 
   useEffect(() => {
     if (sealed || busy || !focusStage.current) return;
-    focusStage.current = false;
-    if (!bonus && !revealed.length) firstSlot.current?.focus({ preventScroll: true });
-    else stageTitle.current?.focus({ preventScroll: true });
+    const target = focusStage.current === 'first-card' ? firstSlot.current : stageTitle.current;
+    focusStage.current = undefined;
+    target?.focus({ preventScroll: true });
   }, [sealed, busy, bonus, revealed.length]);
 
   useLayoutEffect(() => {
@@ -100,22 +110,100 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
     if (!from || !card || reducedMotion() || !card.animate) return;
     const to = card.getBoundingClientRect();
     const flight = card.animate([
-      { transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width})`, opacity: .78 },
-      { transform: 'none', opacity: 1 },
-    ], { duration: 270, easing: 'cubic-bezier(.2,.8,.28,1)' });
-    return () => flight.cancel();
+      { transform: `translate(${from.card.left - to.left}px, ${from.card.top - to.top}px) scale(${from.card.width / to.width})` },
+      { transform: 'none' },
+    ], { duration: 295, easing: 'cubic-bezier(.2,.75,.22,1)' });
+    const row = lineup.current;
+    const rowTo = row?.getBoundingClientRect();
+    const slide = row && rowTo && row.animate([
+      { transform: `translateY(${from.lineup.top - rowTo.top}px) scale(${from.lineup.width / rowTo.width})`, transformOrigin: 'top center' },
+      { transform: 'none', transformOrigin: 'top center' },
+    ], { duration: 285, easing: 'cubic-bezier(.2,.75,.22,1)' });
+    const spotlight = card.parentElement;
+    spotlight?.setAttribute('data-in-flight', '');
+    const lower = () => spotlight?.removeAttribute('data-in-flight');
+    void flight.finished.then(lower, lower);
+    const stop = () => { flight.cancel(); slide?.cancel(); lower(); };
+    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    document.addEventListener('visibilitychange', stop);
+    motion.addEventListener('change', stop);
+    return () => {
+      document.removeEventListener('visibilitychange', stop);
+      motion.removeEventListener('change', stop);
+      stop();
+    };
   }, [active]);
 
-  async function openSeal() {
+  const showSlotFace = useEffectEvent((slot: number) => {
+    if (!layout) return;
+    revealSound(revealTier(pulls[layout.order[slot]].printing?.rarity));
+    setFlip({ slot, phase: 'front' });
+  });
+
+  useLayoutEffect(() => {
+    if (turningSlot === undefined) return;
+    const row = lineup.current;
+    const slot = row?.querySelector<HTMLButtonElement>('[data-flipping]');
+    const card = slot?.querySelector<HTMLElement>('.campaign-tabletop-card');
+    const front = slot?.querySelector<HTMLElement>('.campaign-tabletop-front');
+    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let settled = false;
+    function settle(animate = false) {
+      if (settled) return;
+      settled = true;
+      if (animate && slot && row) {
+        const face = front?.getBoundingClientRect() ?? slot.getBoundingClientRect();
+        moveFrom.current = { card: face, lineup: row.getBoundingClientRect() };
+      }
+      setSelected(turningSlot);
+      setFlip(undefined);
+      flipLock.current = false;
+    }
+
+    if (!card?.animate || motion.matches || document.hidden) {
+      const frame = requestAnimationFrame(() => {
+        if (!document.hidden) showSlotFace(turningSlot);
+        settle();
+      });
+      return () => cancelAnimationFrame(frame);
+    }
+
+    const turn = card.animate([
+      { transform: 'none', offset: 0 },
+      { transform: 'translateY(-12px) scale(1.045)', offset: .20, easing: 'cubic-bezier(.34,0,.48,1)' },
+      { transform: 'translateY(-18px) rotateY(90deg) scale(1.055)', offset: .48 },
+      { transform: 'translateY(-10px) rotateY(180deg) scale(1.03)', offset: .77, easing: 'ease-out' },
+      { transform: 'rotateY(180deg)', offset: 1 },
+    ], { duration: flipDuration, fill: 'forwards' });
+
+    // The back has passed edge-on before the rarity cue or surface highlight is shown.
+    const faceTimer = setTimeout(() => { if (!settled && !document.hidden) showSlotFace(turningSlot); }, faceTime);
+    const complete = () => {
+      clearTimeout(faceTimer);
+      settle();
+    };
+    motion.addEventListener('change', complete);
+    document.addEventListener('visibilitychange', complete);
+    void turn.finished.then(() => settle(true), complete);
+    return () => {
+      settled = true;
+      clearTimeout(faceTimer);
+      motion.removeEventListener('change', complete);
+      document.removeEventListener('visibilitychange', complete);
+      turn.cancel();
+    };
+  }, [turningSlot]);
+
+  async function openSeal(keyboard: boolean) {
     if (disabled || openingRequest.current) return;
     openingRequest.current = true;
     setRequestPending(true);
-    focusStage.current = true;
+    focusStage.current = keyboard ? 'first-card' : 'heading';
     if (!reducedMotion()) setOpening(true);
     try {
       if (!await tearSeal()) {
         setOpening(false);
-        focusStage.current = false;
+        focusStage.current = undefined;
         requestAnimationFrame(() => opener.current?.focus({ preventScroll: true }));
       }
     } finally {
@@ -137,9 +225,9 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
       flipLock.current = false;
       return;
     }
-    const rare = richRarity(pulls[layout.order[slot]].printing?.rarity);
+    const tier = revealTier(pulls[layout.order[slot]].printing?.rarity);
     if (reducedMotion()) {
-      revealSound(rare);
+      revealSound(tier);
       setSelected(slot);
       setFlip(undefined);
       flipLock.current = false;
@@ -148,24 +236,9 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
     setFlip({ slot, phase: 'turning' });
   }
 
-  function showSlotFace(slot: number) {
-    if (flip?.slot !== slot || flip.phase !== 'turning' || !layout) return;
-    revealSound(richRarity(pulls[layout.order[slot]].printing?.rarity));
-    setFlip({ slot, phase: 'front' });
-  }
-
-  function featureFlippedSlot(slot: number, source: HTMLButtonElement) {
-    if (flip?.slot !== slot) return;
-    if (flip.phase === 'turning') showSlotFace(slot);
-    moveFrom.current = source.getBoundingClientRect();
-    setSelected(slot);
-    setFlip(undefined);
-    flipLock.current = false;
-  }
-
   async function switchBonus(show: boolean) {
-    focusStage.current = true;
-    if (!await showBonus(show)) focusStage.current = false;
+    focusStage.current = 'heading';
+    if (!await showBonus(show)) focusStage.current = undefined;
     else window.scrollTo({ top: 0, behavior: 'instant' });
   }
 
@@ -201,7 +274,7 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
                 <strong>Your<br />take.</strong>
                 <span>{String(count).padStart(2, '0')} cards{hasChoice ? ' + 01 choice' : ''}</span>
               </div>
-              <button ref={opener} type="button" className="campaign-seal-strip" disabled={disabled} onClick={() => void openSeal()}
+              <button ref={opener} type="button" className="campaign-seal-strip" disabled={disabled} onClick={event => void openSeal(event.detail === 0)}
                 aria-label="Tear the seal" aria-busy={requestPending || undefined}>
                 <span>{requestPending && !peeling ? 'Opening…' : 'Tear the seal'}</span>
                 <span className="campaign-seal-strip-arrow" aria-hidden="true">→</span>
@@ -214,7 +287,7 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
     </div>
   </section>;
 
-  return <section className="campaign-tabletop" data-act={act} data-bonus={bonus || undefined} aria-labelledby="campaign-moment-title">
+  return <section className="campaign-tabletop" data-act={act} data-bonus={bonus || undefined} data-opening-spread={openingSpread || undefined} aria-labelledby="campaign-moment-title">
     <div className="campaign-tabletop-inner">
       {bonus ? <>
         <header className="campaign-bonus-head">
@@ -257,12 +330,11 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
             <h1 id="campaign-moment-title" tabIndex={-1} ref={attachTitle}>Your take<span aria-hidden="true">.</span></h1>
             <p className="campaign-tabletop-count" role="status">{visible.length} / {count} revealed</p>
             <div className="campaign-tabletop-progress" aria-hidden="true">{pulls.map((_, index) => <i key={index} data-filled={index < visible.length} />)}</div>
-            {visible.length === 0 && <p className="campaign-tabletop-hint">Select a sealed card to reveal it.</p>}
           </header>
-          <div className="campaign-tabletop-spotlight" data-rarity={pull?.printing?.rarity} data-rich={richRarity(pull?.printing?.rarity) || undefined}>
+          <div className="campaign-tabletop-spotlight" data-rarity={pull?.printing?.rarity} data-tier={pull ? revealTier(pull.printing?.rarity) : undefined}>
             {pull && <button ref={featured} type="button" className="campaign-tabletop-feature" onClick={() => inspect(pull.slug, pull.printing?.id)}
               aria-label={`Inspect ${displayName(pull.slug)}`} key={active}>
-              <CampaignRewardArt pull={pull} alt="" exact />
+              <CampaignRewardArt pull={pull} alt="" exact showNameWhileLoading />
             </button>}
           </div>
           {pull && <div className="campaign-tabletop-copy" aria-live="polite">
@@ -272,30 +344,27 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
             <p>{packCardContext(run, pull.slug)}</p>
           </div>}
         </div>
-        <div className="campaign-tabletop-lineup" style={{ '--pack-count': count } as CSSProperties} role="group" aria-label="Cards in this pack">
+        <div ref={lineup} className="campaign-tabletop-lineup" style={{ '--pack-count': count } as CSSProperties} role="group" aria-label="Cards in this pack">
           {layout?.order.map((pullIndex, slot) => {
             const item = pulls[pullIndex];
             const face = visible.includes(slot);
             const turning = flip?.slot === slot && flip.phase !== 'saving';
             const name = displayName(item.slug);
             return <button key={slot} ref={slot === 0 ? firstSlot : undefined} type="button" className="campaign-tabletop-slot"
-              data-face={face || undefined} data-flipping={turning || undefined} data-selected={active === slot || undefined}
+              data-face={face || undefined} data-tier={face ? revealTier(item.printing?.rarity) : undefined} data-rarity={face ? item.printing?.rarity : undefined} data-flipping={turning || undefined} data-selected={active === slot || undefined}
               aria-pressed={face ? active === slot : undefined} aria-disabled={busy || !!flip || undefined}
               aria-label={face ? `Feature ${name}, card ${slot + 1}` : `Reveal card ${slot + 1}`}
-              onClick={() => void selectSlot(slot)}
-              onAnimationStart={event => {
-                if (event.animationName === 'campaign-card-catch') showSlotFace(slot);
-              }}
-              onAnimationEnd={event => {
-                if (event.animationName === 'campaign-card-flip') featureFlippedSlot(slot, event.currentTarget);
-              }}>
-              <span className="campaign-tabletop-card" aria-hidden="true">
-                {(!face || turning) && <img className="campaign-tabletop-back" src={CARD_BACK} alt="" />}
-                {(face || turning) && <span className="campaign-tabletop-front"><CampaignRewardArt pull={item} alt="" exact /></span>}
+              onClick={() => void selectSlot(slot)}>
+              <span className="campaign-tabletop-rest" aria-hidden="true">
+                <span className="campaign-tabletop-card">
+                  {(!face || turning) && <img className="campaign-tabletop-back" src={CARD_BACK} alt="" />}
+                  {(face || turning) && <span className="campaign-tabletop-front"><CampaignRewardArt pull={item} alt="" exact showNameWhileLoading /></span>}
+                </span>
               </span>
             </button>;
           })}
         </div>
+        {openingSpread && <p className="campaign-tabletop-hint">Choose any card to turn it over.</p>}
         <footer className="campaign-tabletop-actions">
           <button type="button" className="campaign-tabletop-link" disabled={busy || !!flip} onClick={back}>← Back to contract</button>
           {allRevealed && !flip && <button type="button" className="campaign-invitation-cta" disabled={busy}

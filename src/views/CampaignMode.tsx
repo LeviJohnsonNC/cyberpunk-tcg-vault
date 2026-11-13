@@ -424,7 +424,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
             })}
             showBonus={show => apply(() => showCampaignBonus(scope, run, earnedPack.id, show), value => setRun(value.run))}
             flipSlot={slot => apply(() => revealCampaignSlot(scope, run, earnedPack.id, slot), value => setRun(value.run))}
-            revealSound={rare => sound.cue(rare ? 'pack-rare' : 'pack-reveal')}
+            revealSound={tier => sound.cue(tier === 'foil' ? 'pack-foil' : tier === 'rare' ? 'pack-rare' : 'pack-reveal')}
             choose={slug => void apply(() => chooseReward(scope, run, earnedPack.id, slug), value => {
               setRun(value.run); changeSurface('hub');
               sound.cue(needsActBriefing(value.run) ? 'act-arrival' : 'reward-lock');
