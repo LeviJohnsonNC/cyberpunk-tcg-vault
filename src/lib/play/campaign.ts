@@ -44,6 +44,13 @@ export interface CampaignAftermath {
   sceneSeen?: boolean;
 }
 
+export interface CampaignPackLayout {
+  /** Each tabletop slot points to an index in the original, immutable reward. */
+  order: number[];
+  revealedSlots: number[];
+  choosingBonus?: boolean;
+}
+
 export interface CampaignRun {
   version: 1; id: string; starter: StarterKey; seed: string; revision: number; phase: CampaignPhase;
   encounter: number; attempts: number; inventory: Record<string, number>; deck: Deck; lastLegal: Deck;
@@ -57,7 +64,10 @@ export interface CampaignRun {
   latestRetry?: CampaignReward;
   retryPacks?: number;
   defeats?: number;
-  rewards: Record<number, CampaignReward>; opponents: Deck[]; match?: StoredMatch; completedAt?: number; revealed?: number;
+  rewards: Record<number, CampaignReward>; opponents: Deck[]; match?: StoredMatch; completedAt?: number;
+  packLayout?: CampaignPackLayout;
+  /** Legacy sequential reveal count, read only until the pack is edited. */
+  revealed?: number;
 }
 export interface CampaignArchive { id: string; starter: StarterKey; cleared: number; completed: boolean; endedAt: number; deck: Deck; }
 export interface CampaignProfile { version: 1; completions: Record<StarterKey, number>; environments: Environment[]; equipped?: Environment; history?: CampaignArchive[]; }
@@ -243,6 +253,18 @@ function rewardOffers(run: CampaignRun, eligible: Card[], compatible: Card[], re
   return offers;
 }
 
+export function campaignPackLayout(run: CampaignRun, pack: CampaignReward): CampaignPackLayout | undefined {
+  if (run.packLayout) return run.packLayout;
+  const count = Math.min(pack.cards.length, run.revealed ?? 0);
+  if (count <= 0) return;
+  const order = pack.cards.map((_, index) => index);
+  return { order, revealedSlots: order.slice(0, count) };
+}
+
+export function dealCampaignPack(run: CampaignRun, pack: CampaignReward): CampaignPackLayout {
+  return { order: shuffled(pack.cards.map((_, index) => index), `${run.seed}:tabletop:${pack.id}`), revealedSlots: [] };
+}
+
 export function pendingCampaignPack(run: CampaignRun) {
   if (run.phase === 'rewardPending') return run.rewards[run.encounter];
   if (run.phase === 'retryReward') return run.latestRetry;
@@ -255,7 +277,7 @@ export function campaignClearedCount(run: CampaignRun) {
 
 export function settleCampaignMatch(run: CampaignRun, profile: CampaignProfile, match: StoredMatch, winner: string | null, conceded = false) {
   if (run.phase !== 'inMatch' || !match.summary.ended || run.match?.summary.matchId !== match.summary.matchId) return { run, profile };
-  const next = { ...run, match, revision: run.revision + 1, attempts: run.attempts + 1, revealed: 0, resultPending: true };
+  const next = { ...run, match, revision: run.revision + 1, attempts: run.attempts + 1, revealed: undefined, packLayout: undefined, resultPending: true };
   if (conceded) return { run: { ...next, phase: 'preparing' as const }, profile };
 
   const outcome = winner === 'player' ? 'win' : winner === null ? 'draw' : 'loss';

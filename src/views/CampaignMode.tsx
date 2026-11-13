@@ -6,7 +6,7 @@ import type { Deck } from '../lib/store';
 import { totalCopies } from '../lib/deckDraft';
 import { COPY_MAX, MAIN_MAX } from '../lib/decks';
 import { ENCOUNTERS, ENVIRONMENTS, campaignDeckIssues, pendingCampaignPack, type CampaignProfile, type CampaignRun } from '../lib/play/campaign';
-import { readCampaign, startCampaign, resetCampaign, chooseReward, saveCampaignDeck, claimEnvironment, equipEnvironment, revealCampaignPack, advanceCampaignScene, finishCampaignPack, acknowledgeCampaignAct, acknowledgeCampaignResult } from '../lib/play/campaignStorage';
+import { readCampaign, startCampaign, resetCampaign, chooseReward, saveCampaignDeck, claimEnvironment, equipEnvironment, openCampaignPack, revealCampaignSlot, showCampaignBonus, advanceCampaignScene, finishCampaignPack, acknowledgeCampaignAct, acknowledgeCampaignResult } from '../lib/play/campaignStorage';
 import type { CampaignWorkerResponse } from '../lib/play/campaign.worker';
 import type { MatchSnapshot, Move } from '../lib/play/protocol';
 import { useMatchPresentation } from './useMatchPresentation';
@@ -419,10 +419,13 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
               setRun(value.run); sound.cue('reward-lock');
               changeSurface(value.run.phase === 'claimingFinish' ? 'hub' : 'new-cards');
             })}
-            revealTo={count => apply(() => revealCampaignPack(scope, run.revision, count), value => {
-              setRun(value.run); sound.cue((run.revealed ?? 0) === 0 ? 'pack-open' : 'pack-reveal');
+            tearSeal={() => apply(() => openCampaignPack(scope, run, earnedPack.id), value => {
+              setRun(value.run); sound.cue('pack-open');
             })}
-            choose={slug => void apply(() => chooseReward(scope, run.revision, slug), value => {
+            showBonus={show => apply(() => showCampaignBonus(scope, run, earnedPack.id, show), value => setRun(value.run))}
+            flipSlot={slot => apply(() => revealCampaignSlot(scope, run, earnedPack.id, slot), value => setRun(value.run))}
+            revealSound={rare => sound.cue(rare ? 'pack-rare' : 'pack-reveal')}
+            choose={slug => void apply(() => chooseReward(scope, run, earnedPack.id, slug), value => {
               setRun(value.run); changeSurface('hub');
               sound.cue(needsActBriefing(value.run) ? 'act-arrival' : 'reward-lock');
             })} />
@@ -455,9 +458,11 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
       initialOutgoing={reviewed.outgoing} busy={busy} error={error} close={() => setReviewed(undefined)} commit={deck => edit(deck, () => setReviewed(undefined))} />}
     <dialog ref={inspection} className="campaign-inspection" onClose={() => setInspected(undefined)} aria-label={inspectedCard?.display ?? 'Card details'}>
       <button className="btn quiet" onClick={() => setInspected(undefined)}>Close card</button>
-      {inspected && inspectedCard && <div><CampaignRewardArt pull={{ slug: inspected.slug, printing: inspectedPrinting }} alt={inspectedCard.display} exact={choosingStarter} /><section>
+      {inspected && inspectedCard && <div><CampaignRewardArt pull={{ slug: inspected.slug, printing: inspectedPrinting }} alt={inspectedCard.display} exact={choosingStarter || !!inspectedPrinting} /><section>
         {inspectedPrinting && <p className="campaign-variant-label">{packRarityLabel(inspectedPrinting.rarity)} · No. {inspectedPrinting.num}</p>}
-        <h2>{inspectedCard.display}</h2><p>{inspectedCard.text}</p>
+        <h2>{inspectedCard.display}</h2>
+        {inspectedPrinting && <p className="campaign-card-facts">{inspectedCard.color} · {inspectedCard.type}{inspectedCard.type !== 'Legend' && inspectedCard.cost != null ? ` · Cost ${inspectedCard.cost}` : ''}{inspectedCard.ram != null ? ` · RAM ${inspectedCard.ram}` : ''}</p>}
+        <p>{inspectedCard.text}</p>
         {!choosingStarter && !!run?.inventory[inspected.slug] && <p>Earned {run.inventory[inspected.slug]} · In deck {run.deck.cards[inspected.slug] ?? (run.deck.legends.includes(inspected.slug) ? 1 : 0)}</p>}
       </section></div>}
     </dialog>

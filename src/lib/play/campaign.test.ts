@@ -2,17 +2,22 @@ import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
 import { BY_SLUG, CARDS, fitsRam, ramLimits, PRINTING_INDEX } from '../data';
 import { STARTERS } from '../starters';
-import { ENCOUNTERS, campaignDeckIssues, encounterDeck, encounterSkill, generateReward, settleCampaignMatch, newCampaign } from './campaign';
+import { ENCOUNTERS, campaignDeckIssues, campaignPackLayout, encounterDeck, encounterSkill, generateReward, settleCampaignMatch, newCampaign, type CampaignRun } from './campaign';
 import { campaignPulls } from './campaignPack';
 import { matchDeckIssues, prepareMatchDeck } from './matchDeck';
 import { createMatchController } from './workerController';
 import { aftermathBeats } from './campaignScenes';
 import { unlockedCampaignChapters } from './campaignStory';
 import { latestPack } from './campaignPresentation';
-import { acknowledgeCampaignResult, advanceCampaignScene, finishCampaignPack, chooseReward, claimEnvironment, readCampaign, revealCampaignPack, saveCampaignDeck, startCampaign, updateCampaign } from './campaignStorage';
+import { acknowledgeCampaignResult, advanceCampaignScene, finishCampaignPack, chooseReward, claimEnvironment, readCampaign, openCampaignPack, revealCampaignSlot, showCampaignBonus, saveCampaignDeck, startCampaign, updateCampaign } from './campaignStorage';
 import { readCircuitProgress, equipTableFinish, openDatabase, readMatchSummary } from './matchStorage';
 import { REWARD_THEMES } from './campaignBalance';
 import { isEngineSupported } from './engineCards';
+
+async function revealSlots(scope: string, run: CampaignRun, packId: string, slots: number[]) {
+  for (const slot of slots) ({ run } = await revealCampaignSlot(scope, run, packId, slot));
+  return run;
+}
 
 describe('starter campaign', () => {
   it('uses the exact official legal starter and legal rival lists in all nine encounters', () => {
@@ -99,7 +104,7 @@ describe('starter campaign', () => {
     run.rewards[7] = pack;
     run.revealed = 7;
     await updateCampaign(scope, () => ({ run, value: null }));
-    const result = await chooseReward(scope, run.revision, pack.offers[0]);
+    const result = await chooseReward(scope, run, pack.id, pack.offers[0]);
     expect(result.run.encounter).toBe(8);
     expect(result.run.inventory[pack.offers[0]]).toBe(4);
   });
@@ -186,7 +191,7 @@ describe('starter campaign', () => {
       const line = aftermathBeats(run!)[0].text;
       expect(line).not.toBe(lastLine);
       lastLine = line;
-      await expect(revealCampaignPack(scope, run!.revision, 1)).rejects.toThrow();
+      await expect(openCampaignPack(scope, run!, pack.id)).rejects.toThrow();
       expect(run!.resultPending).toBe(true);
       await expect(advanceCampaignScene(scope, run!)).rejects.toThrow();
       const [first, second] = await Promise.allSettled([
@@ -203,13 +208,16 @@ describe('starter campaign', () => {
       const scene = (await readCampaign(scope)).run!;
       expect(scene.aftermath?.sceneSeen).toBe(true);
       await expect(finishCampaignPack(scope, scene)).rejects.toThrow();
-      const partial = await revealCampaignPack(scope, scene.revision, 2);
-      expect((await readCampaign(scope)).run?.revealed).toBe(2);
-      expect(partial.run.latestRetry).toEqual(pack);
-      await expect(revealCampaignPack(scope, partial.run.revision, 6)).rejects.toThrow();
-      const opened = await revealCampaignPack(scope, partial.run.revision, 5);
-      const finished = await finishCampaignPack(scope, opened.run);
-      await expect(finishCampaignPack(scope, opened.run)).rejects.toThrow();
+      const { run: opened } = await openCampaignPack(scope, scene, pack.id);
+      expect((await readCampaign(scope)).run?.packLayout?.revealedSlots).toEqual([]);
+      const partial = await revealSlots(scope, opened, pack.id, [4]);
+      expect((await readCampaign(scope)).run?.packLayout?.revealedSlots).toEqual([4]);
+      expect(partial.latestRetry).toEqual(pack);
+      await expect(revealCampaignSlot(scope, partial, pack.id, 5)).rejects.toThrow();
+      await expect(revealCampaignSlot(scope, partial, pack.id, 4)).rejects.toThrow();
+      const revealed = await revealSlots(scope, partial, pack.id, [1, 3, 0, 2]);
+      const finished = await finishCampaignPack(scope, revealed);
+      await expect(finishCampaignPack(scope, revealed)).rejects.toThrow();
       expect(finished.run.encounter).toBe(0);
       expect(finished.run.phase).toBe('preparing');
       expect(latestPack(finished.run).map(pull => pull.slug)).toEqual(pack.cards);
@@ -217,44 +225,62 @@ describe('starter campaign', () => {
     expect(seen.size).toBe(4);
   });
 
-  it('opens an older sealed reward common-first without changing the awarded cards or offers', async () => {
-    const { run } = await startCampaign('legacy-pack-order', 'the-heist');
+  it('preserves slot positions and awarded cards when resuming a sequential save', async () => {
+    const scope = 'legacy-pack-order';
+    const { run } = await startCampaign(scope, 'the-heist');
     run.phase = 'rewardPending';
+    run.revealed = 2;
     const pack = { id: 'compat:0',
       cards: ['towerfall', 'mt0d12-flathead', 'floor-it', 'trauma-team-operatives', 't-bug-amateur-philosopher',
         'dying-night-v-s-pistol', 'rockn-rockerboy'],
       offers: ['augmented-negotiators', 'tetratronic-rippler', 'reboot-optics'] };
     run.rewards[0] = pack;
-    await updateCampaign('legacy-pack-order', () => ({ run, value: undefined }));
-    const first = await revealCampaignPack('legacy-pack-order', run.revision, 1);
-    const opened = first.run.rewards[0];
-    expect([...opened.cards].sort()).toEqual([...pack.cards].sort());
-    expect(opened.offers).toEqual(pack.offers);
-    expect(first.run.inventory).toEqual(run.inventory);
-    expect(campaignPulls(opened)[0].printing?.rarity).toBe('Common');
-    const saved = await revealCampaignPack('legacy-pack-order', first.run.revision, 3);
-    expect(saved.run.rewards[0]).toEqual(opened);
+    await updateCampaign(scope, () => ({ run, value: undefined }));
+    const order = [0, 1, 2, 3, 4, 5, 6];
+    expect(campaignPackLayout(run, pack)).toEqual({ order, revealedSlots: [0, 1] });
+    await expect(openCampaignPack(scope, run, pack.id)).rejects.toThrow();
+    const saved = await revealSlots(scope, run, pack.id, [5]);
+    expect(saved.packLayout).toEqual({ order, revealedSlots: [0, 1, 5] });
+    expect(saved.rewards[0]).toEqual(pack);
+    expect(saved.inventory).toEqual(run.inventory);
   });
 
-  it('serializes reveal and choice across tabs, and preserves all awarded cards on a reload', async () => {
+  it('serializes opening, individual flips and choice across tabs without changing the reward', async () => {
     const scope = 'campaign-tabs';
-    const original = await startCampaign(scope, 'the-heist');
-    original.run.rewards[0] = generateReward(original.run);
-    original.run.phase = 'rewardPending';
-    for (const slug of original.run.rewards[0].cards) original.run.inventory[slug] = (original.run.inventory[slug] ?? 0) + 1;
-    await updateCampaign(scope, () => ({ run: original.run, value: null }));
-    const [one, two] = await Promise.allSettled([
-      revealCampaignPack(scope, original.run.revision, 7),
-      revealCampaignPack(scope, original.run.revision, 1),
+    const { run } = await startCampaign(scope, 'the-heist');
+    const pack = generateReward(run);
+    run.rewards[0] = pack;
+    run.phase = 'rewardPending';
+    for (const slug of pack.cards) run.inventory[slug] = (run.inventory[slug] ?? 0) + 1;
+    await updateCampaign(scope, () => ({ run, value: null }));
+    const openings = await Promise.allSettled([openCampaignPack(scope, run, pack.id), openCampaignPack(scope, run, pack.id)]);
+    expect(openings.map(result => result.status).sort()).toEqual(['fulfilled', 'rejected']);
+    const opened = (await readCampaign(scope)).run!;
+    expect(opened.packLayout?.revealedSlots).toEqual([]);
+    const order = opened.packLayout!.order;
+    expect([...order].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    await expect(revealCampaignSlot(scope, opened, 'other-pack', 6)).rejects.toThrow();
+    const flips = await Promise.allSettled([
+      revealCampaignSlot(scope, opened, pack.id, 6), revealCampaignSlot(scope, opened, pack.id, 6),
     ]);
-    expect([one.status, two.status].sort()).toEqual(['fulfilled', 'rejected']);
-    const saved = (await readCampaign(scope)).run!;
-    expect([1, 7]).toContain(saved.revealed);
-    expect(saved.rewards[0].printingIds).toEqual(original.run.rewards[0].printingIds);
-    const offer = saved.rewards[0].offers[0];
-    const chosen = await chooseReward(scope, saved.revision, offer);
-    await expect(chooseReward(scope, saved.revision, offer)).rejects.toThrow();
-    expect((await readCampaign(scope)).run!.inventory[offer]).toBe(chosen.run.inventory[offer]);
+    expect(flips.map(result => result.status).sort()).toEqual(['fulfilled', 'rejected']);
+    const partial = (await readCampaign(scope)).run!;
+    expect(partial.packLayout).toEqual({ order, revealedSlots: [6] });
+    expect(partial.rewards[0]).toEqual(pack);
+    const offer = pack.offers[0];
+    await expect(chooseReward(scope, partial, pack.id, offer)).rejects.toThrow();
+    await expect(showCampaignBonus(scope, partial, pack.id, true)).rejects.toThrow();
+    const full = await revealSlots(scope, partial, pack.id, [0, 4, 3, 2, 5, 1]);
+    const { run: bonus } = await showCampaignBonus(scope, full, pack.id, true);
+    expect((await readCampaign(scope)).run?.packLayout?.choosingBonus).toBe(true);
+    const { run: review } = await showCampaignBonus(scope, bonus, pack.id, false);
+    expect(review.packLayout).toMatchObject({ order, revealedSlots: [6, 0, 4, 3, 2, 5, 1] });
+    await expect(chooseReward(scope, review, 'other-pack', offer)).rejects.toThrow();
+    const chosen = await chooseReward(scope, review, pack.id, offer);
+    await expect(chooseReward(scope, review, pack.id, offer)).rejects.toThrow();
+    expect((await readCampaign(scope)).run!.inventory[offer]).toBe((run.inventory[offer] ?? 0) + 1);
+    expect(chosen.run.deck).toEqual(run.deck);
+    expect(chosen.run.packLayout).toBeUndefined();
     const bad = { ...chosen.run.deck, cards: { ...chosen.run.deck.cards, [offer]: 4 } };
     await expect(saveCampaignDeck(scope, chosen.run.revision, bad)).rejects.toThrow();
   });
@@ -341,15 +367,13 @@ describe('starter campaign', () => {
       const skipped = await advanceCampaignScene(scope, nextBeat.run, true);
       if (encounter < 8) {
         expect(settled.rewards[encounter]).toEqual(sealed);
-        const firstCard = await revealCampaignPack(scope, skipped.run.revision, 1);
-        expect((await readCampaign(scope)).run?.revealed).toBe(1);
-        await expect(revealCampaignPack(scope, settled.revision, 7)).rejects.toThrow();
-        const revealed = await revealCampaignPack(scope, firstCard.run.revision, 7);
-        expect((await readCampaign(scope)).run?.revealed).toBe(7);
-        const offer = [2, 5].includes(encounter) ? revealed.run.rewards[encounter].offers[0]
-          : revealed.run.rewards[encounter].offers[encounter % 3];
-        const chosen = await chooseReward(scope, revealed.run.revision, offer);
-        await expect(chooseReward(scope, revealed.run.revision, offer)).rejects.toThrow();
+        const { run: opened } = await openCampaignPack(scope, skipped.run, sealed!.id);
+        await expect(revealCampaignSlot(scope, settled, sealed!.id, 6)).rejects.toThrow();
+        const revealed = await revealSlots(scope, opened, sealed!.id, [5, 0, 6, 1, 3, 2, 4]);
+        expect((await readCampaign(scope)).run?.packLayout?.revealedSlots).toHaveLength(7);
+        const offer = [2, 5].includes(encounter) ? sealed!.offers[0] : sealed!.offers[encounter % 3];
+        const chosen = await chooseReward(scope, revealed, sealed!.id, offer);
+        await expect(chooseReward(scope, revealed, sealed!.id, offer)).rejects.toThrow();
         expect(chosen.run.phase).toBe('upgrading');
         expect(chosen.run.encounter).toBe(encounter + 1);
         expect(chosen.run.rewards[encounter].choice).toBe(offer);
@@ -392,8 +416,10 @@ describe('starter campaign', () => {
         expect(settled.rewards[8].cards).toHaveLength(7);
         expect(settled.rewards[8].offers).toEqual([]);
         await expect(claimEnvironment(scope, skipped.run.revision, 'rooftop')).rejects.toThrow();
-        const opened = await revealCampaignPack(scope, skipped.run.revision, 7);
-        await finishCampaignPack(scope, opened.run);
+        const pack = settled.rewards[8];
+        const { run: opened } = await openCampaignPack(scope, skipped.run, pack.id);
+        const revealed = await revealSlots(scope, opened, pack.id, [6, 5, 4, 3, 2, 1, 0]);
+        await finishCampaignPack(scope, revealed);
       }
     }
     const finish = await readCampaign(scope);
