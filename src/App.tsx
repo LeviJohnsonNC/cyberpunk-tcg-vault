@@ -154,7 +154,8 @@ export default function App() {
     {CURRENCIES.map((c) => <button key={c} aria-pressed={currency === c} onClick={() => chooseCurrency(c)}>{c}</button>)}
   </span>;
   const showSection = (tab: TabId) => route.tab === tab || (mobile && visited.has(tab));
-  const desktopPlay = route.tab === 'play' && !mobile;
+  const playPage = route.tab === 'play';
+  const desktopPlay = playPage && !mobile;
   // The browser pathname stays the same when switching Vault screens.
   const analyticsPath = `/${route.tab}`;
 
@@ -214,11 +215,12 @@ export default function App() {
           <section className="vault-menu-setting vault-menu-sound" aria-labelledby="vault-menu-music">
             <h3 id="vault-menu-music">Music</h3><div ref={setMusicContainer} />
           </section>
+          {PlayMode && <button type="button" className="btn quiet vault-menu-feedback" onClick={() => { menu.current?.close(); go('play'); }}>Campaign</button>}
           <button type="button" className="btn quiet vault-menu-feedback" onClick={() => { menu.current?.close(); setFeedbackOpen(true); }}>Send feedback</button>
         </div>
       </dialog>}
 
-    <div className={desktopPlay ? 'app page app--play' : 'app page'}>
+    <div className={playPage ? 'app page app--play' : 'app page'}>
       {store.demo && !mobile && route.tab !== 'play' && (
         <div className="callout demo-banner" role="status">
           <div className="row">
@@ -264,9 +266,9 @@ export default function App() {
         {route.tab === 'about' && <HowItWorks openFeedback={() => setFeedbackOpen(true)} />}
         {route.tab === 'upgrade' && <UpgradePlanner onOpen={showCard} />}
         {route.tab === 'shared' && <SharedDeck onPlayAgainst={PlayMode && !mobile ? practiceAgainst : undefined} token={route.deck} onOpen={showCard} goAdd={() => go('add')} />}
-        {route.tab === 'play' && (PlayMode && !mobile && store.ready && matchInfo
+        {route.tab === 'play' && (PlayMode && store.ready && (mobile || matchInfo)
           ? <Suspense fallback={<p className="callout" role="status">Opening Play Mode…</p>}>
-            <PlayMode key={scope} scope={scope} draft={matchDraft} saved={savedMatch} initialRival={playRival?.scope === scope ? playRival.id : undefined}
+            <PlayMode key={scope} scope={scope} preparationOnly={mobile} draft={matchDraft} saved={savedMatch} initialRival={playRival?.scope === scope ? playRival.id : undefined}
               savedDecks={store.decks} initialOpponent={playDraft?.scope === scope ? playDraft.opponent : undefined}
               rememberRival={(id) => setPlayRival({ scope, id })} onCheckpoint={acceptMatch} onEdit={returnToDraft}
               onFreePlayReset={() => {
@@ -282,10 +284,10 @@ export default function App() {
                 } catch { toast('Could not open the campaign deck. Your completed run is still saved.', 'err'); }
               }} />
           </Suspense>
-          : PlayMode && !mobile && (!store.ready || !matchInfo) ? <p className="callout" role="status">Checking for a saved match…</p>
+          : PlayMode && (!store.ready || (!mobile && !matchInfo)) ? <p className="callout" role="status">Checking for a saved match…</p>
           : <section className="panel">
             <h1 className="panel-title">Play Mode</h1>
-            <p>{mobile ? 'Play Mode is available on desktop.' : !PlayMode ? 'Play Mode is currently in preview.'
+            <p>{!PlayMode ? 'Play Mode is currently in preview.'
               : 'Play Mode couldn’t read this browser’s match storage.'}</p>
             <button type="button" className="btn" onClick={() => go('builder')}>Open Deck Builder</button>
           </section>)}

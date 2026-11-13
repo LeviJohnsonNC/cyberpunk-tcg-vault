@@ -32,6 +32,18 @@ describe('public move presentation', () => {
     expect(matchTableCues([], after, after)).toEqual([]);
   });
 
+  it('sounds the first hands after turn-order selection even without draw events', () => {
+    const before = fresh(), after = structuredClone(before);
+    before.gamePhase = after.gamePhase = 'setup';
+    before.players.player.zones.hand = [];
+    before.players.rival.zones.hand = 0;
+    after.players.player.zones.hand = Array.from({ length: 6 }, (_, i) => card(`opening-${i}`, 'hand'));
+    after.players.rival.zones.hand = 6;
+    expect(matchTableCues([], before, after)).toEqual([{ cue: 'deal', seat: 'player' }, { cue: 'deal', seat: 'rival' }]);
+    expect(matchTableCues([{ type: 'cardsDrawn', count: 6, playerId: 'player' }], before, after)).toHaveLength(2);
+    expect(matchTableCues([], after, after)).toEqual([]);
+  });
+
   it('names a visible ability source during chained choices without exposing a concealed source', () => {
     const before = fresh(), after = structuredClone(before);
     before.prompt = { status: 'choice', choice: { type: 'chooseTarget', payload: { source: { cardId: 'attacker' } } }, availableMoves: [] };

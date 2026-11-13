@@ -28,7 +28,7 @@ type Confirm = 'replace' | 'restart' | 'concede';
 type Props = {
   scope: string; draft?: DeckDraft; saved?: MatchSummary; initialRival?: string; initialOpponent?: Deck; savedDecks: Deck[]; rememberRival: (id: string) => void;
   onCheckpoint: (snapshot: MatchSnapshot, draft?: DeckDraft) => void; onEdit: () => void; onCampaignDeck: (deck: Deck) => void;
-  onFreePlayReset: () => void;
+  onFreePlayReset: () => void; preparationOnly?: boolean;
 };
 
 export default function PlayMode(props: Props) {
@@ -47,8 +47,9 @@ export default function PlayMode(props: Props) {
     setMode(next);
     try { localStorage.setItem(`cptv.playMode:${props.scope}`, next); } catch { /* optional preference */ }
   };
-  return <><nav className="play-mode-tabs" aria-label="Play mode"><button className="btn" aria-current={mode === 'campaign' ? 'page' : undefined} onClick={() => choose('campaign')}>Campaign</button><button className="btn" aria-current={mode === 'free' ? 'page' : undefined} onClick={() => choose('free')}>Free Play</button><span className="play-mode-explainer">{mode === 'campaign' ? 'Grow an official starter through nine matches and earn a new room.' : 'Bring any legal deck, choose a rival, and practice without campaign stakes.'}</span></nav>
-    {mode === 'campaign' ? <CampaignMode scope={props.scope} exit={() => choose('free')} openInBuilder={props.onCampaignDeck} /> : <FreePlayMode {...props} key={freePlaySession} onFreePlayReset={() => {
+  return <>{!props.preparationOnly && <nav className="play-mode-tabs" aria-label="Play mode"><button className="btn" aria-current={mode === 'campaign' ? 'page' : undefined} onClick={() => choose('campaign')}>Campaign</button><button className="btn" aria-current={mode === 'free' ? 'page' : undefined} onClick={() => choose('free')}>Free Play</button><span className="play-mode-explainer">{mode === 'campaign' ? 'Grow an official starter through nine matches and earn a new room.' : 'Bring any legal deck, choose a rival, and practice without campaign stakes.'}</span></nav>}
+    {props.preparationOnly || mode === 'campaign' ? <CampaignMode scope={props.scope} preparationOnly={props.preparationOnly}
+      exit={props.preparationOnly ? undefined : () => choose('free')} openInBuilder={props.onCampaignDeck} /> : <FreePlayMode {...props} key={freePlaySession} onFreePlayReset={() => {
       props.onFreePlayReset();
       setFreePlaySession(session => session + 1);
     }} />}</>;
@@ -98,7 +99,12 @@ function FreePlayMode({ scope, draft, saved, initialRival, initialOpponent, save
     finally { setEquipping(false); }
   }
 
-  function openCircuit() { presentation.playback?.skip(); setProgress(undefined); setProgressError(undefined); setLobby(true); }
+  function openCircuit() {
+    presentation.playback?.skip();
+    // Returning to this table is a resume, even if it was left during setup.
+    setSnapshot(current => current?.openingDeal ? { ...current, openingDeal: undefined } : current);
+    setProgress(undefined); setProgressError(undefined); setLobby(true);
+  }
 
   async function reset() {
     if (locked.current || busy || equipping) return;

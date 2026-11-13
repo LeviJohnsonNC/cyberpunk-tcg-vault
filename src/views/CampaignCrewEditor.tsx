@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { BY_SLUG, CARDS, defaultPrinting, type Printing } from '../lib/data';
 import { totalCopies } from '../lib/deckDraft';
 import { COPY_MAX, MAIN_MAX, MAIN_MIN } from '../lib/decks';
-import { campaignCardFit, campaignDeckSizeIssue, isCampaignLegend, previewCampaignCrew } from '../lib/play/campaignDeckRules';
+import { campaignCardFit, campaignDeckIssues, campaignDeckSizeIssue, isCampaignLegend, previewCampaignCrew } from '../lib/play/campaignDeckRules';
 import type { CampaignRun } from '../lib/play/campaign';
 import type { Deck } from '../lib/store';
 import { CampaignRewardArt } from './CampaignRewardArt';
@@ -25,6 +25,8 @@ export function CampaignCrewEditor({ run, printings, slot, incoming, busy, error
   for (const [slug, qty] of Object.entries(added)) cards[slug] = (cards[slug] ?? 0) + qty;
   const total = totalCopies(cards);
   const sizeIssue = campaignDeckSizeIssue(total);
+  const resultingDeck = { ...impact.deck, cards };
+  const ready = !campaignDeckIssues(run, resultingDeck).length;
   const removedCopies = impact.removed.reduce((count, item) => count + item.copies, 0);
   const colours = [...new Set([...impact.before.colours, ...impact.after.colours])];
   const staged = Object.entries(added).filter(([, qty]) => qty > 0);
@@ -37,6 +39,7 @@ export function CampaignCrewEditor({ run, printings, slot, incoming, busy, error
     if (qty > addable || qty < 1) return;
     setAdded(items => ({ ...items, [nextCard]: (items[nextCard] ?? 0) + qty }));
   }
+  const newlyPlayable = candidates.filter(card => campaignCardFit(card, impact.before));
   const refillCount = candidates.reduce((count, card) => count + Math.max(0, available(card.slug)), 0);
   const targetCount = Math.max(0, MAIN_MIN - total);
 
@@ -86,14 +89,20 @@ export function CampaignCrewEditor({ run, printings, slot, incoming, busy, error
       </section>
 
       <section className="campaign-crew-editor-impact" aria-label="Deck impact">
-        <h3>{total} / {MAIN_MAX} cards after swap</h3>
-        {sizeIssue && <p role="status" className="campaign-crew-warning">{sizeIssue} to launch a match.</p>}
+        <h3>{total} cards after swap</h3>
+        <p role="status" className={ready ? 'campaign-crew-ready' : 'campaign-crew-warning'}>
+          {impact.issue ? 'Resolve the Legend selection to continue.' : sizeIssue ? `${sizeIssue} to launch a match.` : ready ? 'Ready to play' : 'Deck needs edits before it can launch a match.'}
+        </p>
         {removedCopies > 0 ? <details open>
           <summary>{removedCopies} {removedCopies === 1 ? 'copy returns' : 'copies return'} to your reserve</summary>
           <ul className="campaign-crew-removals">{impact.removed.map(item => <li key={item.slug}>
             <b>{item.copies} × {BY_SLUG.get(item.slug)?.display ?? item.slug}</b><small>{item.reason}</small>
           </li>)}</ul>
         </details> : changed && <p>Your current main-deck cards fit this crew.</p>}
+        {changed && !impact.issue && newlyPlayable.length > 0 && <details>
+          <summary>{newlyPlayable.length} newly playable {newlyPlayable.length === 1 ? 'card' : 'cards'}</summary>
+          <ul className="campaign-crew-removals">{newlyPlayable.map(card => <li key={card.slug}>{card.display}</li>)}</ul>
+        </details>}
         {changed && !impact.issue && <div className="campaign-crew-refill">
           <label htmlFor="crew-refill">Add from the reserve <small>{refillCount} compatible copies available</small></label>
           {targetCount > refillCount && <p className="campaign-crew-warning campaign-crew-shortfall">You need {targetCount - refillCount} more compatible {targetCount - refillCount === 1 ? 'copy' : 'copies'} in your reserve to play with this crew.</p>}
@@ -116,7 +125,7 @@ export function CampaignCrewEditor({ run, printings, slot, incoming, busy, error
     <footer>
       {error && <p className="play-error" role="alert">{error}</p>}
       <button type="button" className="btn" disabled={busy || !changed || !!impact.issue || total > MAIN_MAX}
-        onClick={() => commit({ ...impact.deck, cards })}>
+        onClick={() => commit(resultingDeck)}>
         {busy ? 'Saving…' : sizeIssue ? 'Confirm swap and save draft' : 'Confirm crew swap'}
       </button>
     </footer>

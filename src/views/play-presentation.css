@@ -167,12 +167,14 @@
   .play-result-burst { animation: play-result-spin 60s linear infinite; }
   @keyframes play-result-rise { from { opacity: 0; translate: 0 14px; } }
   @keyframes play-result-spin { to { rotate: 360deg; } }
-  .play-intro { animation: play-intro 1.7s cubic-bezier(.2, .8, .2, 1) both; }
-  .play-intro strong:first-of-type { animation: play-intro-left 1.7s cubic-bezier(.2, .8, .2, 1) both; }
-  .play-intro strong:last-child { animation: play-intro-right 1.7s cubic-bezier(.2, .8, .2, 1) both; }
-  @keyframes play-intro { 0% { opacity: 0; visibility: visible; } 12%, 72% { opacity: 1; visibility: visible; } 100% { opacity: 0; visibility: hidden; } }
-  @keyframes play-intro-left { 0% { translate: -40px 0; } 18%, 100% { translate: 0 0; } }
-  @keyframes play-intro-right { 0% { translate: 40px 0; } 18%, 100% { translate: 0 0; } }
+  .play-intro:not([data-reduced]) { animation: play-intro var(--play-opening-duration) both; }
+  .play-intro:not([data-reduced]) .play-intro-copy > p { animation: play-intro-eyebrow var(--play-opening-duration) both; }
+  .play-intro:not([data-reduced]) h2 { animation: play-intro-title var(--play-opening-duration) cubic-bezier(.18,.7,.24,1) both; }
+  .play-intro:not([data-reduced]) .play-intro-matchup { animation: play-intro-matchup var(--play-opening-duration) cubic-bezier(.18,.7,.24,1) both; }
+  @keyframes play-intro { 0% { opacity: .4; } 11%, 81% { opacity: 1; } 100% { opacity: 0; } }
+  @keyframes play-intro-eyebrow { 0%, 5% { opacity: 0; } 17%, 100% { opacity: 1; } }
+  @keyframes play-intro-title { 0%, 9% { opacity: 0; transform: translateY(11px) scale(1.07); } 32%, 100% { opacity: 1; transform: none; } }
+  @keyframes play-intro-matchup { 0%, 27% { opacity: 0; transform: translateY(8px); } 48%, 100% { opacity: 1; transform: none; } }
   @keyframes play-result-in { from { opacity: 0; } }
   @keyframes play-result-title { from { opacity: 0; transform: skewX(-4deg) scale(1.5); } }
   .play-playback-progress > span { transition: width 300ms ease; }

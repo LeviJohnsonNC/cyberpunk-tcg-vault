@@ -5,7 +5,7 @@ import { MAIN_MAX, MAIN_MIN } from '../lib/decks';
 import { totalCopies } from '../lib/deckDraft';
 import { deckStats } from '../lib/handtest';
 import type { CampaignRun } from '../lib/play/campaign';
-import { campaignCardAddReason, campaignCardFit, campaignCrew, campaignDeckSizeIssue, isCampaignLegend } from '../lib/play/campaignDeckRules';
+import { campaignCardAddReason, campaignCardFit, campaignCrew, campaignDeckIssues, campaignDeckSizeIssue, isCampaignLegend } from '../lib/play/campaignDeckRules';
 import { latestPack } from '../lib/play/campaignPresentation';
 import { CampaignCrewCards, type CampaignInspect } from './CampaignHub';
 import { CampaignRewardArt } from './CampaignRewardArt';
@@ -26,21 +26,25 @@ type WorkbenchProps = {
   printings: ReadonlyMap<string, Printing>; inspect: CampaignInspect;
   review: (slug: string, printingId?: string, swap?: boolean) => void;
   manage: (slot?: number, incoming?: string) => void;
-  quantity: (slug: string, change: number) => void;
+  quantity: (slug: string, change: number) => Promise<boolean> | undefined;
   undo: () => void; restore: (onSaved: () => void) => void; back: () => void;
 };
 
-export function CampaignWorkbench({ run, titleRef, busy, error, issues, canUndo, fromPack, packNew, acknowledgePack,
+export function CampaignWorkbench({ run, titleRef, busy, error, issues: savedIssues, canUndo, fromPack, packNew, acknowledgePack,
   printings, inspect, review, manage, quantity, undo, restore, back }: WorkbenchProps) {
   const [view, setView] = useState<ReserveView>(fromPack ? 'latest' : 'playable');
   const [query, setQuery] = useState('');
   const [type, setType] = useState('');
   const [sort, setSort] = useState('relevance');
   const [restoreOpen, setRestoreOpen] = useState(false);
+  const [lastEdit, setLastEdit] = useState<{ slug: string; change: number; before: number; revision: number }>();
   const results = useRef<HTMLDivElement>(null);
   const crew = campaignCrew(run.deck.legends);
-  const total = totalCopies(run.deck.cards);
-  const stats = deckStats(run.deck.cards);
+  const pending = busy && lastEdit?.revision === run.revision ? lastEdit : undefined;
+  const cards = pending ? { ...run.deck.cards, [pending.slug]: pending.before + pending.change } : run.deck.cards;
+  const issues = pending ? campaignDeckIssues(run, { ...run.deck, cards }) : savedIssues;
+  const total = totalCopies(cards);
+  const stats = deckStats(cards);
   const pack = new Map(latestPack(run).map(pull => [pull.slug, pull]));
   const owned = CARDS.filter(card => (run.inventory[card.slug] ?? 0) > 0 || (run.deck.cards[card.slug] ?? 0) > 0);
   const fit = new Map(owned.map(card => [card.slug, campaignCardFit(card, crew)]));
@@ -71,13 +75,27 @@ export function CampaignWorkbench({ run, titleRef, busy, error, issues, canUndo,
     if (results.current) results.current.scrollTop = 0;
   }
 
+  function changeQuantity(slug: string, change: number) {
+    if (busy) return;
+    const result = quantity(slug, change);
+    if (!result) return;
+    const edit = { slug, change, before: run.deck.cards[slug] ?? 0, revision: run.revision };
+    setLastEdit(edit);
+    void result.then(saved => { if (!saved) setLastEdit(current => current === edit ? undefined : current); });
+  }
+
   function inventoryCard(card: Card) {
     const { slug } = card;
     const legend = card.type === 'Legend';
     const inDeck = legend ? Number(run.deck.legends.includes(slug)) : run.deck.cards[slug] ?? 0;
+    const shown = legend ? inDeck : cards[slug] ?? 0;
     const earned = run.inventory[slug] ?? 0;
+    const edited = lastEdit?.slug === slug && shown === lastEdit.before + lastEdit.change
+      && run.revision <= lastEdit.revision + 1;
+    const removeHint = busy ? 'Saving deck…' : !inDeck ? 'No copies in the deck' : undefined;
     const blocked = fit.get(slug);
     const reason = campaignCardAddReason(run, card, crew, total);
+    const addHint = busy ? 'Saving deck…' : reason;
     const canSwap = total === MAIN_MAX && reason === `Deck is at ${MAIN_MAX} cards`;
     const printing = (view === 'latest' ? pack.get(slug)?.printing : undefined) ?? printings.get(slug);
     const matchingSlot = run.deck.legends.findIndex(item => BY_SLUG.get(item)?.name === card.name);
@@ -86,35 +104,43 @@ export function CampaignWorkbench({ run, titleRef, busy, error, issues, canUndo,
     const compare = () => review(slug, printingId, canSwap);
     const openCard = () => legend || blocked ? inspect(slug, printingId) : compare();
     const detailId = `campaign-quantity-limit-${slug}`;
-    return <li key={slug} className="campaign-workbench-card" data-colour={card.color} data-incompatible={!legend && !!blocked || undefined}>
+    return <li key={slug} className="campaign-workbench-card" data-colour={card.color} data-edited={edited || undefined}>
+      {packNew && pack.has(slug) && <span className="campaign-workbench-new">New</span>}
       <button type="button" className="campaign-workbench-card-art" aria-label={`${legend || blocked ? 'Inspect' : 'Compare'} ${card.display}`}
         aria-haspopup="dialog" onClick={openCard}>
-        <CampaignRewardArt pull={{ slug, printing }} alt="" />
+        <CampaignRewardArt pull={{ slug, printing }} alt="" exact showNameWhileLoading />
       </button>
       <div className="campaign-workbench-card-data">
-        {packNew && pack.has(slug) && <span className="campaign-workbench-new">New</span>}
-        <button type="button" className="campaign-workbench-card-name" onClick={openCard}>{card.display}</button>
-        <p>{card.color} · {card.type}<br />{!legend && `Cost ${card.cost ?? '—'} · `}RAM {card.ram ?? '—'}</p>
-        {legend ? <>
-          <small>{inDeck ? 'Equipped' : isCampaignLegend(card) ? 'In reserve' : 'Unavailable in Campaign'}</small>
-          {availableLegend && <button type="button" className="btn quiet campaign-workbench-card-action" disabled={busy} onClick={() => manage(Math.max(0, matchingSlot), slug)}>Recruit</button>}
-        </> : <>
-          <p className="campaign-workbench-count"><b>{inDeck}</b> in deck / <b>{earned}</b> owned</p>
-          {blocked && <p className="campaign-workbench-fit">{blocked}</p>}
-          {(!blocked || (inDeck > 0 && view === 'in-deck')) && <div className="campaign-workbench-quantity" role="group" aria-label={`Copies of ${card.display}`}>
-            <button type="button" aria-label={`Remove ${card.display}`} title={inDeck ? undefined : 'No copies in the deck'}
-              disabled={busy || !inDeck} onClick={() => quantity(slug, -1)}>−</button>
-            <b>{inDeck}</b>
-            {!blocked && <span className="campaign-workbench-step-add" title={reason}>
-              <button type="button" aria-label={`Add ${card.display}`} aria-describedby={reason ? detailId : undefined}
-                disabled={busy || !!reason} onClick={() => quantity(slug, 1)}>+</button>
-              {reason && <span className="sr-only" id={detailId}>{reason}</span>}
-            </span>}
-          </div>}
+        <div className="campaign-workbench-card-info">
+          <button type="button" className="campaign-workbench-card-name" onClick={openCard}>{card.display}</button>
+          <p className="campaign-workbench-card-meta"><i aria-hidden="true" />{card.color} · {card.type}</p>
+          <p>{!legend && `Cost ${card.cost ?? '—'} · `}RAM {card.ram ?? '—'}</p>
+          {!legend && blocked && <p className="campaign-workbench-fit">{blocked}</p>}
           {canSwap && <button type="button" className="btn quiet campaign-workbench-card-action" disabled={busy}
             aria-label={`Swap a card for ${card.display}`} onClick={compare}>Swap a card</button>}
-          {blocked && view === 'future' && !blocked.startsWith('Unavailable') && <button type="button" className="campaign-workbench-text-button" onClick={() => selectView('legends')}>Manage Legends</button>}
-        </>}
+          {blocked && view === 'future' && !blocked.startsWith('Unavailable') && <button type="button" className="campaign-workbench-text-button"
+            onClick={() => selectView('legends')}>Manage Legends</button>}
+        </div>
+        <div className="campaign-workbench-card-footer">
+          {legend ? <>
+            <small>{inDeck ? 'Equipped' : isCampaignLegend(card) ? 'In reserve' : 'Unavailable in Campaign'}</small>
+            {availableLegend && <button type="button" className="btn quiet campaign-workbench-card-action" disabled={busy}
+              onClick={() => manage(Math.max(0, matchingSlot), slug)}>Recruit</button>}
+          </> : <>
+            <p className="campaign-workbench-count">In deck <b>{shown}</b><span aria-hidden="true"> / </span>Owned <b>{earned}</b></p>
+            {(!blocked || (inDeck > 0 && view === 'in-deck')) && <div className="campaign-workbench-quantity" role="group" aria-label={`Copies of ${card.display}`}>
+              <button type="button" aria-label={`Remove ${card.display}`} aria-disabled={!!removeHint}
+                aria-describedby={removeHint ? `${detailId}-remove` : undefined} onClick={() => { if (!removeHint) changeQuantity(slug, -1); }}>
+                −{removeHint && <span id={`${detailId}-remove`} className="campaign-workbench-quantity-hint">{removeHint}</span>}
+              </button>
+              <b key={shown} data-changed={edited || undefined}>{shown}</b>
+              {!blocked && <button type="button" aria-label={`Add ${card.display}`} aria-disabled={!!addHint}
+                aria-describedby={addHint ? `${detailId}-add` : undefined} onClick={() => { if (!addHint) changeQuantity(slug, 1); }}>
+                +{addHint && <span id={`${detailId}-add`} className="campaign-workbench-quantity-hint">{addHint}</span>}
+              </button>}
+            </div>}
+          </>}
+        </div>
       </div>
     </li>;
   }
@@ -129,21 +155,26 @@ export function CampaignWorkbench({ run, titleRef, busy, error, issues, canUndo,
         <h1 id="campaign-workbench-title" tabIndex={-1} ref={titleRef}>Deck Workbench<span aria-hidden="true">.</span></h1></div>
       <button type="button" className="btn quiet" disabled={busy} onClick={() => { if (view === 'latest' && packNew) acknowledgePack(); back(); }}>← Back to contract</button>
     </header>
+    <div className="campaign-workbench-mobile-status">
+      <strong>{total} cards</strong>
+      <span data-invalid={!!issues.length || undefined} role="status">{readiness}</span>
+      <button type="button" className="btn quiet" disabled={busy} onClick={() => manage()}>Manage Legends</button>
+    </div>
     <div className="campaign-workbench-layout">
       <aside className="campaign-workbench-deck" aria-label="Current campaign deck">
         <div className="campaign-workbench-deck-heading">
           <p className="play-eyebrow">Current deck</p>
-          <span className="campaign-workbench-readiness" data-invalid={!!issues.length || undefined} role="status">{readiness}</span>
+          <span className="campaign-workbench-readiness" data-invalid={!!issues.length || undefined} role="status"><span key={readiness}>{readiness}</span></span>
           <h2>{run.deck.name}</h2>
         </div>
         <CampaignCrewCards deck={run.deck} printings={printings} inspect={inspect} label="Equipped Legends" />
-        <div className="campaign-workbench-capacity">
-          <div>
-            <strong>{total} / {MAIN_MAX} <small>cards</small></strong>
-            <progress value={Math.min(total, MAIN_MAX)} max={MAIN_MAX} aria-label="Main-deck capacity" />
-            <small>{MAIN_MIN}–{MAIN_MAX} to play</small>
-          </div>
-          <ul aria-label="Crew RAM">{crew.colours.map(colour => <li key={colour} data-colour={colour}><i aria-hidden="true" />{crew.ram[colour] ?? 0} {colour} RAM</li>)}</ul>
+        <div className="campaign-workbench-capacity" aria-label="Main-deck capacity">
+          <strong><span key={total} data-changed={lastEdit && run.revision <= lastEdit.revision + 1 || undefined}>{total}</span> <small>cards</small></strong>
+          <div><small>Legal range</small><b>{MAIN_MIN}–{MAIN_MAX}</b></div>
+        </div>
+        <div className="campaign-workbench-ram">
+          <span>RAM by colour</span>
+          <ul aria-label="Crew RAM">{crew.colours.map(colour => <li key={colour} data-colour={colour}><i aria-hidden="true" />{colour} <b>{crew.ram[colour] ?? 0}</b></li>)}</ul>
         </div>
         {!!issues.length && <details className="campaign-workbench-issues"><summary>Deck issues</summary><ul>{issues.map(issue => <li key={issue}>{issue}</li>)}</ul></details>}
         <details className="campaign-workbench-stats"><summary>Deck stats</summary><div>
@@ -154,19 +185,18 @@ export function CampaignWorkbench({ run, titleRef, busy, error, issues, canUndo,
           <button type="button" className="btn quiet" disabled={!canUndo || busy} onClick={undo}>Undo</button>
           <button type="button" className="btn quiet" disabled={busy || !issues.length} onClick={() => setRestoreOpen(true)}>Restore legal deck</button>
         </div>
-        <p className="campaign-workbench-save" role="status">{busy ? 'Saving…' : error ? 'Save needs attention' : 'Saved in this browser'}</p>
+        <p className="campaign-workbench-save" role="status">{busy ? 'Saving deck…' : error ? 'Save needs attention' : 'Saved in this browser'}</p>
       </aside>
       <section className="campaign-workbench-reserve" aria-label="Campaign reserve">
         <header className="campaign-workbench-reserve-head">
           <div className="campaign-workbench-filters" aria-label="Reserve views">{views.map(item => {
-            const count = item.id === 'in-deck' ? total : pools[item.id].length;
+            const count = pools[item.id].length;
             return <button type="button" key={item.id} className="btn quiet" aria-pressed={view === item.id} onClick={() => selectView(item.id)}>
               {item.label} <span>({count})</span>{item.id === 'latest' && packNew && <i aria-label="Unreviewed cards" />}
             </button>;
           })}</div>
-          {view === 'latest' && pack.size > 0 && <p className="campaign-workbench-take"><strong>Your latest take</strong> · {pack.size} cards earned</p>}
           <div className="campaign-workbench-search">
-            <label><span className="sr-only">Search reserve</span><input type="search" value={query}
+            <label className="campaign-workbench-search-field"><span className="sr-only">Search reserve</span><input type="search" value={query}
               onChange={event => { setQuery(event.target.value); if (results.current) results.current.scrollTop = 0; }} placeholder="Search cards…" /></label>
             {view !== 'legends' && <label><span className="sr-only">Card type</span><select value={type} onChange={event => { setType(event.target.value); if (results.current) results.current.scrollTop = 0; }}>
               <option value="">All types</option><option>Unit</option><option>Gear</option><option>Program</option>{view === 'latest' && <option>Legend</option>}

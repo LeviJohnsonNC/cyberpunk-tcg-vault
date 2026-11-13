@@ -71,6 +71,13 @@ export function matchTableCues(events: EngineEvent[], before: PlayerView, after:
       case 'gigStolen': if (event.fromPlayerId !== event.toPlayerId) add('gig-steal', event.toPlayerId); break;
     }
   }
+  // Turn-order resolution can deal the first hand without emitting cardsDrawn.
+  for (const seat of ['player', 'rival'] as const) {
+    const old = before.players[seat].zones.hand;
+    const hand = after.players[seat].zones.hand;
+    const count = Array.isArray(hand) ? hand.length : hand ?? 0;
+    if (before.gamePhase === 'setup' && !draws.has(seat) && !(Array.isArray(old) ? old.length : old) && count > 1) draws.set(seat, count);
+  }
   for (const [seat, count] of draws) if (count > 0) add(count > 1 ? 'deal' : 'draw', seat);
   return cues;
 }

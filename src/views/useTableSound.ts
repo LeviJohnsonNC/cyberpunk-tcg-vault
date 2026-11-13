@@ -13,6 +13,7 @@ import dealSingle from '../assets/play/deal-single.mp3';
 import turnStart from '../assets/play/turn-start.mp3';
 import eddieSale from '../assets/play/eddie-sale.mp3';
 import gigStolen from '../assets/play/gig-stolen.mp3';
+import matchOpening from '../assets/play/match-opening.mp3';
 import matchWin from '../assets/play/match-win.mp3';
 import matchLoss from '../assets/play/match-loss.mp3';
 import packTear from '../assets/play/pack-tear.mp3';
@@ -26,6 +27,7 @@ const recordings = [
   { cue: 'turn', url: turnStart, gain: 1.3 },
   { cue: 'eddie', url: eddieSale, gain: .82 },
   { cue: 'gig-steal', url: gigStolen, gain: .7 },
+  { cue: 'match-opening', url: matchOpening, gain: .9 },
   { cue: 'win', url: matchWin, gain: 1.35 },
   { cue: 'lose', url: matchLoss, gain: 1.4 },
   { cue: 'pack-open', url: packTear, gain: .9 },
@@ -108,7 +110,12 @@ export function useTableSound() {
     function cleanup() { if (ended) return; ended = true; voices.current.delete(stop); source.disconnect(); gain.disconnect(); stereo.disconnect(); }
     function stop() { try { source.stop(); } catch { /* Already ended. */ } cleanup(); }
     voices.current.add(stop); source.onended = cleanup; source.start(startsAt);
-    return stop;
+    return key === 'match-opening' ? () => {
+      if (ended) return;
+      if (context.currentTime < startsAt) { stop(); return; }
+      gain.gain.setTargetAtTime(0, context.currentTime, .018);
+      source.stop(context.currentTime + .07);
+    } : stop;
   }, []);
   const cue = useCallback((name: TableCue, delayMs = 0, pan = 0) => {
     const variants = clips.current.get(name);
@@ -120,10 +127,10 @@ export function useTableSound() {
       if (!stop) return;
       // Brief music headroom for important outcomes.
       let timer: ReturnType<typeof setTimeout> | undefined;
-      if (['hit', 'defeat', 'unit-kill', 'call', 'gig-steal', 'win', 'lose'].includes(name)) {
+      if (['hit', 'defeat', 'unit-kill', 'call', 'gig-steal', 'match-opening', 'win', 'lose'].includes(name)) {
         timer = setTimeout(() => {
           if (timer) duckTimers.current.delete(timer);
-          if (active.current && level.current && !document.hidden) duckMusic(name === 'win' || name === 'lose' ? 2.6 : .28);
+          if (active.current && level.current && !document.hidden) duckMusic(name === 'match-opening' ? 2.8 : name === 'win' || name === 'lose' ? 2.6 : .28);
         }, delay);
         duckTimers.current.add(timer);
       }

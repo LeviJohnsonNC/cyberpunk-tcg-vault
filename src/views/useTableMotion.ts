@@ -27,7 +27,7 @@ function clone(el: HTMLElement, spot: Spot) {
  * them, on a layer above the table, and always ends on what React rendered.
  */
 export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
-  key: string; view: PlayerView; beat?: MatchBeat; reducedBeats?: MatchBeat[]; hasRolls?: boolean; enabled: boolean; pace: number; deal: boolean;
+  key: string; view: PlayerView; beat?: MatchBeat; reducedBeats?: MatchBeat[]; hasRolls?: boolean; enabled: boolean; pace: number; openingHand: boolean;
   sound?: (cue: TableCue, delayMs?: number, pan?: number) => (() => void) | undefined;
 }) {
   const sounds = useRef<(() => void)[]>([]);
@@ -75,12 +75,12 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
   useLayoutEffect(() => {
     const table = root.current;
     // A repeated effect for the same frame (development double-invocation) must not cancel its own motion.
-    if (!table || played.current === live.current.key) return;
+    if (!table || !live.current.key || played.current === live.current.key) return;
     played.current = live.current.key;
     for (const finish of [...running.current]) finish();
     // Sounds queued for motion that was just cut short would arrive late and out of place.
     for (const stop of sounds.current.splice(0)) stop();
-    const { view, beat, reducedBeats, hasRolls, enabled, pace, deal, sound } = live.current;
+    const { view, beat, reducedBeats, hasRolls, enabled, pace, openingHand, sound } = live.current;
     const before = pieces.current, previousView = lastView.current;
     const next = measure(table);
     pieces.current = next;
@@ -110,7 +110,15 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
     const layer = flightLayer(table);
     const anchor = (key?: string) => {
       const el = key ? table.querySelector<HTMLElement>(`[data-anchor="${key}"]`) : null;
-      return el ? spotOf(el, table) : undefined;
+      if (!el) return;
+      const offset = spotOf(el, table);
+      if (offset) return offset;
+      const rect = el.getBoundingClientRect(), bounds = table.getBoundingClientRect();
+      if (rect.width && rect.height) return {
+        x: rect.left - bounds.left - table.clientLeft + rect.width / 2,
+        y: rect.top - bounds.top - table.clientTop + rect.height / 2,
+        w: rect.width, h: rect.height,
+      };
     };
     const track = (animations: Animation[], cleanup: () => void) => {
       let done = false;
@@ -202,11 +210,12 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
     }
 
     if (!before || !previousView) {
-      // A fresh table deals the opening hand from the deck, once the match intro has cleared.
-      if (deal) {
+      if (openingHand) {
         const deck = anchor('deck:player');
         let dealt = 0;
-        for (const piece of next.values()) if (deck && piece.zone === 'hand:player') fly(piece, deck, { delay: 1150 + 90 * dealt++, back: CARD_BACK, duration: 460 });
+        for (const piece of next.values()) if (deck && piece.zone === 'hand:player') {
+          fly(piece, deck, { delay: 90 * dealt++, back: CARD_BACK, duration: 460 });
+        }
       }
       return;
     }
