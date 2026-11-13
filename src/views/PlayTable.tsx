@@ -30,6 +30,7 @@ import './play-table.css';
 import './match-board.css';
 import './play-interaction.css';
 import './play-presentation.css';
+import './play-command.css';
 
 const combatSteps: Record<string, string> = { attack: 'Attack', react: 'React', fight: 'Fight', fightResult: 'Fight result', steal: 'Steal' };
 const winReasons: Record<string, string> = { gig_victory: 'Seven Gigs secured', overtime_majority: 'Majority of Gigs in overtime', deck_out_victory: 'Deck-out', concede: 'Concession', concession: 'Concession' };
@@ -193,9 +194,9 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     } else if (restoreOpeningFocus.current) {
       restoreOpeningFocus.current = false;
       const command = grid.current?.querySelector<HTMLElement>('.play-command-inner');
-      (command?.querySelector<HTMLButtonElement>('button:not(:disabled)') ?? command)?.focus({ preventScroll: true });
+      (choice?.type === 'chooseFirstPlayer' ? command : command?.querySelector<HTMLButtonElement>('button:not(:disabled)') ?? command)?.focus({ preventScroll: true });
     }
-  }, [opening.showing]);
+  }, [opening.showing, choice?.type]);
   // Movement follows each public frame: the player's own result, then every rival move in turn.
   useTableMotion(table, { key: opening.showing ? '' : `${stateKey}:${playback?.beat.id ?? ''}`, view, beat: playback?.beat ?? feedback,
     reducedBeats: reduced && snapshot.presentation ? [...(snapshot.presentation.feedback ? [snapshot.presentation.feedback] : []), ...snapshot.presentation.beats] : undefined,
@@ -458,12 +459,12 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
       {log.length ? <ol>{log.slice().reverse().map((entry) => <li key={entry.id}><small>T{entry.turn} · {entry.seat === 'player' ? 'You' : 'Rival'}</small><span>{entry.text}</span></li>)}</ol>
         : <p className="play-empty">Match events appear here.</p>}
     </aside>}
-    <div ref={table} className="play-table" inert={opening.showing} data-opening={opening.showing || undefined} data-turn={playing ? view.activePlayerId : undefined} data-combat={!!combat} data-ended={view.gameEnded}>
+    <div ref={table} className="play-table" inert={opening.showing} data-opening={opening.showing || undefined} data-setup-choice={choice?.type === 'chooseFirstPlayer' || undefined} data-turn={playing ? view.activePlayerId : undefined} data-combat={!!combat} data-ended={view.gameEnded}>
       <GigRollAnnouncement rolls={snapshot.gigRolls} />
       <RivalBench portrait={campaign?.rival} rolls={rolls} name={names.rival} active={playing && !yourTurn} {...targeting} renderCard={renderCard} renderFace={face} />
       <SeatField seat="rival" active={playing && !yourTurn} {...targeting} renderCard={renderCard} />
       <GigZones {...targeting} />
-      <div className="play-command" data-seat={playing ? view.activePlayerId : undefined} data-state={playback ? 'playback' : selected || choice || setup ? 'decision' : combat ? 'combat' : 'idle'}>
+      <div className="play-command" data-presentation={choice?.type === 'chooseFirstPlayer' ? 'turn-order' : mulligan ? 'opening-hand' : undefined} data-seat={playing ? view.activePlayerId : undefined} data-state={playback ? 'playback' : selected || choice || setup ? 'decision' : combat ? 'combat' : 'idle'}>
         <div className="play-command-inner" tabIndex={-1}>
           <div className="play-turn-plate"><span>{setup ? 'Setup' : view.overtimeActive ? `Overtime · Turn ${view.turnNumber}` : `Turn ${view.turnNumber}`}</span>
             <strong>{view.gameEnded ? 'Match over' : setup ? mulligan ? 'Opening hand' : 'Opening' : yourTurn ? 'Your turn' : 'Rival turn'}</strong></div>
@@ -480,7 +481,8 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
             : choice || setup ? <div className="play-opening-choices">
               {combat && <CombatBanner view={view} watching={false} compact inspect={inspect} />}
               <div className="play-command-lead">
-                {!mulligan && <h3>{decisionTitle}</h3>}
+                <h3>{mulligan ? 'Keep this hand?' : decisionTitle}</h3>
+                {choice?.type === 'chooseFirstPlayer' && <p>Decide who takes the first turn.</p>}
                 {mulligan?.detail && <p>{mulligan.detail}</p>}
                 {choice && actions[0]?.detail && <p><Rules text={actions[0].detail} /></p>}
               </div>
@@ -496,7 +498,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
         overlay={dropZones.has('program') && <div className="play-program-drop" data-drop-zone="program" data-drop-available="true" data-drop-over={dropOver === 'program'}>Play Program</div>} />
       <PlayerBench rolls={rolls} active={playing && yourTurn} {...targeting} dieDrag={gigChoice ? dragControl : undefined} renderCard={renderCard} renderFace={face}>
         <section className="play-hand" data-zone="hand:player" data-crowded={hand.length > 9 || undefined} aria-label="Your hand">
-          <div className="play-card-row">{hand.length ? hand.map((card, index) => renderCard(card, undefined, { index, count: hand.length })) : <span className="play-empty">No cards in hand</span>}</div>
+          <div className="play-card-row">{hand.length ? hand.map((card, index) => renderCard(card, undefined, { index, count: hand.length })) : !setup && <span className="play-empty">No cards in hand</span>}</div>
         </section>
       </PlayerBench>
       {!playback && snapshot.peeks.length > 0 && <section className="play-private-peek" aria-label="Private Legend peek">
