@@ -17,7 +17,7 @@ export function CampaignFeaturedCard({ pull, buttonRef, discovery = false, inspe
     <span className="campaign-material-halo" aria-hidden="true" />
     <span className="campaign-material-shadow" aria-hidden="true" />
     <span className="campaign-material-spill" aria-hidden="true" />
-    {src && <span className="campaign-material-reflection" aria-hidden="true"><img src={src} alt="" /></span>}
+    {src && <span className="campaign-material-reflection" aria-hidden="true"><img src={src} alt="" decoding="async" referrerPolicy="no-referrer" /></span>}
     <button ref={buttonRef} type="button" className="campaign-tabletop-feature" onClick={inspect}
       aria-label={`Inspect ${BY_SLUG.get(pull.slug)?.display ?? pull.slug}`}>
       <span className="campaign-tabletop-pose">

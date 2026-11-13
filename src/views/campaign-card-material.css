@@ -59,7 +59,7 @@
   mask-image: radial-gradient(ellipse 50% 100% at 50% 0%, #0008 10%, #0002 40%, transparent 92%);
 }
 .campaign-material-reflection img {
-  display: block; width: 100%; height: auto; transform: scaleY(-1) translateY(83%); transform-origin: top;
+  display: block; width: 100%; height: auto; transform: scaleY(-1) translateY(-100%); transform-origin: top;
   filter: blur(2px) saturate(.65);
 }
 .campaign-material-sheen {
