@@ -95,14 +95,21 @@ export function campaignDeckIssues(run: CampaignRun, deck: Deck): string[] {
   return [...new Set(issues)];
 }
 
+const MOTH_EMBRACING_POWER = 'Moth’s Embracing Power';
+
 export function encounterDeck(run: CampaignRun): Deck {
-  if (run.opponents?.[run.encounter]) return structuredClone(run.opponents[run.encounter]);
+  const saved = run.opponents?.[run.encounter];
+  if (saved) {
+    const rival = structuredClone(saved);
+    if (rival.name === 'Embracing Power · Practice List') rival.name = MOTH_EMBRACING_POWER;
+    return rival;
+  }
   const info = ENCOUNTERS[run.encounter];
   if (!info) throw new Error('The campaign is complete.');
   if (info.rival === 'other-starter') {
     const rival = makeStarterDeck(run.starter === 'the-heist' ? 'embracing-power' : 'the-heist');
     if (run.balanceVersion === 2 && run.starter === 'the-heist') {
-      rival.name = 'Embracing Power · Practice List';
+      rival.name = MOTH_EMBRACING_POWER;
       applyCopyDeltas(rival.cards, HEIST_OPENING_RIVAL.cards);
     }
     return rival;

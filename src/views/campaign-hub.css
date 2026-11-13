@@ -145,8 +145,8 @@
   color: var(--color-text-muted);
   font: 500 11px/1.4 var(--font-mono);
 }
-.campaign-board-ready { color: var(--color-success); }
-.campaign-board-ready[data-needs-edit] { color: var(--color-ticket); }
+.campaign-board-status { color: var(--color-success); }
+.campaign-board-status[data-needs-edit] { color: var(--color-ticket); }
 .campaign-board-crew-cards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -156,7 +156,8 @@
   margin: 0;
   padding: 0;
 }
-.campaign-board-rival .campaign-board-crew-cards { width: min(100%, 218px); }
+.campaign-board-your-crew .campaign-board-crew-cards { width: min(100%, 544px); }
+.campaign-board-rival .campaign-board-crew-cards { width: min(100%, 272px); }
 .campaign-board-crew-cards button, .campaign-workbench-card-art {
   display: block;
   width: 100%;
@@ -174,11 +175,12 @@
 
 .campaign-board-footer {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px clamp(12px, 3vw, 36px);
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px clamp(12px, 1.8vw, 28px);
   align-items: center;
-  z-index: 1;
+  z-index: 2;
 }
+.campaign-board-footer .campaign-board-tools .play-more-actions { inset: auto 0 calc(100% + 6px) auto; }
 .campaign-board-launch .campaign-invitation-cta { margin: 0; min-height: 49px; }
 .campaign-board-launch > p { max-width: 26ch; margin: 5px 0 0; color: var(--color-ticket); font-size: 12px; }
 .campaign-board-timeline {
@@ -235,18 +237,21 @@
 @media (min-width: 801px) and (max-height: 820px) {
   .campaign-board { padding-block-start: 19px; }
   .campaign-board-your-crew, .campaign-board-rival { padding: clamp(15px, 1.65vw, 24px); }
-  .campaign-board-your-crew .campaign-board-crew-cards { width: min(100%, 390px); }
+  .campaign-board-your-crew .campaign-board-crew-cards { width: min(100%, 462px); }
+}
+@media (min-width: 801px) and (max-width: 1100px) {
+  .campaign-board-footer { grid-template-columns: minmax(0, 1fr) auto; }
+  .campaign-board-footer .campaign-board-timeline { grid-column: 1 / -1; }
+  .campaign-board-footer .campaign-board-tools { justify-self: start; }
 }
 @media (max-width: 800px) {
   .campaign-board { align-content: start; gap: 13px; padding-block: 20px 69px; background-position: center, center, 68% top; }
   .campaign-board-matchup, .campaign-board-footer { grid-template-columns: minmax(0, 1fr); }
   .campaign-board-rival { min-height: 0; }
-  .campaign-board-rival .campaign-board-crew-cards { width: min(100%, 158px); }
+  .campaign-board-rival .campaign-board-crew-cards { width: min(100%, 210px); }
   .campaign-board-rival-copy { width: min(61%, 300px); }
-  .campaign-board-your-crew .campaign-board-crew-cards { width: min(100%, 254px); }
-  .campaign-board-footer { display: contents; }
-  .campaign-board-launch { grid-row: 3; }
-  .campaign-board-timeline { grid-row: 4; }
+  .campaign-board-your-crew .campaign-board-crew-cards { width: min(100%, 430px); }
+  .campaign-board-footer .campaign-board-tools { justify-self: end; }
   .campaign-board-launch .campaign-invitation-cta { width: 100%; }
 }
 @media (max-width: 500px) {
