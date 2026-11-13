@@ -1,5 +1,6 @@
 /** Preview/development-only fixtures. Isolated scope; never reads a user's Vault or grants real rewards. */
 import { PackMaterialPreview } from './PackMaterialPreview';
+import { PlayDecisionPreview } from './PlayDecisionPreview';
 import { createRoot } from 'react-dom/client';
 import { useState } from 'react';
 import { CampaignMatchResult } from '../views/CampaignMatchResult';
@@ -86,7 +87,7 @@ export function Preview() {
 if (import.meta.env.DEV || import.meta.env.VAULT_PLAY_PREVIEW) {
   const params = new URLSearchParams(location.search);
   const opener = params.has('opener');
-  createRoot(document.getElementById('root')!).render(params.has('materials') ? <PackMaterialPreview /> : opener
+  createRoot(document.getElementById('root')!).render(params.has('decisions') ? <PlayDecisionPreview /> : params.has('materials') ? <PackMaterialPreview /> : opener
     ? <CampaignMode scope="qa:campaign-opener" exit={() => location.assign('./campaign-preview.html')} openInBuilder={() => {}} />
     : <Preview />);
 }

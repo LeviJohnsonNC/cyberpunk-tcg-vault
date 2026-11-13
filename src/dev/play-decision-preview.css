@@ -1,0 +1,4 @@
+.decision-preview-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 5px 12px; background: var(--color-canvas-deep); font-size: 12px; }
+.decision-preview-tools label { display: flex; align-items: center; gap: 6px; }
+.decision-preview-tools .btn { padding: 4px 8px; min-height: 28px; font-size: 12px; }
+.decision-preview[data-reduced] *, .decision-preview[data-reduced] *::before, .decision-preview[data-reduced] *::after { animation: none !important; transition: none !important; }
