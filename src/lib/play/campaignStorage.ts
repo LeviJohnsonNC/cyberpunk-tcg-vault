@@ -1,9 +1,8 @@
 import type { Deck } from '../store';
 import { BY_SLUG } from '../data';
-import { sortLegacyPack } from './campaignPack';
 import { openDatabase } from './matchStorage';
 import { emptyCircuit, finishUnlocked, type CircuitProgress, type TableFinish } from './circuit';
-import { CAMPAIGN_VERSION, ENCOUNTERS, ENVIRONMENTS, campaignClearedCount, campaignDeckIssues, emptyProfile, newCampaign, pendingCampaignPack,
+import { CAMPAIGN_VERSION, ENCOUNTERS, ENVIRONMENTS, campaignClearedCount, campaignDeckIssues, campaignPackLayout, dealCampaignPack, emptyProfile, newCampaign, pendingCampaignPack,
   type CampaignProfile, type CampaignRun, type Environment } from './campaign';
 import { aftermathBeats } from './campaignScenes';
 import type { StarterKey } from '../starters';
@@ -11,6 +10,7 @@ import type { StarterKey } from '../starters';
 const STORE = 'campaigns';
 const profileKey = (scope: string) => `profile:${scope}`;
 const runKey = (scope: string) => `run:${scope}`;
+type PackCheckpoint = Pick<CampaignRun, 'id' | 'revision'>;
 
 export async function readCampaign(scope: string): Promise<{ run?: CampaignRun; profile: CampaignProfile }> {
   const db = await openDatabase();
@@ -102,13 +102,13 @@ export function startCampaign(scope: string, starter: StarterKey, replace?: Pick
   });
 }
 
-export function chooseReward(scope: string, expected: number, slug: string) {
+export function chooseReward(scope: string, expected: PackCheckpoint, packId: string, slug: string) {
   return updateCampaign(scope, (run, profile) => {
-    if (!run || run.revision !== expected || run.phase !== 'rewardPending' || (run.aftermath && !run.aftermath.sceneSeen)) throw new Error('The pack changed in another tab. Reload the campaign.');
+    if (!run || run.id !== expected.id || run.revision !== expected.revision || run.phase !== 'rewardPending' || run.resultPending || (run.aftermath && !run.aftermath.sceneSeen)) throw new Error('The pack changed in another tab. Reload the campaign.');
     const reward = run.rewards[run.encounter];
-    if (!reward || !reward.offers.includes(slug) || reward.choice || (run.aftermath && (run.revealed ?? 0) < reward.cards.length)) throw new Error('Choose an available card from this pack.');
+    if (!reward || reward.id !== packId || !reward.offers.includes(slug) || reward.choice || campaignPackLayout(run, reward)?.revealedSlots.length !== reward.cards.length) throw new Error('Choose an available card from this pack.');
     if (BY_SLUG.get(slug)?.type === 'Legend' && (run.inventory[slug] ?? 0) >= 1) throw new Error('You already have the maximum copies.');
-    const next = { ...run, revision: run.revision + 1, encounter: run.encounter + 1, attempts: 0, defeats: 0, revealed: 0, aftermath: undefined, phase: 'upgrading' as const,
+    const next = { ...run, revision: run.revision + 1, encounter: run.encounter + 1, attempts: 0, defeats: 0, revealed: undefined, packLayout: undefined, aftermath: undefined, phase: 'upgrading' as const,
       inventory: { ...run.inventory, [slug]: (run.inventory[slug] ?? 0) + 1 },
       rewards: { ...run.rewards, [run.encounter]: { ...reward, choice: slug } } };
     return { run: next, value: { run: next, profile } };
@@ -137,27 +137,52 @@ export function advanceCampaignScene(scope: string, expected: Pick<CampaignRun, 
   });
 }
 
-export function revealCampaignPack(scope: string, expected: number, count: number) {
+export function openCampaignPack(scope: string, expected: PackCheckpoint, packId: string) {
   return updateCampaign(scope, (run, profile) => {
     const pack = run && pendingCampaignPack(run);
-    if (!run || run.revision !== expected || !pack || (run.aftermath && !run.aftermath.sceneSeen)
-      || !Number.isInteger(count) || count < (run.revealed ?? 0) || count > pack.cards.length)
+    if (!run || run.id !== expected.id || run.revision !== expected.revision || pack?.id !== packId
+      || run.resultPending || (run.aftermath && !run.aftermath.sceneSeen) || campaignPackLayout(run, pack))
       throw new Error('The pack changed in another tab. Reload the campaign.');
-    const rewards = run.phase === 'rewardPending' && !pack.printingIds && !(run.revealed ?? 0) && count > 0
-      ? { ...run.rewards, [run.encounter]: { ...pack, cards: sortLegacyPack(pack.cards) } }
-      : run.rewards;
-    const next = { ...run, revision: run.revision + 1, revealed: count, rewards };
+    const next = { ...run, revision: run.revision + 1, revealed: undefined, packLayout: dealCampaignPack(run, pack) };
     return { run: next, value: { run: next, profile } };
   });
 }
 
-export function finishCampaignPack(scope: string, expected: Pick<CampaignRun, 'id' | 'revision'>) {
+export function revealCampaignSlot(scope: string, expected: PackCheckpoint, packId: string, slot: number) {
+  return updateCampaign(scope, (run, profile) => {
+    const pack = run && pendingCampaignPack(run);
+    const layout = run && pack && campaignPackLayout(run, pack);
+    if (!run || run.id !== expected.id || run.revision !== expected.revision || pack?.id !== packId
+      || run.resultPending || (run.aftermath && !run.aftermath.sceneSeen) || !layout
+      || !Number.isInteger(slot) || slot < 0 || slot >= layout.order.length || layout.revealedSlots.includes(slot))
+      throw new Error('The pack changed in another tab. Reload the campaign.');
+    const next = { ...run, revision: run.revision + 1, revealed: undefined,
+      packLayout: { ...layout, revealedSlots: [...layout.revealedSlots, slot] } };
+    return { run: next, value: { run: next, profile } };
+  });
+}
+
+export function showCampaignBonus(scope: string, expected: PackCheckpoint, packId: string, choosingBonus: boolean) {
+  return updateCampaign(scope, (run, profile) => {
+    const pack = run && pendingCampaignPack(run);
+    const layout = run && pack && campaignPackLayout(run, pack);
+    if (!run || run.id !== expected.id || run.revision !== expected.revision || !pack || pack.id !== packId
+      || run.resultPending || (run.aftermath && !run.aftermath.sceneSeen) || !pack.offers.length
+      || !layout || layout.revealedSlots.length !== pack.cards.length)
+      throw new Error('Finish revealing the saved pack first.');
+    const next = { ...run, revision: run.revision + 1, revealed: undefined, packLayout: { ...layout, choosingBonus } };
+    return { run: next, value: { run: next, profile } };
+  });
+}
+
+export function finishCampaignPack(scope: string, expected: PackCheckpoint) {
   return updateCampaign(scope, (run, profile) => {
     const reward = run && pendingCampaignPack(run);
     if (!run || run.id !== expected.id || run.revision !== expected.revision || !reward || reward.offers.length
-      || (run.revealed ?? 0) < reward.cards.length) throw new Error('Open every card in the saved pack first.');
+      || run.resultPending || (run.aftermath && !run.aftermath.sceneSeen)
+      || campaignPackLayout(run, reward)?.revealedSlots.length !== reward.cards.length) throw new Error('Open every card in the saved pack first.');
     const phase = run.phase === 'retryReward' ? 'preparing' as const : 'claimingFinish' as const;
-    const next = { ...run, revision: run.revision + 1, phase, revealed: 0, aftermath: undefined };
+    const next = { ...run, revision: run.revision + 1, phase, revealed: undefined, packLayout: undefined, aftermath: undefined };
     return { run: next, value: { run: next, profile } };
   });
 }

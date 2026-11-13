@@ -81,10 +81,6 @@ export function campaignPulls(reward: CampaignReward): CampaignPull[] {
   });
 }
 
-export function sortLegacyPack(cards: string[]) {
-  return [...cards].sort((a, b) => rank(BY_SLUG.get(a)?.rarity ?? '') - rank(BY_SLUG.get(b)?.rarity ?? ''));
-}
-
 export function packRarityLabel(rarity?: string) {
   if (rarity === 'Iconic Secret') return 'Iconic Secret Rare';
   if (rarity?.startsWith('Iconic ')) return 'Iconic Rare';

@@ -1,6 +1,16 @@
-.campaign-seal-scene {
+:is(.campaign-seal-scene, .campaign-tabletop) {
   --seal-room: url('../assets/play/campaign-reward-counter.webp');
   --seal-room-light: var(--color-accent);
+}
+:is(.campaign-seal-scene, .campaign-tabletop)[data-act='2'] {
+  --seal-room: url('../assets/play/campaign-rooftop.webp');
+  --seal-room-light: var(--color-card-blue);
+}
+:is(.campaign-seal-scene, .campaign-tabletop)[data-act='3'] {
+  --seal-room: url('../assets/play/campaign-arasaka.webp');
+  --seal-room-light: var(--color-ticket);
+}
+.campaign-seal-scene {
   position: relative;
   isolation: isolate;
   display: grid;
@@ -8,14 +18,6 @@
   min-block-size: calc(100svh - var(--campaign-board-shell, 0px));
   padding: clamp(16px, 2.6svh, 32px) clamp(18px, 6vw, 110px) clamp(22px, 3.7svh, 44px);
   background-color: var(--color-canvas-deep);
-}
-.campaign-seal-scene[data-act='2'] {
-  --seal-room: url('../assets/play/campaign-rooftop.webp');
-  --seal-room-light: var(--color-card-blue);
-}
-.campaign-seal-scene[data-act='3'] {
-  --seal-room: url('../assets/play/campaign-arasaka.webp');
-  --seal-room-light: var(--color-ticket);
 }
 .campaign-seal-scene::before {
   content: '';

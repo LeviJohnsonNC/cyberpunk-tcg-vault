@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode, type Ref } from 'react';
-import { CardImg, CARD_BACK, Rules } from '../components/bits';
-import { BY_SLUG, imageUrl } from '../lib/data';
-import { ENCOUNTERS, type CampaignRun, type CampaignReward } from '../lib/play/campaign';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { CARD_BACK } from '../components/bits';
+import { BY_SLUG, defaultPrinting } from '../lib/data';
+import { ENCOUNTERS, campaignPackLayout, type CampaignRun, type CampaignReward } from '../lib/play/campaign';
 import { campaignPulls, packRarityLabel } from '../lib/play/campaignPack';
 import { packCardContext } from '../lib/play/campaignPresentation';
 import { getPrintingArt } from '../lib/printingArt';
@@ -10,43 +10,64 @@ import { CampaignTimeline, type CampaignInspect } from './CampaignHub';
 import { CampaignRewardArt } from './CampaignRewardArt';
 import { CampaignDispatch } from './CampaignStory';
 import './campaign-pack-scene.css';
+import './campaign-tabletop.css';
 
 type PackProps = {
   run: CampaignRun;
   reward: CampaignReward;
   busy: boolean;
-  titleRef: Ref<HTMLHeadingElement>;
+  titleRef: (node: HTMLHeadingElement | null) => void;
   tools: ReactNode;
-  revealTo: (count: number) => Promise<boolean>;
+  tearSeal: () => Promise<boolean>;
+  flipSlot: (slot: number) => Promise<boolean>;
+  showBonus: (show: boolean) => Promise<boolean>;
+  revealSound: (rare: boolean) => void;
   choose: (slug: string) => void;
   finish: () => void;
   inspect: CampaignInspect;
   back: () => void;
 };
 
-export function CampaignPack({ run, reward, busy, titleRef, tools, revealTo, choose, finish, inspect, back }: PackProps) {
+const richRarity = (rarity?: string) => !!rarity && !['Common', 'Uncommon'].includes(rarity);
+const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const displayName = (slug: string) => BY_SLUG.get(slug)?.display ?? slug;
+
+export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, flipSlot, showBonus, revealSound, choose, finish, inspect, back }: PackProps) {
   const retry = run.phase === 'retryReward';
   const hasChoice = reward.offers.length > 0;
   const result = retry ? run.aftermath?.outcome === 'draw' ? 'Match drawn' : 'Contract lost' : 'Contract won';
   const finishLabel = retry ? 'Review my new cards' : 'Open Champion’s Cache';
-  const reveal = run.revealed ?? 0;
   const pulls = campaignPulls(reward);
   const count = pulls.length;
+  const layout = campaignPackLayout(run, reward);
+  const revealed = layout?.revealedSlots ?? [];
+  const allRevealed = revealed.length === count;
+  const bonus = !!layout?.choosingBonus && allRevealed && hasChoice;
   const encounter = ENCOUNTERS[run.encounter];
-  const [selected, setSelected] = useState<{ index: number; reveal: number }>();
+  const act = Math.floor(run.encounter / 3) + 1;
+  const [selected, setSelected] = useState<number>();
+  const [choice, setChoice] = useState<string>();
   const [opening, setOpening] = useState(false);
   const [requestPending, setRequestPending] = useState(false);
+  const [flip, setFlip] = useState<{ slot: number; phase: 'saving' | 'turning' | 'front' }>();
   const opener = useRef<HTMLButtonElement>(null);
-  const choicePanel = useRef<HTMLDivElement>(null);
-  const revealControl = useRef<HTMLButtonElement>(null);
+  const stageTitle = useRef<HTMLHeadingElement>(null);
+  const featured = useRef<HTMLButtonElement>(null);
+  const firstSlot = useRef<HTMLButtonElement>(null);
+  const moveFrom = useRef<DOMRect>(undefined);
   const openingRequest = useRef(false);
-  const transferFocus = useRef(false);
-  const sealed = reveal === 0 || opening;
-  const peeling = opening && reveal > 0;
+  const focusStage = useRef(false);
+  const flipLock = useRef(false);
+  const sealed = !layout || opening;
+  const peeling = opening && !!layout;
   const disabled = busy || requestPending || peeling;
+  const visible = revealed.filter(slot => flip?.slot !== slot || flip.phase === 'front');
+  const active = selected !== undefined && visible.includes(selected) ? selected
+    : visible.findLast(slot => slot !== flip?.slot);
+  const pull = layout && active !== undefined ? pulls[layout.order[active]] : undefined;
 
   useEffect(() => {
-    // Warm the saved printing art without making opening depend on its network request.
+    // Warm exact printing art without making a save depend on the artwork host.
     for (const { slug, printing } of campaignPulls(reward)) {
       if (printing) void getPrintingArt(slug, printing.id).then(src => {
         if (src) {
@@ -57,11 +78,6 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, revealTo, cho
         }
       }).catch(() => {});
     }
-    for (const slug of reward.offers) {
-      const image = new Image();
-      image.decoding = 'async';
-      image.src = imageUrl(slug);
-    }
   }, [reward]);
 
   useEffect(() => {
@@ -71,27 +87,35 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, revealTo, cho
   }, [peeling]);
 
   useEffect(() => {
-    if (!sealed && !busy && transferFocus.current) {
-      transferFocus.current = false;
-      revealControl.current?.focus();
-    }
-  }, [sealed, busy, reveal]);
+    if (sealed || busy || !focusStage.current) return;
+    focusStage.current = false;
+    if (!bonus && !revealed.length) firstSlot.current?.focus({ preventScroll: true });
+    else stageTitle.current?.focus({ preventScroll: true });
+  }, [sealed, busy, bonus, revealed.length]);
 
-  async function open(to: number) {
+  useLayoutEffect(() => {
+    const from = moveFrom.current;
+    moveFrom.current = undefined;
+    const card = featured.current;
+    if (!from || !card || reducedMotion() || !card.animate) return;
+    const to = card.getBoundingClientRect();
+    const flight = card.animate([
+      { transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width})`, opacity: .78 },
+      { transform: 'none', opacity: 1 },
+    ], { duration: 270, easing: 'cubic-bezier(.2,.8,.28,1)' });
+    return () => flight.cancel();
+  }, [active]);
+
+  async function openSeal() {
     if (disabled || openingRequest.current) return;
-    if (reveal) {
-      if (to === count) transferFocus.current = true;
-      if (!await revealTo(to)) transferFocus.current = false;
-      return;
-    }
     openingRequest.current = true;
     setRequestPending(true);
-    transferFocus.current = true;
-    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) setOpening(true);
+    focusStage.current = true;
+    if (!reducedMotion()) setOpening(true);
     try {
-      if (!await revealTo(to)) {
+      if (!await tearSeal()) {
         setOpening(false);
-        transferFocus.current = false;
+        focusStage.current = false;
         requestAnimationFrame(() => opener.current?.focus({ preventScroll: true }));
       }
     } finally {
@@ -100,18 +124,67 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, revealTo, cho
     }
   }
 
-  const head = <header className="campaign-board-header">
+  async function selectSlot(slot: number) {
+    if (!layout || busy || flipLock.current) return;
+    if (revealed.includes(slot)) {
+      setSelected(slot);
+      return;
+    }
+    flipLock.current = true;
+    setFlip({ slot, phase: 'saving' });
+    if (!await flipSlot(slot)) {
+      setFlip(undefined);
+      flipLock.current = false;
+      return;
+    }
+    const rare = richRarity(pulls[layout.order[slot]].printing?.rarity);
+    if (reducedMotion()) {
+      revealSound(rare);
+      setSelected(slot);
+      setFlip(undefined);
+      flipLock.current = false;
+      return;
+    }
+    setFlip({ slot, phase: 'turning' });
+  }
+
+  function showSlotFace(slot: number) {
+    if (flip?.slot !== slot || flip.phase !== 'turning' || !layout) return;
+    revealSound(richRarity(pulls[layout.order[slot]].printing?.rarity));
+    setFlip({ slot, phase: 'front' });
+  }
+
+  function featureFlippedSlot(slot: number, source: HTMLButtonElement) {
+    if (flip?.slot !== slot) return;
+    if (flip.phase === 'turning') showSlotFace(slot);
+    moveFrom.current = source.getBoundingClientRect();
+    setSelected(slot);
+    setFlip(undefined);
+    flipLock.current = false;
+  }
+
+  async function switchBonus(show: boolean) {
+    focusStage.current = true;
+    if (!await showBonus(show)) focusStage.current = false;
+    else window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+
+  function attachTitle(node: HTMLHeadingElement | null) {
+    stageTitle.current = node;
+    titleRef(node);
+  }
+
+  const sealHead = <header className="campaign-board-header">
     <div>
       <p className="campaign-invitation-eyebrow">The Afterlife <span aria-hidden="true">//</span> Campaign</p>
       <h1 id="campaign-moment-title" tabIndex={-1} ref={titleRef}>{result}<span aria-hidden="true">.</span></h1>
     </div>
-    {!sealed && tools}
   </header>;
 
   if (sealed) return <section className="campaign-seal-scene" data-act={Math.floor(run.encounter / 3) + 1} data-encounter={encounter.id}
     aria-labelledby="campaign-moment-title">
     <div className="campaign-seal-layout">
-      {head}
+      {sealHead}
       <CampaignTimeline run={run} />
       <div className="campaign-seal-stage">
         <div className="campaign-seal-promise">
@@ -128,8 +201,8 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, revealTo, cho
                 <strong>Your<br />take.</strong>
                 <span>{String(count).padStart(2, '0')} cards{hasChoice ? ' + 01 choice' : ''}</span>
               </div>
-              <button ref={opener} type="button" className="campaign-seal-strip" disabled={disabled} onClick={() => void open(1)}
-                aria-label="Tear the seal and reveal the first card" aria-busy={requestPending || undefined}>
+              <button ref={opener} type="button" className="campaign-seal-strip" disabled={disabled} onClick={() => void openSeal()}
+                aria-label="Tear the seal" aria-busy={requestPending || undefined}>
                 <span>{requestPending && !peeling ? 'Opening…' : 'Tear the seal'}</span>
                 <span className="campaign-seal-strip-arrow" aria-hidden="true">→</span>
               </button>
@@ -141,78 +214,95 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, revealTo, cho
     </div>
   </section>;
 
-  const active = selected?.reveal === reveal ? selected.index : Math.min(reveal, count) - 1;
-  const pull = pulls[active];
-  const { slug, printing } = pull;
-  const card = BY_SLUG.get(slug);
-  const rarity = printing?.rarity;
-  const alternateArt = rarity?.startsWith('Iconic ');
-  const allRevealed = reveal >= count;
-
-  return <section className="campaign-board-moment" aria-labelledby="campaign-moment-title">
-    {head}
-    <CampaignTimeline run={run} />
-    <button type="button" className="btn quiet campaign-back-from-pack" disabled={busy} onClick={back}>← Back to contract</button>
-    <section className="campaign-reward campaign-pack panel hot" aria-label="Earned pack">
-      <div className="campaign-section-heading"><div><p className="play-eyebrow">{encounter.title} / {retry ? 'House pack' : 'Contract cleared'}</p><h2>Your take.</h2></div></div>
-      <div className="campaign-pack-stage">
-        <aside className="campaign-pack-receipt">
-          <span className="campaign-reveal-count" role="status">{reveal} / {count} revealed</span>
-          <div className="campaign-pack-actions">
-            <button ref={revealControl} className="btn" disabled={busy} onClick={() => {
-              if (!allRevealed) void open(reveal + 1);
-              else if (!hasChoice) finish();
-              else { choicePanel.current?.scrollIntoView({ block: 'start' }); choicePanel.current?.focus({ preventScroll: true }); }
-            }}>{allRevealed ? hasChoice ? 'Choose your bonus card ↓' : finishLabel : 'Reveal next card'}</button>
-            {!allRevealed && <button className="btn quiet" disabled={busy} onClick={() => void open(count)}>Reveal all</button>}
-          </div>
-          <small>Your pack is saved. You can leave and come back.</small>
-        </aside>
-        <div className="campaign-reveal-spotlight" data-rarity={rarity}>
-          <button className="campaign-reveal-art" key={`${active}:${slug}`} onClick={() => inspect(slug, printing?.id)}
-            aria-label={`Inspect ${card?.display ?? slug}`}>
-            <CampaignRewardArt pull={pull} alt={card?.display ?? slug} /><span className="campaign-inspect-caption">Inspect card ↗</span>
+  return <section className="campaign-tabletop" data-act={act} data-bonus={bonus || undefined} aria-labelledby="campaign-moment-title">
+    <div className="campaign-tabletop-inner">
+      {bonus ? <>
+        <header className="campaign-bonus-head">
+          <p className="campaign-invitation-eyebrow">The Afterlife <span aria-hidden="true">//</span> Final choice</p>
+          <h1 id="campaign-moment-title" tabIndex={-1} ref={attachTitle}>One more for the crew<span aria-hidden="true">.</span></h1>
+          <p>{count} cards secured. Choose one bonus card for your reserve.</p>
+        </header>
+        <div className="campaign-bonus-cards" style={{ '--offer-count': reward.offers.length } as CSSProperties} role="group" aria-label="Bonus cards">
+          {reward.offers.map(slug => {
+            const card = BY_SLUG.get(slug);
+            const printing = card && defaultPrinting(card);
+            const name = displayName(slug);
+            const context = (run.inventory[slug] ?? 0) === 0 && card?.type !== 'Legend' ? 'New to your reserve' : packCardContext(run, slug);
+            return <article key={slug}>
+              <button type="button" className="campaign-bonus-pick" aria-pressed={choice === slug}
+                aria-label={`Select ${name}`} disabled={busy} onClick={() => setChoice(slug)}>
+                <CampaignRewardArt pull={{ slug, printing }} alt="" exact />
+              </button>
+              <div className="campaign-bonus-card-copy">
+                <strong>{name}</strong>
+                <span>{[card?.color, card?.type].filter(Boolean).join(' / ')}</span>
+                <small>{context}</small>
+                <button type="button" className="campaign-tabletop-link" aria-label={`Inspect ${name}`}
+                  onClick={() => inspect(slug, printing?.id)}>Inspect</button>
+              </div>
+            </article>;
+          })}
+        </div>
+        <div className="campaign-bonus-actions">
+          <button type="button" className="campaign-invitation-cta" disabled={busy || !choice} onClick={() => { if (choice) choose(choice); }}>
+            Add selected card to reserve <span aria-hidden="true">→</span>
           </button>
+          <small>You can add it to your deck in the Workbench.</small>
+          <button type="button" className="campaign-tabletop-link" disabled={busy} onClick={() => void switchBonus(false)}>Review pack</button>
         </div>
-        <div className="campaign-reveal-copy" aria-live="polite">
-          <p className="play-eyebrow">{card?.color} / {card?.type}</p>
-          <p className="campaign-reveal-rarity" data-rarity={rarity}><b>{packRarityLabel(rarity)}</b>
-            {alternateArt && <span>Alternate art · No. {printing?.num}</span>}</p>
-          <h3>{card?.display ?? slug}</h3>
-          <p className="campaign-card-facts">Cost {card?.cost ?? '—'} · RAM {card?.ram ?? '—'}{card?.sellable ? ' · Sellable' : ''}</p>
-          <p className="campaign-rules"><Rules text={card?.text ?? 'Card details unavailable.'} /></p>
-          <p className="campaign-fit">{packCardContext(run, slug)}</p>
-          <small>+1 in reserve · {run.inventory[slug]} earned total</small>
+      </> : <>
+        <div className="campaign-tabletop-stage">
+          <header className="campaign-tabletop-heading">
+            <p className="campaign-invitation-eyebrow">The Afterlife <span aria-hidden="true">//</span> {retry ? 'House pack' : `Supply drop ${String(run.encounter + 1).padStart(2, '0')}`}</p>
+            <h1 id="campaign-moment-title" tabIndex={-1} ref={attachTitle}>Your take<span aria-hidden="true">.</span></h1>
+            <p className="campaign-tabletop-count" role="status">{visible.length} / {count} revealed</p>
+            <div className="campaign-tabletop-progress" aria-hidden="true">{pulls.map((_, index) => <i key={index} data-filled={index < visible.length} />)}</div>
+            {visible.length === 0 && <p className="campaign-tabletop-hint">Select a sealed card to reveal it.</p>}
+          </header>
+          <div className="campaign-tabletop-spotlight" data-rarity={pull?.printing?.rarity} data-rich={richRarity(pull?.printing?.rarity) || undefined}>
+            {pull && <button ref={featured} type="button" className="campaign-tabletop-feature" onClick={() => inspect(pull.slug, pull.printing?.id)}
+              aria-label={`Inspect ${displayName(pull.slug)}`} key={active}>
+              <CampaignRewardArt pull={pull} alt="" exact />
+            </button>}
+          </div>
+          {pull && <div className="campaign-tabletop-copy" aria-live="polite">
+            <p className="play-eyebrow" data-rarity={pull.printing?.rarity}>{[packRarityLabel(pull.printing?.rarity), BY_SLUG.get(pull.slug)?.color, BY_SLUG.get(pull.slug)?.type].filter(Boolean).join(' / ')}</p>
+            <h2>{displayName(pull.slug)}</h2>
+            {pull.printing?.rarity.startsWith('Iconic ') && <p className="campaign-tabletop-variant">Alternate art · No. {pull.printing.num}</p>}
+            <p>{packCardContext(run, pull.slug)}</p>
+          </div>}
         </div>
-      </div>
-      <div className="campaign-pack-fan" style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }} aria-label="Cards in this pack">
-        {pulls.map((item, index) => <button key={`${index}:${item.slug}`} className="campaign-pack-pocket" data-selected={active === index}
-          data-hidden={index >= reveal} disabled={busy || index > reveal}
-          onClick={() => index < reveal ? setSelected({ index, reveal }) : void open(index + 1)}
-          aria-label={index < reveal ? `View ${BY_SLUG.get(item.slug)?.display ?? item.slug}` : index === reveal ? `Reveal card ${index + 1}` : `Card ${index + 1}, sealed`}>
-          {index < reveal ? <CampaignRewardArt pull={item} alt="" /> : <img src={CARD_BACK} alt="" />}
-          <span>{index < reveal ? BY_SLUG.get(item.slug)?.name : 'Sealed'}</span>
-        </button>)}
-      </div>
-      {allRevealed && hasChoice && <div className="campaign-choice" ref={choicePanel} tabIndex={-1}>
-        <div className="campaign-section-heading"><div><p className="play-eyebrow">One final decision</p><h3>Make the bonus count.</h3></div>
-          <span>Choose 1 of {reward.offers.length}</span></div>
-        <p>Pick one for your reserve. Your current deck stays as it is until you edit it.</p>
-        <div className="campaign-choice-grid">{reward.offers.map(item => {
-          const offered = BY_SLUG.get(item);
-          return <article key={item}>
-            <button className="campaign-choice-art" onClick={() => inspect(item)} aria-label={`Inspect ${offered?.display}`}><CardImg slug={item} alt="" /></button>
-            <div>
-              <p className="play-eyebrow">{offered?.color} / {offered?.type}</p><h4>{offered?.display}</h4>
-              <p className="campaign-card-facts">{offered?.type === 'Legend' ? `Crew · RAM ${offered.ram}` : `Cost ${offered?.cost ?? '—'} · RAM ${offered?.ram ?? '—'}${offered?.sellable ? ' · Sellable' : ''}`}</p>
-              <p className="campaign-choice-rules"><Rules text={offered?.text ?? ''} /></p>
-              <p className="campaign-fit">{packCardContext(run, item)}</p>
-              <button className="btn quiet" onClick={() => inspect(item)}>Full card details</button>
-              <button className="btn" disabled={busy} onClick={() => choose(item)}>Keep this card</button>
-            </div>
-          </article>;
-        })}</div>
-      </div>}
-    </section>
+        <div className="campaign-tabletop-lineup" style={{ '--pack-count': count } as CSSProperties} role="group" aria-label="Cards in this pack">
+          {layout?.order.map((pullIndex, slot) => {
+            const item = pulls[pullIndex];
+            const face = visible.includes(slot);
+            const turning = flip?.slot === slot && flip.phase !== 'saving';
+            const name = displayName(item.slug);
+            return <button key={slot} ref={slot === 0 ? firstSlot : undefined} type="button" className="campaign-tabletop-slot"
+              data-face={face || undefined} data-flipping={turning || undefined} data-selected={active === slot || undefined}
+              aria-pressed={face ? active === slot : undefined} aria-disabled={busy || !!flip || undefined}
+              aria-label={face ? `Feature ${name}, card ${slot + 1}` : `Reveal card ${slot + 1}`}
+              onClick={() => void selectSlot(slot)}
+              onAnimationStart={event => {
+                if (event.animationName === 'campaign-card-catch') showSlotFace(slot);
+              }}
+              onAnimationEnd={event => {
+                if (event.animationName === 'campaign-card-flip') featureFlippedSlot(slot, event.currentTarget);
+              }}>
+              <span className="campaign-tabletop-card" aria-hidden="true">
+                {(!face || turning) && <img className="campaign-tabletop-back" src={CARD_BACK} alt="" />}
+                {(face || turning) && <span className="campaign-tabletop-front"><CampaignRewardArt pull={item} alt="" exact /></span>}
+              </span>
+            </button>;
+          })}
+        </div>
+        <footer className="campaign-tabletop-actions">
+          <button type="button" className="campaign-tabletop-link" disabled={busy || !!flip} onClick={back}>← Back to contract</button>
+          {allRevealed && !flip && <button type="button" className="campaign-invitation-cta" disabled={busy}
+            onClick={hasChoice ? () => void switchBonus(true) : finish}>{hasChoice ? 'Choose your bonus card' : finishLabel} <span aria-hidden="true">→</span></button>}
+          {tools}
+        </footer>
+      </>}
+    </div>
   </section>;
 }
