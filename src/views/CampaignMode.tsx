@@ -17,7 +17,8 @@ import { ReactiveRoom } from './ReactiveRoom';
 import { campaignPulls, packRarityLabel } from '../lib/play/campaignPack';
 import { CampaignRewardArt } from './CampaignRewardArt';
 import { latestPack, needsActBriefing } from '../lib/play/campaignPresentation';
-import { CampaignArrival, CampaignPack, CampaignRecap, CampaignRooms } from './CampaignMoments';
+import { CampaignArrival, CampaignRecap, CampaignRooms } from './CampaignMoments';
+import { CampaignPack } from './CampaignPack';
 import { CampaignUpgradeDialog } from './CampaignDeckReview';
 import { CampaignHub, CampaignHubTools, CampaignTimeline } from './CampaignHub';
 import { CampaignWorkbench } from './CampaignWorkbench';
@@ -138,11 +139,17 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   }, [scope, send, introKey]);
 
   async function apply<T>(task: () => Promise<T>, update: (value: T) => void) {
-    if (busy || actionLock.current) return;
+    if (busy || actionLock.current) return false;
     actionLock.current = true;
     recoveryVersion.current++;
     setBusy(true); setError(undefined);
-    try { update(await task()); } catch (cause) { setError(workerFailed.current ? 'The campaign engine stopped. Reload the page to restore the saved match.' : cause instanceof Error ? cause.message : 'Could not save your campaign.'); }
+    try {
+      update(await task());
+      return true;
+    } catch (cause) {
+      setError(workerFailed.current ? 'The campaign engine stopped. Reload the page to restore your saved match.' : cause instanceof Error ? cause.message : 'Could not save your campaign.');
+      return false;
+    }
     finally { actionLock.current = false; setBusy(false); }
   }
 
@@ -345,23 +352,24 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
           fromPack={surface === 'new-cards'} printings={iconicPrintings} inspect={inspectCard} review={reviewCard} quantity={quantity}
           undo={() => { if (undo?.id === run.id && undo.revision === run.revision) edit(undo.deck); }} restore={() => edit(structuredClone(run.lastLegal))}
           back={() => changeSurface('hub')} />
-        : packOpen || actPending || finale
+        : packOpen && earnedPack
+          ? <CampaignPack key={earnedPack.id} run={run} titleRef={focusTitle} tools={tools} busy={busy} inspect={inspectCard}
+            back={() => changeSurface('hub')}
+            revealTo={count => apply(() => revealCampaignPack(scope, run.revision, count), value => {
+              setRun(value.run); sound.cue((run.revealed ?? 0) === 0 ? 'pack-open' : 'pack-reveal');
+            })}
+            choose={slug => void apply(() => chooseReward(scope, run.revision, slug), value => {
+              setRun(value.run); changeSurface('hub');
+              sound.cue(needsActBriefing(value.run) ? 'act-arrival' : 'reward-lock');
+            })} />
+        : actPending || finale
           ? <section className="campaign-board-moment" aria-labelledby="campaign-moment-title">
             <header className="campaign-board-header">
               <div><p className="campaign-invitation-eyebrow">The Afterlife</p>
-                <h1 id="campaign-moment-title" tabIndex={-1} ref={focusTitle}>{packOpen ? 'Contract won' : actPending ? 'Next act' : 'Campaign cleared'}</h1></div>
+                <h1 id="campaign-moment-title" tabIndex={-1} ref={focusTitle}>{actPending ? 'Next act' : 'Campaign cleared'}</h1></div>
               {tools}
             </header>
             <CampaignTimeline run={run} />
-            {packOpen && earnedPack && <>
-              <button type="button" className="btn quiet campaign-back-from-pack" disabled={busy} onClick={() => changeSurface('hub')}>← Back to contract</button>
-              <CampaignPack key={earnedPack.id} run={run} busy={busy} inspect={inspectCard}
-                revealTo={count => void apply(() => revealCampaignPack(scope, run.revision, count), value => { setRun(value.run); sound.cue((run.revealed ?? 0) === 0 ? 'pack-open' : 'pack-reveal'); })}
-                choose={slug => void apply(() => chooseReward(scope, run.revision, slug), value => {
-                  setRun(value.run); changeSurface('hub');
-                  sound.cue(needsActBriefing(value.run) ? 'act-arrival' : 'reward-lock');
-                })} />
-            </>}
             {actPending && <CampaignArrival run={run} busy={busy} continueToDeck={() => void apply(() => acknowledgeCampaignAct(scope, run.revision), value => {
               setRun(value.run); changeSurface('new-cards');
             })} />}
