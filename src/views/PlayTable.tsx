@@ -166,6 +166,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
   const picks = current?.picks ?? (selected ? suggestPayment(selected, {}, visibleCards(view)) : {});
   const fields = selected?.fields(picks) ?? [];
   const step = activeStep(fields, picks, current?.step);
+  const adjustedGig = selected?.id === 'resolveAdjustGig' && step?.id === 'value' ? selected.move(picks).args?.dieId : undefined;
   const targetIds = new Set(step?.options.flatMap((option) => option.cardId ? [option.cardId] : []) ?? []);
   const chosenIds = new Set(step?.options.filter((option) => picks[step.id]?.includes(option.id)).flatMap((option) => option.cardId ? [option.cardId] : []) ?? []);
   const reveal = choice?.payload as { revealedCards?: CardView[]; cards?: CardView[]; source?: { cardId?: string } } | undefined;
@@ -205,7 +206,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     if (!focusAfter.current) return;
     focusAfter.current = false;
     // In order of usefulness: confirm a ready decision, else the step in progress, else the bar itself.
-    const targets = ['.play-decision-tray [data-confirm-move]:not(:disabled)', '.play-decision-tray [data-step][aria-pressed=true]', '.play-decision-tray button:not(:disabled)', '.play-command-inner'];
+    const targets = ['.play-gig-adjustment [data-pick-option]:enabled', '.play-decision-tray [data-confirm-move]:not(:disabled)', '.play-decision-tray [data-step][aria-pressed=true]', '.play-decision-tray button:not(:disabled)', '.play-command-inner'];
     for (const target of targets) {
       const element = grid.current?.querySelector<HTMLElement>(target);
       if (element) { element.focus({ preventScroll: true }); break; }
@@ -254,7 +255,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     const field = fields.find((field) => field.id === fieldId);
     const nextFields = selected.fields(next);
     const nextStep = field?.max === 1 && (next[fieldId]?.length ?? 0) === 1 ? activeStep(nextFields, next)?.id : fieldId;
-    if (document.activeElement?.closest('[data-pick-field]')) focusAfter.current = true;
+    if (selected.id === 'resolveAdjustGig' ? fieldId === 'die' : document.activeElement?.closest('[data-pick-field]')) focusAfter.current = true;
     setChoice(selection, next, nextStep);
     setArrow(undefined);
   }
@@ -395,7 +396,11 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
       if (event.key === 'Escape' && opening.showing) { event.preventDefault(); opening.skip(); return; }
       if (event.key !== 'Escape' || drag || inspected || menu || (event.target as HTMLElement).closest('dialog[open]')) return;
       if (panel) setPanel(undefined);
-      else { setChoice(choice ? defaultSelection : undefined, {}); clearHover(); }
+      else {
+        if (selected?.id === 'resolveAdjustGig' && step?.id === 'value' && fields.some(field => field.id === 'die')) focusAfter.current = true;
+        setChoice(choice ? defaultSelection : undefined, {});
+        clearHover();
+      }
     }}>
     <header className="play-match-header" inert={opening.showing}>
       <div className="play-match-identity">
@@ -459,7 +464,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
       <GigRollAnnouncement rolls={snapshot.gigRolls} />
       <RivalBench portrait={campaign?.rival} rolls={rolls} name={names.rival} active={playing && !yourTurn} {...targeting} renderCard={renderCard} renderFace={face} />
       <SeatField seat="rival" active={playing && !yourTurn} {...targeting} renderCard={renderCard} />
-      <GigZones {...targeting} />
+      <GigZones {...targeting} adjustedGig={adjustedGig} />
       <div className="play-command" data-presentation={command.variant} data-attention={command.attention} data-reduced={reduced || undefined} data-seat={playing ? view.activePlayerId : undefined} data-state={playback ? 'playback' : selected || choice || setup ? 'decision' : combat ? 'combat' : 'idle'}>
         <div className="play-command-inner" tabIndex={-1}>
           {command.attention === 'mandatory' && <span className="play-command-arrival" key={`${snapshot.matchId}:${command.cueKey}`} aria-hidden="true" />}
@@ -470,7 +475,13 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
             : playback ? <>{combat && <CombatBanner view={view} watching compact />}<PlayPresentation playback={playback} /></>
             : selected ? <div className="play-table-decision" key={stateKey}>
               <PlayChoices presentation={command} context={combat && <CombatBanner view={view} watching={false} compact inspect={inspect} />} view={view} action={selected} picks={picks} fields={fields} active={step} cards={cards} busy={busy} forced={!!choice} revealed={reveal?.revealedCards} select={chooseValue}
-                step={(id) => { clearHover(); setChoice(selection, picks, id); }} reorder={(field, ids) => { const next = reorderPick(selected, picks, field, ids); if (next) setChoice(selection, next, field); }}
+                step={(id) => {
+                  clearHover();
+                  if (selected.id === 'resolveAdjustGig' && id === 'die') {
+                    focusAfter.current = true;
+                    setChoice(selection, {}, id);
+                  } else setChoice(selection, picks, id);
+                }} reorder={(field, ids) => { const next = reorderPick(selected, picks, field, ids); if (next) setChoice(selection, next, field); }}
                 submit={() => selection !== undefined && commit({ action: selection, picks })}
                 cancel={() => { setChoice(choice ? defaultSelection : undefined, {}); clearHover(); }}
                 inspect={inspect} alternatives={choice ? special.map(({ index }) => actionButton(index)) : combat ? resolveButtons : null} /></div>

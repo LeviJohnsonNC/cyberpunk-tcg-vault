@@ -7,6 +7,7 @@ import { decisionSource, paymentPreview } from '../lib/play/tacticalInfo';
 import { CardFace } from './PlayCard';
 import { DieFace } from './PlayDice';
 import type { CommandPresentation } from '../lib/play/commandPresentation';
+import { PlayGigAdjustment } from './PlayGigAdjustment';
 
 export function PlayChoices({ presentation, context, view, action, picks, fields, active, cards, busy, forced, select, step, submit, cancel, alternatives, reorder, inspect, revealed }: {
   presentation: CommandPresentation; context?: ReactNode;
@@ -15,6 +16,10 @@ export function PlayChoices({ presentation, context, view, action, picks, fields
   inspect: (card: CardView, trigger: HTMLElement) => void; busy: boolean; forced: boolean; select: (field: string, value: string) => void;
   step: (id: string) => void; reorder: (field: string, ids: string[]) => void; submit: () => void; cancel: () => void; alternatives: ReactNode;
 }) {
+  if (action.id === 'resolveAdjustGig') return <PlayGigAdjustment
+    view={view} action={action} picks={picks} fields={fields} active={active} cards={cards} busy={busy}
+    select={select} changeGig={() => step('die')} submit={submit} inspect={inspect} alternatives={alternatives} context={context} />;
+
   const ready = isReady(fields, picks);
   const rollingGig = action.id === 'gainGig';
   const sourceCard = decisionSource(view, action, picks, cards);
