@@ -70,7 +70,6 @@
   grid-area: reward;
   display: grid;
   justify-items: center;
-  gap: clamp(6px, 1.3svh, 15px);
   min-width: 0;
 }
 .campaign-seal-prop {
@@ -130,57 +129,56 @@
   font: italic 800 clamp(37px, min(6.35vw, 8.5svh), 84px)/.79 var(--font-display);
 }
 .campaign-seal-strip {
+  --strip-light: color-mix(in srgb, var(--color-ticket) 80%, var(--color-text));
+  --strip-warm: color-mix(in srgb, var(--color-ticket) 78%, var(--color-accent));
+  --strip-shadow: color-mix(in srgb, var(--color-ticket-ink) 68%, transparent);
   position: absolute;
-  inset: 64% 5% auto 4%;
+  isolation: isolate;
+  inset: 64% 7% auto 7%;
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 8px;
-  min-height: 38px;
-  padding: 5px;
+  gap: .65em;
+  min-height: 44px;
+  padding: 5px 12px 6px;
   border: 0;
   color: var(--color-ticket-ink);
-  background: linear-gradient(110deg, var(--color-ticket-muted), var(--color-ticket) 8%, color-mix(in srgb, var(--color-ticket) 80%, var(--color-accent)) 92%);
-  box-shadow: 0 3px 5px color-mix(in srgb, black 45%, transparent);
-  font: italic 700 clamp(12px, 1.5vw, 19px)/1.1 var(--font-display);
-  letter-spacing: .08em;
+  background: transparent;
+  filter: drop-shadow(0 2px 2px var(--strip-shadow));
+  font: italic 800 clamp(13px, 1.65vw, 22px)/1.1 var(--font-display);
+  letter-spacing: .055em;
   text-transform: uppercase;
+  text-shadow: 0 1px color-mix(in srgb, var(--strip-light) 55%, transparent);
   cursor: pointer;
+}
+.campaign-seal-strip::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 1px 0;
+  clip-path: polygon(1% 0, 20% 1%, 40% 0, 62% 2%, 82% 1%, 100% 0, 98% 11%, 99% 24%, 97% 37%, 99% 49%, 98% 62%, 100% 77%, 99% 88%, 100% 100%, 78% 98%, 50% 100%, 25% 98%, 0 100%, 1% 80%, 0 56%, 1% 34%, 0 18%);
+  background:
+    linear-gradient(90deg, var(--strip-shadow), transparent 6% 90%, color-mix(in srgb, var(--color-ticket-muted) 42%, transparent) 97%, var(--strip-shadow)),
+    linear-gradient(180deg, var(--strip-light), transparent 9% 89%, color-mix(in srgb, var(--color-ticket-muted) 45%, transparent)),
+    repeating-linear-gradient(122deg, transparent 0 3px, color-mix(in srgb, var(--color-ticket-muted) 9%, transparent) 4px 5px),
+    linear-gradient(107deg, var(--color-ticket) 20%, var(--strip-light) 49%, var(--strip-warm) 82%);
 }
 .campaign-seal-strip::after {
   content: '';
   position: absolute;
-  inset: 0 0 0 auto;
-  width: 8%;
-  background: color-mix(in srgb, var(--color-ticket-muted) 45%, transparent);
-  clip-path: polygon(20% 0, 100% 0, 100% 100%, 40% 100%, 54% 68%, 15% 53%, 39% 28%);
+  inset: 2px 5% 2px auto;
+  width: 4px;
+  border-left: 1px dashed color-mix(in srgb, var(--color-ticket-muted) 65%, transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--strip-light) 52%, transparent));
+  pointer-events: none;
 }
-.campaign-seal-strip:hover:not(:disabled) { background: var(--color-text); }
+.campaign-seal-strip-arrow { font: 600 1em/1 var(--font-ui); }
+.campaign-seal-strip:hover:not(:disabled) {
+  --strip-light: var(--color-text);
+  filter: drop-shadow(0 2px 2px var(--strip-shadow)) drop-shadow(0 0 5px color-mix(in srgb, var(--color-ticket) 34%, transparent));
+}
+.campaign-seal-strip:focus-visible { outline: 2px solid var(--color-text); outline-offset: 3px; }
 .campaign-seal-strip:disabled { cursor: wait; }
-.campaign-seal-actions { display: grid; justify-items: center; gap: 4px; width: min(100%, 355px); }
-.campaign-seal-actions .campaign-invitation-cta { width: 100%; min-height: 48px; margin: 0; }
-.campaign-seal-link {
-  border: 0;
-  min-height: 32px;
-  padding: 3px 5px;
-  background: transparent;
-  color: var(--color-text-muted);
-  font: 500 13px/1.4 var(--font-ui);
-  text-decoration: underline;
-  text-underline-offset: 4px;
-  cursor: pointer;
-}
-.campaign-seal-link:hover:not(:disabled) { color: var(--color-text); }
-.campaign-seal-link:disabled { opacity: .58; cursor: wait; }
-.campaign-seal-footer {
-  display: flex;
-  align-items: center;
-  justify-content: end;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  color: var(--color-text-muted);
-}
-.campaign-seal-footer small { font: 500 12px/1.4 var(--font-ui); }
 
 @media (prefers-reduced-motion: no-preference) {
   .campaign-seal-prop[data-peeling] .campaign-seal-wrapper { animation: campaign-pack-flex .33s ease-out both; }
@@ -202,9 +200,7 @@
     inset: auto auto 0 0;
     width: min(34vw, 470px);
     height: min(38svh, 360px);
-    background:
-      url('../assets/play/crew-whiskey-glass.webp') left -53px bottom 67px / clamp(136px, 15vw, 218px) auto no-repeat,
-      url('../assets/play/campaign-reward-receipt.webp') left 10px bottom -65px / clamp(187px, 22vw, 335px) auto no-repeat;
+    background: url('../assets/play/campaign-reward-receipt.webp') left 10px bottom -65px / clamp(187px, 22vw, 335px) auto no-repeat;
     pointer-events: none;
   }
   .campaign-seal-scene[data-encounter='first-call'] .campaign-seal-stage { padding-inline-start: clamp(40px, 5vw, 95px); }
@@ -222,22 +218,16 @@
   .campaign-seal-promise h2 br { display: none; }
   .campaign-seal-prop { --seal-pack-size: clamp(158px, 40vw, 244px); }
   .campaign-seal-brand strong { font-size: clamp(38px, 10vw, 64px); }
-  .campaign-seal-strip, .campaign-seal-link { min-height: 44px; }
   .campaign-seal-stage .campaign-dispatch { margin-top: 4px; }
-  .campaign-seal-footer { justify-content: start; }
 }
 @media (max-width: 500px) {
   .campaign-seal-layout .campaign-board-header h1 { font-size: clamp(40px, 11vw, 55px); }
   .campaign-seal-layout .campaign-board-header { gap: 9px; }
-  .campaign-seal-layout .campaign-board-tools { align-self: center; }
 }
 
-@media (min-width: 801px) {
-  .app--play .campaign-seal-footer { padding-inline-end: 120px; }
-}
 @media (min-width: 801px) and (max-height: 820px) {
   .campaign-seal-scene { padding-block: 14px 12px; }
-  .campaign-seal-scene[data-encounter='first-call']::after { background-position: left -53px bottom 67px, left -8px bottom -83px; }
+  .campaign-seal-scene[data-encounter='first-call']::after { background-position: left -8px bottom -83px; }
   .campaign-seal-prop { --seal-pack-size: clamp(151px, 24.4svh, 215px); }
 }
 

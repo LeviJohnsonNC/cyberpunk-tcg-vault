@@ -12,6 +12,7 @@ import eddieSale from '../assets/play/eddie-sale.mp3';
 import gigStolen from '../assets/play/gig-stolen.mp3';
 import matchWin from '../assets/play/match-win.mp3';
 import matchLoss from '../assets/play/match-loss.mp3';
+import packTear from '../assets/play/pack-tear.mp3';
 
 const recordings = [
   { cue: 'dice-roll', url: diceRoll, gain: 2.1 },
@@ -24,6 +25,7 @@ const recordings = [
   { cue: 'gig-steal', url: gigStolen, gain: .7 },
   { cue: 'win', url: matchWin, gain: 1.35 },
   { cue: 'lose', url: matchLoss, gain: 1.4 },
+  { cue: 'pack-open', url: packTear, gain: .9 },
 ] satisfies { cue: TableCue; url: string; gain: number }[];
 
 async function decodeRecording(context: AudioContext, url: string) {
