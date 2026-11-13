@@ -1,9 +1,9 @@
-import { BY_SLUG, CARDS, fitsRam, ramLimits, type Card } from '../data';
-import { validate } from '../decks';
+import { BY_SLUG, CARDS, type Card } from '../data';
+import { COPY_MAX } from '../decks';
+import { campaignCardFit, campaignCrew, isCampaignLegend } from './campaignDeckRules';
 import { rating, synergy } from '../autobuild';
 import { STARTERS, starterAsDeck, type StarterKey } from '../starters';
-import { isEngineSupported } from './engineCards';
-import { rollCampaignPack, rollRetryPack } from './campaignPack';
+import { campaignPulls, rollCampaignPack, rollRetryPack } from './campaignPack';
 import type { Deck } from '../store';
 import type { StoredMatch } from './workerController';
 import type { RivalSkill } from './protocol';
@@ -36,6 +36,8 @@ export interface CampaignReward {
   id: string; cards: string[]; offers: string[]; choice?: string;
   /** Exact collectible printing per card slot. Older rewards have only gameplay slugs. */
   printingIds?: string[];
+  /** Sorted Legend slugs when the unearned bonus offers were prepared. */
+  offerCrew?: string;
 }
 export type CampaignOutcome = 'win' | 'loss' | 'draw';
 export interface CampaignAftermath {
@@ -62,10 +64,12 @@ export interface CampaignRun {
   resultPending?: boolean;
   aftermath?: CampaignAftermath;
   latestRetry?: CampaignReward;
+  retryPrintings?: Record<string, string>;
   retryPacks?: number;
   defeats?: number;
   rewards: Record<number, CampaignReward>; opponents: Deck[]; match?: StoredMatch; completedAt?: number;
   packLayout?: CampaignPackLayout;
+  deckUndo?: { deck: Deck; lastLegal: Deck };
   /** Legacy sequential reveal count, read only until the pack is edited. */
   revealed?: number;
 }
@@ -89,23 +93,7 @@ export function newCampaign(starter: StarterKey, id: string, seed: string): Camp
   return run;
 }
 
-export function campaignDeckIssues(run: CampaignRun, deck: Deck): string[] {
-  const issues = [...validate(deck).issues];
-  if (Object.keys(deck.sideboard).some(slug => deck.sideboard[slug] > 0)) issues.push('Campaign sideboards are not available.');
-  const starter = STARTERS.find(item => item.key === run.starter)!;
-  const colours = starter.colors;
-  const initial = starter.legends.map(slug => BY_SLUG.get(slug)!.color);
-  const chosen = deck.legends.map(slug => BY_SLUG.get(slug)?.color);
-  if (colours.some(color => chosen.filter(item => item === color).length !== initial.filter(item => item === color).length)) issues.push('Keep the starter crew colour distribution.');
-  const used: Record<string, number> = { ...deck.cards };
-  for (const legend of deck.legends) used[legend] = (used[legend] ?? 0) + 1;
-  for (const [slug, qty] of Object.entries(used)) {
-    if (!colours.includes(BY_SLUG.get(slug)?.color ?? '')) issues.push(`${slug} is outside the starter colours.`);
-    if (qty > (run.inventory[slug] ?? 0)) issues.push(`You have only ${run.inventory[slug] ?? 0} copies of ${BY_SLUG.get(slug)?.display ?? slug}.`);
-    if (!isEngineSupported(slug)) issues.push(`${slug} is not supported in Play Mode.`);
-  }
-  return [...new Set(issues)];
-}
+export { campaignDeckIssues } from './campaignDeckRules';
 
 const MOTH_EMBRACING_POWER = 'Moth’s Embracing Power';
 
@@ -178,22 +166,35 @@ function shuffled<T>(array: T[], seed: string): T[] {
   return out;
 }
 
-function compatibleRewards(run: CampaignRun, colours: readonly string[]) {
-  const limits = ramLimits(run.deck.legends);
-  return CARDS.filter(card => card.type !== 'Legend' && card.legal === 'legal' && isEngineSupported(card.slug)
-    && colours.includes(card.color) && fitsRam(card, limits));
+function compatibleRewards(run: CampaignRun) {
+  const crew = campaignCrew(run.deck.legends);
+  return CARDS.filter(card => !campaignCardFit(card, crew));
 }
 
+const rewardSeed = (run: CampaignRun) => `${run.seed}:reward:${run.encounter}:v${run.balanceVersion ?? 1}`;
+const offerCrew = (legends: string[]) => [...legends].sort().join(',');
+
 export function generateReward(run: CampaignRun): CampaignReward {
-  const seed = `${run.seed}:reward:${run.encounter}:v${run.balanceVersion ?? 1}`;
-  const colours = STARTERS.find(item => item.key === run.starter)!.colors;
-  const compatible = compatibleRewards(run, colours);
-  const eligible = compatible.filter(card => (run.inventory[card.slug] ?? 0) < 3);
-  const recruits = recruitCandidates(run, colours);
-  const offers = run.encounter === ENCOUNTERS.length - 1 ? [] : rewardOffers(run, eligible, compatible, recruits, seed);
+  const seed = rewardSeed(run);
+  const compatible = compatibleRewards(run);
+  const eligible = compatible.filter(card => (run.inventory[card.slug] ?? 0) < COPY_MAX);
+  const offers = run.encounter === ENCOUNTERS.length - 1 ? [] : rewardOffers(run, compatible, seed);
   const pulls = rollCampaignPack(rewardRandom(`${seed}:retail`), new Set(eligible.map(card => card.slug)), offers);
   return { id: `${run.id}:${run.encounter}`, cards: pulls.map(pull => pull.slug),
-    printingIds: pulls.map(pull => pull.printing.id), offers };
+    printingIds: pulls.map(pull => pull.printing.id), offers, offerCrew: offerCrew(run.deck.legends) };
+}
+
+/** Only the match-start transaction may refresh unearned offers. The retail pulls stay sealed. */
+export function prepareCampaignReward(run: CampaignRun) {
+  const reward = run.rewards[run.encounter];
+  if (!reward) return generateReward(run);
+  if (reward.choice || run.phase === 'rewardPending' || run.encounter === ENCOUNTERS.length - 1) return reward;
+  const crew = offerCrew(run.deck.legends);
+  const previous = reward.offerCrew ?? (run.match ? offerCrew(run.match.setup.player.legends)
+    : offerCrew(makeStarterDeck(run.starter).legends));
+  if (previous === crew) return reward.offerCrew ? reward : { ...reward, offerCrew: crew };
+  return { ...reward, offerCrew: crew,
+    offers: rewardOffers(run, compatibleRewards(run), rewardSeed(run), reward.cards) };
 }
 
 const isRecruitment = (run: CampaignRun) => run.encounter === 2 || run.encounter === 5;
@@ -201,17 +202,18 @@ const isRecruitment = (run: CampaignRun) => run.encounter === 2 || run.encounter
 function recruitCandidates(run: CampaignRun, colours: readonly string[]) {
   if (!isRecruitment(run)) return [];
   const names = new Set(run.deck.legends.map(slug => BY_SLUG.get(slug)?.name));
-  return CARDS.filter(card => card.type === 'Legend' && card.legal === 'legal' && isEngineSupported(card.slug)
-    && colours.includes(card.color) && !names.has(card.name) && !run.inventory[card.slug]
-    && run.deck.legends.some(slug => BY_SLUG.get(slug)?.color === card.color && (BY_SLUG.get(slug)?.ram ?? 0) <= (card.ram ?? 0)));
+  return CARDS.filter(card => isCampaignLegend(card)
+    && colours.includes(card.color) && !names.has(card.name) && !run.inventory[card.slug]);
 }
 
-function rewardOffers(run: CampaignRun, eligible: Card[], compatible: Card[], recruits: Card[], seed: string) {
+function rewardOffers(run: CampaignRun, compatible: Card[], seed: string, sealedCards: string[] = []) {
+  const recruits = recruitCandidates(run, campaignCrew(run.deck.legends).colours)
+    .filter(card => !sealedCards.includes(card.slug));
   const themes = REWARD_THEMES[run.starter];
-  const selected = new Set<string>();
+  const selected = new Set(sealedCards);
   const slugOrder = (a: Card, b: Card) => a.slug.localeCompare(b.slug, 'en');
   const sorted = [...compatible].sort(slugOrder);
-  const canUseCopy = new Set(eligible.map(card => card.slug));
+  const canUseCopy = new Set(compatible.filter(card => (run.inventory[card.slug] ?? 0) < COPY_MAX).map(card => card.slug));
   const early = run.encounter < 3;
   const late = run.encounter >= 6;
   const economy = (card: Card) => (card.cost ?? 9) <= 3 && (card.sellable || card.type === 'Unit');
@@ -288,16 +290,19 @@ export function settleCampaignMatch(run: CampaignRun, profile: CampaignProfile, 
   }
 
   if (outcome !== 'win') {
-    const colours = STARTERS.find(item => item.key === run.starter)!.colors;
-    const eligible = compatibleRewards(run, colours);
+    const eligible = compatibleRewards(run);
     // Keep every pre-sealed victory offer claimable even after many retries.
     const reserved = new Set(run.rewards[run.encounter]?.offers);
     const compatible = new Set(eligible.filter(card => !reserved.has(card.slug)).map(card => card.slug));
     const pulls = rollRetryPack(rewardRandom(`${run.seed}:retry:${run.encounter}:${next.attempts}`), compatible, inventory);
     const reward = { id: `${run.id}:retry:${match.summary.matchId}`, cards: pulls.map(pull => pull.slug),
       printingIds: pulls.map(pull => pull.printing.id), offers: [] };
+    const retryPrintings = { ...run.retryPrintings };
+    for (const { slug, printing } of [...(run.latestRetry ? campaignPulls(run.latestRetry) : []), ...pulls]) {
+      if (printing && (printing.rarity.startsWith('Iconic ') || !retryPrintings[slug])) retryPrintings[slug] = printing.id;
+    }
     addPack(reward.cards);
-    return { run: { ...next, inventory, aftermath, phase: 'retryReward' as const, latestRetry: reward,
+    return { run: { ...next, inventory, aftermath, phase: 'retryReward' as const, latestRetry: reward, retryPrintings,
       retryPacks: (run.retryPacks ?? 0) + 1, defeats: (run.defeats ?? 0) + Number(outcome === 'loss') }, profile };
   }
 
