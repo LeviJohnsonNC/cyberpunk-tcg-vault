@@ -83,7 +83,8 @@ export function campaignPulls(reward: CampaignReward): CampaignPull[] {
 
 export function packRarityLabel(rarity?: string) {
   if (rarity === 'Iconic Secret') return 'Iconic Secret Rare';
-  if (rarity?.startsWith('Iconic ')) return 'Iconic Rare';
+  if (rarity === 'Iconic Legend') return 'Iconic Legend Rare';
+  if (rarity === 'Iconic Other') return 'Iconic Other Rare';
   if (rarity === 'Epic' || rarity === 'Secret') return `${rarity} Rare`;
   return rarity ?? '';
 }

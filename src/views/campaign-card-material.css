@@ -86,3 +86,31 @@
   .campaign-material-halo { inset-inline: -12%; }
   .campaign-material-spill { inset-inline: -8%; }
 }
+/* Face-up lineup treatment is deliberately cheaper and quieter than the hero. */
+.campaign-tabletop-slot[data-face] .campaign-reward-art {
+  --pack-foil: transparent;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--material-edge) 58%, #3a2735),
+    1px 3px 0 #100911, 0 0 8px color-mix(in srgb, var(--material-edge) 15%, transparent);
+}
+.campaign-tabletop-slot[data-face] .campaign-reward-art::before {
+  inset: -1px; border: 1px solid transparent; background: var(--material-rim) border-box;
+  mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0); mask-composite: exclude;
+  opacity: .65; z-index: 1;
+}
+.campaign-tabletop-slot[data-selected] { --lift: -7px; }
+.campaign-tabletop-slot[data-selected] .campaign-tabletop-rest {
+  outline: 2px solid var(--color-accent); outline-offset: 4px;
+  box-shadow: 1px 4px 0 #100811, 3px 6px 4px #080409e8, 0 8px 18px #ff8cbb24;
+}
+.campaign-tabletop-slot[data-selected]::after {
+  content: ''; position: absolute; width: 18px; height: 3px; background: var(--color-accent);
+  bottom: -11px; left: calc(50% - 9px); transform: skewX(-25deg); pointer-events: none;
+}
+/* Different surfaces hold different highlight shapes; no looping illumination. */
+.campaign-material-stage[data-material='silver'] .campaign-material-sheen { mask-image: linear-gradient(90deg,#000 0%,transparent 13%,transparent 87%,#000); }
+.campaign-material-stage[data-material='interference'] .campaign-material-sheen { background-size: 210% 100%; }
+.campaign-material-stage[data-material='pearl'] .campaign-material-sheen { background-size: 300% 100%; }
+.campaign-material-stage[data-material='dichroic'] .campaign-material-bloom { box-shadow: -4px -1px 10px var(--material-edge), 4px 4px 12px var(--material-secondary), 0 0 22px #89b1d833; }
+.campaign-material-stage[data-material='gilded'] .campaign-material-bloom { box-shadow: -2px -3px 8px var(--material-catch), 3px 5px 15px var(--material-edge), 2px 3px 30px #b7915426; }
+.campaign-material-stage[data-material='prismatic'] .campaign-material-bloom { box-shadow: -3px -2px 8px #a5e3f5, 3px 5px 13px #edb8d7, -1px 3px 23px #efdca8; }
+.campaign-material-stage[data-material='prismatic'] .campaign-material-edge { border-width: 2px; }

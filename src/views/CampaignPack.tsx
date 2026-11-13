@@ -4,6 +4,7 @@ import { BY_SLUG, defaultPrinting } from '../lib/data';
 import { ENCOUNTERS, campaignPackLayout, type CampaignRun, type CampaignReward } from '../lib/play/campaign';
 import { campaignPulls, packRarityLabel } from '../lib/play/campaignPack';
 import { packCardContext } from '../lib/play/campaignPresentation';
+import { packMaterial, packMaterialStyle } from '../lib/play/packMaterial';
 import { getPrintingArt } from '../lib/printingArt';
 import wrapperArt from '../assets/play/campaign-booster-foil.webp';
 import { CampaignTimeline, type CampaignInspect } from './CampaignHub';
@@ -87,6 +88,7 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
           image.decoding = 'async';
           image.referrerPolicy = 'no-referrer';
           image.src = src;
+          void image.decode().catch(() => {});
         }
       }).catch(() => {});
     }
@@ -234,7 +236,14 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
     }
     flipLock.current = true;
     setFlip({ slot, phase: 'saving' });
-    if (!await flipSlot(slot)) {
+    try {
+      if (!await flipSlot(slot)) {
+        setFlip(undefined);
+        flipLock.current = false;
+        return;
+      }
+    } catch {
+      // A save failure must never leave the visual input lock engaged.
       setFlip(undefined);
       flipLock.current = false;
       return;
@@ -361,7 +370,9 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
             const turning = flip?.slot === slot && flip.phase !== 'saving';
             const name = displayName(item.slug);
             return <button key={slot} ref={slot === 0 ? firstSlot : undefined} type="button" className="campaign-tabletop-slot"
-              data-face={face || undefined} data-tier={face ? revealTier(item.printing?.rarity) : undefined} data-rarity={face ? item.printing?.rarity : undefined} data-flipping={turning || undefined} data-selected={active === slot || undefined}
+              style={face ? packMaterialStyle(item.printing?.rarity) : undefined}
+              data-material={face ? packMaterial(item.printing?.rarity).name : undefined}
+              data-face={face || undefined} data-rarity={face ? item.printing?.rarity : undefined} data-flipping={turning || undefined} data-selected={active === slot || undefined}
               aria-pressed={face ? active === slot : undefined} aria-disabled={busy || !!flip || undefined}
               aria-label={face ? `Feature ${name}, card ${slot + 1}` : `Reveal card ${slot + 1}`}
               onClick={() => void selectSlot(slot)}>

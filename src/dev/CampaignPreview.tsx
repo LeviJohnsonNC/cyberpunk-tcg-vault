@@ -1,4 +1,5 @@
 /** Preview/development-only fixtures. Isolated scope; never reads a user's Vault or grants real rewards. */
+import { PackMaterialPreview } from './PackMaterialPreview';
 import { createRoot } from 'react-dom/client';
 import { useState } from 'react';
 import { CampaignMatchResult } from '../views/CampaignMatchResult';
@@ -83,8 +84,9 @@ export function Preview() {
   </select></label><button className="btn quiet" onClick={() => void load('contract')}>Load contract</button><button className="btn quiet" onClick={() => setShowReport('win')}>Win report</button><button className="btn quiet" onClick={() => setShowReport('loss')}>Loss report</button><span role="status">{error}</span></nav>{showReport ? <ReportPreview key={`${contract}:${showReport}`} contract={contract} outcome={showReport} openPack={() => void load('chase pack')} /> : <CampaignMode key={key} scope={scope} exit={() => setError('Free Play navigation requested.')} openInBuilder={() => setError('Deck Builder handoff requested.')} />}</>;
 }
 if (import.meta.env.DEV || import.meta.env.VAULT_PLAY_PREVIEW) {
-  const opener = new URLSearchParams(location.search).has('opener');
-  createRoot(document.getElementById('root')!).render(opener
+  const params = new URLSearchParams(location.search);
+  const opener = params.has('opener');
+  createRoot(document.getElementById('root')!).render(params.has('materials') ? <PackMaterialPreview /> : opener
     ? <CampaignMode scope="qa:campaign-opener" exit={() => location.assign('./campaign-preview.html')} openInBuilder={() => {}} />
     : <Preview />);
 }
