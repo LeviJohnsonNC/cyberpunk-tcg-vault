@@ -1,3 +1,4 @@
+import { campaignCrew } from '../lib/play/campaignDeckRules';
 import { useId, useRef, type ReactNode, type Ref } from 'react';
 import { BY_SLUG, PRINTING_INDEX, type Printing } from '../lib/data';
 import { totalCopies } from '../lib/deckDraft';
@@ -102,7 +103,7 @@ export function CampaignHub({ run, titleRef, tools, issues, busy, printings, ins
   const resumable = run.phase === 'inMatch' || !!run.resultPending;
   const canTune = !pending && !resumable;
   const blocked = canTune && issues.length > 0;
-  const colors = STARTERS.find(starter => starter.key === run.starter)?.colors;
+  const { colours } = campaignCrew(run.deck.legends);
   return <section className="campaign-board" data-act={actIndex + 1} aria-labelledby="campaign-contract-title">
     <header className="campaign-board-header">
       <div>
@@ -130,7 +131,7 @@ export function CampaignHub({ run, titleRef, tools, issues, busy, printings, ins
         <p className="play-eyebrow">Your crew</p>
         <h2 id="campaign-your-crew">{run.deck.name}</h2>
         <div className="campaign-board-crew-meta">
-          <span>{colors?.join(' + ')} · {totalCopies(run.deck.cards)} main cards</span>
+          <span>{colours.join(' + ')} · {totalCopies(run.deck.cards)} main cards</span>
           {blocked && <span className="campaign-board-status" data-needs-edit>Deck needs edits</span>}
           {resumable && <span className="campaign-board-status">Match saved</span>}
           {pending && <span className="campaign-board-status">{run.phase === 'retryReward' ? 'House pack earned' : 'Contract won'}</span>}

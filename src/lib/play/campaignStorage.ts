@@ -1,5 +1,7 @@
 import type { Deck } from '../store';
 import { BY_SLUG } from '../data';
+import { COPY_MAX, MAIN_MAX } from '../decks';
+import { campaignCardFit, campaignCrew, campaignLegendIssue } from './campaignDeckRules';
 import { openDatabase } from './matchStorage';
 import { emptyCircuit, finishUnlocked, type CircuitProgress, type TableFinish } from './circuit';
 import { CAMPAIGN_VERSION, ENCOUNTERS, ENVIRONMENTS, campaignClearedCount, campaignDeckIssues, campaignPackLayout, dealCampaignPack, emptyProfile, newCampaign, pendingCampaignPack,
@@ -196,21 +198,39 @@ export function acknowledgeCampaignAct(scope: string, expected: number) {
   });
 }
 
-export function saveCampaignDeck(scope: string, expected: number, deck: Deck) {
+export function saveCampaignDeck(scope: string, expected: PackCheckpoint, edit: Deck | 'undo' | 'restore') {
   return updateCampaign(scope, (run, profile) => {
-    if (!run || run.revision !== expected || !['preparing', 'upgrading'].includes(run.phase)) throw new Error('The deck changed in another tab. Reload the campaign.');
-    // A temporary short deck is fine while editing. Every selected copy must still be earned.
-    const used: Record<string, number> = { ...deck.cards };
-    for (const slug of deck.legends) used[slug] = (used[slug] ?? 0) + 1;
-    if (Object.entries(used).some(([slug, qty]) => qty > (run.inventory[slug] ?? 0))) throw new Error('Your deck contains cards outside this campaign.');
-    if (Object.keys(deck.sideboard).some(slug => deck.sideboard[slug] > 0)) throw new Error('Campaign sideboards are not available.');
-    if (deck.legends.length !== 3 || new Set(deck.legends.map(slug => BY_SLUG.get(slug)?.name)).size !== 3)
-      throw new Error('Choose three different Legends.');
-    const base = run.lastLegal.legends.map(slug => BY_SLUG.get(slug)?.color).sort().join();
-    if (deck.legends.map(slug => BY_SLUG.get(slug)?.color).sort().join() !== base) throw new Error('Keep the starter crew colours.');
+    if (!run || run.id !== expected.id || run.revision !== expected.revision || run.resultPending
+      || !['preparing', 'upgrading'].includes(run.phase)) throw new Error('The deck changed in another tab. Reload the campaign.');
+    const undo = edit === 'undo' ? run.deckUndo : undefined;
+    if (edit === 'undo' && !undo) throw new Error('There is no deck edit to undo.');
+    const deck = undo ? undo.deck : typeof edit === 'string' ? run.lastLegal : edit;
+
+    if (typeof edit !== 'string') {
+      const legendIssue = campaignLegendIssue(run, deck.legends);
+      if (legendIssue) throw new Error(legendIssue);
+      if (Object.values(deck.sideboard).some(qty => qty !== 0)) throw new Error('Campaign sideboards are not available.');
+      const crew = campaignCrew(deck.legends);
+      const crewChanged = deck.legends.some((slug, index) => slug !== run.deck.legends[index]);
+      let total = 0;
+      for (const [slug, qty] of Object.entries(deck.cards)) {
+        if (!Number.isSafeInteger(qty) || qty < 0 || qty > COPY_MAX || qty > (run.inventory[slug] ?? 0))
+          throw new Error('Use only owned copies within the campaign copy limit.');
+        if (!qty) continue;
+        total += qty;
+        const card = BY_SLUG.get(slug);
+        const issue = card ? campaignCardFit(card, crew) : 'Unavailable in Campaign';
+        // Older drafts can be repaired in place. A crew change must resolve every affected card.
+        if (issue && (crewChanged || qty > (run.deck.cards[slug] ?? 0))) throw new Error(issue);
+      }
+      if (total > MAIN_MAX) throw new Error(`The main deck can contain at most ${MAIN_MAX} cards.`);
+    }
+
+    const issues = campaignDeckIssues(run, deck);
     const next = { ...run, revision: run.revision + 1, deck: structuredClone(deck),
-      lastLegal: campaignDeckIssues(run, deck).length ? run.lastLegal : structuredClone(deck) };
-    return { run: next, value: { run: next, profile, issues: campaignDeckIssues(next, deck) } };
+      deckUndo: undo ? undefined : { deck: run.deck, lastLegal: run.lastLegal },
+      lastLegal: undo?.lastLegal ?? (issues.length ? run.lastLegal : structuredClone(deck)) };
+    return { run: next, value: { run: next, profile, issues } };
   });
 }
 

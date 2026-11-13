@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
 import { BY_SLUG, CARDS, fitsRam, ramLimits, PRINTING_INDEX } from '../data';
 import { STARTERS } from '../starters';
-import { ENCOUNTERS, campaignDeckIssues, campaignPackLayout, encounterDeck, encounterSkill, generateReward, settleCampaignMatch, newCampaign, type CampaignRun } from './campaign';
+import { ENCOUNTERS, campaignDeckIssues, campaignPackLayout, encounterDeck, encounterSkill, generateReward, prepareCampaignReward, settleCampaignMatch, newCampaign, type CampaignRun } from './campaign';
 import { campaignPulls } from './campaignPack';
 import { matchDeckIssues, prepareMatchDeck } from './matchDeck';
 import { createMatchController } from './workerController';
@@ -109,6 +109,31 @@ describe('starter campaign', () => {
     expect(result.run.inventory[pack.offers[0]]).toBe(4);
   });
 
+  it.each([0, 2, 5, 7])('targets mono-Red bonus offers after a crew change at encounter %i while keeping sealed pulls', (encounter) => {
+    const run = newCampaign('the-heist', 'switch', 'switch');
+    run.encounter = encounter;
+    const sealed = generateReward(run);
+    run.rewards[encounter] = sealed;
+    run.deck.legends = ['adam-smasher-ender-of-legends', 'dexter-deshawn-off-the-grid', 'johnny-silverhand-rocking-renegade'];
+    for (const slug of run.deck.legends) run.inventory[slug] = 1;
+    const revised = prepareCampaignReward(run);
+    expect(revised).toMatchObject({ id: sealed.id, cards: sealed.cards, printingIds: sealed.printingIds });
+    expect(revised.offers).toHaveLength(3);
+    expect(revised.offers.every(slug => BY_SLUG.get(slug)?.color === 'Red')).toBe(true);
+    expect(new Set([...revised.cards, ...revised.offers]).size).toBe(10);
+    expect(prepareCampaignReward({ ...run, phase: 'rewardPending' })).toEqual(sealed);
+    const { offerCrew: _, ...legacy } = sealed;
+    expect(prepareCampaignReward({ ...run, rewards: { [encounter]: legacy } })).toEqual(revised);
+
+    const match = { summary: { ended: true, matchId: 'red-loss' } } as NonNullable<CampaignRun['match']>;
+    const loss = settleCampaignMatch({ ...run, rewards: { [encounter]: revised }, phase: 'inMatch', match },
+      { version: 1, completions: { 'the-heist': 0, 'embracing-power': 0 }, environments: [] }, match, 'rival').run;
+    expect(loss.latestRetry?.cards).toHaveLength(5);
+    expect(loss.latestRetry?.cards.every(slug => BY_SLUG.get(slug)?.color === 'Red')).toBe(true);
+    expect(loss.rewards[encounter]).toEqual(revised);
+    expect(loss.retryPrintings).toMatchObject(Object.fromEntries(loss.latestRetry!.cards.map((slug, i) => [slug, loss.latestRetry!.printingIds![i]])));
+  });
+
   it('keeps rival snapshots and skill for campaigns started before tuning', () => {
     const legacy = newCampaign('the-heist', 'compat', 'compat');
     delete legacy.balanceVersion;
@@ -126,10 +151,10 @@ describe('starter campaign', () => {
     expect(encounterDeck({ ...current, encounter: 8 }).legends).toContain('goro-takemura-hands-unclean');
   });
 
-  it('rejects cards from the physical Vault and decks with unsupported colour changes', () => {
+  it('rejects unowned cards and Legends in the main deck', () => {
     const run = newCampaign('the-heist', 'locked', 'seed');
     const extra = 'adam-smasher-ender-of-legends';
-    expect(campaignDeckIssues(run, { ...run.deck, cards: { ...run.deck.cards, [extra]: 1 } }).join(' ')).toContain('outside the starter colours');
+    expect(campaignDeckIssues(run, { ...run.deck, cards: { ...run.deck.cards, [extra]: 1 } }).join(' ')).toContain('Legends belong in the crew');
     expect(campaignDeckIssues(run, { ...run.deck, cards: { ...run.deck.cards, 'westbrook-netrunner': 3 } }).length).toBeGreaterThan(0);
   });
 
@@ -282,7 +307,7 @@ describe('starter campaign', () => {
     expect(chosen.run.deck).toEqual(run.deck);
     expect(chosen.run.packLayout).toBeUndefined();
     const bad = { ...chosen.run.deck, cards: { ...chosen.run.deck.cards, [offer]: 4 } };
-    await expect(saveCampaignDeck(scope, chosen.run.revision, bad)).rejects.toThrow();
+    await expect(saveCampaignDeck(scope, chosen.run, bad)).rejects.toThrow();
   });
 
   it('keeps active campaigns in separate scopes and awards the final environment once', async () => {
@@ -382,12 +407,12 @@ describe('starter campaign', () => {
           const [remove] = Object.entries(chosen.run.deck.cards).find(([, qty]) => qty > 0)!;
           const short = structuredClone(chosen.run.deck);
           short.cards[remove]--; if (!short.cards[remove]) delete short.cards[remove];
-          const saved = await saveCampaignDeck(scope, chosen.run.revision, short);
+          const saved = await saveCampaignDeck(scope, chosen.run, short);
           expect((await readCampaign(scope)).run?.deck).toEqual(short);
           expect(saved.run.lastLegal).toEqual(chosen.run.deck);
           expect(campaignDeckIssues(saved.run, saved.run.deck).length).toBeGreaterThan(0);
-          await expect(saveCampaignDeck(scope, chosen.run.revision, chosen.run.deck)).rejects.toThrow();
-          await saveCampaignDeck(scope, saved.run.revision, saved.run.lastLegal);
+          await expect(saveCampaignDeck(scope, chosen.run, chosen.run.deck)).rejects.toThrow();
+          await saveCampaignDeck(scope, saved.run, saved.run.lastLegal);
         }
         if ([2, 5].includes(encounter)) {
           const current = (await readCampaign(scope)).run!;
@@ -395,7 +420,7 @@ describe('starter campaign', () => {
           const prior = current.deck.legends.find(slug => BY_SLUG.get(slug)?.color === offered.color
             && (BY_SLUG.get(slug)?.ram ?? 0) <= (offered.ram ?? 0))!;
           const swapped = { ...current.deck, legends: current.deck.legends.map(slug => slug === prior ? offer : slug) };
-          const updated = await saveCampaignDeck(scope, current.revision, swapped);
+          const updated = await saveCampaignDeck(scope, current, swapped);
           expect(campaignDeckIssues(updated.run, updated.run.deck)).toEqual([]);
           sawRecruit = true;
         } else {
@@ -406,7 +431,7 @@ describe('starter campaign', () => {
             const updated = structuredClone(current.deck);
             updated.cards[remove]--; if (!updated.cards[remove]) delete updated.cards[remove];
             updated.cards[available] = 1;
-            const saved = await saveCampaignDeck(scope, current.revision, updated);
+            const saved = await saveCampaignDeck(scope, current, updated);
             expect(campaignDeckIssues(saved.run, saved.run.deck)).toEqual([]);
           }
         }
@@ -440,7 +465,7 @@ describe('starter campaign', () => {
       ...run!.deck, notes: (() => 'cannot clone') as unknown as string,
     } }, value: null }))).rejects.toThrow();
     expect((await readCampaign(scope)).run).toEqual(started.run);
-    const edited = await saveCampaignDeck(scope, started.run.revision, started.run.deck);
+    const edited = await saveCampaignDeck(scope, started.run, started.run.deck);
     expect(edited.run.revision).toBe(started.run.revision + 1);
   });
 });

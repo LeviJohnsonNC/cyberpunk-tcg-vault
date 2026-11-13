@@ -4,7 +4,7 @@ import { BY_SLUG, PRINTING_INDEX, type Printing } from '../lib/data';
 import { STARTERS, type StarterKey } from '../lib/starters';
 import type { Deck } from '../lib/store';
 import { totalCopies } from '../lib/deckDraft';
-import { COPY_MAX, MAIN_MAX } from '../lib/decks';
+import { campaignCardAddReason, campaignCrew } from '../lib/play/campaignDeckRules';
 import { ENCOUNTERS, ENVIRONMENTS, campaignDeckIssues, pendingCampaignPack, type CampaignProfile, type CampaignRun } from '../lib/play/campaign';
 import { readCampaign, startCampaign, resetCampaign, chooseReward, saveCampaignDeck, claimEnvironment, equipEnvironment, openCampaignPack, revealCampaignSlot, showCampaignBonus, advanceCampaignScene, finishCampaignPack, acknowledgeCampaignAct, acknowledgeCampaignResult } from '../lib/play/campaignStorage';
 import type { CampaignWorkerResponse } from '../lib/play/campaign.worker';
@@ -16,11 +16,12 @@ import { PlayTable } from './PlayTable';
 import { ReactiveRoom } from './ReactiveRoom';
 import { campaignPulls, packRarityLabel } from '../lib/play/campaignPack';
 import { CampaignRewardArt } from './CampaignRewardArt';
-import { latestPack, needsActBriefing } from '../lib/play/campaignPresentation';
+import { latestCampaignReward, needsActBriefing } from '../lib/play/campaignPresentation';
 import { CampaignArrival, CampaignRecap, CampaignRooms } from './CampaignMoments';
 import { CampaignPack } from './CampaignPack';
 import { CampaignUpgradeDialog } from './CampaignDeckReview';
 import { CampaignHub, CampaignHubTools, CampaignTimeline } from './CampaignHub';
+import { CampaignCrewEditor } from './CampaignCrewEditor';
 import { CampaignWorkbench } from './CampaignWorkbench';
 import { aftermathBeats } from '../lib/play/campaignScenes';
 import { CampaignInvitation, CampaignRivalSeat, CampaignScene } from './CampaignStory';
@@ -63,10 +64,14 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   const [concede, setConcede] = useState(false);
   const [replace, setReplace] = useState<StarterKey>();
   const [startingCrew, setStartingCrew] = useState<StarterKey>();
-  const [undo, setUndo] = useState<SavedRun & { deck: Deck }>();
+  const packReviewKey = `cptv.campaign.reviewedPack:${scope}`;
+  const [reviewedPack, setReviewedPack] = useState(() => {
+    try { return localStorage.getItem(packReviewKey); } catch { return null; }
+  });
   const [surface, setSurface] = useState<CampaignSurface>('hub');
   const [inspected, setInspected] = useState<CardSelection>();
-  const [reviewed, setReviewed] = useState<CardSelection & { outgoing?: string }>();
+  const [crewEdit, setCrewEdit] = useState<SavedRun & { slot?: number; incoming?: string }>();
+  const [reviewed, setReviewed] = useState<CardSelection & SavedRun & { swap?: boolean }>();
   const hub = useRef<HTMLDivElement>(null);
   const inspection = useRef<HTMLDialogElement>(null);
   const worker = useRef<Worker>(null);
@@ -210,8 +215,8 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
       try { localStorage.removeItem(introKey); } catch { /* Optional preference. */ }
       presentation.playback?.skip();
       setRun(undefined); setProfile(cleared); setSnapshot(undefined); setShowTable(false); setOpening(undefined);
-      setNewRunFrom(undefined); setResetTarget(undefined); setReplace(undefined); setUndo(undefined);
-      setInspected(undefined); setReviewed(undefined); setSurface('hub'); setError(undefined); setIntroSeen(false);
+      setNewRunFrom(undefined); setResetTarget(undefined); setReplace(undefined);
+      setInspected(undefined); setReviewed(undefined); setCrewEdit(undefined); setSurface('hub'); setError(undefined); setIntroSeen(false);
       window.scrollTo({ top: 0, behavior: 'instant' });
       requestAnimationFrame(() => hub.current?.focus({ preventScroll: true }));
     } catch (cause) {
@@ -229,7 +234,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
       finally { setStartingCrew(undefined); }
     }, value => {
       focusBriefing.current = true;
-      setRun(value.run); setProfile(value.profile); setNewRunFrom(undefined); setShowTable(false); setSnapshot(undefined); setOpening(undefined); setUndo(undefined); setSurface('hub'); setReviewed(undefined);
+      setRun(value.run); setProfile(value.profile); setNewRunFrom(undefined); setShowTable(false); setSnapshot(undefined); setOpening(undefined); setSurface('hub'); setReviewed(undefined); setCrewEdit(undefined);
     });
   }
 
@@ -249,10 +254,13 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
     });
   }
 
-  function edit(deck: Deck, saved?: () => void) {
+  function edit(deck: Deck | 'undo' | 'restore', saved?: () => void, preview?: SavedRun) {
     if (!run) return;
-    void apply(() => saveCampaignDeck(scope, run.revision, deck), value => {
-      setUndo({ id: run.id, deck: run.deck, revision: value.run.revision });
+    if (preview && (run.id !== preview.id || run.revision !== preview.revision)) {
+      setError('The saved deck changed. Close and reopen the preview.');
+      return;
+    }
+    void apply(() => saveCampaignDeck(scope, run, deck), value => {
       setRun(value.run); saved?.(); sound.cue('reward-lock');
     });
   }
@@ -260,8 +268,9 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   function quantity(slug: string, amount: number) {
     if (!run) return;
     const have = run.deck.cards[slug] ?? 0;
-    if (have + amount < 0 || have + amount > (run.inventory[slug] ?? 0) || have + amount > COPY_MAX) return;
-    if (amount > 0 && totalCopies(run.deck.cards) >= MAIN_MAX) return;
+    const card = BY_SLUG.get(slug);
+    if (have + amount < 0 || !card) return;
+    if (amount > 0 && campaignCardAddReason(run, card, campaignCrew(run.deck.legends), totalCopies(run.deck.cards))) return;
     const cards = { ...run.deck.cards, [slug]: have + amount };
     if (!cards[slug]) delete cards[slug];
     edit({ ...run.deck, cards });
@@ -280,7 +289,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
       const resumed = value.run?.phase === 'inMatch' || value.run?.resultPending ? await send({ type: 'resume' }) : undefined;
       return { ...value, snapshot: resumed?.snapshot };
     }, value => {
-      setRun(value.run); setProfile(value.profile); setNewRunFrom(undefined); setSnapshot(value.snapshot); setShowTable(!!value.snapshot); setUndo(undefined);
+      setRun(value.run); setProfile(value.profile); setNewRunFrom(undefined); setSnapshot(value.snapshot); setShowTable(!!value.snapshot);
       if (!value.snapshot && value.run && pendingCampaignPack(value.run)) changeSurface(value.run.aftermath && !value.run.aftermath.sceneSeen ? 'scene' : 'pack');
     });
   }
@@ -289,6 +298,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
     focusBriefing.current = true;
     setSurface(next);
     setReviewed(undefined);
+    setCrewEdit(undefined);
     window.scrollTo({ top: 0, behavior: 'instant' });
   }
 
@@ -333,23 +343,33 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   const showInvitation = !!profile && choosingStarter && !introSeen;
   const actPending = run ? needsActBriefing(run) : false;
   const issues = run ? campaignDeckIssues(run, run.deck) : [];
-  const iconicPrintings = new Map<string, Printing>();
+  const campaignPrintings = new Map<string, Printing>();
+  function rememberPrinting(slug: string, printing?: Printing) {
+    if (printing && (printing.rarity.startsWith('Iconic ') || !campaignPrintings.has(slug))) campaignPrintings.set(slug, printing);
+  }
   for (const [index, reward] of Object.entries(run?.rewards ?? {})) {
     // A sealed reward can exist while the match is still in progress.
     if (Number(index) >= (run?.encounter ?? 0)) continue;
-    for (const { slug, printing } of campaignPulls(reward)) {
-      if (printing?.rarity.startsWith('Iconic ')) iconicPrintings.set(slug, printing);
-    }
+    for (const { slug, printing } of campaignPulls(reward)) rememberPrinting(slug, printing);
   }
+  for (const [slug, id] of Object.entries(run?.retryPrintings ?? {})) rememberPrinting(slug, PRINTING_INDEX.get(id)?.printing);
   if (run?.latestRetry) {
-    for (const { slug, printing } of campaignPulls(run.latestRetry)) {
-      if (printing?.rarity.startsWith('Iconic ')) iconicPrintings.set(slug, printing);
-    }
+    for (const { slug, printing } of campaignPulls(run.latestRetry)) rememberPrinting(slug, printing);
   }
   const inspectCard = (slug: string, printingId?: string) => setInspected({ slug, printingId });
-  const reviewCard = (slug: string, printingId = iconicPrintings.get(slug)?.id, outgoing?: string) => setReviewed({ slug, printingId, outgoing });
+  function reviewCard(slug: string, printingId = campaignPrintings.get(slug)?.id, swap?: boolean) {
+    if (run) setReviewed({ id: run.id, revision: run.revision, slug, printingId, swap });
+  }
+  const latestReward = run && latestCampaignReward(run);
+  const currentPack = run && latestReward && `${run.id}:${latestReward.id}`;
+  function acknowledgePack() {
+    if (!currentPack) return;
+    setReviewedPack(currentPack);
+    try { localStorage.setItem(packReviewKey, currentPack); } catch { /* Session only. */ }
+  }
   const inspectedCard = inspected && BY_SLUG.get(inspected.slug);
   const inspectedPrinting = PRINTING_INDEX.get(inspected?.printingId ?? '')?.printing;
+  const equippedSlot = run && inspected ? run.deck.legends.indexOf(inspected.slug) : -1;
   const tableOpen = showTable && !!snapshot && snapshot.matchId === run?.match?.summary.matchId && !newRunFrom;
   const resultOpen = tableOpen && !!snapshot?.view.gameEnded && !presentation.playing;
   const editable = run && !run.resultPending && !actPending && ['preparing', 'upgrading'].includes(run.phase);
@@ -405,10 +425,11 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
             if (node && focusStarter.current) { focusStarter.current = false; node.focus({ preventScroll: true }); }
           }} />)}
       {run && profile && !choosingStarter && (workbench
-        ? <CampaignWorkbench run={run} titleRef={focusTitle} busy={busy} error={error} issues={issues} canUndo={undo?.id === run.id && undo.revision === run.revision}
-          fromPack={surface === 'new-cards'} printings={iconicPrintings} inspect={inspectCard} review={reviewCard} quantity={quantity}
-          undo={() => { if (undo?.id === run.id && undo.revision === run.revision) edit(undo.deck); }} restore={() => edit(structuredClone(run.lastLegal))}
-          back={() => changeSurface('hub')} />
+        ? <CampaignWorkbench run={run} titleRef={focusTitle} busy={busy} error={error} issues={issues} canUndo={!!run.deckUndo}
+          fromPack={surface === 'new-cards'} packNew={!!currentPack && currentPack !== reviewedPack} acknowledgePack={acknowledgePack}
+          printings={campaignPrintings} inspect={inspectCard} review={reviewCard} quantity={quantity}
+          manage={(slot, incoming) => setCrewEdit({ id: run.id, revision: run.revision, slot, incoming })}
+          undo={() => edit('undo')} restore={saved => edit('restore', saved)} back={() => changeSurface('hub')} />
         : showAftermath && scenePending && run.aftermath && encounter
           ? <CampaignScene encounter={encounter.id} beats={beats} index={run.aftermath.beat} outcome={run.aftermath.outcome}
             busy={busy} tools={tools} next={() => continueScene(run)} skip={() => continueScene(run, true)} />
@@ -426,7 +447,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
             flipSlot={slot => apply(() => revealCampaignSlot(scope, run, earnedPack.id, slot), value => setRun(value.run))}
             revealSound={tier => sound.cue(tier === 'foil' ? 'pack-foil' : tier === 'rare' ? 'pack-rare' : 'pack-reveal')}
             choose={slug => void apply(() => chooseReward(scope, run, earnedPack.id, slug), value => {
-              setRun(value.run); changeSurface('hub');
+              setRun(value.run); changeSurface(needsActBriefing(value.run) ? 'hub' : 'new-cards');
               sound.cue(needsActBriefing(value.run) ? 'act-arrival' : 'reward-lock');
             })} />
         : actPending || finale
@@ -450,12 +471,16 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
               <button type="button" className="btn" onClick={takeDeckToBuilder}>Open deck as draft</button>
             </section>}
           </section>
-          : <CampaignHub run={run} titleRef={focusTitle} tools={tools} issues={issues} busy={busy} printings={iconicPrintings}
-            inspect={inspectCard} tune={() => changeSurface('workbench')} reviewNew={editable && latestPack(run).length ? () => changeSurface('new-cards') : undefined}
+          : <CampaignHub run={run} titleRef={focusTitle} tools={tools} issues={issues} busy={busy} printings={campaignPrintings}
+            inspect={inspectCard} tune={() => changeSurface('workbench')} reviewNew={editable && latestReward ? () => changeSurface('new-cards') : undefined}
             primary={run.resultPending || run.phase === 'inMatch' ? resume : earnedPack ? () => changeSurface(aftermathSurface) : launch} />)}
     </div>}
-    {reviewed && run && workbench && <CampaignUpgradeDialog key={reviewed.slug} run={run} slug={reviewed.slug} printingId={reviewed.printingId}
-      initialOutgoing={reviewed.outgoing} busy={busy} error={error} close={() => setReviewed(undefined)} commit={deck => edit(deck, () => setReviewed(undefined))} />}
+    {reviewed && run && workbench && <CampaignUpgradeDialog key={reviewed.slug} run={run} slug={reviewed.slug} printingId={reviewed.printingId} printings={campaignPrintings}
+      swap={reviewed.swap} busy={busy} error={error} close={() => setReviewed(undefined)}
+      commit={deck => edit(deck, () => setReviewed(undefined), reviewed)} />}
+    {crewEdit && run && workbench && <CampaignCrewEditor run={run} printings={campaignPrintings}
+      slot={crewEdit.slot} incoming={crewEdit.incoming} busy={busy} error={error} inspect={inspectCard}
+      close={() => setCrewEdit(undefined)} commit={deck => edit(deck, () => setCrewEdit(undefined), crewEdit)} />}
     <dialog ref={inspection} className="campaign-inspection" onClose={() => setInspected(undefined)} aria-label={inspectedCard?.display ?? 'Card details'}>
       <button className="btn quiet" onClick={() => setInspected(undefined)}>Close card</button>
       {inspected && inspectedCard && <div><CampaignRewardArt pull={{ slug: inspected.slug, printing: inspectedPrinting }} alt={inspectedCard.display} exact={choosingStarter || !!inspectedPrinting} /><section>
@@ -463,6 +488,10 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
         <h2>{inspectedCard.display}</h2>
         {inspectedPrinting && <p className="campaign-card-facts">{inspectedCard.color} · {inspectedCard.type}{inspectedCard.type !== 'Legend' && inspectedCard.cost != null ? ` · Cost ${inspectedCard.cost}` : ''}{inspectedCard.ram != null ? ` · RAM ${inspectedCard.ram}` : ''}</p>}
         <p>{inspectedCard.text}</p>
+        {workbench && run && !crewEdit && equippedSlot >= 0 && <button type="button" className="btn quiet" disabled={busy} onClick={() => {
+          setInspected(undefined);
+          setCrewEdit({ id: run.id, revision: run.revision, slot: equippedSlot });
+        }}>Replace this Legend</button>}
         {!choosingStarter && !!run?.inventory[inspected.slug] && <p>Earned {run.inventory[inspected.slug]} · In deck {run.deck.cards[inspected.slug] ?? (run.deck.legends.includes(inspected.slug) ? 1 : 0)}</p>}
       </section></div>}
     </dialog>

@@ -1,4 +1,7 @@
-import { BY_SLUG, fitsRam, ramLimits } from '../data';
+import { BY_SLUG } from '../data';
+import { totalCopies } from '../deckDraft';
+import { MAIN_MIN } from '../decks';
+import { campaignCardAddReason, campaignCardFit, campaignCrew } from './campaignDeckRules';
 import { campaignPulls, RETRY_PACK_SIZE, type CampaignPull } from './campaignPack';
 import { campaignClearedCount, campaignDeckIssues, makeStarterDeck, pendingCampaignPack, type CampaignRun } from './campaign';
 
@@ -13,9 +16,13 @@ export function needsActBriefing(run: CampaignRun) {
     && (run.briefedAct ?? 0) < Math.floor(run.encounter / 3);
 }
 
-export function latestPack(run: CampaignRun): CampaignPull[] {
-  const pack = pendingCampaignPack(run) ?? run.latestRetry
+export function latestCampaignReward(run: CampaignRun) {
+  return pendingCampaignPack(run) ?? run.latestRetry
     ?? run.rewards[run.phase === 'claimingFinish' || run.phase === 'completed' ? run.encounter : run.encounter - 1];
+}
+
+export function latestPack(run: CampaignRun): CampaignPull[] {
+  const pack = latestCampaignReward(run);
   return pack ? [...campaignPulls(pack), ...(pack.choice ? [{ slug: pack.choice }] : [])] : [];
 }
 
@@ -25,29 +32,29 @@ export function previewCampaignEdit(run: CampaignRun, incoming: string, outgoing
   const deck = structuredClone(run.deck);
   if (!card || !(run.inventory[incoming] > 0)) return { deck, issues: ['This card is not in your campaign reserve.'] };
   if (incoming === outgoing) return { deck, issues: ['Choose a different card to return to reserve.'] };
-  if (card.type === 'Legend') {
-    const prior = BY_SLUG.get(outgoing ?? '');
-    if (!outgoing || !deck.legends.includes(outgoing) || prior?.color !== card.color)
-      return { deck, issues: ['Choose a crew member of the same colour.'] };
-    deck.legends = deck.legends.map(slug => slug === outgoing ? incoming : slug);
-  } else {
-    if (outgoing) {
-      if (!(deck.cards[outgoing] > 0)) return { deck, issues: ['That card is no longer in your main deck.'] };
-      if (--deck.cards[outgoing] === 0) delete deck.cards[outgoing];
-    }
-    deck.cards[incoming] = (deck.cards[incoming] ?? 0) + 1;
+  if (card.type === 'Legend') return { deck, issues: ['Manage Legends to change your crew.'] };
+  if (outgoing) {
+    if (!(deck.cards[outgoing] > 0)) return { deck, issues: ['That card is no longer in your main deck.'] };
+    if (--deck.cards[outgoing] === 0) delete deck.cards[outgoing];
   }
-  return { deck, issues: campaignDeckIssues(run, deck) };
+  const addReason = campaignCardAddReason(run, card, campaignCrew(deck.legends), totalCopies(deck.cards));
+  if (addReason) return { deck: run.deck, issues: [addReason] };
+  deck.cards[incoming] = (deck.cards[incoming] ?? 0) + 1;
+  const issues = campaignDeckIssues(run, deck);
+  // The editor can save incremental improvements while the deck is under construction.
+  const priorIssues = new Set(campaignDeckIssues(run, run.deck));
+  const blockers = issues.filter(issue => !priorIssues.has(issue) && !issue.startsWith('Main deck must be'));
+  return { deck, issues, canSave: !blockers.length && totalCopies(deck.cards) >= Math.min(MAIN_MIN, totalCopies(run.deck.cards)) };
 }
 
 export function packCardContext(run: CampaignRun, slug: string) {
   const card = BY_SLUG.get(slug);
   if (!card) return 'Card details unavailable.';
-  if (!run.deck.legends.some(legend => BY_SLUG.get(legend)?.color === card.color)) return `Outside your starter’s colours · ${card.color}`;
   if (card.type === 'Legend') return `${card.color} crew option · ${card.ram ?? 0} RAM`;
-  const fits = fitsRam(card, ramLimits(run.deck.legends));
+  const fit = campaignCardFit(card, campaignCrew(run.deck.legends));
+  if (fit) return fit;
   const used = run.deck.cards[slug] ?? 0;
-  return `${used ? `${used} already in your deck` : 'New option for your deck'} · ${fits ? 'Fits your crew’s RAM' : `Needs ${card.ram ?? 0} ${card.color} RAM`}`;
+  return used ? `${used} already in your deck` : 'Fits your crew';
 }
 
 /** Derived from saved inventory and the actual finished list, never simulated match statistics. */
