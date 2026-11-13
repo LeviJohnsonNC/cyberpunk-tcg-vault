@@ -1,7 +1,9 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import { BY_SLUG, CARDS, FX, PRICES, _clearQuoteCache, acquireQuote, printingLabel, valueHolding } from './data';
+import { describe, expect, it, vi } from 'vitest';
+import { BY_SLUG, CARDS, FX, PRICES, acquireQuote, printingLabel, valueHolding } from './data';
 // @ts-expect-error plain ESM generator module, no types
 import { buildPrices } from '../../scripts/price-build.mjs';
+
+vi.mock('../data/prices.json', () => import('./fixtures/prices.json'));
 
 const card = (slug: string) => BY_SLUG.get(slug)!;
 const printing = (slug: string, set: string) => card(slug).printings.find((p) => p.set === set)!;
@@ -11,7 +13,9 @@ const jackieBeta = printing(JACKIE, 'The Heist — Beta Starter Deck').id;
 const novaEO = printing('adam-smasher-ender-of-legends', 'Edgerunner Open S 1').id;
 const smasherRetail = printing('adam-smasher-ender-of-legends', 'Welcome to Night City — Retail').id;
 
-afterEach(() => _clearQuoteCache());
+const kiroshiRetail = printing('kiroshi-optics', 'Welcome to Night City — Retail').id;
+const squadRetail = printing('psycho-squad', 'Welcome to Night City — Retail').id;
+const squadBeta = printing('psycho-squad', 'Welcome to Night City — Beta').id;
 
 describe('valueHolding: what a copy you own is worth', () => {
   it('leaves the Edgerunner Open Nova Rare unpriced even though the base Retail printing is priced', () => {
@@ -21,10 +25,9 @@ describe('valueHolding: what a copy you own is worth', () => {
 
   it('values a listing-only Heist Retail Legend at its verified Beta twin, naming the source printing', () => {
     const v = valueHolding(jackieRetail)!;
-    expect(PRICES.printings[jackieRetail].market).toBeNull();
     expect(v.basis).toBe('Beta proxy');
     expect(v.sourcePrintingId).toBe(jackieBeta);
-    expect(v.cad).toBeCloseTo(PRICES.printings[jackieBeta].market! * FX, 6);
+    expect(v.cad).toBeCloseTo(14.52 * FX, 6);
     expect(printingLabel(v.sourcePrintingId, false)).toMatch(/Beta/);
   });
 
@@ -34,12 +37,20 @@ describe('valueHolding: what a copy you own is worth', () => {
     expect(v.sourcePrintingId).toBe(jackieBeta);
   });
 
-  it('uses the exact low listing when there is no market quote and no cheaper verified twin', () => {
-    const lowOnly = Object.entries(PRICES.printings).find(([id, q]) => q.market == null && q.low != null && !PRICES.pairs[id]);
-    if (!lowOnly) return; // feed-dependent
-    const v = valueHolding(lowOnly[0])!;
-    expect(v.basis).toBe('Low listing');
-    expect(v.cad).toBeCloseTo(lowOnly[1].low! * FX, 6);
+  it('uses the direct Retail market quote even when the verified twin is cheaper', () => {
+    expect(valueHolding(kiroshiRetail)).toMatchObject({
+      basis: 'Market',
+      sourcePrintingId: kiroshiRetail,
+      cad: 0.5 * FX,
+    });
+  });
+
+  it('uses the exact low listing when the verified twin market is higher', () => {
+    expect(valueHolding(squadRetail)).toMatchObject({
+      basis: 'Low listing',
+      sourcePrintingId: squadRetail,
+      cad: 3 * FX,
+    });
   });
 
   it('never borrows a price for a printing outside a verified pair', () => {
@@ -75,19 +86,16 @@ describe('acquireQuote: what one playable copy costs to buy', () => {
     expect(printingLabel(q.printingId, false)).toMatch(/Beta/);
   });
 
-  it('prefers any market quote over a listing, and returns null when nothing is quoted', () => {
-    const saved = { ...PRICES.printings };
-    try {
-      for (const p of card(JACKIE).printings) delete PRICES.printings[p.id];
-      _clearQuoteCache();
-      expect(acquireQuote(JACKIE)).toBeNull();
-      PRICES.printings[jackieRetail] = { market: null, low: 3, finish: 'Foil', url: null };
-      PRICES.printings[jackieBeta] = { market: 9, low: 8, finish: 'Foil', url: null };
-      _clearQuoteCache();
-      expect(acquireQuote(JACKIE)).toMatchObject({ basis: 'Market', printingId: jackieBeta });
-    } finally {
-      Object.assign(PRICES.printings, saved);
-    }
+  it('prefers a market quote over a cheaper listing', () => {
+    expect(acquireQuote('psycho-squad')).toMatchObject({
+      basis: 'Market',
+      printingId: squadBeta,
+      cad: 9 * FX,
+    });
+  });
+
+  it('returns null when none of a card’s printings has a quote', () => {
+    expect(acquireQuote('floor-it')).toBeNull();
   });
 });
 
