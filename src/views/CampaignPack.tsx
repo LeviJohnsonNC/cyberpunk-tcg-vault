@@ -109,10 +109,20 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
     const card = featured.current;
     if (!from || !card || reducedMotion() || !card.animate) return;
     const to = card.getBoundingClientRect();
+    const pose = card.querySelector<HTMLElement>('.campaign-tabletop-pose');
+    const scale = from.card.width / to.width;
+    const x = from.card.left + from.card.width / 2 - to.left - to.width / 2;
+    const y = from.card.top + from.card.height / 2 - to.top - to.height / 2;
+    const duration = 330;
+    const easing = 'cubic-bezier(.22,.74,.25,1)';
     const flight = card.animate([
-      { transform: `translate(${from.card.left - to.left}px, ${from.card.top - to.top}px) scale(${from.card.width / to.width})` },
+      { transform: `translate(${x}px, ${y}px) scale(${scale})` },
       { transform: 'none' },
-    ], { duration: 295, easing: 'cubic-bezier(.2,.75,.22,1)' });
+    ], { duration, easing });
+    const settlePose = pose?.animate([
+      { transform: 'perspective(1050px) rotateX(12deg)' },
+      { transform: getComputedStyle(pose).transform },
+    ], { duration, easing });
     const row = lineup.current;
     const rowTo = row?.getBoundingClientRect();
     const slide = row && rowTo && row.animate([
@@ -123,7 +133,7 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
     spotlight?.setAttribute('data-in-flight', '');
     const lower = () => spotlight?.removeAttribute('data-in-flight');
     void flight.finished.then(lower, lower);
-    const stop = () => { flight.cancel(); slide?.cancel(); lower(); };
+    const stop = () => { flight.cancel(); settlePose?.cancel(); slide?.cancel(); lower(); };
     const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
     document.addEventListener('visibilitychange', stop);
     motion.addEventListener('change', stop);
@@ -334,7 +344,9 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
           <div className="campaign-tabletop-spotlight" data-rarity={pull?.printing?.rarity} data-tier={pull ? revealTier(pull.printing?.rarity) : undefined}>
             {pull && <button ref={featured} type="button" className="campaign-tabletop-feature" onClick={() => inspect(pull.slug, pull.printing?.id)}
               aria-label={`Inspect ${displayName(pull.slug)}`} key={active}>
-              <CampaignRewardArt pull={pull} alt="" exact showNameWhileLoading />
+              <span className="campaign-tabletop-pose">
+                <CampaignRewardArt pull={pull} alt="" exact showNameWhileLoading />
+              </span>
             </button>}
           </div>
           {pull && <div className="campaign-tabletop-copy" aria-live="polite">
