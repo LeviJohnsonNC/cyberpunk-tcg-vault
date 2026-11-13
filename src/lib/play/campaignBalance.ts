@@ -41,7 +41,7 @@ interface RivalTuning {
   skill?: RivalSkill;
 }
 
-/** First Call's fixed practice list for The Heist's route. */
+/** Moth’s tuned Embracing Power list for The Heist’s route. */
 export const HEIST_OPENING_RIVAL: RivalTuning = {
   cards: {
     'satori-sword-of-saburo': -2, 'mantis-blades': -2, 'maxtac-av': -1,

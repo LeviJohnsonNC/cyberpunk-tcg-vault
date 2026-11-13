@@ -95,7 +95,7 @@ export function CampaignHub({ run, titleRef, tools, issues, busy, printings, ins
 }) {
   const encounter = ENCOUNTERS[run.encounter];
   const chapter = campaignChapters[encounter.id];
-  const rival = run.opponents?.[run.encounter] ?? encounterDeck(run);
+  const rival = encounterDeck(run);
   const actIndex = Math.floor(run.encounter / 3);
   const pending = !!pendingCampaignPack(run);
   const storyPending = pending && run.aftermath && !run.aftermath.sceneSeen;
@@ -110,7 +110,6 @@ export function CampaignHub({ run, titleRef, tools, issues, busy, printings, ins
         <h1 id="campaign-contract-title" tabIndex={-1} ref={titleRef}>{encounter.title}<span aria-hidden="true">.</span></h1>
         <p>{encounter.brief}</p>
       </div>
-      {tools}
     </header>
 
     <div className="campaign-board-matchup">
@@ -132,7 +131,9 @@ export function CampaignHub({ run, titleRef, tools, issues, busy, printings, ins
         <h2 id="campaign-your-crew">{run.deck.name}</h2>
         <div className="campaign-board-crew-meta">
           <span>{colors?.join(' + ')} · {totalCopies(run.deck.cards)} main cards</span>
-          <span className="campaign-board-ready" data-needs-edit={blocked || undefined}>{blocked ? 'Deck needs edits' : resumable ? 'Match saved' : pending ? run.phase === 'retryReward' ? 'House pack earned' : 'Contract won' : 'Ready to play'}</span>
+          {blocked && <span className="campaign-board-status" data-needs-edit>Deck needs edits</span>}
+          {resumable && <span className="campaign-board-status">Match saved</span>}
+          {pending && <span className="campaign-board-status">{run.phase === 'retryReward' ? 'House pack earned' : 'Contract won'}</span>}
         </div>
         <CampaignCrewCards deck={run.deck} printings={printings} inspect={inspect} label="Equipped Legends" />
         {canTune && <div className="campaign-board-crew-actions">
@@ -144,6 +145,7 @@ export function CampaignHub({ run, titleRef, tools, issues, busy, printings, ins
 
     <div className="campaign-board-footer">
       <CampaignTimeline run={run} />
+      {tools}
       <div className="campaign-board-launch">
         <button type="button" className="campaign-invitation-cta" onClick={primary} disabled={busy || blocked} aria-describedby={blocked ? 'campaign-launch-issue' : undefined}>
           {pending ? storyPending ? 'Continue story' : 'Open your pack' : resumable ? 'Return to match' : run.attempts ? 'Retry contract' : 'Take the contract'} <span aria-hidden="true">→</span>

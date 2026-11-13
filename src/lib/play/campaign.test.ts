@@ -111,7 +111,10 @@ describe('starter campaign', () => {
     legacy.opponents = ENCOUNTERS.map((_, encounter) => encounterDeck({ ...legacy, encounter }));
     const current = newCampaign('the-heist', 'current', 'compat');
     expect(encounterDeck(legacy).cards).toEqual(STARTERS.find(starter => starter.key === 'embracing-power')?.cards);
-    expect(encounterDeck(current).name).toContain('Practice List');
+    const tuned = encounterDeck(current);
+    expect(tuned.name).toBe('Moth’s Embracing Power');
+    current.opponents[0].name = 'Embracing Power · Practice List';
+    expect(encounterDeck(current)).toEqual(tuned);
     expect(encounterSkill({ ...legacy, encounter: 3 })).toBe('standard');
     expect(encounterSkill({ ...current, encounter: 3 })).toBe('sharp');
     expect(encounterDeck({ ...legacy, encounter: 8 }).legends).toContain('yorinobu-arasaka-embracing-destruction');
