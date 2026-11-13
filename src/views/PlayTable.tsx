@@ -368,7 +368,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
   }
   function actionButton(index: number, label?: string, className = 'btn quiet') {
     const action = actions[index];
-    return <button key={`${action.id}:${index}`} type="button" className={className} disabled={busy || (!!selected && !choice && ['passPhase', 'resolveAttack'].includes(action.id))} data-move={action.id} data-action-index={index}
+    return <button key={`${action.id}:${index}`} type="button" className={className} disabled={busy || (!!selected && !choice && action.id === 'passPhase')} data-move={action.id} data-action-index={index}
       aria-pressed={action.fields({}).length ? selection === index : undefined} onClick={() => beginIntent({ action: index, picks: {} }, true)}>{label ?? action.label}</button>;
   }
   const special = actions.map((action, index) => ({ action, index })).filter(({ action }) => !action.fields({}).length);
