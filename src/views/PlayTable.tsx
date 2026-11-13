@@ -14,6 +14,7 @@ import { GigZones, PlayerBench, RivalBench, SeatField } from './PlayMat';
 import { PlayChoices } from './PlayChoices';
 import { useTableDrag } from './useTableDrag';
 import { useTableMotion } from './useTableMotion';
+import { useMatchOpening } from './useMatchOpening';
 import { useMatchSound } from './useMatchSound';
 import { imageUrl } from '../lib/data';
 import { beatPace } from '../lib/play/matchMotion';
@@ -82,13 +83,18 @@ function ContextMenu({ context, children, close }: { context: Context; children:
   </div>, document.body);
 }
 
-export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, edit, circuit, playback, feedback, reduced, controls, cue, campaign }: {
+export function PlayTable({ scope, snapshot, names, busy: saving, error, send, rematch, edit, circuit, playback, feedback, reduced, controls, cue, campaign }: {
   campaign?: CampaignResultDetails & { rival: ReactNode };
   cue?: (name: TableCue, delayMs?: number) => (() => void) | undefined;
   playback?: MatchPlayback; feedback?: MatchBeat; scope: string; snapshot: MatchSnapshot; names: Record<Seat, string>; busy: boolean; error?: string;
   send: (move: Move) => void; rematch: () => void; edit: () => void; circuit?: () => void; reduced: boolean; controls?: ReactNode;
 }) {
   const { view } = snapshot;
+  const setup = view.gamePhase === 'setup';
+  const opening = useMatchOpening(!!snapshot.openingDeal && setup, reduced, cue);
+  const busy = saving || opening.showing;
+  const introSkip = useRef<HTMLButtonElement>(null);
+  const restoreOpeningFocus = useRef(false);
   const contract = CIRCUIT_CONTRACTS.find(item => item.id === snapshot.circuit?.contractId);
   const actions = matchActions(view);
   // Keep the established key so a valid, uncommitted selection survives this UI update.
@@ -144,16 +150,24 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
     : waiting ? 'Rival is deciding' : choice?.type === 'chooseFirstPlayer' ? 'Choose turn order'
     : view.gamePhase === 'setup' ? 'Opening hand' : choice ? actions[0]?.label ?? 'Resolve a choice'
     : combatStep === 'React' ? 'Reaction window' : combatStep ?? 'Your move';
-  const setup = view.gamePhase === 'setup';
   const turnKey = setup ? 'setup' : `${view.turnNumber}:${view.activePlayerId}`;
   const [firstTurn] = useState(turnKey);
-  // A match that opens on setup is new: name the two crews before the first cards are dealt.
-  const [intro] = useState(!!snapshot.openingDeal && setup);
+  useEffect(() => {
+    if (opening.showing) {
+      introSkip.current?.focus({ preventScroll: true });
+      restoreOpeningFocus.current = true;
+    } else if (restoreOpeningFocus.current) {
+      restoreOpeningFocus.current = false;
+      const command = grid.current?.querySelector<HTMLElement>('.play-command-inner');
+      (command?.querySelector<HTMLButtonElement>('button:not(:disabled)') ?? command)?.focus({ preventScroll: true });
+    }
+  }, [opening.showing]);
   // Movement follows each public frame: the player's own result, then every rival move in turn.
-  useTableMotion(table, { key: `${stateKey}:${playback?.beat.id ?? ''}`, view, beat: playback?.beat ?? feedback,
+  useTableMotion(table, { key: opening.showing ? '' : `${stateKey}:${playback?.beat.id ?? ''}`, view, beat: playback?.beat ?? feedback,
     reducedBeats: reduced && snapshot.presentation ? [...(snapshot.presentation.feedback ? [snapshot.presentation.feedback] : []), ...snapshot.presentation.beats] : undefined,
-    hasRolls: snapshot.gigRolls.length > 0, enabled: !reduced, pace: playback ? beatPace(playback.count) : 1, deal: intro, sound: cue });
-  useMatchSound(snapshot, playback?.beat ?? feedback, reduced, cue);
+    hasRolls: snapshot.gigRolls.length > 0, enabled: !reduced, pace: playback ? beatPace(playback.count) : 1,
+    openingHand: !!snapshot.openingDeal && setup && !opening.skipped, sound: cue });
+  useMatchSound(snapshot, playback?.beat ?? feedback, reduced, cue, opening.showing);
 
   useEffect(() => {
     if (!focusAfter.current) return;
@@ -344,11 +358,12 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
 
   return <div ref={grid} className="play-grid play-direct" data-match-id={snapshot.matchId} data-state-id={view.stateID} data-busy={busy} data-playback={!!playback}
     onKeyDown={(event) => {
+      if (event.key === 'Escape' && opening.showing) { event.preventDefault(); opening.skip(); return; }
       if (event.key !== 'Escape' || drag || inspected || menu) return;
       if (panel) setPanel(undefined);
       else { setChoice(choice ? defaultSelection : undefined, {}); clearHover(); }
     }}>
-    <header className="play-match-header">
+    <header className="play-match-header" inert={opening.showing}>
       <div className="play-match-identity">
         {contract ? <button type="button" className="play-eyebrow circuit-contract-trigger" aria-expanded={panel === 'contract'} aria-controls={`${panelId}-contract`} onClick={() => setPanel(panel === 'contract' ? undefined : 'contract')} title="View contract objective">◆ {contract.title} <span>/</span> Autosaved</button>
           : <p className="play-eyebrow" title="Match saved in this browser">{campaign?.title ?? 'Practice table'} <span>/</span> Autosaved</p>}
@@ -386,7 +401,7 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
       {log.length ? <ol>{log.slice().reverse().map((entry) => <li key={entry.id}><small>T{entry.turn} · {entry.seat === 'player' ? 'You' : 'Rival'}</small><span>{entry.text}</span></li>)}</ol>
         : <p className="play-empty">Match events appear here.</p>}
     </aside>}
-    <div ref={table} className="play-table" data-turn={playing ? view.activePlayerId : undefined} data-combat={!!combat} data-ended={view.gameEnded}>
+    <div ref={table} className="play-table" inert={opening.showing} data-opening={opening.showing || undefined} data-turn={playing ? view.activePlayerId : undefined} data-combat={!!combat} data-ended={view.gameEnded}>
       <GigRollAnnouncement rolls={snapshot.gigRolls} />
       <RivalBench portrait={campaign?.rival} rolls={rolls} name={names.rival} active={playing && !yourTurn} {...targeting} renderCard={renderCard} renderFace={face} />
       <SeatField seat="rival" active={playing && !yourTurn} {...targeting} renderCard={renderCard} />
@@ -434,11 +449,19 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
         <span>Turn {view.turnNumber}</span><strong>{yourTurn ? 'Your turn' : 'Rival turn'}</strong>
       </div>}
       {view.gameEnded && <MatchResult view={view} report={snapshot.report} receipt={snapshot.circuit?.receipt} circuit={circuit} title={decisionTitle} reason={winReasons[view.winReason ?? ''] ?? 'Match ended'} busy={busy} rematch={rematch} edit={edit} />}
-      {intro && <div className="play-intro" aria-hidden="true"><span>Practice table</span><strong>{names.player}</strong><i>vs.</i><strong>{names.rival}</strong></div>}
       <span className="sr-only" role="status">{notice}{busy ? ' Resolving move.' : ''}</span>
       {notice && <p className="play-table-notice">{notice}</p>}
       {rolling && <PlayGigRoll key={view.stateID} rolls={rolls} thrown={activeThrow} cue={cue} />}
     </div>
+    {opening.showing && <section className="play-intro" aria-labelledby={`${panelId}-intro`} data-reduced={reduced || undefined}
+      style={{ '--play-opening-duration': `${opening.duration}ms` } as CSSProperties}>
+      <div className="play-intro-copy">
+        <p>{campaign ? 'The Afterlife // Campaign' : 'Free Play'}</p>
+        <h2 id={`${panelId}-intro`}>{campaign?.title ?? contract?.title ?? 'Match start'}<span aria-hidden="true">.</span></h2>
+        <div className="play-intro-matchup"><strong>{names.player}</strong><i>vs.</i><strong>{names.rival}</strong></div>
+      </div>
+      <button ref={introSkip} type="button" className="btn quiet play-intro-skip" onClick={opening.skip}>Skip intro</button>
+    </section>}
     {menu && <ContextMenu context={menu} close={closeMenu}>{menu.intents.map((intent, index) => <button key={index} type="button" className="btn play-card-menu-action" data-context-action={actions[intent.action].id}
       onClick={() => beginIntent(intent, true)}><span>{intentLabel(actions[intent.action], intent.picks, menu.card)}</span><span aria-hidden="true">→</span></button>)}
       {menu.intents.some((intent) => actions[intent.action].id === 'activateAbility') && vaultCard(menu.card) && <details className="play-menu-rules"><summary>Printed abilities</summary><Rules text={vaultCard(menu.card)!.text} /></details>}

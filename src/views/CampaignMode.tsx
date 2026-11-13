@@ -38,7 +38,9 @@ function hasSeenIntro(key: string) {
   try { return localStorage.getItem(key) === 'seen'; } catch { return false; }
 }
 
-export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; exit: () => void; openInBuilder: (deck: Deck) => void }) {
+export function CampaignMode({ scope, exit, openInBuilder, preparationOnly = false }: {
+  scope: string; exit?: () => void; openInBuilder: (deck: Deck) => void; preparationOnly?: boolean;
+}) {
   const introKey = `cptv.campaign.lastCallIntro:${scope}`;
   const dialogueKey = `cptv.campaign.rivalDialogue:${scope}`;
   const [introSeen, setIntroSeen] = useState(() => hasSeenIntro(introKey));
@@ -260,7 +262,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
       setError('The saved deck changed. Close and reopen the preview.');
       return;
     }
-    void apply(() => saveCampaignDeck(scope, run, deck), value => {
+    return apply(() => saveCampaignDeck(scope, run, deck), value => {
       setRun(value.run); saved?.(); sound.cue('reward-lock');
     });
   }
@@ -273,7 +275,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
     if (amount > 0 && campaignCardAddReason(run, card, campaignCrew(run.deck.legends), totalCopies(run.deck.cards))) return;
     const cards = { ...run.deck.cards, [slug]: have + amount };
     if (!cards[slug]) delete cards[slug];
-    edit({ ...run.deck, cards });
+    return edit({ ...run.deck, cards });
   }
 
 
@@ -370,7 +372,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   const inspectedCard = inspected && BY_SLUG.get(inspected.slug);
   const inspectedPrinting = PRINTING_INDEX.get(inspected?.printingId ?? '')?.printing;
   const equippedSlot = run && inspected ? run.deck.legends.indexOf(inspected.slug) : -1;
-  const tableOpen = showTable && !!snapshot && snapshot.matchId === run?.match?.summary.matchId && !newRunFrom;
+  const tableOpen = !preparationOnly && showTable && !!snapshot && snapshot.matchId === run?.match?.summary.matchId && !newRunFrom;
   const resultOpen = tableOpen && !!snapshot?.view.gameEnded && !presentation.playing;
   const editable = run && !run.resultPending && !actPending && ['preparing', 'upgrading'].includes(run.phase);
   const workbench = editable && (surface === 'workbench' || surface === 'new-cards');
@@ -410,7 +412,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
           onClick={() => setConcede(true)}>Concede</button>}
         {run && <PlayResetMenu mode="Campaign" disabled={busy} onReset={openReset} />}
         {error && <button className="btn" onClick={reloadSavedState}>{workerFailed.current ? 'Reload page' : 'Reload saved match'}</button>}
-        <button className="btn quiet" onClick={exit}>Free Play</button>
+        {exit && <button className="btn quiet" onClick={exit}>Free Play</button>}
         <button className="btn quiet" onClick={sound.toggle}>Sound {sound.enabled ? 'On' : 'Off'}</button>
         <label className="play-sound-level">FX <input type="range" aria-label="Game effects volume" min="0" max="1" step=".05" value={sound.volume} onChange={e => sound.changeVolume(Number(e.target.value))} /></label></>} />
     : <div className={choosingStarter ? "campaign-hub campaign-hub--onboarding" : "campaign-hub"} ref={hub} tabIndex={-1}>
@@ -473,7 +475,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
           </section>
           : <CampaignHub run={run} titleRef={focusTitle} tools={tools} issues={issues} busy={busy} printings={campaignPrintings}
             inspect={inspectCard} tune={() => changeSurface('workbench')} reviewNew={editable && latestReward ? () => changeSurface('new-cards') : undefined}
-            primary={run.resultPending || run.phase === 'inMatch' ? resume : earnedPack ? () => changeSurface(aftermathSurface) : launch} />)}
+            preparationOnly={preparationOnly} primary={run.resultPending || run.phase === 'inMatch' ? resume : earnedPack ? () => changeSurface(aftermathSurface) : launch} />)}
     </div>}
     {reviewed && run && workbench && <CampaignUpgradeDialog key={reviewed.slug} run={run} slug={reviewed.slug} printingId={reviewed.printingId} printings={campaignPrintings}
       swap={reviewed.swap} busy={busy} error={error} close={() => setReviewed(undefined)}

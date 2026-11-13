@@ -1,5 +1,5 @@
 /** Short synthesised table cues, including fallbacks for recorded effects. */
-export type TableCue = 'dice-roll' | 'card-play' | 'unit-kill' | 'deal' | 'draw' | 'play' | 'eddie' | 'hit' | 'defeat' | 'gig' | 'gig-steal' | 'turn' | 'win' | 'lose' | 'equip' | 'program' | 'call' | 'attack' | 'select' | 'ready' | 'pack-open' | 'pack-reveal' | 'pack-rare' | 'pack-foil' | 'reward-lock' | 'act-arrival';
+export type TableCue = 'dice-roll' | 'card-play' | 'unit-kill' | 'deal' | 'draw' | 'play' | 'eddie' | 'hit' | 'defeat' | 'gig' | 'gig-steal' | 'turn' | 'win' | 'lose' | 'equip' | 'program' | 'call' | 'attack' | 'select' | 'ready' | 'match-opening' | 'pack-open' | 'pack-reveal' | 'pack-rare' | 'pack-foil' | 'reward-lock' | 'act-arrival';
 
 const TAU = Math.PI * 2;
 const tone = (hz: number, t: number) => Math.sin(TAU * hz * t);
@@ -9,7 +9,7 @@ const note = (hz: number, t: number, at: number, decay: number) => t < at ? 0 : 
 const fall = (from: number, floor: number, rate: number, t: number) => TAU * (floor * t + from / rate * (1 - Math.exp(-rate * t)));
 
 interface Recipe { seconds: number; gain: number; smooth: number; voice: (t: number, noise: number) => number }
-const recordedFallback = { 'dice-roll': 'gig', 'card-play': 'play', 'unit-kill': 'defeat', deal: 'draw', 'gig-steal': 'gig' } as const;
+const recordedFallback = { 'dice-roll': 'gig', 'card-play': 'play', 'unit-kill': 'defeat', 'match-opening': 'act-arrival', deal: 'draw', 'gig-steal': 'gig' } as const;
 const recipes: Record<Exclude<TableCue, keyof typeof recordedFallback>, Recipe> = {
   // Foil tear, a glassy reveal, and a quiet lock-in. Shared mute and voice limits apply.
   'pack-open': { seconds: .55, gain: .4, smooth: .22, voice: (t, n) => n * Math.sin(Math.PI * t / .55) ** 2 * (1 + .35 * tone(43, t)) + note(196, t, .3, 12) * .6 },
