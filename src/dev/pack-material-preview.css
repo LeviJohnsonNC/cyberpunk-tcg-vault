@@ -15,3 +15,5 @@
 .material-preview-inspect { position: fixed; inset: 0; z-index: 10; background: #0e0711e8; display: grid; place-content: center; gap: 25px; }
 .material-preview-inspect .campaign-material-stage { width: min(350px,65vw); }
 @media(max-width:700px) { .material-comparison-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 38px 24px; } .material-comparison { --tabletop-feature-width: 36vw; } }
+
+.pack-material-preview[data-reduced] *, .pack-material-preview[data-reduced] *::before, .pack-material-preview[data-reduced] *::after { animation: none !important; transition: none !important; }

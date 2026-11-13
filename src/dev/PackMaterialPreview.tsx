@@ -1,5 +1,5 @@
 /** Preview-only test bench: production components and isolated, deterministic rewards. */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CARDS } from '../lib/data';
 import { newCampaign, emptyProfile } from '../lib/play/campaign';
 import { updateCampaign } from '../lib/play/campaignStorage';
@@ -8,6 +8,7 @@ import { type CampaignPull } from '../lib/play/campaignPack';
 import { CampaignMode } from '../views/CampaignMode';
 import { CampaignFeaturedCard } from '../views/CampaignFeaturedCard';
 import './pack-material-preview.css';
+import { installMaterialMotionFixture, setMaterialReducedMotion } from './materialMotionFixture';
 
 export const materialRarities = PACK_RARITIES;
 const representatives: Record<string, string> = { Common: 'mox-inciters', Uncommon: 't-bug-amateur-philosopher', Rare: 'v-corporate-exile' };
@@ -18,6 +19,8 @@ export const materialPulls: CampaignPull[] = materialRarities.map(rarity => {
 const scope = 'qa:pack-materials';
 
 export function PackMaterialPreview() {
+  useEffect(installMaterialMotionFixture, []);
+  const [reduced, setReduced] = useState(false);
   const [mode, setMode] = useState<'compare' | 'pack'>('compare');
   const [labels, setLabels] = useState(true);
   const [columns, setColumns] = useState(4);
@@ -40,7 +43,7 @@ export function PackMaterialPreview() {
       setMode('pack'); setKey(k => k + 1); setError('');
     } catch (cause) { setError(String(cause)); }
   }
-  return <div className="pack-material-preview">
+  return <div className="pack-material-preview" data-reduced={reduced || undefined}>
     <nav aria-label="Material verification" className="material-preview-tools">
       <strong>Rarity studio · Test rewards only</strong>
       <button className="btn quiet" onClick={() => setMode('compare')}>Compare eight</button>
@@ -51,6 +54,7 @@ export function PackMaterialPreview() {
       <label>Room <select value={act} onChange={e => setAct(Number(e.target.value))}><option value="1">Afterlife</option><option value="2">Rooftop</option><option value="3">Arasaka</option></select></label>
       {mode === 'compare' && <><button className="btn quiet" onClick={() => setLabels(v => !v)}>{labels ? 'Hide labels' : 'Show labels'}</button>
         <button className="btn quiet" onClick={() => setColumns(v => v === 4 ? 8 : 4)}>{columns === 4 ? 'Eight across' : 'Four across'}</button></>}
+      <label><input type="checkbox" checked={reduced} onChange={e => { setReduced(e.target.checked); setMaterialReducedMotion(e.target.checked); }} /> Reduced motion</label>
       <span role="status">{error}</span>
     </nav>
     {mode === 'compare' ? <main className="campaign-mode campaign-tabletop material-comparison" data-act={act} data-columns={columns} data-labels={labels}>

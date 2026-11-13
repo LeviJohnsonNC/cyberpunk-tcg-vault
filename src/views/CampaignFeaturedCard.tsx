@@ -25,6 +25,7 @@ export function CampaignFeaturedCard({ pull, buttonRef, discovery = false, inspe
         <span className="campaign-material-bloom" aria-hidden="true" />
         <span className="campaign-material-edge" aria-hidden="true" />
         <span className="campaign-material-sheen" aria-hidden="true" />
+        <span className="campaign-material-glints" aria-hidden="true" />
       </span>
     </button>
   </div>;

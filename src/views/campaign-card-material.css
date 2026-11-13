@@ -129,3 +129,18 @@
   content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background: radial-gradient(ellipse 27% 24% at 85% 13%, #10081430, transparent 100%);
 }
+
+.campaign-material-glints {
+  position: absolute; inset: -12px; z-index: 4; pointer-events: none; opacity: 0;
+  background:
+    radial-gradient(ellipse 13px 1px at 93% 4%, var(--material-catch), transparent),
+    radial-gradient(ellipse 1px 13px at 93% 4%, var(--material-catch), transparent),
+    radial-gradient(ellipse 8px 1px at 7% 96%, var(--material-edge), transparent),
+    radial-gradient(ellipse 1px 8px at 7% 96%, var(--material-edge), transparent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .campaign-material-stage[data-discovery][data-art-ready]:is([data-material='pearl'],[data-material='gilded'],[data-material='prismatic']) .campaign-material-glints {
+    animation: material-glint-arrive var(--material-duration) ease-out both;
+  }
+}
+@keyframes material-glint-arrive { 0%, 24% { opacity: 0; } 42% { opacity: .85; } 75%, 100% { opacity: 0; } }
