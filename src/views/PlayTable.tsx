@@ -22,6 +22,7 @@ import { Rules } from '../components/bits';
 import { CombatArrow, CombatBanner } from './PlayCombat';
 import { PlayPresentation, type MatchPlayback } from './PlayPresentation';
 import { MatchResult } from './PlayResult';
+import { CampaignMatchResult, type CampaignResultDetails } from './CampaignMatchResult';
 import { CIRCUIT_CONTRACTS } from '../lib/play/circuit';
 import './play-table.css';
 import './play-interaction.css';
@@ -81,11 +82,11 @@ function ContextMenu({ context, children, close }: { context: Context; children:
   </div>, document.body);
 }
 
-export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, edit, circuit, playback, feedback, reduced, controls, cue, resultContinueLabel, campaign }: {
-  campaign?: { title: string; rival: ReactNode; farewell?: ReactNode };
+export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, edit, circuit, playback, feedback, reduced, controls, cue, campaign }: {
+  campaign?: CampaignResultDetails & { rival: ReactNode };
   cue?: (name: TableCue, delayMs?: number) => (() => void) | undefined;
   playback?: MatchPlayback; feedback?: MatchBeat; scope: string; snapshot: MatchSnapshot; names: Record<Seat, string>; busy: boolean; error?: string;
-  send: (move: Move) => void; rematch: () => void; edit: () => void; circuit?: () => void; reduced: boolean; controls?: ReactNode; resultContinueLabel?: string;
+  send: (move: Move) => void; rematch: () => void; edit: () => void; circuit?: () => void; reduced: boolean; controls?: ReactNode;
 }) {
   const { view } = snapshot;
   const contract = CIRCUIT_CONTRACTS.find(item => item.id === snapshot.circuit?.contractId);
@@ -329,6 +330,9 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
     .map(({ action, index }) => actionButton(index, undefined, action.id === 'passPhase' ? 'btn play-end-turn' : 'btn quiet'));
   const hint = busy ? 'Resolving the move.' : waiting ? 'The rival is choosing a move.' : 'Select a card to act, or drag it to a highlighted destination.';
   const closePanel = <button type="button" className="btn quiet" aria-label="Close panel" onClick={() => setPanel(undefined)}>×</button>;
+  if (campaign && view.gameEnded) return <CampaignMatchResult details={campaign} snapshot={snapshot}
+    busy={busy} error={error} onContinue={rematch} />;
+
   return <div ref={grid} className="play-grid play-direct" data-match-id={snapshot.matchId} data-state-id={view.stateID} data-busy={busy} data-playback={!!playback}
     onKeyDown={(event) => {
       if (event.key !== 'Escape' || drag || inspected || menu) return;
@@ -420,7 +424,7 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
       {playing && turnKey !== firstTurn && <div className="play-turn-banner" key={turnKey} data-seat={view.activePlayerId} aria-hidden="true">
         <span>Turn {view.turnNumber}</span><strong>{yourTurn ? 'Your turn' : 'Rival turn'}</strong>
       </div>}
-      {view.gameEnded && <MatchResult view={view} report={snapshot.report} receipt={snapshot.circuit?.receipt} circuit={circuit} title={decisionTitle} reason={winReasons[view.winReason ?? ''] ?? 'Match ended'} busy={busy} rematch={rematch} edit={edit} continueLabel={resultContinueLabel} rivalFarewell={campaign?.farewell} />}
+      {view.gameEnded && <MatchResult view={view} report={snapshot.report} receipt={snapshot.circuit?.receipt} circuit={circuit} title={decisionTitle} reason={winReasons[view.winReason ?? ''] ?? 'Match ended'} busy={busy} rematch={rematch} edit={edit} />}
       {intro && <div className="play-intro" aria-hidden="true"><span>Practice table</span><strong>{names.player}</strong><i>vs.</i><strong>{names.rival}</strong></div>}
       <span className="sr-only" role="status">{notice}{busy ? ' Resolving move.' : ''}</span>
       {notice && <p className="play-table-notice">{notice}</p>}

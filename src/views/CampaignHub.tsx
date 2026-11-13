@@ -99,7 +99,7 @@ export function CampaignHub({ run, titleRef, tools, issues, busy, printings, ins
   const actIndex = Math.floor(run.encounter / 3);
   const pending = !!pendingCampaignPack(run);
   const storyPending = pending && run.aftermath && !run.aftermath.sceneSeen;
-  const resumable = run.phase === 'inMatch';
+  const resumable = run.phase === 'inMatch' || !!run.resultPending;
   const canTune = !pending && !resumable;
   const blocked = canTune && issues.length > 0;
   const colors = STARTERS.find(starter => starter.key === run.starter)?.colors;
@@ -148,7 +148,7 @@ export function CampaignHub({ run, titleRef, tools, issues, busy, printings, ins
       {tools}
       <div className="campaign-board-launch">
         <button type="button" className="campaign-invitation-cta" onClick={primary} disabled={busy || blocked} aria-describedby={blocked ? 'campaign-launch-issue' : undefined}>
-          {pending ? storyPending ? 'Continue story' : 'Open your pack' : resumable ? 'Return to match' : run.attempts ? 'Retry contract' : 'Take the contract'} <span aria-hidden="true">→</span>
+          {run.resultPending ? 'Return to match result' : pending ? storyPending ? 'Continue story' : 'Open your pack' : resumable ? 'Return to match' : run.attempts ? 'Retry contract' : 'Take the contract'} <span aria-hidden="true">→</span>
         </button>
         {blocked && <p id="campaign-launch-issue">{issues[0]}</p>}
       </div>

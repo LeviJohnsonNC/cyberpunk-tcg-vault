@@ -6,7 +6,7 @@ import type { Deck } from '../lib/store';
 import { totalCopies } from '../lib/deckDraft';
 import { COPY_MAX, MAIN_MAX } from '../lib/decks';
 import { ENCOUNTERS, ENVIRONMENTS, campaignDeckIssues, pendingCampaignPack, type CampaignProfile, type CampaignRun } from '../lib/play/campaign';
-import { readCampaign, startCampaign, resetCampaign, chooseReward, saveCampaignDeck, claimEnvironment, equipEnvironment, revealCampaignPack, advanceCampaignScene, finishCampaignPack, acknowledgeCampaignAct } from '../lib/play/campaignStorage';
+import { readCampaign, startCampaign, resetCampaign, chooseReward, saveCampaignDeck, claimEnvironment, equipEnvironment, revealCampaignPack, advanceCampaignScene, finishCampaignPack, acknowledgeCampaignAct, acknowledgeCampaignResult } from '../lib/play/campaignStorage';
 import type { CampaignWorkerResponse } from '../lib/play/campaign.worker';
 import type { MatchSnapshot, Move } from '../lib/play/protocol';
 import { useMatchPresentation } from './useMatchPresentation';
@@ -23,7 +23,7 @@ import { CampaignUpgradeDialog } from './CampaignDeckReview';
 import { CampaignHub, CampaignHubTools, CampaignTimeline } from './CampaignHub';
 import { CampaignWorkbench } from './CampaignWorkbench';
 import { aftermathBeats } from '../lib/play/campaignScenes';
-import { CampaignInvitation, CampaignRivalFarewell, CampaignRivalSeat, CampaignScene } from './CampaignStory';
+import { CampaignInvitation, CampaignRivalSeat, CampaignScene } from './CampaignStory';
 import { CampaignCrewPick } from './CampaignCrewPick';
 import { useRivalDialogue } from './useRivalDialogue';
 import './campaign.css';
@@ -126,15 +126,30 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
       const value = await readCampaign(scope);
       if (!active || actionLock.current || version !== recoveryVersion.current) return;
       setRun(value.run); setProfile(value.profile);
-      if (value.run?.phase === 'inMatch') {
+      if (value.run?.phase === 'inMatch' || value.run?.resultPending) {
         const resumed = await send({ type: 'resume' });
-        if (active && !actionLock.current && version === recoveryVersion.current) { setSnapshot(resumed.snapshot); if (reopenTable) setShowTable(true); }
-      } else {
-        setSnapshot(previous => previous?.matchId === value.run?.match?.summary.matchId ? previous : undefined);
-        if (reopenTable && value.run && pendingCampaignPack(value.run)) {
-          setSurface(value.run.aftermath && !value.run.aftermath.sceneSeen ? 'scene' : 'pack');
+        if (active && !actionLock.current && version === recoveryVersion.current) {
+          setRun(resumed.run); setProfile(resumed.profile);
+          if (resumed.run?.resultPending || resumed.run?.phase === 'inMatch') {
+            setSnapshot(previous => !reopenTable && previous?.matchId === resumed.snapshot?.matchId
+              && previous?.view.stateID === resumed.snapshot?.view.stateID ? previous : resumed.snapshot);
+            if (reopenTable) setShowTable(true);
+          } else {
+            setSnapshot(undefined); setShowTable(false);
+            if (resumed.run && pendingCampaignPack(resumed.run))
+              setSurface(resumed.run.aftermath && !resumed.run.aftermath.sceneSeen ? 'scene' : 'pack');
+          }
         }
-        if (!value.run) { setShowTable(false); setSurface('hub'); setNewRunFrom(undefined); setIntroSeen(hasSeenIntro(introKey)); }
+      } else {
+        // A different tab may have already continued from this result.
+        setShowTable(false);
+        setSnapshot(undefined);
+        if (value.run && pendingCampaignPack(value.run)) {
+          setSurface(previous => reopenTable || previous === 'scene' || previous === 'pack'
+            ? value.run?.aftermath && !value.run.aftermath.sceneSeen ? 'scene' : 'pack'
+            : previous);
+        }
+        if (!value.run) { setSurface('hub'); setNewRunFrom(undefined); setIntroSeen(hasSeenIntro(introKey)); }
       }
     }
     const focus = () => { if (!actionLock.current) void recover(false).catch(() => {}); };
@@ -262,11 +277,11 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
     if (workerFailed.current) { window.location.reload(); return; }
     void apply(async () => {
       const value = await readCampaign(scope);
-      const resumed = value.run?.phase === 'inMatch' ? await send({ type: 'resume' }) : undefined;
+      const resumed = value.run?.phase === 'inMatch' || value.run?.resultPending ? await send({ type: 'resume' }) : undefined;
       return { ...value, snapshot: resumed?.snapshot };
     }, value => {
       setRun(value.run); setProfile(value.profile); setNewRunFrom(undefined); setSnapshot(value.snapshot); setShowTable(!!value.snapshot); setUndo(undefined);
-      if (value.run && pendingCampaignPack(value.run)) changeSurface(value.run.aftermath && !value.run.aftermath.sceneSeen ? 'scene' : 'pack');
+      if (!value.snapshot && value.run && pendingCampaignPack(value.run)) changeSurface(value.run.aftermath && !value.run.aftermath.sceneSeen ? 'scene' : 'pack');
     });
   }
 
@@ -286,6 +301,16 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   function resume() {
     void apply(() => send({ type: 'resume' }), value => {
       setRun(value.run); setProfile(value.profile); setSnapshot(value.snapshot); setShowTable(!!value.snapshot);
+    });
+  }
+
+  function continueResult() {
+    if (!run || !snapshot?.view.gameEnded) return;
+    const next = earnedPack ? aftermathSurface : run.phase === 'preparing' ? 'workbench' : 'hub';
+    if (!run.resultPending) { leaveTable(next); return; }
+    void apply(() => acknowledgeCampaignResult(scope, run, snapshot.matchId), value => {
+      setRun(value.run); setProfile(value.profile);
+      leaveTable(next);
     });
   }
 
@@ -326,7 +351,8 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   const inspectedCard = inspected && BY_SLUG.get(inspected.slug);
   const inspectedPrinting = PRINTING_INDEX.get(inspected?.printingId ?? '')?.printing;
   const tableOpen = showTable && !!snapshot && snapshot.matchId === run?.match?.summary.matchId && !newRunFrom;
-  const editable = run && !actPending && ['preparing', 'upgrading'].includes(run.phase);
+  const resultOpen = tableOpen && !!snapshot?.view.gameEnded && !presentation.playing;
+  const editable = run && !run.resultPending && !actPending && ['preparing', 'upgrading'].includes(run.phase);
   const workbench = editable && (surface === 'workbench' || surface === 'new-cards');
   const earnedPack = run && pendingCampaignPack(run);
   const scenePending = !!earnedPack && !!run?.aftermath && !run.aftermath.sceneSeen;
@@ -334,26 +360,31 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
   const showAftermath = !!earnedPack && (surface === 'scene' || surface === 'pack');
   const beats = run && showAftermath && scenePending ? aftermathBeats(run) : [];
   const finale = run?.phase === 'claimingFinish' || run?.phase === 'completed';
+  const continueLabel = scenePending ? 'Continue story' : earnedPack ? 'Open your pack'
+    : run?.phase === 'claimingFinish' ? 'Open Champion’s Cache' : 'Review deck and retry';
+  const resultNext = scenePending ? 'Next: The aftermath and your reward pack.' : undefined;
   const tools = run && profile && !choosingStarter && !tableOpen ? <CampaignHubTools run={run} profile={profile} busy={busy}
     soundEnabled={sound.enabled} toggleSound={sound.toggle} newRun={openNewCampaign} reset={openReset} exit={exit}
     equipRoom={room => void apply(() => equipEnvironment(scope, room), value => { setProfile(value.profile); sound.cue('reward-lock'); })}
     openInBuilder={openInBuilder} /> : null;
 
   return <section className="play-mode campaign-mode" data-onboarding={choosingStarter ? (showInvitation ? 'invitation' : 'crews') : undefined}
-    data-campaign-board={!choosingStarter && !tableOpen || undefined} data-environment={profile?.equipped ?? 'default'}
+    data-campaign-board={!choosingStarter && (!tableOpen || resultOpen) || undefined} data-environment={profile?.equipped ?? 'default'}
     onPointerDownCapture={sound.unlock} onKeyDownCapture={sound.unlock}>
-    {tableOpen && <ReactiveRoom />}
+    {tableOpen && !resultOpen && <ReactiveRoom />}
     {tableOpen && snapshot ? <PlayTable key={snapshot.matchId} scope={`${scope}:campaign`} snapshot={presentation.displayed ?? snapshot} names={snapshot.names}
       playback={presentation.playback} feedback={presentation.feedback} reduced={presentation.reduced} cue={sound.cue}
       campaign={run && encounter && {
         title: encounter.title,
         rival: <CampaignRivalSeat encounter={encounter.id} starter={run.starter} quote={quote} dialogue={dialogue} toggle={toggleDialogue} />,
-        farewell: dialogue && quote && ['playerWon', 'rivalWon', 'draw'].includes(quote.moment)
-          ? <CampaignRivalFarewell encounter={encounter.id} quote={quote} /> : undefined,
+        encounter: encounter.id,
+        dialogue,
+        continueLabel,
+        next: resultNext,
+        reload: reloadSavedState,
       }}
-      busy={busy || presentation.playing} error={error} send={move} rematch={() => leaveTable(earnedPack ? aftermathSurface : run?.phase === 'preparing' ? 'workbench' : 'hub')}
-      edit={() => leaveTable('workbench')} resultContinueLabel={scenePending ? 'Continue story' : earnedPack ? 'Open your pack'
-        : run?.phase === 'claimingFinish' ? 'Open Champion’s Cache' : 'Review deck and retry'}
+      busy={busy || presentation.playing} error={error} send={move} rematch={continueResult}
+      edit={() => leaveTable('workbench')}
       controls={<><button className="btn quiet" onClick={() => leaveTable('hub')}>Campaign board</button>
         {!snapshot.view.gameEnded && <button type="button" className="btn danger-ghost" disabled={busy || presentation.playing}
           onClick={() => setConcede(true)}>Concede</button>}
@@ -418,7 +449,7 @@ export function CampaignMode({ scope, exit, openInBuilder }: { scope: string; ex
           </section>
           : <CampaignHub run={run} titleRef={focusTitle} tools={tools} issues={issues} busy={busy} printings={iconicPrintings}
             inspect={inspectCard} tune={() => changeSurface('workbench')} reviewNew={editable && latestPack(run).length ? () => changeSurface('new-cards') : undefined}
-            primary={earnedPack ? () => changeSurface(aftermathSurface) : run.phase === 'inMatch' ? resume : launch} />)}
+            primary={run.resultPending || run.phase === 'inMatch' ? resume : earnedPack ? () => changeSurface(aftermathSurface) : launch} />)}
     </div>}
     {reviewed && run && workbench && <CampaignUpgradeDialog key={reviewed.slug} run={run} slug={reviewed.slug} printingId={reviewed.printingId}
       initialOutgoing={reviewed.outgoing} busy={busy} error={error} close={() => setReviewed(undefined)} commit={deck => edit(deck, () => setReviewed(undefined))} />}

@@ -13,7 +13,7 @@ self.addEventListener('message', async ({ data }: MessageEvent<Command>) => {
     const value = await updateCampaign(scope, (run, profile) => {
       if (!run) throw new Error('Choose a starter first.');
       if (action.type === 'start') {
-        if (run.revision !== action.revision || !['preparing', 'upgrading'].includes(run.phase)) throw new Error('The campaign changed in another tab. Reload to continue.');
+        if (run.revision !== action.revision || run.resultPending || !['preparing', 'upgrading'].includes(run.phase)) throw new Error('The campaign changed in another tab. Reload to continue.');
         const issues = campaignDeckIssues(run, run.deck);
         if (issues.length) throw new Error(issues.join(' '));
         const rival = encounterDeck(run), rivalDeck = prepareMatchDeck(rival), player = prepareMatchDeck(run.deck);

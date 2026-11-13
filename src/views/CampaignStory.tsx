@@ -256,10 +256,3 @@ export function CampaignRivalSeat(props: DossierProps) {
     </div>
   </div>;
 }
-
-export function CampaignRivalFarewell({ encounter, quote }: { encounter: EncounterId; quote: NonNullable<Quote> }) {
-  return <figure className="campaign-rival-farewell">
-    <CampaignRivalPortrait encounter={encounter} />
-    <figcaption><strong>{campaignChapters[encounter].rival}</strong><blockquote>“{quote.text}”</blockquote></figcaption>
-  </figure>;
-}

@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { expect, it, vi } from 'vitest';
-import { readCampaign, startCampaign } from './campaignStorage';
+import { acknowledgeCampaignResult, readCampaign, startCampaign } from './campaignStorage';
 import type { CampaignWorkerResponse } from './campaign.worker';
 
 it('restores the exact campaign engine checkpoint without replacing a finished start', async () => {
@@ -36,7 +36,11 @@ it('restores the exact campaign engine checkpoint without replacing a finished s
     const savedLoss = await command({ type: 'resume' });
     expect(savedLoss.snapshot?.view.gameEnded).toBe(true);
     expect(savedLoss.snapshot?.matchId).toBe(opening.snapshot?.matchId);
-    const retry = await command({ type: 'start', revision: lost.run!.revision });
+    expect(savedLoss.run?.resultPending).toBe(true);
+    expect(savedLoss.snapshot?.report).toEqual(lost.snapshot?.report);
+    expect((await command({ type: 'start', revision: lost.run!.revision })).error).toBeTruthy();
+    const acknowledged = await acknowledgeCampaignResult(scope, lost.run!, savedLoss.snapshot!.matchId);
+    const retry = await command({ type: 'start', revision: acknowledged.run.revision });
     expect(retry.run?.phase).toBe('inMatch');
     expect(retry.run?.rewards[0]).toEqual(opening.run?.rewards[0]);
     expect(retry.snapshot?.matchId).not.toBe(opening.snapshot?.matchId);

@@ -84,27 +84,6 @@
   .campaign-dossier-layout { grid-template-columns: 1fr; }
   .campaign-dossier-art { width: min(100%, 260px); }
 }
-.play-result:has(.campaign-rival-farewell) { align-content: safe center; }
-.campaign-rival-farewell {
-  display: grid;
-  grid-template-columns: clamp(82px, 17vh, 160px) minmax(0, 1fr);
-  align-items: center;
-  gap: clamp(14px, 2.5vw, 28px);
-  width: min(550px, 100%);
-  margin: 4px auto 10px;
-  padding: 0 18px 0 0;
-  border: 1px solid var(--play-edge);
-  border-radius: 6px;
-  background: linear-gradient(100deg, var(--color-surface), color-mix(in srgb, var(--color-surface) 56%, transparent));
-  text-align: start;
-}
-.campaign-rival-farewell .campaign-rival-portrait {
-  border-radius: 5px 0 0 5px;
-  border-inline-end: 1px solid var(--play-edge);
-  background-image: url('../assets/play/last-call-rival-atlas-detail.webp'), url('../assets/play/last-call-rival-atlas.webp');
-}
-.campaign-rival-farewell blockquote { margin: 5px 0 0; font-size: clamp(14px, 1.7vw, 20px); line-height: 1.35; }
-.campaign-rival-farewell strong { color: var(--color-ticket); font: 600 12px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
 @media (prefers-reduced-motion: no-preference) {
   .campaign-rival-caption p { animation: campaign-rival-line-in .2s ease-out; }
   @keyframes campaign-rival-line-in { from { opacity: .4; } }
