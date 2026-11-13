@@ -162,9 +162,6 @@
 .play-direct .play-bench[data-seat="player"] { gap: clamp(7px, .9vw, 17px); }
 .play-direct .play-bench[data-seat="player"] .play-bench-crew { align-self: stretch; justify-content: center; min-width: 156px; }
 .play-direct .play-bench[data-seat="player"] .play-bench-piles { align-self: center; }
-.play-direct .play-field { min-height: calc(var(--play-card-width) * 1.4 + 12px); padding-block: 5px; }
-.play-direct .play-command { height: auto; min-height: 49px; }
-.play-direct .play-command-inner { position: relative; min-height: 49px; }
 .play-direct .play-turn-plate { min-width: clamp(115px, 11vw, 179px); }
 .play-direct .play-tray-intent { min-width: min(210px, 100%); }
 .play-direct .play-hand .play-card-row { min-height: calc(var(--play-hand-width) * 1.4 + 6px); padding-top: 5px; }
@@ -190,7 +187,6 @@
 .play-direct .play-field[data-seat="player"] { --field-center: rgb(12 11 21 / .29); }
 .play-direct .play-field[data-empty] {
   --field-center: rgb(14 9 21 / .12);
-  min-height: calc(var(--play-card-width) * 1.4 + 1px);
 }
 .play-direct .play-field[data-empty]::before {
   content: '';
@@ -206,18 +202,6 @@
 .play-direct .play-field[data-active="true"][data-seat="player"] { border-color: color-mix(in srgb, var(--color-ticket) 44%, var(--color-divider)); }
 .play-direct .play-field[data-active="true"][data-seat="rival"] { border-color: color-mix(in srgb, var(--color-accent) 47%, var(--color-divider)); }
 .play-direct .play-field[data-drop-over="true"]::before { opacity: 0; }
-.play-direct .play-field > .play-card-row:has(> :nth-child(9)),
-.play-direct .play-field > .play-card-row:has(> :nth-child(5)):has(.play-equipped) {
-  position: relative;
-  justify-content: start;
-  overflow-x: auto;
-  scrollbar-width: thin;
-  padding: 6px 8px 8px;
-}
-.play-direct .play-field > .play-card-row:has(> :nth-child(9)) > .play-card-shell,
-.play-direct .play-field > .play-card-row:has(> :nth-child(5)):has(.play-equipped) > .play-card-shell {
-  flex: none;
-}
 /* Fixer controls and rolled Gigs use independent sizes and share the same die faces. */
 .play-direct .play-fixer { --play-die: var(--play-fixer-die); gap: 2px; }
 .play-direct .play-fixer .play-dice { gap: 1px 2px; }
@@ -271,7 +255,6 @@
 .play-direct .play-command .play-error { color: var(--color-text); background: color-mix(in srgb, var(--color-danger) 20%, var(--color-canvas-deep)); border-inline-start: 2px solid var(--color-danger); padding: 5px 8px; font-size: 14px; }
 .play-direct .play-command .play-confirm:not(:disabled) { box-shadow: 0 0 15px color-mix(in srgb, var(--color-accent) 27%, transparent); }
 .play-direct .play-command :is(.play-confirm, .play-end-turn):disabled { background: var(--color-surface-raised); color: var(--color-text-muted); border-color: var(--color-divider); opacity: 1; }
-.play-direct .play-picks[data-gig-decision] .play-choice-steps .btn > span { display: none; }
 .play-direct .play-hand .play-card-shell { --card-gap: 11px; }
 .play-direct .play-hand .play-card-shell:is(:hover, :focus-within) > .play-card { translate: 0 calc(var(--w) * -.12); scale: 1.085; }
 .play-direct .play-hand .play-card-shell:is(:hover, :focus-within) > .play-details { translate: 0 calc(var(--w) * -.29); }

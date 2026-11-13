@@ -13,6 +13,7 @@ import { releaseOnField, type PointerRelease } from '../lib/play/diceThrow';
 import { PlayGigRoll } from './PlayGigRoll';
 import { GigZones, PlayerBench, RivalBench, SeatField } from './PlayMat';
 import { PlayChoices } from './PlayChoices';
+import { PlayDecisionPanel } from './PlayDecisionPanel';
 import { useTableDrag } from './useTableDrag';
 import { useTableMotion } from './useTableMotion';
 import { useMatchOpening } from './useMatchOpening';
@@ -32,6 +33,7 @@ import './match-board.css';
 import './play-interaction.css';
 import './play-presentation.css';
 import './play-command.css';
+import './stable-playmat.css';
 
 const winReasons: Record<string, string> = { gig_victory: 'Seven Gigs secured', overtime_majority: 'Majority of Gigs in overtime', deck_out_victory: 'Deck-out', concede: 'Concession', concession: 'Concession' };
 type SavedDecision = { matchId: string; state: number; selection?: number; picks: Picks; step?: string };
@@ -206,7 +208,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     if (!focusAfter.current) return;
     focusAfter.current = false;
     // In order of usefulness: confirm a ready decision, else the step in progress, else the bar itself.
-    const targets = ['.play-gig-adjustment [data-pick-option]:enabled', '.play-decision-tray [data-confirm-move]:not(:disabled)', '.play-decision-tray [data-step][aria-pressed=true]', '.play-decision-tray button:not(:disabled)', '.play-command-inner'];
+    const targets = ['.play-gig-adjustment [data-pick-option]:enabled', '.play-decision-tray [data-confirm-move]:not(:disabled)', '.play-decision-panel [data-pick-option]:enabled', '.play-decision-tray [data-step][aria-pressed=true]', '.play-decision-tray button:not(:disabled)', '.play-command-inner'];
     for (const target of targets) {
       const element = grid.current?.querySelector<HTMLElement>(target);
       if (element) { element.focus({ preventScroll: true }); break; }
@@ -313,7 +315,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     }
     const rect = element.getBoundingClientRect();
     // Read during a decision too, but never hide its controls, targets or the hand.
-    const blocked = [...(grid.current?.querySelectorAll<HTMLElement>('.play-hand, .play-command-inner, .play-drawer, [data-target="true"]') ?? [])]
+    const blocked = [...(grid.current?.querySelectorAll<HTMLElement>('.play-hand, .play-command-inner, .play-decision-panel, .play-drawer, [data-target="true"]') ?? [])]
       .map((node) => node.getBoundingClientRect()).filter((box) => box.width && box.height);
     const position = previewPosition(rect, { width: innerWidth, height: innerHeight }, blocked);
     if (position) hoverTimer.current = setTimeout(() => setPreview({ state: stateKey, card, ...position }), 400);
@@ -471,6 +473,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
           <div className="play-turn-plate"><span>{setup ? 'Setup' : view.overtimeActive ? `Overtime · Turn ${view.turnNumber}` : `Turn ${view.turnNumber}`}</span>
             <strong>{view.gameEnded ? 'Match over' : setup ? command.variant === 'opening-hand' ? 'Opening hand' : 'Opening' : yourTurn ? 'Your turn' : 'Rival turn'}</strong></div>
           <h2 className="sr-only" aria-live="polite">{decisionTitle}</h2>
+          <div className="play-command-content">
           {view.gameEnded ? <div className="play-command-lead"><strong>{decisionTitle}</strong><p>{winReasons[view.winReason ?? ''] ?? 'Match ended'}</p></div>
             : playback ? <>{combat && <CombatBanner view={view} watching compact />}<PlayPresentation playback={playback} /></>
             : selected ? <div className="play-table-decision" key={stateKey}>
@@ -490,6 +493,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
               <div className="play-command-lead">
                 <h3>{decisionTitle}</h3>
                 {command.detail && <p><Rules text={command.detail} /></p>}
+                {!setup && command.detail && <PlayDecisionPanel label="Effect details" title={decisionTitle}><p><Rules text={command.detail} /></p></PlayDecisionPanel>}
               </div>
               <div className="play-command-actions">{actions.map((action, index) => actionButton(index, undefined, action.id === 'keepHand' ? 'btn play-confirm' : 'btn quiet'))}</div>
             </div>
@@ -497,7 +501,8 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
               <CombatBanner view={view} watching={false} compact inspect={inspect} controls={resolveButtons} /></div>
             : <><div className="play-command-lead"><strong>{decisionTitle}</strong>
               <p role="status">{feedback && !busy ? <><b>{feedback.seat === 'player' ? 'You' : 'Rival'}</b> {feedback.text}</> : hint}</p></div>{turnButtons.length > 0 && <div className="play-command-actions">{turnButtons}</div>}</>}
-          {error && <p className="play-error" role="alert">{error}</p>}
+          </div>
+          {error && <p className="play-error play-command-error" role="alert">{error}</p>}
         </div>
       </div>
       <SeatField seat="player" active={playing && yourTurn} {...targeting} renderCard={renderCard}

@@ -8,6 +8,7 @@ import { CardFace } from './PlayCard';
 import { DieFace } from './PlayDice';
 import type { CommandPresentation } from '../lib/play/commandPresentation';
 import { PlayGigAdjustment } from './PlayGigAdjustment';
+import { PlayDecisionPanel } from './PlayDecisionPanel';
 
 export function PlayChoices({ presentation, context, view, action, picks, fields, active, cards, busy, forced, select, step, submit, cancel, alternatives, reorder, inspect, revealed }: {
   presentation: CommandPresentation; context?: ReactNode;
@@ -45,8 +46,8 @@ export function PlayChoices({ presentation, context, view, action, picks, fields
           </button>{artwork && <button type="button" className="play-choice-details" aria-label={`Details for ${option.label}`} onClick={(event) => inspect(card, event.currentTarget)}>Details</button>}</div>;
         })}{!active.options.length && <p className="play-empty">No eligible options. Choose an earlier step to change your selection.</p>}</div>
       </fieldset>;
-  return <section className="play-decision-tray" aria-label="Table decision" data-forced={forced} data-compact={onMat}>
-    <form className="play-picks" data-gig-decision={rollingGig || undefined} onSubmit={(event) => { event.preventDefault(); if (!busy && ready) submit(); }}>
+  return <section className="play-decision-tray" aria-label="Table decision" data-forced={forced}>
+    <form className="play-picks" onSubmit={(event) => { event.preventDefault(); if (!busy && ready) submit(); }}>
       <div className="play-tray-head">
         <div className="play-tray-intent">
           {sourceCard && <button type="button" className="play-tray-source" aria-label={`Inspect ${sourceCard.cardName ?? 'selected card'}`} onClick={(event) => inspect(sourceCard, event.currentTarget)}><CardFace card={sourceCard} /></button>}
@@ -59,38 +60,43 @@ export function PlayChoices({ presentation, context, view, action, picks, fields
           {alternatives}
         </div>
       </div>
-      {(context || payment || action.detail) && <div className="play-choice-context">
-      {context}
-      {payment && <div className="play-payment-receipt" aria-label="Payment preview" aria-live="polite">
-        <strong>Pay {payment.amount} €$</strong><span>{payment.ready ? payment.reserved.length ? `${payment.afterCosts} €$ after costs` : `${payment.afterPayment} €$ after payment` : 'Choose payment sources'}</span>
-        {payment.reserved.length > 0 && <span>Also spends {payment.reserved.join(', ')}</span>}
-        <details><summary>Payment details</summary>
-          <p>Before card entry, effects, or further costs resolve.</p>
-          {payment.sources.length > 0 && <ul>{payment.sources.map((source) => <li key={source.id}>{source.label}<span>{source.legend ? 'Spend Legend' : 'Spend Eddie'}</span></li>)}</ul>}
-          {payment.reserved.length > 0 && <p>Ability also spends {payment.reserved.join(', ')}. {payment.afterCosts} €$ remain after these costs.</p>}
-          {payment.amount === 0 && <p>No Eddies are required.</p>}
-        </details>
-      </div>}
-      {action.detail && <p className="play-choice-detail"><Rules text={action.detail} /></p>}
-      </div>}
-      <div className="play-choice-steps" aria-label="Decision steps">{fields.map((field, index) =>
-        <button type="button" key={field.id} className="btn quiet" aria-pressed={field.id === active?.id}
-          data-step={field.id} disabled={busy} onClick={() => step(field.id)}>
-          <span>{index + 1}</span> {field.label} <b>{picks[field.id]?.length ?? 0}/{field.min === field.max ? field.min : `${field.min}–${field.max}`}</b>
-        </button>)}</div>
-      {onMat ? <div className="play-on-mat-prompt"><span>{presentation.detail ?? 'Select a highlighted card or die on the mat.'}</span><details key={active?.id}><summary>Options</summary>{options}</details></div> : options}
-      {placement && <div className="play-placement-review" aria-label="Placement review">
-        {fields.map((field) => <div key={field.id}><strong>{field.label}</strong><span>{(picks[field.id] ?? []).map((id) => field.options.find((option) => option.id === id)?.label).join(' → ') || 'None selected'}</span></div>)}
-        {unassigned.length > 0 && <div><strong>Unassigned</strong><span>{unassigned.map((card) => card.cardName ?? 'Revealed card').join(' · ')}. {action.detail?.split('Unassigned cards · ')[1] ?? 'Follow the remaining destination shown above.'}</span></div>}
-      </div>}
-      {active?.ordered && (picks[active.id]?.length ?? 0) > 1 && <ol className="play-choice-order" aria-label="Selected order">{picks[active.id].map((id, index, ids) =>
-        <li key={id}><span>{index + 1}. {active.options.find((option) => option.id === id)?.label}</span>
-          <button type="button" className="btn quiet" disabled={busy || index === 0} aria-label={`Move ${active.options.find((option) => option.id === id)?.label} earlier`} onClick={() => {
-            // Reorder the selected cards without changing their destination.
-            const reordered = [...ids]; [reordered[index - 1], reordered[index]] = [reordered[index], reordered[index - 1]];
-            reorder(active.id, reordered);
-          }}>↑</button>
-        </li>)}</ol>}
+      <div className="play-tray-summary">
+        {active && <span className="play-step-count">{active.label} <b>{picks[active.id]?.length ?? 0}/{active.min === active.max ? active.min : `${active.min}–${active.max}`}</b></span>}
+        {payment && <span className="play-payment-summary" aria-label="Payment preview" aria-live="polite">
+          <strong>Pay {payment.amount} €$</strong>
+          <span>{payment.ready ? `${payment.reserved.length ? payment.afterCosts : payment.afterPayment} €$ left` : 'Choose payment sources'}</span>
+        </span>}
+        <PlayDecisionPanel key={active?.id} label={payment ? 'Payment details' : onMat ? 'Options' : 'Choices'}
+          title={payment ? 'Payment details' : presentation.title} defaultOpen={!onMat}>
+          {context}
+          {action.detail && <p className="play-choice-detail"><Rules text={action.detail} /></p>}
+          {payment && <div className="play-payment-receipt" aria-label="Payment breakdown">
+            <strong>Pay {payment.amount} €$</strong>
+            <span>{payment.ready ? `${payment.afterPayment} €$ after payment` : 'Choose payment sources below or on the mat.'}</span>
+            {payment.reserved.length > 0 && <span>Also spends {payment.reserved.join(', ')}. {payment.afterCosts} €$ remain after these costs.</span>}
+            {payment.sources.length > 0 && <ul>{payment.sources.map(source =>
+              <li key={source.id}>{source.label}<span>{source.legend ? 'Spend Legend' : 'Spend Eddie'}</span></li>)}</ul>}
+          </div>}
+          {fields.length > 1 && <div className="play-choice-steps" aria-label="Decision steps">{fields.map(field =>
+            <button type="button" key={field.id} className="btn quiet" aria-pressed={field.id === active?.id}
+              data-step={field.id} disabled={busy} onClick={() => step(field.id)}>
+              {field.label} <b>{picks[field.id]?.length ?? 0}/{field.min === field.max ? field.min : `${field.min}–${field.max}`}</b>
+            </button>)}</div>}
+          {options}
+          {placement && <div className="play-placement-review" aria-label="Placement review">
+            {fields.map((field) => <div key={field.id}><strong>{field.label}</strong><span>{(picks[field.id] ?? []).map((id) => field.options.find((option) => option.id === id)?.label).join(' → ') || 'None selected'}</span></div>)}
+            {unassigned.length > 0 && <div><strong>Unassigned</strong><span>{unassigned.map((card) => card.cardName ?? 'Revealed card').join(' · ')}. {action.detail?.split('Unassigned cards · ')[1] ?? 'Follow the remaining destination shown above.'}</span></div>}
+          </div>}
+          {active?.ordered && (picks[active.id]?.length ?? 0) > 1 && <ol className="play-choice-order" aria-label="Selected order">{picks[active.id].map((id, index, ids) =>
+            <li key={id}><span>{index + 1}. {active.options.find((option) => option.id === id)?.label}</span>
+              <button type="button" className="btn quiet" disabled={busy || index === 0} aria-label={`Move ${active.options.find((option) => option.id === id)?.label} earlier`} onClick={() => {
+                // Reorder the selected cards without changing their destination.
+                const reordered = [...ids]; [reordered[index - 1], reordered[index]] = [reordered[index], reordered[index - 1]];
+                reorder(active.id, reordered);
+              }}>↑</button>
+            </li>)}</ol>}
+        </PlayDecisionPanel>
+      </div>
     </form>
   </section>;
 }
