@@ -115,9 +115,19 @@ export function chooseReward(scope: string, expected: number, slug: string) {
   });
 }
 
+export function acknowledgeCampaignResult(scope: string, expected: Pick<CampaignRun, 'id' | 'revision'>, matchId: string) {
+  return updateCampaign(scope, (run, profile) => {
+    if (!run || run.id !== expected.id || run.revision !== expected.revision || !run.resultPending
+      || !run.match?.summary.ended || run.match.summary.matchId !== matchId)
+      throw new Error('The campaign result changed in another tab. Reload the saved match.');
+    const next = { ...run, revision: run.revision + 1, resultPending: undefined };
+    return { run: next, value: { run: next, profile } };
+  });
+}
+
 export function advanceCampaignScene(scope: string, expected: Pick<CampaignRun, 'id' | 'revision'>, skip = false) {
   return updateCampaign(scope, (run, profile) => {
-    if (!run || run.id !== expected.id || run.revision !== expected.revision || !pendingCampaignPack(run)
+    if (!run || run.id !== expected.id || run.revision !== expected.revision || run.resultPending || !pendingCampaignPack(run)
       || !run.aftermath || run.aftermath.sceneSeen) throw new Error('The story changed in another tab. Reload the campaign.');
     const beat = run.aftermath.beat + 1;
     const sceneSeen = skip || beat >= aftermathBeats(run).length;
@@ -201,6 +211,7 @@ export function campaignStatus(run?: CampaignRun) {
   if (!run) return 'Choose your starter';
   if (run.phase === 'completed') return 'Campaign completed';
   if (run.phase === 'claimingFinish') return 'Choose your new environment';
+  if (run.resultPending) return 'Return to match result';
   if (pendingCampaignPack(run)) return run.aftermath && !run.aftermath.sceneSeen ? 'Continue your story' : 'Open your earned pack';
   if (run.phase === 'inMatch') return 'Return to match';
   return `${ENCOUNTERS[run.encounter]?.title ?? 'Next contract'} · ${run.encounter + 1} / ${ENCOUNTERS.length}`;

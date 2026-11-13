@@ -9,7 +9,7 @@ import { createMatchController } from './workerController';
 import { aftermathBeats } from './campaignScenes';
 import { unlockedCampaignChapters } from './campaignStory';
 import { latestPack } from './campaignPresentation';
-import { advanceCampaignScene, finishCampaignPack, chooseReward, claimEnvironment, readCampaign, revealCampaignPack, saveCampaignDeck, startCampaign, updateCampaign } from './campaignStorage';
+import { acknowledgeCampaignResult, advanceCampaignScene, finishCampaignPack, chooseReward, claimEnvironment, readCampaign, revealCampaignPack, saveCampaignDeck, startCampaign, updateCampaign } from './campaignStorage';
 import { readCircuitProgress, equipTableFinish, openDatabase, readMatchSummary } from './matchStorage';
 import { REWARD_THEMES } from './campaignBalance';
 import { isEngineSupported } from './engineCards';
@@ -187,7 +187,18 @@ describe('starter campaign', () => {
       expect(line).not.toBe(lastLine);
       lastLine = line;
       await expect(revealCampaignPack(scope, run!.revision, 1)).rejects.toThrow();
-      const [one, two] = await Promise.allSettled([advanceCampaignScene(scope, run!), advanceCampaignScene(scope, run!, true)]);
+      expect(run!.resultPending).toBe(true);
+      await expect(advanceCampaignScene(scope, run!)).rejects.toThrow();
+      const [first, second] = await Promise.allSettled([
+        acknowledgeCampaignResult(scope, run!, match.summary.matchId),
+        acknowledgeCampaignResult(scope, run!, match.summary.matchId),
+      ]);
+      expect([first.status, second.status].sort()).toEqual(['fulfilled', 'rejected']);
+      const acknowledged = (await readCampaign(scope)).run!;
+      expect(acknowledged.inventory).toEqual(run!.inventory);
+      expect(acknowledged.latestRetry).toEqual(pack);
+      expect(acknowledged.resultPending).toBeUndefined();
+      const [one, two] = await Promise.allSettled([advanceCampaignScene(scope, acknowledged), advanceCampaignScene(scope, acknowledged, true)]);
       expect([one.status, two.status].sort()).toEqual(['fulfilled', 'rejected']);
       const scene = (await readCampaign(scope)).run!;
       expect(scene.aftermath?.sceneSeen).toBe(true);
@@ -323,7 +334,9 @@ describe('starter campaign', () => {
       expect(settleCampaignMatch(settled, (await readCampaign(scope)).profile, match, 'player').run).toEqual(settled);
       expect(settled.phase).toBe('rewardPending');
       expect(unlockedCampaignChapters(settled)).toHaveLength(encounter + 1);
-      const nextBeat = await advanceCampaignScene(scope, settled);
+      const acknowledged = await acknowledgeCampaignResult(scope, settled, match.summary.matchId);
+      expect(acknowledged.run.inventory).toEqual(settled.inventory);
+      const nextBeat = await advanceCampaignScene(scope, acknowledged.run);
       expect((await readCampaign(scope)).run?.aftermath).toMatchObject({ beat: 1, sceneSeen: false });
       const skipped = await advanceCampaignScene(scope, nextBeat.run, true);
       if (encounter < 8) {

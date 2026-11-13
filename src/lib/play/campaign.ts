@@ -51,6 +51,8 @@ export interface CampaignRun {
   balanceVersion?: 2;
   /** Presentation-only acknowledgement. Older runs can show their current act once. */
   briefedAct?: number;
+  /** A finished match remains on its result screen until the player continues. */
+  resultPending?: boolean;
   aftermath?: CampaignAftermath;
   latestRetry?: CampaignReward;
   retryPacks?: number;
@@ -253,7 +255,7 @@ export function campaignClearedCount(run: CampaignRun) {
 
 export function settleCampaignMatch(run: CampaignRun, profile: CampaignProfile, match: StoredMatch, winner: string | null, conceded = false) {
   if (run.phase !== 'inMatch' || !match.summary.ended || run.match?.summary.matchId !== match.summary.matchId) return { run, profile };
-  const next = { ...run, match, revision: run.revision + 1, attempts: run.attempts + 1, revealed: 0 };
+  const next = { ...run, match, revision: run.revision + 1, attempts: run.attempts + 1, revealed: 0, resultPending: true };
   if (conceded) return { run: { ...next, phase: 'preparing' as const }, profile };
 
   const outcome = winner === 'player' ? 'win' : winner === null ? 'draw' : 'loss';
