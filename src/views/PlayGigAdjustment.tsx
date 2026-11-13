@@ -49,7 +49,7 @@ export function PlayGigAdjustment({ view, action, picks, fields, active, cards, 
           <p>{choosingDie ? 'Select a highlighted die or choose from the list.' : adjustmentInstruction(payload?.adjustGig ?? payload)}</p>
         </div>
       </div>
-      {choosingDie ? null : target && <>
+      {!choosingDie && target && <>
         <div className="play-gig-adjustment-die" role="group" aria-label={`${target.seat === 'player' ? 'Your' : 'Rival'} ${target.die.definitionId}, current value ${target.die.power}`}>
           <span>Selected Gig</span>
           <DieFace type={target.die.definitionId} value={target.die.power} />

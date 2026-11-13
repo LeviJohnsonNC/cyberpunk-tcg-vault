@@ -2,14 +2,14 @@
 html:has(.play-direct) { scrollbar-gutter: stable; }
 .play-direct { overflow-anchor: none; }
 .play-mode:has(.play-direct) {
-  --play-card-width: clamp(60px, min(8vw, calc((100svh - 402px) / 5.25)), 150px);
+  --play-card-width: clamp(60px, min(8vw, calc((100svh - 416px) / 5.25)), 150px);
 }
 .play-direct .play-table {
   --play-command-height: 100px;
   --play-field-height: calc(var(--play-card-width) * 1.4 + 16px);
   --play-rival-height: max(clamp(94px, 12.25svh, 130px), calc(var(--play-fixer-die) * 2 + 20px), calc(var(--play-legend-width) * 1.4 + 20px));
   --play-hand-height: calc(var(--play-hand-width) * 1.4 + 14px);
-  --play-bench-height: max(var(--play-hand-height), calc(var(--play-legend-width) * 2.02 + 53px), calc(var(--play-fixer-die) * 2 + 22px));
+  --play-bench-height: max(var(--play-hand-height), calc(var(--play-legend-width) * 2.02 + 59px), calc(var(--play-fixer-die) * 2 + 22px));
   --play-crew-width: max(156px, calc(var(--play-legend-width) * 3 + 16px));
 }
 .play-direct .play-bench[data-seat="rival"] { block-size: var(--play-rival-height); }
@@ -104,6 +104,14 @@ html:has(.play-direct) { scrollbar-gutter: stable; }
 .play-step-count b { color: var(--color-ticket); font-family: var(--font-mono); white-space: nowrap; }
 .play-payment-summary { display: inline-flex; gap: 8px; align-items: baseline; }
 .play-payment-summary strong { color: var(--color-ticket); }
+.play-direct .play-command .play-tray-summary > .play-combat-banner {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-inline-start: auto;
+}
+.play-tray-summary > .play-combat-banner .play-versus { padding-inline-end: 0; border: 0; }
+.play-tray-summary .play-combat-card .card-art { height: 28px; width: 20px; }
+.play-tray-summary .play-combat-card > span { max-width: 96px; }
 .play-direct .play-command .play-decision-panel-trigger { min-height: 28px; padding: 4px 8px; color: var(--color-accent); font-size: 12px; }
 .play-gig-adjustment-options { flex-wrap: nowrap; overflow-x: auto; padding: 3px; scrollbar-width: thin; }
 .play-gig-adjustment-options .btn { flex: none; }

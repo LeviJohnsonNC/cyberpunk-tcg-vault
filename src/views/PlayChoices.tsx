@@ -61,14 +61,14 @@ export function PlayChoices({ presentation, context, view, action, picks, fields
         </div>
       </div>
       <div className="play-tray-summary">
-        {active && <span className="play-step-count">{active.label} <b>{picks[active.id]?.length ?? 0}/{active.min === active.max ? active.min : `${active.min}–${active.max}`}</b></span>}
+        {active && active.id !== 'payment' && <span className="play-step-count">{active.label} <b>{picks[active.id]?.length ?? 0}/{active.min === active.max ? active.min : `${active.min}–${active.max}`}</b></span>}
         {payment && <span className="play-payment-summary" aria-label="Payment preview" aria-live="polite">
           <strong>Pay {payment.amount} €$</strong>
+          {active?.id === 'payment' && <span>{picks.payment?.length ?? 0}/{active.max} selected</span>}
           <span>{payment.ready ? `${payment.reserved.length ? payment.afterCosts : payment.afterPayment} €$ left` : 'Choose payment sources'}</span>
         </span>}
-        <PlayDecisionPanel key={active?.id} label={payment ? 'Payment details' : onMat ? 'Options' : 'Choices'}
+        <PlayDecisionPanel key={onMat ? 'mat' : 'list'} label={payment ? 'Payment details' : onMat ? 'Options' : 'Choices'}
           title={payment ? 'Payment details' : presentation.title} defaultOpen={!onMat}>
-          {context}
           {action.detail && <p className="play-choice-detail"><Rules text={action.detail} /></p>}
           {payment && <div className="play-payment-receipt" aria-label="Payment breakdown">
             <strong>Pay {payment.amount} €$</strong>
@@ -96,6 +96,7 @@ export function PlayChoices({ presentation, context, view, action, picks, fields
               }}>↑</button>
             </li>)}</ol>}
         </PlayDecisionPanel>
+        {context}
       </div>
     </form>
   </section>;

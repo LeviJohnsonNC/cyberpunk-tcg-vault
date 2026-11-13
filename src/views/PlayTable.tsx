@@ -208,7 +208,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     if (!focusAfter.current) return;
     focusAfter.current = false;
     // In order of usefulness: confirm a ready decision, else the step in progress, else the bar itself.
-    const targets = ['.play-gig-adjustment [data-pick-option]:enabled', '.play-decision-tray [data-confirm-move]:not(:disabled)', '.play-decision-panel [data-pick-option]:enabled', '.play-decision-tray [data-step][aria-pressed=true]', '.play-decision-tray button:not(:disabled)', '.play-command-inner'];
+    const targets = ['.play-gig-adjustment [data-pick-option]:enabled', '.play-gig-adjustment .play-decision-panel-trigger', '.play-decision-tray [data-confirm-move]:not(:disabled)', '.play-decision-panel [data-pick-option]:enabled', '.play-decision-tray [data-step][aria-pressed=true]', '.play-decision-tray button:not(:disabled)', '.play-command-inner'];
     for (const target of targets) {
       const element = grid.current?.querySelector<HTMLElement>(target);
       if (element) { element.focus({ preventScroll: true }); break; }
