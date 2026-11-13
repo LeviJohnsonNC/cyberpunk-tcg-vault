@@ -7,10 +7,9 @@ import { DieFace } from './PlayDice';
 import './play-gig-adjustment.css';
 
 type AdjustmentRules = { direction?: string; maxAmount?: number; chooseUpTo?: boolean };
+type AdjustmentPayload = AdjustmentRules & { adjustGig?: AdjustmentRules; source?: { displayName?: string } };
 
-function adjustmentInstruction(view: PlayerView) {
-  const payload = view.prompt.choice?.payload as (AdjustmentRules & { adjustGig?: AdjustmentRules }) | undefined;
-  const rules = payload?.adjustGig ?? payload;
+function adjustmentInstruction(rules?: AdjustmentRules) {
   if (rules?.maxAmount == null) return 'Choose a new value for the selected Gig.';
   const verb = rules.direction === 'increase' ? 'Increase' : rules.direction === 'decrease' ? 'Decrease' : 'Change';
   return `${verb} the selected Gig by ${rules.chooseUpTo || rules.maxAmount > 1 ? 'up to ' : ''}${rules.maxAmount}.`;
@@ -29,6 +28,8 @@ export function PlayGigAdjustment({ view, action, picks, fields, active, cards, 
   alternatives: ReactNode; context?: ReactNode;
 }) {
   const source = decisionSource(view, action, picks, cards);
+  const payload = view.prompt.choice?.payload as AdjustmentPayload | undefined;
+  const sourceName = payload?.source?.displayName ?? source?.cardName;
   const dieField = fields.find(field => field.id === 'die');
   const valueField = fields.find(field => field.id === 'value');
   const target = gigAdjustmentTarget(view, action.move(picks).args?.dieId);
@@ -40,11 +41,11 @@ export function PlayGigAdjustment({ view, action, picks, fields, active, cards, 
   return <section className="play-decision-tray play-gig-adjustment" aria-label="Gig adjustment">
     <form className="play-gig-adjustment-form" data-choosing-die={choosingDie || undefined} onSubmit={event => { event.preventDefault(); if (!busy && ready) submit(); }}>
       <div className="play-gig-adjustment-intent">
-        {source && <button type="button" className="play-tray-source" disabled={busy} aria-label={`Inspect ${source.cardName ?? 'source card'}`} onClick={event => inspect(source, event.currentTarget)}><CardFace card={source} /></button>}
+        {source && <button type="button" className="play-tray-source" disabled={busy} aria-label={`Inspect ${sourceName ?? 'source card'}`} onClick={event => inspect(source, event.currentTarget)}><CardFace card={source} /></button>}
         <div>
-          {source?.cardName && <span className="play-gig-adjustment-source-name">{source.cardName}</span>}
+          {sourceName && <span className="play-gig-adjustment-source-name">{sourceName}</span>}
           <h3>{choosingDie ? 'Choose a Gig to adjust' : 'Adjust a Gig value'}</h3>
-          <p>{choosingDie ? 'Select a highlighted die or choose below.' : adjustmentInstruction(view)}</p>
+          <p>{choosingDie ? 'Select a highlighted die or choose from the list.' : adjustmentInstruction(payload?.adjustGig ?? payload)}</p>
         </div>
       </div>
       {choosingDie ? <fieldset className="play-gig-adjustment-dice" data-pick-field="die" disabled={busy}>
