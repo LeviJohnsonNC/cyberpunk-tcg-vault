@@ -13,6 +13,7 @@ import { acknowledgeCampaignResult, advanceCampaignScene, finishCampaignPack, ch
 import { readCircuitProgress, equipTableFinish, openDatabase, readMatchSummary } from './matchStorage';
 import { REWARD_THEMES } from './campaignBalance';
 import { isEngineSupported } from './engineCards';
+import { campaignCardFit, campaignCrew } from './campaignDeckRules';
 
 async function revealSlots(scope: string, run: CampaignRun, packId: string, slots: number[]) {
   for (const slot of slots) ({ run } = await revealCampaignSlot(scope, run, packId, slot));
@@ -36,6 +37,7 @@ describe('starter campaign', () => {
     const tier = ['Common', 'Uncommon', 'Rare', 'Epic', 'Secret', 'Iconic Other', 'Iconic Legend', 'Iconic Secret'];
     const hits = { Epic: 0, Secret: 0, Iconic: 0 };
     const iconics = new Set<string>();
+    const noCrewColours = new Set<string>();
     let total = 0;
     for (const starter of STARTERS) for (let seed = 0; seed < 1000; seed++) {
       const run = newCampaign(starter.key, `run-${seed}`, `seed-${seed}`);
@@ -47,6 +49,7 @@ describe('starter campaign', () => {
         expect(pack.cards).toHaveLength(7);
         expect(pack.offers).toHaveLength(3);
         expect(new Set([...pack.cards, ...pack.offers]).size).toBe(10);
+        if (pack.cards.every(slug => !starter.colors.includes(BY_SLUG.get(slug)!.color))) noCrewColours.add(starter.key);
         const legends = pack.offers.filter(slug => BY_SLUG.get(slug)?.type === 'Legend');
         expect(legends).toHaveLength([2, 5].includes(encounter) ? 2 : 0);
         const pulls = campaignPulls(pack);
@@ -80,6 +83,7 @@ describe('starter campaign', () => {
     expect(Math.abs(hits.Secret / total - 1 / 24)).toBeLessThan(.008);
     expect(Math.abs(hits.Iconic / total - 1 / 18)).toBeLessThan(.008);
     expect(iconics.size).toBe(31);
+    expect(noCrewColours).toEqual(new Set(STARTERS.map(starter => starter.key)));
   }, 60000);
 
   it.each(STARTERS)('fills a late $name pack when both authored reward pools have hit the copy cap', starter => {
@@ -117,6 +121,7 @@ describe('starter campaign', () => {
     run.deck.legends = ['adam-smasher-ender-of-legends', 'dexter-deshawn-off-the-grid', 'johnny-silverhand-rocking-renegade'];
     for (const slug of run.deck.legends) run.inventory[slug] = 1;
     const revised = prepareCampaignReward(run);
+    expect(generateReward(run)).toMatchObject({ cards: sealed.cards, printingIds: sealed.printingIds });
     expect(revised).toMatchObject({ id: sealed.id, cards: sealed.cards, printingIds: sealed.printingIds });
     expect(revised.offers).toHaveLength(3);
     expect(revised.offers.every(slug => BY_SLUG.get(slug)?.color === 'Red')).toBe(true);
@@ -126,10 +131,13 @@ describe('starter campaign', () => {
     expect(prepareCampaignReward({ ...run, rewards: { [encounter]: legacy } })).toEqual(revised);
 
     const match = { summary: { ended: true, matchId: 'red-loss' } } as NonNullable<CampaignRun['match']>;
-    const loss = settleCampaignMatch({ ...run, rewards: { [encounter]: revised }, phase: 'inMatch', match },
-      { version: 1, completions: { 'the-heist': 0, 'embracing-power': 0 }, environments: [] }, match, 'rival').run;
+    const profile = { version: 1 as const, completions: { 'the-heist': 0, 'embracing-power': 0 }, environments: [] };
+    const loss = settleCampaignMatch({ ...run, rewards: { [encounter]: revised }, phase: 'inMatch', match }, profile, match, 'rival').run;
+    const otherCrew = newCampaign('embracing-power', run.id, run.seed);
+    const saturated = Object.fromEntries(CARDS.map(card => [card.slug, 3]));
+    const samePack = settleCampaignMatch({ ...otherCrew, encounter, inventory: saturated, phase: 'inMatch', match }, profile, match, 'rival').run.latestRetry;
     expect(loss.latestRetry?.cards).toHaveLength(5);
-    expect(loss.latestRetry?.cards.every(slug => BY_SLUG.get(slug)?.color === 'Red')).toBe(true);
+    expect(loss.latestRetry).toEqual(samePack);
     expect(loss.rewards[encounter]).toEqual(revised);
     expect(loss.retryPrintings).toMatchObject(Object.fromEntries(loss.latestRetry!.cards.map((slug, i) => [slug, loss.latestRetry!.printingIds![i]])));
   });
@@ -204,10 +212,11 @@ describe('starter campaign', () => {
       expect(pack.cards).toHaveLength(5);
       expect(pack.offers).toEqual([]);
       expect(new Set(pack.cards).size).toBe(5);
-      expect(pack.cards.some(slug => winPack.offers.includes(slug))).toBe(false);
+      const rarities = campaignPulls(pack).map(pull => pull.printing!.rarity);
+      expect(rarities.slice(0, 4).every(rarity => rarity === 'Common' || rarity === 'Uncommon')).toBe(true);
+      expect(rarities[4]).toMatch(/^(Rare|Epic|Secret|Iconic .+)$/);
       for (const slug of pack.cards) {
         const card = BY_SLUG.get(slug)!;
-        expect(starter.colors).toContain(card.color);
         expect(card.type).not.toBe('Legend');
         expect(run!.inventory[slug]).toBe((before!.inventory[slug] ?? 0) + 1);
       }
@@ -425,7 +434,8 @@ describe('starter campaign', () => {
           sawRecruit = true;
         } else {
           const current = (await readCampaign(scope)).run!;
-          const available = sealed!.cards.find(slug => !current.deck.cards[slug]);
+          const crew = campaignCrew(current.deck.legends);
+          const available = [...sealed!.cards, offer].find(slug => !current.deck.cards[slug] && !campaignCardFit(BY_SLUG.get(slug)!, crew));
           if (available) {
             const [remove] = Object.entries(current.deck.cards).find(([, qty]) => qty > 0)!;
             const updated = structuredClone(current.deck);
