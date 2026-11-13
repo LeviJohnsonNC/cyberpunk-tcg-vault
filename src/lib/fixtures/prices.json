@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "source": "Test fixtures",
+  "fx": { "usdToCad": 1.25, "asOf": "2026-01-01" },
+  "printings": {
+    "a33d3324-fe48-4a9f-80a8-8545a0a4727f": { "market": null, "low": 25, "finish": "Foil", "url": null },
+    "a0ef9536-ad3b-47f6-8c2a-171aa3b8b181": { "market": 14.52, "low": 13, "finish": "Foil", "url": null },
+    "a9c1137e-2e33-4293-9dcc-9351c9a0bbee": { "market": 4, "low": 3, "finish": "Foil", "url": null },
+    "ec3368a9-79f1-4dfc-9cf7-1cb464ec1c88": { "market": 0.5, "low": 0.15, "finish": "Normal", "url": null },
+    "d35720e4-f307-4732-ae3d-8f47f1351549": { "market": 0.4, "low": 0.1, "finish": "Normal", "url": null },
+    "d7e0e2e5-6e22-4b45-9e91-50936773e2e1": { "market": null, "low": 3, "finish": "Normal", "url": null },
+    "61118bbb-c1f6-4b1d-8d46-4f33f0a135b1": { "market": 9, "low": 8, "finish": "Normal", "url": null }
+  },
+  "pairs": {
+    "a33d3324-fe48-4a9f-80a8-8545a0a4727f": "a0ef9536-ad3b-47f6-8c2a-171aa3b8b181",
+    "ec3368a9-79f1-4dfc-9cf7-1cb464ec1c88": "d35720e4-f307-4732-ae3d-8f47f1351549",
+    "d7e0e2e5-6e22-4b45-9e91-50936773e2e1": "61118bbb-c1f6-4b1d-8d46-4f33f0a135b1"
+  }
+}

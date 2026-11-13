@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import sample from '../../public/imports/levi-collection.json';
 import { buildPriceBook, sortLines, toCsv } from './pricebook';
-import { BY_SLUG, defaultPrinting, valueHolding } from './data';
+import { BY_SLUG, FX, defaultPrinting, valueHolding } from './data';
 import type { Entry } from './store';
+
+vi.mock('../data/prices.json', () => import('./fixtures/prices.json'));
 
 const entries = sample.entries as Entry[];
 const NOVA_EO = BY_SLUG.get('adam-smasher-ender-of-legends')!.printings.find((p) => p.set === 'Edgerunner Open S 1')!.id;
@@ -35,10 +37,9 @@ describe('buildPriceBook', () => {
   });
 
   it('values a listing-only Retail printing at its verified Beta twin when that is lower', () => {
-    // Heist Retail legends only have a $25 USD listing; they must not outrank the Beta market proxy.
     const jackie = pb.lines.find((l) => l.card.slug === 'jackie-welles-pour-one-out-for-me')!;
     expect(jackie.basis).toBe('Beta proxy');
-    expect(jackie.unit).toBeLessThan(25);
+    expect(jackie.unit).toBeCloseTo(14.52 * FX, 6);
   });
 
   it('flags copies beyond the 3-copy deck limit as trade bait', () => {
@@ -105,7 +106,7 @@ describe('sortLines + toCsv', () => {
     const nova = csv.find((r) => r.includes('Adam Smasher'))!;
     expect(nova).toContain('"","","Unpriced"');
     const jackie = csv.find((r) => r.includes('Jackie'))!;
-    expect(jackie).toContain('"Beta proxy"');
+    expect(jackie).toContain('"18.15","18.15","Beta proxy"');
     expect(jackie).toMatch(/Heist Beta SD #β011/);
   });
 });
