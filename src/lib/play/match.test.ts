@@ -172,6 +172,28 @@ describe('play engine', () => {
     expect(seats).toEqual(new Set(['player', 'rival']));
   });
 
+  it('emits one presentation cue for a real multi-Gig steal, without replaying it after a resume', () => {
+    const { state } = rulesFixture('player');
+    const attackerId = placeCard(state, 'player', 'modded-kusanagi', 'field');
+    const gearId = placeCard(state, 'player', 'gorilla-arms', 'field');
+    state.G.cardIndex[attackerId].meta.attachedGearIds.push(gearId);
+    state.G.cardIndex[gearId].meta.attachedToId = attackerId;
+    state.G.players.rival.zones.hand = [];
+    for (const id of state.G.players.rival.zones.legendArea) state.G.cardIndex[id].meta.spent = true;
+    for (let i = 0; i < 4; i++) giveGig(state, 'rival');
+    const session = createEngineSession(setup('chrome-syndicate'), undefined, {
+      matchId: 'test', state, botRng: new SeededRNG('steal-cue').getState(),
+      known: new Map(), peeks: [], log: [], commandNumber: 20,
+    });
+    const before = session.start();
+    const pending = session.move(before.view.stateID, { move: 'attackRival', args: { attackerId } });
+    expect(pending.view.prompt.choice).toMatchObject({ type: 'chooseGigsToSteal', payload: { count: 2 } });
+    const dice = (pending.view.prompt.choice!.payload as { eligibleDice: { dieId: string }[] }).eligibleDice;
+    const resolved = session.move(pending.view.stateID, { move: 'resolveStealGigs', args: { dieIds: dice.slice(0, 2).map(die => die.dieId) } });
+    expect(resolved.presentation?.feedback?.tableCues).toEqual([{ cue: 'gig-steal', seat: 'player' }]);
+    expect(session.start().presentation).toBeUndefined();
+  });
+
   it('marks a roll that reaches seven Gigs without declaring the match over before the win check', () => {
     const { state } = rulesFixture('rival');
     while (state.G.players.player.fixerArea.length > 1) giveGig(state, 'player');

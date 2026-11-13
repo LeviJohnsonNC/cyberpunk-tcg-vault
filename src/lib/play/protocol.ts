@@ -130,6 +130,11 @@ export interface MatchChange {
   amount?: number;
 }
 
+export interface MatchTableCue {
+  cue: 'deal' | 'draw' | 'turn' | 'eddie' | 'call' | 'gig-steal';
+  seat: Seat;
+}
+
 export interface MatchBeat extends MatchFrame {
   id: number;
   seat: Seat;
@@ -139,6 +144,7 @@ export interface MatchBeat extends MatchFrame {
   changes: MatchChange[];
   playedCardIds?: string[];
   combatKillId?: string;
+  tableCues?: MatchTableCue[];
 }
 
 /** Running public facts about a match, kept with the saved game. */
@@ -166,6 +172,7 @@ export interface MatchReport {
 export interface MatchSnapshot extends MatchFrame {
   matchId: string;
   names: Record<Seat, string>;
+  openingDeal?: true;
   /** Transient public presentation. Never saved in the engine checkpoint. */
   presentation?: { beats: MatchBeat[]; feedback?: MatchBeat };
   /** Present once the match has ended. */

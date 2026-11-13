@@ -21,6 +21,9 @@ export type EngineEvent =
   | { type: 'cardDefeated'; cardId: string; defeatedBy?: string | null }
   | { type: 'attackResolved'; attackKind: string; attackerId: string; defenderId?: string; result?: FightResult }
   | { type: 'cardPlayed'; cardId: string }
+  | { type: 'cardsDrawn'; playerId: Seat; count: number }
+  | { type: 'cardSold' | 'legendFlipped' | 'turnStarted'; playerId: Seat }
+  | { type: 'gigStolen'; fromPlayerId: Seat; toPlayerId: Seat }
   | { type: 'cardsRevealed'; cardIds: string[]; fromZone: string; audience: 'private' | 'public'; playerId: Seat; viewers?: Seat[] }
   | { type: 'gigDieRolled'; dieId: string; dieType: string; result: number; playerId: Seat; origin: 'gainGig' | 'reroll' }
   | { type: 'other' };

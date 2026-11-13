@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { beatDuration, combatContext, describeBeat, describeRolls, matchChanges, presentationView } from './matchPresentation';
+import { beatDuration, combatContext, describeBeat, describeRolls, matchChanges, matchTableCues, presentationView } from './matchPresentation';
 import type { CardView, PlayerView } from './protocol';
 
 const card = (id: string, zone: string, extra: Partial<CardView> = {}): CardView => ({ instanceId: id, definitionId: id, cardName: id, zone, type: 'unit', faceDown: false, spent: false, power: 3, effectivePower: 3, cost: 2, ...extra });
@@ -10,6 +10,28 @@ const fresh = (): PlayerView => ({ players: {
   prompt: { status: 'waiting', choice: null, availableMoves: [] }, attackState: null });
 
 describe('public move presentation', () => {
+  it('sounds both seats’ turns, distinguishes single and multiple draws, and does not repeat a Gig steal', () => {
+    const before = fresh(), after = structuredClone(before);
+    const steal = { type: 'gigStolen', fromPlayerId: 'player', toPlayerId: 'rival' } as const;
+    expect(matchTableCues([
+      { type: 'turnStarted', playerId: 'rival' },
+      { type: 'cardsDrawn', playerId: 'rival', count: 1 },
+      { type: 'cardsDrawn', playerId: 'rival', count: 1 },
+      { type: 'cardsDrawn', playerId: 'player', count: 1 },
+      { type: 'cardSold', playerId: 'rival' },
+      { type: 'legendFlipped', playerId: 'player' },
+      steal, steal,
+      { type: 'gigDieRolled', dieId: 'ordinary', dieType: 'd6', playerId: 'rival', origin: 'gainGig', result: 3 },
+    ], before, after)).toEqual([
+      { cue: 'turn', seat: 'rival' }, { cue: 'eddie', seat: 'rival' }, { cue: 'call', seat: 'player' },
+      { cue: 'gig-steal', seat: 'rival' }, { cue: 'deal', seat: 'rival' }, { cue: 'draw', seat: 'player' },
+    ]);
+    before.gamePhase = 'setup';
+    after.activePlayerId = 'player';
+    expect(matchTableCues([], before, after)).toEqual([{ cue: 'turn', seat: 'player' }]);
+    expect(matchTableCues([], after, after)).toEqual([]);
+  });
+
   it('names a visible ability source during chained choices without exposing a concealed source', () => {
     const before = fresh(), after = structuredClone(before);
     before.prompt = { status: 'choice', choice: { type: 'chooseTarget', payload: { source: { cardId: 'attacker' } } }, availableMoves: [] };

@@ -184,34 +184,70 @@
 .campaign-board-launch .campaign-invitation-cta { margin: 0; min-height: 49px; }
 .campaign-board-launch > p { max-width: 26ch; margin: 5px 0 0; color: var(--color-ticket); font-size: 12px; }
 .campaign-board-timeline {
+  --tracker-cut: 12px;
+  --tracker-frame: polygon(var(--tracker-cut) 0, calc(100% - var(--tracker-cut)) 0, 100% 28%, 100% 72%, calc(100% - var(--tracker-cut)) 100%, var(--tracker-cut) 100%, 0 72%, 0 28%);
+  position: relative;
+  isolation: isolate;
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 7px 10px;
-  border: 1px solid color-mix(in srgb, var(--color-ticket) 35%, var(--color-divider));
-  border-radius: 5px;
-  background: color-mix(in srgb, var(--color-canvas-deep) 94%, transparent);
-  color: var(--color-text-muted);
-  font: 500 11px/1.3 var(--font-mono);
+  gap: 5px;
+  min-width: 0;
+  padding: 7px 12px;
+  color: var(--color-ticket);
+  font: italic 800 clamp(14px, 1.5vw, 22px)/1 var(--font-display);
   text-transform: uppercase;
+  filter: drop-shadow(0 2px 6px color-mix(in srgb, var(--color-accent) 32%, transparent));
 }
-.campaign-board-timeline > span { white-space: nowrap; }
-.campaign-board-timeline ol { flex: 1; display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 3px; list-style: none; padding: 0; margin: 0; }
-.campaign-board-timeline li {
+.campaign-board-timeline::before, .campaign-board-timeline::after {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  clip-path: var(--tracker-frame);
+  content: '';
+  background: linear-gradient(176deg, var(--color-ticket), var(--color-text-muted) 24%, var(--color-accent-deep) 55%, var(--color-accent) 90%);
+}
+.campaign-board-timeline::after { z-index: -1; inset: 1px; background: linear-gradient(var(--color-surface), var(--color-canvas-deep)); }
+.campaign-board-timeline ol { flex: 1; display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 4px; list-style: none; padding: 0; margin: 0; min-width: 0; }
+.campaign-board-timeline :is(li, .campaign-tracker-label) {
+  --step-edge: color-mix(in srgb, var(--color-text-muted) 64%, var(--color-divider));
+  --step-fill: var(--color-canvas-deep);
+  --step-frame: polygon(9px 0, calc(100% - 5px) 0, 100% 5px, calc(100% - 4px) calc(100% - 8px), calc(100% - 12px) 100%, 5px 100%, 0 calc(100% - 5px), 4px 8px);
+  position: relative;
+  isolation: isolate;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 3px;
-  min-height: 28px;
-  border: 1px solid var(--color-divider);
-  border-radius: 3px;
-  color: var(--color-text-muted);
+  min-height: 32px;
+  white-space: nowrap;
 }
-.campaign-board-timeline li:nth-child(3n + 4) { margin-inline-start: 4px; border-inline-start-color: var(--color-ticket); }
-.campaign-board-timeline li[data-state='current'] { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-accent-ink); }
-.campaign-board-timeline li:is([data-state='cleared'], [data-state='reward']) { color: var(--color-ticket); background: color-mix(in srgb, var(--color-ticket) 14%, var(--color-canvas-deep)); }
-.campaign-board-timeline li[data-state='reward'] { border-color: var(--color-ticket); }
-.campaign-board-cleared { font-size: 9px; }
+.campaign-board-timeline :is(li, .campaign-tracker-label)::before, .campaign-board-timeline :is(li, .campaign-tracker-label)::after {
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  clip-path: var(--step-frame);
+  background: var(--step-edge);
+  content: '';
+}
+.campaign-board-timeline :is(li, .campaign-tracker-label)::after {
+  z-index: -1;
+  inset: 1px;
+  background: linear-gradient(128deg, color-mix(in srgb, var(--step-edge) 13%, transparent), transparent 58%), var(--step-fill);
+}
+.campaign-board-timeline > span { padding: 0 10px; font-size: .82em; }
+.campaign-board-timeline li:nth-child(3n + 4) { margin-inline-start: 2px; --step-edge: var(--color-ticket); }
+.campaign-board-timeline li[data-state='current'] {
+  --step-edge: var(--color-text);
+  --step-fill: linear-gradient(145deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 62%, var(--color-danger)));
+  color: var(--color-accent-ink);
+  filter: drop-shadow(0 0 5px var(--color-accent));
+}
+.campaign-board-timeline li:is([data-state='cleared'], [data-state='reward']) {
+  --step-edge: var(--color-ticket);
+  --step-fill: color-mix(in srgb, var(--color-ticket) 19%, var(--color-canvas-deep));
+}
+.campaign-board-timeline li[data-state='reward'] { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--color-ticket) 55%, transparent)); }
+.campaign-board-cleared { font: 700 .5em/1 var(--font-ui); }
 
 .campaign-board-moment { max-width: 1440px; margin-inline: auto; padding: clamp(16px, 3.5vw, 48px) clamp(16px, 4vw, 62px) 84px; }
 .campaign-board-moment > .campaign-board-header { margin-bottom: 18px; }
@@ -262,7 +298,9 @@
   .campaign-board-rival-art > .campaign-rival-portrait { width: min(65%, 240px); }
   .campaign-board-crew-actions { margin-top: 10px; }
   .campaign-board-timeline { flex-wrap: wrap; }
-  .campaign-board-timeline ol { order: 3; flex: 1 0 100%; }
+  .campaign-board-timeline ol { order: 3; flex: 1 0 100%; gap: 3px; }
+  .campaign-board-timeline li { min-height: 27px; --step-frame: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px); }
+  .campaign-board-timeline > span { min-height: 25px; }
   .campaign-board-timeline > span:last-child { margin-left: auto; }
   .campaign-board-cleared { display: none; }
 }

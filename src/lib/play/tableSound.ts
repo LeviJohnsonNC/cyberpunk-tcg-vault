@@ -1,5 +1,5 @@
 /** Short synthesised table cues, including fallbacks for recorded effects. */
-export type TableCue = 'dice-roll' | 'card-play' | 'unit-kill' | 'draw' | 'play' | 'eddie' | 'hit' | 'defeat' | 'gig' | 'turn' | 'win' | 'lose' | 'equip' | 'program' | 'call' | 'attack' | 'select' | 'ready' | 'pack-open' | 'pack-reveal' | 'reward-lock' | 'act-arrival';
+export type TableCue = 'dice-roll' | 'card-play' | 'unit-kill' | 'deal' | 'draw' | 'play' | 'eddie' | 'hit' | 'defeat' | 'gig' | 'gig-steal' | 'turn' | 'win' | 'lose' | 'equip' | 'program' | 'call' | 'attack' | 'select' | 'ready' | 'pack-open' | 'pack-reveal' | 'reward-lock' | 'act-arrival';
 
 const TAU = Math.PI * 2;
 const tone = (hz: number, t: number) => Math.sin(TAU * hz * t);
@@ -9,7 +9,7 @@ const note = (hz: number, t: number, at: number, decay: number) => t < at ? 0 : 
 const fall = (from: number, floor: number, rate: number, t: number) => TAU * (floor * t + from / rate * (1 - Math.exp(-rate * t)));
 
 interface Recipe { seconds: number; gain: number; smooth: number; voice: (t: number, noise: number) => number }
-const recordedFallback = { 'dice-roll': 'gig', 'card-play': 'play', 'unit-kill': 'defeat' } as const;
+const recordedFallback = { 'dice-roll': 'gig', 'card-play': 'play', 'unit-kill': 'defeat', deal: 'draw', 'gig-steal': 'gig' } as const;
 const recipes: Record<Exclude<TableCue, keyof typeof recordedFallback>, Recipe> = {
   // Foil tear, a glassy reveal, and a quiet lock-in. Shared mute and voice limits apply.
   'pack-open': { seconds: .55, gain: .4, smooth: .22, voice: (t, n) => n * Math.sin(Math.PI * t / .55) ** 2 * (1 + .35 * tone(43, t)) + note(196, t, .3, 12) * .6 },
@@ -18,7 +18,9 @@ const recipes: Record<Exclude<TableCue, keyof typeof recordedFallback>, Recipe> 
   'act-arrival': { seconds: 1.35, gain: .35, smooth: .9, voice: t => note(130.81, t, 0, 3) * .7 + note(261.63, t, .12, 4) * .6 + note(392, t, .25, 4) * .5 + note(523.25, t, .4, 4) * .4 },
   equip: { seconds: .28, gain: .5, smooth: .65, voice: (t, n) => note(1450, t, 0, 65) * .55 + note(2200, t, .055, 38) * .4 + n * Math.exp(-45 * t) * .3 },
   program: { seconds: .42, gain: .38, smooth: .3, voice: (t, n) => Math.sin(fall(-900, 1600, 6, t)) * Math.sin(Math.PI * t / .42) ** 2 * .4 + note(1568, t, .16, 20) * .4 + n * Math.exp(-18 * t) * .2 },
-  call: { seconds: .72, gain: .38, smooth: .22, voice: (t, n) => note(196, t, 0, 6) * .8 + note(392, t, .07, 7) * .5 + note(587.33, t, .14, 6) * .35 + n * Math.exp(-12 * t) * .3 },
+  // A foil turn followed by a short, pitched reveal.
+  call: { seconds: .62, gain: .44, smooth: .32, voice: (t, n) => n * Math.sin(Math.PI * Math.min(1, t / .15)) ** 2
+    + note(220, t, .105, 11) * .62 + note(659.25, t, .125, 10) * .52 + note(987.77, t, .17, 11) * .32 },
   attack: { seconds: .22, gain: .4, smooth: .15, voice: (t, n) => n * Math.sin(Math.PI * t / .22) ** 2 * 1.6 + Math.sin(fall(130, 70, 12, t)) * Math.exp(-22 * t) * .4 },
   select: { seconds: .065, gain: .18, smooth: .6, voice: (t, n) => tone(1250, t) * Math.exp(-100 * t) + n * Math.exp(-180 * t) * .3 },
   ready: { seconds: .24, gain: .22, smooth: .2, voice: (t, n) => n * Math.exp(-25 * t) + note(620, t, .06, 22) * .5 },

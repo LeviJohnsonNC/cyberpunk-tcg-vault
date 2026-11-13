@@ -5,10 +5,25 @@ import diceRoll from '../assets/play/dice-roll.mp3';
 import cardPlay from '../assets/play/card-play.mp3';
 import unitKill from '../assets/play/unit-kill.mp3';
 
+import dealMultiple from '../assets/play/deal-multiple.mp3';
+import dealSingle from '../assets/play/deal-single.mp3';
+import turnStart from '../assets/play/turn-start.mp3';
+import eddieSale from '../assets/play/eddie-sale.mp3';
+import gigStolen from '../assets/play/gig-stolen.mp3';
+import matchWin from '../assets/play/match-win.mp3';
+import matchLoss from '../assets/play/match-loss.mp3';
+
 const recordings = [
   { cue: 'dice-roll', url: diceRoll, gain: 2.1 },
   { cue: 'card-play', url: cardPlay, gain: 1.4 },
   { cue: 'unit-kill', url: unitKill, gain: .65 },
+  { cue: 'deal', url: dealMultiple, gain: 1.3 },
+  { cue: 'draw', url: dealSingle, gain: 1.3 },
+  { cue: 'turn', url: turnStart, gain: 1.3 },
+  { cue: 'eddie', url: eddieSale, gain: .82 },
+  { cue: 'gig-steal', url: gigStolen, gain: .7 },
+  { cue: 'win', url: matchWin, gain: 1.35 },
+  { cue: 'lose', url: matchLoss, gain: 1.4 },
 ] satisfies { cue: TableCue; url: string; gain: number }[];
 
 async function decodeRecording(context: AudioContext, url: string) {
@@ -95,10 +110,10 @@ export function useTableSound() {
       if (!stop) return;
       // Brief music headroom for important outcomes.
       let timer: ReturnType<typeof setTimeout> | undefined;
-      if (['hit', 'defeat', 'unit-kill', 'call', 'win', 'lose'].includes(name)) {
+      if (['hit', 'defeat', 'unit-kill', 'call', 'gig-steal', 'win', 'lose'].includes(name)) {
         timer = setTimeout(() => {
           if (timer) duckTimers.current.delete(timer);
-          if (active.current && level.current && !document.hidden) duckMusic(name === 'win' ? .8 : .28);
+          if (active.current && level.current && !document.hidden) duckMusic(name === 'win' || name === 'lose' ? 2.6 : .28);
         }, delay);
         duckTimers.current.add(timer);
       }
