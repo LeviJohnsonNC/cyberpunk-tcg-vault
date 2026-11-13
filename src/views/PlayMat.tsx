@@ -22,12 +22,12 @@ export function ZoneFloat({ outcome, seat, kinds }: { outcome?: Outcome; seat: S
     <span key={change.kind} className="play-float" data-tone={(change.amount ?? 0) < 0 ? 'down' : 'up'}>{change.kind === 'eddies' ? change.label.replace(' available', '') : change.label}</span>)}</span>;
 }
 
-function MatDie({ card, fixer = false, effectIds, targetIds, chosenIds, onPick, dieDrag }: Targeting & { card: CardView; fixer?: boolean }) {
+function MatDie({ card, fixer = false, adjustmentSelected, effectIds, targetIds, chosenIds, onPick, dieDrag }: Targeting & { card: CardView; fixer?: boolean; adjustmentSelected?: boolean }) {
   const target = targetIds.has(card.instanceId);
   const rollAvailable = fixer && target && !!dieDrag;
   const label = fixer ? `Roll ${card.definitionId}` : `${card.definitionId} Gig · ${card.power}`;
   return <button type="button" className={`play-die${fixer ? ' play-die-fixer' : ''}`} aria-label={label} title={label}
-    data-card-id={card.instanceId} data-result={effectIds?.has(card.instanceId)} data-target={target} data-roll-available={rollAvailable || undefined} disabled={!target}
+    data-card-id={card.instanceId} data-result={effectIds?.has(card.instanceId)} data-target={target} data-adjustment-selected={adjustmentSelected || undefined} data-roll-available={rollAvailable || undefined} disabled={!target}
     aria-pressed={target ? chosenIds.has(card.instanceId) : undefined}
     onPointerDown={rollAvailable ? (event) => dieDrag?.start(event, card) : undefined}
     onClick={() => { if (!dieDrag?.suppressClick()) onPick(card.instanceId); }}>
@@ -36,13 +36,13 @@ function MatDie({ card, fixer = false, effectIds, targetIds, chosenIds, onPick, 
   </button>;
 }
 
-export function GigZones({ snapshot, outcome, ...targeting }: Targeting & { snapshot: MatchSnapshot; outcome?: Outcome }) {
+export function GigZones({ snapshot, outcome, adjustedGig, ...targeting }: Targeting & { snapshot: MatchSnapshot; outcome?: Outcome; adjustedGig?: unknown }) {
   return <div className="play-gig-zones">{(['rival', 'player'] as const).map((seat) => {
     const view = snapshot.view.players[seat];
     const gigs = zoneCards(view, 'gigArea');
     return <section key={seat} className="play-gigs" data-seat={seat} data-zone={`gigs:${seat}`} data-drop-zone={`gigs:${seat}`} data-drop-available={targeting.dropZones?.has(`gigs:${seat}`)} data-drop-over={targeting.dropOver === `gigs:${seat}`} aria-label={seat === 'player' ? 'Your Gigs' : 'Rival Gigs'}>
       <h3 className="play-gig-count play-eyebrow">{seat === 'player' ? 'Your Gigs' : 'Rival Gigs'} <span>{view.gigCount}</span></h3>
-      <div className="play-dice">{gigs.map((card) => <MatDie key={card.instanceId} card={card} {...targeting} />)}</div>
+      <div className="play-dice">{gigs.map((card) => <MatDie key={card.instanceId} card={card} adjustmentSelected={card.instanceId === adjustedGig} {...targeting} />)}</div>
       <span className="play-gig-cred" title="Street Cred is the total value of these Gig dice">Cred <b>{view.streetCred}</b></span>
       <ZoneFloat outcome={outcome} seat={seat} kinds={['gigs', 'cred']} />
     </section>;

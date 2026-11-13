@@ -10,12 +10,20 @@ export const decisionSetup = {
   player: prepareMatchDeck({ ...starters.decks['the-heist'], sideboard: {} }),
   rival: prepareMatchDeck(deckFromRecommended('chrome-syndicate')!),
 };
-export const decisionFixtures = ['Turn order', 'Opening hand', 'Gig die', 'Main turn', 'Reaction', 'Forced payment', 'Target effect', 'Order effects', 'Card placement', 'Overtime', 'Complete'] as const;
+const adjustmentSources = {
+  'Gig adjustment': 'dexter-deshawn-one-last-chance',
+  'Single Gig adjustment': 'dexter-deshawn-one-last-chance',
+  'Increase a Gig': 'industrial-assembly',
+  'Decrease a Gig': 'trust-no-one',
+} as const;
+export const decisionFixtures = ['Turn order', 'Opening hand', 'Gig die', 'Main turn', 'Reaction', 'Forced payment', 'Target effect', 'Order effects', 'Card placement',
+  'Gig adjustment', 'Single Gig adjustment', 'Increase a Gig', 'Decrease a Gig', 'Overtime', 'Complete'] as const;
 export type DecisionFixture = typeof decisionFixtures[number];
 type Position = EngineState & { G: {
   manualPaymentPlayerId?: Seat; overtime: boolean;
   turnMetadata: { activePlayerId: Seat; overtimeActive: boolean };
-  players: Record<Seat, { eddies: number; eddieCardIds: string[] }>;
+  players: Record<Seat, { eddies: number; eddieCardIds: string[]; gigArea: string[]; fixerArea: string[] }>;
+  gigDice: Record<string, { dieType: string; faceValue: number; location: string }>;
   cardIndex: Record<string, { zone: string; meta: { faceDown: boolean; spent: boolean; hasLag: boolean } }>;
 } };
 
@@ -70,6 +78,30 @@ export function createDecisionFixture(name: DecisionFixture) {
   }
   if (name === 'Target effect') program = place('player', 'floor-it', 'hand');
   if (name === 'Card placement') program = place('player', 'three-mouths-one-desire', 'hand');
+  if (name in adjustmentSources) {
+    // Stage the table, then play the actual card to generate its engine prompt.
+    for (const seat of ['player', 'rival'] as const) {
+      const player = state.G.players[seat];
+      player.fixerArea.push(...player.gigArea.splice(0));
+      for (const id of player.fixerArea) state.G.gigDice[id].location = 'fixerArea';
+    }
+    const putGig = (seat: Seat, type: string, value: number) => {
+      const player = state.G.players[seat];
+      const index = player.fixerArea.findIndex(id => state.G.gigDice[id].dieType === type);
+      if (index < 0) throw new Error(`Fixture die ${type} is unavailable.`);
+      const [id] = player.fixerArea.splice(index, 1);
+      player.gigArea.push(id);
+      Object.assign(state.G.gigDice[id], { location: 'gigArea', faceValue: value });
+    };
+    putGig('player', 'd4', 3);
+    if (name !== 'Single Gig adjustment') putGig('rival', 'd12', 4);
+    if (name === 'Increase a Gig' || name === 'Decrease a Gig') putGig('rival', 'd8', 5);
+    if (name === 'Increase a Gig') {
+      const legend = state.G.cardIndex[state.G.players.player.zones.legendArea[0]];
+      legend.definitionId = engineCardId('yorinobu-arasaka-embracing-destruction');
+    }
+    program = place('player', adjustmentSources[name as keyof typeof adjustmentSources], 'hand');
+  }
   if (name === 'Order effects') {
     place('player', 'misty-olszewski-mender-of-broken-spirits', 'field');
     place('player', 'misty-olszewski-mender-of-broken-spirits', 'field');

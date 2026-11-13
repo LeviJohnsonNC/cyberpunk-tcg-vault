@@ -1,5 +1,5 @@
 import { isReady, type MatchActionForm, type Picks } from './matchActions';
-import { visibleCards } from './matchView';
+import { visibleCards, zoneCards } from './matchView';
 import type { CardView, PlayerView } from './protocol';
 
 const signed = (value: number) => `${value >= 0 ? '+' : '−'} ${Math.abs(value)}`;
@@ -33,6 +33,19 @@ export function decisionSource(view: PlayerView, action: MatchActionForm, picks:
   const field = action.fields(picks).find((item) => ['card', 'ability', 'attacker'].includes(item.id));
   const id = field?.options.find((option) => picks[field.id]?.includes(option.id))?.cardId;
   return cards.find((card) => card.instanceId === id);
+}
+
+/** Use the public Gig zones to identify the owner, even after a Gig is stolen. */
+export function gigAdjustmentTarget(view: PlayerView, dieId: unknown) {
+  for (const seat of ['player', 'rival'] as const) {
+    const player = view.players[seat];
+    const gigs = zoneCards(player, 'gigArea');
+    const die = gigs.find(card => card.instanceId === dieId);
+    if (die) {
+      const total = gigs.reduce((sum, gig) => sum + gig.power, 0);
+      return { seat, die, streetCred: total === player.streetCred ? total : undefined };
+    }
+  }
 }
 
 /** Exact payment balance, before card effects or subsequent costs. Not a simulated outcome. */

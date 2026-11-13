@@ -105,7 +105,7 @@ export function matchActions(view: PlayerView): MatchActionForm[] {
             });
             return [...steps, field('value', `New value · currently ${current}`, values.map((value) => pick(String(value), String(value))))];
           }, (p) => ({ kind: 'adjust', dieId: fixed ?? one(p, 'die'), value: Number(one(p, 'value')) }), detail)];
-          if (payload.canDecline || min === 0 || adjustment.chooseUpTo) actions.push(direct('resolveAdjustGig', 'Keep the current value', { kind: 'noAdjustment' }));
+          if (payload.canDecline || min === 0 || adjustment.chooseUpTo) actions.push(direct('resolveAdjustGig', 'Decline adjustment', { kind: 'noAdjustment' }));
         } else if (payload.type === 'discardFromHand') {
           actions = [form('resolveDiscardFromHand', 'Discard from hand', () => [field('cards', 'Choose cards to discard', options(ids), payload.amount as number ?? 1)],
             (p) => ({ cardIds: p.cards }), detail)];
