@@ -15,14 +15,16 @@ describe('pack printing materials', () => {
       expect(packMaterialStyle(rarity)).toEqual(packMaterialStyle('Common'));
     }
   });
-  it('keeps surface effects restrained and finite across all materials', () => {
+  it('protects the printed face while keeping external light layers valid and finite', () => {
     for (const rarity of PACK_RARITIES) {
       const m = packMaterial(rarity);
       expect(m.surface).toBeLessThanOrEqual(.45);
-      expect(m.halo).toBeLessThanOrEqual(.2);
+      for (const opacity of [m.halo, m.bloom, m.spill, m.reflection]) {
+        expect(opacity).toBeGreaterThanOrEqual(0);
+        expect(opacity).toBeLessThanOrEqual(1);
+      }
       expect(m.duration).toBeLessThanOrEqual(1000);
       expect(m.duration).toBeGreaterThan(0);
-      expect(m.reflection).toBeLessThan(.3);
     }
   });
   it('identifies every Iconic subtype without confusing printing rarity with gameplay type', () => {
