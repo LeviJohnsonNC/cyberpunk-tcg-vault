@@ -2,7 +2,7 @@ import { engineSlug } from './engineCards';
 import { chooseMove, createCardCatalog, createMatchState, LocalEngine, projectRevealedCardView, SeededRNG } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import type { EngineEvent, EngineHandle, EngineState } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import { describeAction, hideConcealedTargets, visibleCards, zoneCards, zoneCount } from './matchView';
-import { describeBeat, describeRolls, presentationView } from './matchPresentation';
+import { describeBeat, describeRolls, matchTableCues, presentationView } from './matchPresentation';
 import { emptyTally, matchReport, recordMove } from './matchReport';
 import type { CardView, GigRoll, MatchBeat, MatchFrame, MatchLogEntry, MatchSetup, MatchSnapshot, MatchTally, Move, RivalSkill, Seat } from './protocol';
 
@@ -162,8 +162,10 @@ export function createEngineSession(
     const main = before.gamePhase !== 'setup' && after.gamePhase !== 'setup';
     const defeated = new Set(result.gameEvents.flatMap((event) => event.type === 'cardDefeated' ? [event.cardId] : []));
     recordMove(tally, seat, command, before, after, defeated);
-    const described = main || rolls.length ? describeBeat(seat, command, before, after, defeated) : undefined;
-    const beatText = described?.text || describeRolls(rolls, seat);
+    const tableCues = matchTableCues(result.gameEvents, before, after);
+    const described = main || rolls.length || tableCues.length ? describeBeat(seat, command, before, after, defeated) : undefined;
+    const beatText = described?.text || describeRolls(rolls, seat)
+      || (tableCues.length ? 'Resolved a table action.' : undefined);
     const text = describeAction(seat, command, before, after)
       ?? (described?.changes.length || rolls.length ? beatText : undefined);
     if (text) {
@@ -188,7 +190,7 @@ export function createEngineSession(
         ? fight.defenderId : undefined;
       const beat: MatchBeat = structuredClone({ ...frame(presentationView(after), rolls),
         ...described, text: beatText, id: commandNumber, seat,
-        ...(playedCardIds.length && { playedCardIds }), ...(combatKillId && { combatKillId }) });
+        ...(playedCardIds.length && { playedCardIds }), ...(combatKillId && { combatKillId }), ...(tableCues.length && { tableCues }) });
       if (seat === 'rival') beats.push(beat);
       else feedback = beat;
     }

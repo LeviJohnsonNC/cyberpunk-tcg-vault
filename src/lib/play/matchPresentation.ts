@@ -1,7 +1,8 @@
+import type { EngineEvent } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import { rollDuration } from './diceTiming';
 import { beatPace } from './matchMotion';
 import { describeAction, visibleCards, zoneCards } from './matchView';
-import type { CardView, GigRoll, MatchBeat, MatchChange, Move, PlayerView, Seat } from './protocol';
+import type { CardView, GigRoll, MatchBeat, MatchChange, MatchTableCue, Move, PlayerView, Seat } from './protocol';
 
 const seats = ['player', 'rival'] as const;
 const matZones = ['field', 'legendArea', 'resolvingProgram'];
@@ -49,6 +50,29 @@ export function matchChanges(before: PlayerView, after: PlayerView, defeatedIds:
       label: `${signed(amount)} ${unit}${kind === 'gigs' && Math.abs(amount) !== 1 ? 's' : ''}` });
   }
   return changes;
+}
+
+/** Sound events carry only public actions and seats, never drawn or sold card identities. */
+export function matchTableCues(events: EngineEvent[], before: PlayerView, after: PlayerView): MatchTableCue[] {
+  const cues: MatchTableCue[] = [];
+  const draws = new Map<Seat, number>();
+  function add(cue: MatchTableCue['cue'], seat: Seat) {
+    if (!cues.some(item => item.cue === cue && item.seat === seat)) cues.push({ cue, seat });
+  }
+  // The first turn starts directly after setup and does not emit turnStarted.
+  if (!after.gameEnded && before.gamePhase === 'setup' && after.gamePhase !== 'setup') add('turn', after.activePlayerId);
+  for (const event of events) {
+    switch (event.type) {
+      case 'turnStarted': add('turn', event.playerId); break;
+      case 'cardsDrawn': draws.set(event.playerId, (draws.get(event.playerId) ?? 0) + event.count); break;
+      case 'cardSold': add('eddie', event.playerId); break;
+      case 'legendFlipped': add('call', event.playerId); break;
+      // The engine can emit both a per-die event and a summary for a single steal.
+      case 'gigStolen': if (event.fromPlayerId !== event.toPlayerId) add('gig-steal', event.toPlayerId); break;
+    }
+  }
+  for (const [seat, count] of draws) if (count > 0) add(count > 1 ? 'deal' : 'draw', seat);
+  return cues;
 }
 
 export function describeBeat(seat: Seat, command: Move, before: PlayerView, after: PlayerView, defeatedIds?: Set<string>) {

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { isReady, matchActions, type Picks } from '../lib/play/matchActions';
 import { activeStep, cardIntents, dropIntents, intentLabel, reorderPick, suggestPayment, updatePick, type Destination, type Intent } from '../lib/play/matchInteraction';
@@ -14,6 +14,8 @@ import { GigZones, PlayerBench, RivalBench, SeatField } from './PlayMat';
 import { PlayChoices } from './PlayChoices';
 import { useTableDrag } from './useTableDrag';
 import { useTableMotion } from './useTableMotion';
+import { useMatchSound } from './useMatchSound';
+import { imageUrl } from '../lib/data';
 import { beatPace } from '../lib/play/matchMotion';
 import type { TableCue } from '../lib/play/tableSound';
 import { Rules } from '../components/bits';
@@ -44,8 +46,21 @@ function ContextMenu({ context, children, close }: { context: Context; children:
   const ref = useRef<HTMLDivElement>(null);
   const closeRef = useRef(close);
   useEffect(() => { closeRef.current = close; });
+  useLayoutEffect(() => {
+    const menu = ref.current;
+    if (!menu) return;
+    function position() {
+      if (!menu) return;
+      menu.style.left = `${Math.max(10, Math.min(context.x, innerWidth - menu.offsetWidth - 10))}px`;
+      menu.style.top = `${Math.max(10, Math.min(context.y, innerHeight - menu.offsetHeight - 10))}px`;
+    }
+    position();
+    const size = new ResizeObserver(position);
+    size.observe(menu);
+    (menu.querySelector<HTMLButtonElement>('.play-card-menu-action') ?? menu.querySelector('button'))?.focus({ preventScroll: true });
+    return () => size.disconnect();
+  }, [context]);
   useEffect(() => {
-    ref.current?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
     function outside(event: PointerEvent) { if (event.target instanceof Node && !ref.current?.contains(event.target)) closeRef.current(); }
     function escape(event: KeyboardEvent) { if (event.key === 'Escape') { event.preventDefault(); closeRef.current(); } }
     function reposition(event: Event) { if (event.type === 'resize' || !(event.target instanceof Node) || !ref.current?.contains(event.target)) closeRef.current(); }
@@ -55,9 +70,13 @@ function ContextMenu({ context, children, close }: { context: Context; children:
     document.addEventListener('keydown', escape);
     return () => { window.removeEventListener('resize', reposition); document.removeEventListener('scroll', reposition, true); document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape); };
   }, []);
-  return createPortal(<div ref={ref} className="play-card-menu" role="dialog" aria-label={`Actions for ${context.card.cardName ?? 'Legend slot'}`}
-    style={{ left: Math.max(10, Math.min(context.x, innerWidth - 290)), top: Math.max(10, Math.min(context.y, innerHeight - 300)), maxHeight: innerHeight - Math.max(10, Math.min(context.y, innerHeight - 300)) - 12 }}>
-    <div className="play-card-menu-title"><strong>{context.card.cardName ?? 'Face-down Legend'}</strong><button type="button" className="btn quiet" aria-label="Close card actions" onClick={close}>×</button></div>
+  const card = context.card.faceDown ? undefined : vaultCard(context.card);
+  return createPortal(<div ref={ref} className="play-card-menu" role="dialog" aria-label={`Actions for ${context.card.cardName ?? 'Legend slot'}`}>
+    <div className="play-card-menu-title">
+      {card && <img src={imageUrl(card.slug)} alt="" onError={event => { event.currentTarget.hidden = true; }} />}
+      <strong>{context.card.cardName ?? 'Face-down Legend'}</strong>
+      <button type="button" className="btn quiet" aria-label="Close card actions" onClick={close}>×</button>
+    </div>
     {children}
   </div>, document.body);
 }
@@ -127,20 +146,12 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
   const turnKey = setup ? 'setup' : `${view.turnNumber}:${view.activePlayerId}`;
   const [firstTurn] = useState(turnKey);
   // A match that opens on setup is new: name the two crews before the first cards are dealt.
-  const [intro] = useState(setup);
+  const [intro] = useState(!!snapshot.openingDeal && setup);
   // Movement follows each public frame: the player's own result, then every rival move in turn.
   useTableMotion(table, { key: `${stateKey}:${playback?.beat.id ?? ''}`, view, beat: playback?.beat ?? feedback,
     reducedBeats: reduced && snapshot.presentation ? [...(snapshot.presentation.feedback ? [snapshot.presentation.feedback] : []), ...snapshot.presentation.beats] : undefined,
-    hasRolls: snapshot.gigRolls.length > 0, enabled: !reduced, pace: playback ? beatPace(playback.count) : 1, deal: setup, sound: cue });
-  // The turn passing to the player and the result of the match are heard as well as seen.
-  const ending = view.gameEnded ? view.winnerId ?? 'draw' : undefined;
-  const heard = useRef({ turn: turnKey, ending });
-  useEffect(() => {
-    const before = heard.current;
-    heard.current = { turn: turnKey, ending };
-    if (ending && ending !== before.ending) cue?.(ending === 'player' ? 'win' : 'lose', 250);
-    else if (!ending && turnKey !== before.turn && turnKey.endsWith(':player')) cue?.('turn');
-  }, [turnKey, ending, cue]);
+    hasRolls: snapshot.gigRolls.length > 0, enabled: !reduced, pace: playback ? beatPace(playback.count) : 1, deal: intro, sound: cue });
+  useMatchSound(snapshot, playback?.beat ?? feedback, reduced, cue);
 
   useEffect(() => {
     if (!focusAfter.current) return;
@@ -415,11 +426,11 @@ export function PlayTable({ scope, snapshot, names, busy, error, send, rematch, 
       {notice && <p className="play-table-notice">{notice}</p>}
       {rolling && <PlayGigRoll key={view.stateID} rolls={rolls} thrown={activeThrow} cue={cue} />}
     </div>
-    {menu && <ContextMenu context={menu} close={closeMenu}>{menu.intents.map((intent, index) => <button key={index} type="button" className="btn ghost" data-context-action={actions[intent.action].id}
-      onClick={() => beginIntent(intent, true)}>{intentLabel(actions[intent.action], intent.picks, menu.card)}</button>)}
+    {menu && <ContextMenu context={menu} close={closeMenu}>{menu.intents.map((intent, index) => <button key={index} type="button" className="btn play-card-menu-action" data-context-action={actions[intent.action].id}
+      onClick={() => beginIntent(intent, true)}><span>{intentLabel(actions[intent.action], intent.picks, menu.card)}</span><span aria-hidden="true">→</span></button>)}
       {menu.intents.some((intent) => actions[intent.action].id === 'activateAbility') && vaultCard(menu.card) && <details className="play-menu-rules"><summary>Printed abilities</summary><Rules text={vaultCard(menu.card)!.text} /></details>}
       {!menu.intents.length && <p className="play-choice-detail">{selected ? 'Finish or cancel the current selection to start another action.' : 'No action available for this card now.'}</p>}
-      <button type="button" className="btn quiet" onClick={() => inspect(menu.card, menu.trigger)}>Details</button></ContextMenu>}
+      <button type="button" className="btn play-card-menu-action" onClick={() => inspect(menu.card, menu.trigger)}><span>Details</span><span aria-hidden="true">→</span></button></ContextMenu>}
     {hovered && !drag && !menu && !inspected && createPortal(<div className="play-hover-preview" data-landscape={hovered.landscape} style={{ left: hovered.x, top: hovered.y }} aria-hidden="true"><CardFace card={hovered.card} /><div className="play-hover-copy">
       <strong>{hovered.card.cardName ?? 'Concealed card'}</strong>
       {hovered.card.definitionId && <p>{hovered.card.type !== 'gear' && hovered.card.type !== 'program' && <>Power <b>{hovered.card.effectivePower}</b> · </>}

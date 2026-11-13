@@ -23,7 +23,7 @@ export function createMatchController(saved?: StoredMatch) {
         setup = nextSetup;
         draft = action.draft;
         match = nextMatch;
-        return { id, snapshot: nextMatch.start() };
+        return { id, snapshot: { ...nextMatch.start(), openingDeal: true } };
       }
       if (action.type === 'resume') {
         if (!match) throw new Error('There is no saved match for this Vault.');
@@ -34,7 +34,7 @@ export function createMatchController(saved?: StoredMatch) {
       if (action.type === 'rematch') {
         setup = { ...setup, circuit: setup.circuit ?? { version: 1, rivalKey: 'legacy-rematch' } };
         match = createEngineSession(setup);
-        return { id, snapshot: match.start() };
+        return { id, snapshot: { ...match.start(), openingDeal: true } };
       }
       return { id, snapshot: match.move(action.stateID, action.move) };
     } catch (error) {

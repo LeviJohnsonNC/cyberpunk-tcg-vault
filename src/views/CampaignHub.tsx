@@ -33,7 +33,7 @@ export function CampaignTimeline({ run }: { run: CampaignRun }) {
   const ended = run.phase === 'completed' || run.phase === 'claimingFinish';
   const currentAct = Math.floor(run.encounter / 3);
   return <div className="campaign-board-timeline" aria-label="Campaign progression">
-    <span>Act {currentAct + 1} / {CAMPAIGN_ACTS.length}</span>
+    <span className="campaign-tracker-label">Act {currentAct + 1} / {CAMPAIGN_ACTS.length}</span>
     <ol aria-label="Nine campaign contracts">
       {ENCOUNTERS.map((item, index) => {
         const cleared = ended || index < run.encounter;
@@ -49,7 +49,7 @@ export function CampaignTimeline({ run }: { run: CampaignRun }) {
         </li>;
       })}
     </ol>
-    <span>{ended ? '9 cleared' : `Contract ${run.encounter + 1} / ${ENCOUNTERS.length}`}</span>
+    <span className="campaign-tracker-label">{ended ? '9 cleared' : `Contract ${run.encounter + 1} / ${ENCOUNTERS.length}`}</span>
   </div>;
 }
 

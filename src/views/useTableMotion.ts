@@ -98,15 +98,10 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
         if (combatKills.size) cues.add('unit-kill');
         if (playedCard) cues.add('card-play');
         for (const accent of accents) {
-          if (accent.kind === 'cash') cues.add('eddie');
-          else if (accent.kind === 'legend') cues.add('call');
-          else if (!playedCard) cues.add('play');
+          if (accent.kind === 'land' && !playedCard) cues.add('play');
         }
         if (plan.strike && !combatKills.size) cues.add('hit');
         if (plan.defeated.some((id) => !combatKills.has(id))) cues.add('defeat');
-        const oldHand = previousView.players.player.zones.hand;
-        const newHand = view.players.player.zones.hand;
-        if (Array.isArray(oldHand) && Array.isArray(newHand) && newHand.some((card) => !oldHand.some((old) => old.instanceId === card.instanceId))) cues.add('draw');
         for (const cue of [...cues].slice(0, 3)) { const stop = sound?.(cue); if (stop) sounds.current.push(stop); }
       }
       return;
@@ -133,7 +128,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
     // A sound marks a moment on the table. Repeats of one cue in a frame are capped so a full deal doesn't clatter.
     const say = (cue: TableCue, delay: number, pan = 0) => {
       const count = heard.get(cue) ?? 0;
-      if (count >= (cue === 'draw' ? 4 : 2)) return;
+      if (count >= 2) return;
       heard.set(cue, count + 1);
       const stop = sound?.(cue, delay, pan);
       if (stop) sounds.current.push(stop);
@@ -142,7 +137,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
     const arrivals = new Map<string, number>();
     function fly(piece: Piece, from: Spot, options: { delay?: number; back?: string; showcase?: boolean; duration?: number; cue?: TableCue } = {}) {
       if (piece.el.dataset.cardId) arrivals.set(piece.el.dataset.cardId, (options.delay ?? 0) + time(options.showcase ? 1080 : options.duration ?? 420));
-      if (options.cue) say(options.cue, (options.delay ?? 0) + (options.cue === 'draw' ? 0 : time(options.showcase ? 1080 : (options.duration ?? 420) * .8)), piece.zone.endsWith('rival') ? .24 : -.24);
+      if (options.cue) say(options.cue, (options.delay ?? 0) + time(options.showcase ? 1080 : (options.duration ?? 420) * .8), piece.zone.endsWith('rival') ? .24 : -.24);
       const to = piece.spot;
       const wrap = document.createElement('div');
       wrap.className = 'play-flight';
@@ -210,7 +205,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       if (deal) {
         const deck = anchor('deck:player');
         let dealt = 0;
-        for (const piece of next.values()) if (deck && piece.zone === 'hand:player') fly(piece, deck, { delay: 1150 + 90 * dealt++, back: CARD_BACK, duration: 460, cue: 'draw' });
+        for (const piece of next.values()) if (deck && piece.zone === 'hand:player') fly(piece, deck, { delay: 1150 + 90 * dealt++, back: CARD_BACK, duration: 460 });
       }
       return;
     }
@@ -225,7 +220,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
     const arrivalCue = (id: string): TableCue => {
       if (playedCards.delete(id)) return 'card-play';
       const card = publicCards.find((card) => card.instanceId === id);
-      return card?.attachedToId ? 'equip' : card?.type === 'program' ? 'program' : card?.type === 'legend' ? 'call' : 'play';
+      return card?.attachedToId ? 'equip' : card?.type === 'program' ? 'program' : 'play';
     };
     if (!previousView.attackState && view.attackState) say('attack', 0);
     if (previousView.turnNumber === view.turnNumber && publicCards.some((card) => !card.spent && Object.values(previousView.players).some((seat) => Object.values(seat.zones).some((zone) => Array.isArray(zone) && zone.some((old) => old.instanceId === card.instanceId && old.spent))))) say('ready', 0);
@@ -246,14 +241,14 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       const earlier = before.get(id);
       if (earlier) {
         if (accents.some((accent) => accent.kind === 'legend' && accent.cardId === id)) {
-          fly(piece, piece.spot, { back: legendBack, duration: 400, cue: 'call' });
+          fly(piece, piece.spot, { back: legendBack, duration: 400 });
           continue;
         }
         const moved = Math.hypot(earlier.spot.x - piece.spot.x, earlier.spot.y - piece.spot.y);
         if (earlier.zone !== piece.zone || earlier.el !== piece.el) {
           const arriving = piece.zone.split(':')[0];
           if (moved > 3) fly(piece, earlier.spot, { delay: id === strike?.attackerId ? impact : 0,
-            cue: arriving === 'eddies' ? 'eddie' : arriving === 'gigs' ? 'gig' : earlier.zone === 'hand:player' ? arrivalCue(id) : undefined });
+            cue: !['eddies', 'gigs'].includes(arriving) && earlier.zone === 'hand:player' ? arrivalCue(id) : undefined });
         } else if (moved > 3 && id !== strike?.attackerId) {
           const animation = piece.el.animate([{ transform: `translate(${earlier.spot.x - piece.spot.x}px, ${earlier.spot.y - piece.spot.y}px)` }, { transform: 'none' }],
             { duration: time(280), easing: EASE });
@@ -265,7 +260,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       const [kind, seat] = piece.zone.split(':');
       const from = kind === 'hand' ? anchor('deck:player') : seat === 'rival' && ['field', 'resolving', 'eddies'].includes(kind) ? anchor('hand:rival') : undefined;
       if (from) fly(piece, from, { delay: 70 * entered++, back: kind !== 'eddies' ? CARD_BACK : undefined, showcase: plan.showcase.includes(id),
-        cue: kind === 'hand' ? 'draw' : kind === 'eddies' ? 'eddie' : arrivalCue(id) });
+        cue: kind === 'hand' || kind === 'eddies' ? undefined : arrivalCue(id) });
       else track([piece.el.animate([{ transform: 'scale(.6)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: time(260), easing: EASE })], () => undefined);
     }
 

@@ -59,10 +59,114 @@
 .play-decision-tray[data-compact="true"] .play-picks > .play-choice-detail { order: 4; flex-basis: 100%; }
 .play-decision-tray[data-compact="true"]:has(details[open]) .play-on-mat-prompt { flex-basis: 100%; order: 5; }
 
-.play-card-menu { position: fixed; z-index: 80; width: 280px; max-height: calc(100vh - 20px); overflow: auto; padding: 10px; border: 1px solid var(--color-accent); border-radius: 5px; background: var(--color-surface); color: var(--color-text); box-shadow: 0 12px 35px var(--play-shadow, var(--color-canvas-deep)); display: grid; gap: 7px; }
-.play-card-menu-title { display: flex; align-items: start; justify-content: space-between; gap: 8px; font: 600 14px/1.4 var(--font-ui); }
-.play-card-menu-title .btn { min-height: 26px; padding: 2px 7px; }
-.play-card-menu > .btn { min-height: 36px; text-align: left; font-size: 13px; white-space: normal; }
+.play-card-menu {
+  --menu-cut: 12px;
+  --menu-frame: polygon(var(--menu-cut) 0, calc(100% - var(--menu-cut)) 0, 100% var(--menu-cut), 100% calc(100% - var(--menu-cut)), calc(100% - var(--menu-cut)) 100%, var(--menu-cut) 100%, 0 calc(100% - var(--menu-cut)), 0 var(--menu-cut));
+  position: fixed;
+  z-index: 80;
+  isolation: isolate;
+  display: grid;
+  gap: 8px;
+  width: min(354px, calc(100vw - 20px));
+  max-height: calc(100dvh - 20px);
+  overflow: auto;
+  padding: 12px 13px 13px;
+  border: 0;
+  color: var(--color-ticket);
+  filter: drop-shadow(0 9px 18px var(--color-canvas-deep)) drop-shadow(0 0 8px color-mix(in srgb, var(--color-accent) 38%, transparent));
+}
+.play-card-menu::before, .play-card-menu::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  clip-path: var(--menu-frame);
+}
+.play-card-menu::before {
+  z-index: -2;
+  inset: 0;
+  background: linear-gradient(112deg, var(--color-divider), var(--color-accent) 22%, var(--color-ticket) 43%, var(--color-divider) 64%, var(--color-accent) 96%);
+}
+.play-card-menu::after {
+  z-index: -1;
+  inset: 1px;
+  background: linear-gradient(165deg, var(--color-surface-raised), var(--color-canvas-deep) 47%, var(--color-surface));
+}
+.play-card-menu-title {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 2px 7px 7px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--color-divider);
+  font: italic 800 clamp(22px, 3.5vw, 27px)/1 var(--font-display);
+}
+.play-card-menu-title strong { overflow-wrap: anywhere; }
+.play-card-menu-title img {
+  position: absolute;
+  z-index: -2;
+  inset: 0 0 auto auto;
+  width: 47%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 29%;
+  opacity: .64;
+  mask-image: linear-gradient(90deg, transparent, black 54%, transparent 100%);
+}
+.play-card-menu-title .btn {
+  flex: none;
+  justify-content: center;
+  width: 33px;
+  min-height: 33px;
+  padding: 0;
+  color: var(--color-ticket);
+  background: var(--color-canvas-deep);
+  font: 600 20px/1 var(--font-ui);
+}
+.play-card-menu .play-card-menu-action {
+  --action-cut: 7px;
+  --action-frame: polygon(var(--action-cut) 0, calc(100% - var(--action-cut)) 0, 100% var(--action-cut), 100% calc(100% - var(--action-cut)), calc(100% - var(--action-cut)) 100%, var(--action-cut) 100%, 0 calc(100% - var(--action-cut)), 0 var(--action-cut));
+  --action-edge: color-mix(in srgb, var(--color-text-muted) 40%, var(--color-divider));
+  --action-fill: var(--color-surface);
+  position: relative;
+  isolation: isolate;
+  justify-content: space-between;
+  min-height: 42px;
+  width: 100%;
+  padding: 7px 14px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--color-ticket);
+  font: italic 800 22px/1.05 var(--font-display);
+  text-align: left;
+  white-space: normal;
+}
+.play-card-menu-action::before, .play-card-menu-action::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  clip-path: var(--action-frame);
+  background: var(--action-edge);
+  pointer-events: none;
+}
+.play-card-menu-action::after {
+  inset: 1px;
+  background: repeating-linear-gradient(132deg, transparent 0 4px, color-mix(in srgb, var(--action-edge) 15%, transparent) 5px 6px) right 30px top / 24% 100% no-repeat, var(--action-fill);
+}
+.play-card-menu-action > span:last-child { font: 500 .9em/1 var(--font-ui); }
+.play-card-menu .play-card-menu-action[data-context-action='playCard'] {
+  --action-edge: var(--color-text);
+  --action-fill: linear-gradient(105deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 77%, var(--color-danger)));
+  color: var(--color-accent-ink);
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--color-accent) 60%, transparent));
+}
+.play-card-menu .play-card-menu-action[data-context-action='sellCard'] { --action-edge: var(--color-accent); color: var(--color-accent); }
+.play-card-menu .play-card-menu-action:is(:hover, :focus-visible) { --action-edge: var(--color-ticket); filter: brightness(1.15); }
+.play-card-menu .play-card-menu-action:focus-visible { outline: 2px solid var(--color-ticket); outline-offset: 2px; }
 .play-card-menu .play-choice-detail { color: var(--color-text-muted); font-size: 13px; line-height: 1.4; margin: 0; }
 .play-menu-rules { font: 400 12px/1.5 var(--font-ui); color: var(--color-text-muted); white-space: pre-line; }
 .play-menu-rules summary { cursor: pointer; color: var(--color-accent); }

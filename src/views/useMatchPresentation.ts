@@ -17,7 +17,7 @@ export function useMatchPresentation(snapshot?: MatchSnapshot) {
   const rival = snapshot?.presentation?.beats ?? [];
   const own = snapshot?.presentation?.feedback;
   // Lead with the player's own move when it rolled a die, changed the table, or opened an attack the rival then answers.
-  const beats = own && (own.gigRolls.length || (rival.length && (own.changes.length || own.view.attackState))) ? [own, ...rival] : rival;
+  const beats = own && (own.gigRolls.length || (rival.length && (own.changes.length || own.view.attackState || own.tableCues?.length))) ? [own, ...rival] : rival;
   const index = progress?.key === key ? progress.index : 0;
   const playing = !!snapshot && !reduced && index < beats.length;
   const beat = playing ? beats[index] : undefined;
@@ -47,7 +47,7 @@ export function useMatchPresentation(snapshot?: MatchSnapshot) {
   const last = rival.at(-1) ?? own;
   const feedback = beat ?? (expired !== key ? last : undefined);
   const displayed: MatchSnapshot | undefined = snapshot && beat ? {
-    matchId: snapshot.matchId, names: snapshot.names,
+    matchId: snapshot.matchId, names: snapshot.names, openingDeal: snapshot.openingDeal,
     circuit: snapshot.circuit && { contractId: snapshot.circuit.contractId, skill: snapshot.circuit.skill },
     // Reveal the saved report and Circuit receipt together, after the final public beat.
     view: beat.view.gameEnded ? { ...beat.view, gameEnded: false } : beat.view,
