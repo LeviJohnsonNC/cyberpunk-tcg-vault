@@ -357,13 +357,9 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       burst.className = 'play-impact';
       burst.style.cssText = `left:${struck.x}px;top:${struck.y}px;animation-delay:${impact}ms;animation-duration:${time(520)}ms;`;
       layer.append(burst);
-      const shake = table.animate([
-        { transform: 'none' }, { transform: 'translate(5px, -3px)' }, { transform: 'translate(-4px, 3px)' },
-        { transform: 'translate(3px, 1px)' }, { transform: 'translate(-1px, -1px)' }, { transform: 'none' },
-      ], { duration: time(300), delay: impact });
       const target = strike.targetId ? next.get(strike.targetId)?.el : table.querySelector<HTMLElement>(`[data-zone="${strike.targetZone}"]`);
       const flash = target?.animate([{ filter: 'brightness(2.4)' }, { filter: 'none' }], { duration: time(320), delay: impact, easing: 'ease-out' });
-      track(flash ? [shake, flash] : [shake], () => undefined);
+      if (flash) track([flash], () => undefined);
       const timer = window.setTimeout(() => burst.remove(), impact + time(560));
       running.current.add(function finish() { running.current.delete(finish); clearTimeout(timer); burst.remove(); });
     }

@@ -4,6 +4,7 @@ import type { CardView, PlayerView } from '../lib/play/protocol';
 import { decisionSource, gigAdjustmentTarget } from '../lib/play/tacticalInfo';
 import { CardFace } from './PlayCard';
 import { DieFace } from './PlayDice';
+import { PlayDecisionPanel } from './PlayDecisionPanel';
 import './play-gig-adjustment.css';
 
 type AdjustmentRules = { direction?: string; maxAmount?: number; chooseUpTo?: boolean };
@@ -48,18 +49,7 @@ export function PlayGigAdjustment({ view, action, picks, fields, active, cards, 
           <p>{choosingDie ? 'Select a highlighted die or choose from the list.' : adjustmentInstruction(payload?.adjustGig ?? payload)}</p>
         </div>
       </div>
-      {choosingDie ? <fieldset className="play-gig-adjustment-dice" data-pick-field="die" disabled={busy}>
-        <legend className="sr-only">Choose a Gig to adjust</legend>
-        {dieField.options.map(option => {
-          const gig = gigAdjustmentTarget(view, option.cardId);
-          return <button key={option.id} className="btn quiet" type="button" data-pick-option={option.id}
-            onClick={() => select('die', option.id)} aria-pressed={picks.die?.includes(option.id) ?? false}>
-            {gig ? <><DieFace type={gig.die.definitionId} value={gig.die.power} />
-              <span>{gig.seat === 'player' ? 'Your' : 'Rival'} {gig.die.definitionId} · {gig.die.power}</span></> : option.label}
-          </button>;
-        })}
-        {!dieField.options.length && <span>No eligible Gigs.</span>}
-      </fieldset> : target && <>
+      {!choosingDie && target && <>
         <div className="play-gig-adjustment-die" role="group" aria-label={`${target.seat === 'player' ? 'Your' : 'Rival'} ${target.die.definitionId}, current value ${target.die.power}`}>
           <span>Selected Gig</span>
           <DieFace type={target.die.definitionId} value={target.die.power} />
@@ -90,11 +80,26 @@ export function PlayGigAdjustment({ view, action, picks, fields, active, cards, 
       </>}
       {!choosingDie && !target && <p>The selected Gig is unavailable.</p>}
       <div className="play-gig-adjustment-actions">
+        {(choosingDie || context) && <PlayDecisionPanel label={choosingDie ? 'Options' : 'Combat details'}
+          title={choosingDie ? 'Eligible Gigs' : 'Combat details'}>
+          {context}
+          {choosingDie && <fieldset className="play-gig-adjustment-dice" data-pick-field="die" disabled={busy}>
+            <legend className="sr-only">Choose a Gig to adjust</legend>
+            {dieField.options.map(option => {
+              const gig = gigAdjustmentTarget(view, option.cardId);
+              return <button key={option.id} className="btn quiet" type="button" data-pick-option={option.id}
+                onClick={() => select('die', option.id)} aria-pressed={picks.die?.includes(option.id) ?? false}>
+                {gig ? <><DieFace type={gig.die.definitionId} value={gig.die.power} />
+                  <span>{gig.seat === 'player' ? 'Your' : 'Rival'} {gig.die.definitionId} · {gig.die.power}</span></> : option.label}
+              </button>;
+            })}
+            {!dieField.options.length && <span>No eligible Gigs.</span>}
+          </fieldset>}
+        </PlayDecisionPanel>}
         {!choosingDie && <button className="btn play-confirm" data-confirm-move="resolveAdjustGig" disabled={busy || !ready}>Apply adjustment</button>}
         {!choosingDie && !!dieField?.options.length && <button className="btn quiet" type="button" disabled={busy} onClick={changeGig}>Change Gig</button>}
         {alternatives}
       </div>
-      {context && <div className="play-gig-adjustment-context">{context}</div>}
     </form>
   </section>;
 }

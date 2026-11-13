@@ -107,10 +107,12 @@ export function SeatField({ seat, snapshot, active, renderCard, overlay, ...targ
   return <section className="play-field" data-seat={seat} data-active={active} data-zone={`field:${seat}`} data-resolving={resolving.length > 0} data-empty={!units.length && !resolving.length && !overlay || undefined}
     data-drop-zone={`field:${seat}`} data-drop-available={targeting.dropZones?.has(`field:${seat}`)} data-drop-over={targeting.dropOver === `field:${seat}`}
     aria-label={seat === 'player' ? 'Your field' : 'Rival field'}>
-    {units.length > 0 && <div className="play-card-row">{units.map(card => withGear(attached, renderCard, card))}</div>}
-    {resolving.length > 0 && <div className="play-resolving" data-zone={`resolving:${seat}`} role="group" aria-label="Resolving Programs">
-      <h3 className="play-zone-label">Resolving</h3><div className="play-card-row">{resolving.map((card) => renderCard(card))}</div>
-    </div>}
+    <div className="play-field-cards">
+      {units.length > 0 && <div className="play-card-row">{units.map(card => withGear(attached, renderCard, card))}</div>}
+      {resolving.length > 0 && <div className="play-resolving" data-zone={`resolving:${seat}`} role="group" aria-label="Resolving Programs">
+        <h3 className="play-zone-label">Resolving</h3><div className="play-card-row">{resolving.map((card) => renderCard(card))}</div>
+      </div>}
+    </div>
     {overlay}
   </section>;
 }
@@ -140,7 +142,7 @@ function Eddies({ seat, snapshot, outcome, ...targeting }: Targeting & { seat: S
     </div>
     <span id={breakdown} className="sr-only">{view.availableEddies} Eddies available. {view.eddies} ready, {spent} spent, {fromLegends} from Legends.</span>
     <p className="play-eddies-split" aria-hidden="true">{view.eddies} ready <span>·</span> +{fromLegends} Legends</p>
-    {(eddies.length > 0 || pool.length > 0) && <div className="play-eddie-row">{[...eddies, ...pool].map((card, index) => {
+    <div className="play-eddie-row">{[...eddies, ...pool].map((card, index) => {
       const target = targeting.targetIds.has(card.instanceId) && (own || !card.instanceId.startsWith('pool:'));
       const label = `${own ? 'Your' : 'Rival'} Eddie ${index + 1}, ${card.spent ? 'spent' : 'ready'}`;
       return <button key={card.instanceId} type="button" className="play-eddie" aria-label={label} title={label}
@@ -148,7 +150,7 @@ function Eddies({ seat, snapshot, outcome, ...targeting }: Targeting & { seat: S
         aria-pressed={target ? targeting.chosenIds.has(card.instanceId) : undefined} onClick={() => targeting.onPick(card.instanceId)}>
         <span className="play-eddie-card"><img src={eddiesBack} alt="" /></span>
       </button>;
-    })}</div>}
+    })}</div>
     <ZoneFloat outcome={outcome} seat={seat} kinds={['eddies']} />
   </section>;
 }

@@ -16,7 +16,7 @@ const adjustmentSources = {
   'Increase a Gig': 'industrial-assembly',
   'Decrease a Gig': 'trust-no-one',
 } as const;
-export const decisionFixtures = ['Turn order', 'Opening hand', 'Gig die', 'Main turn', 'Reaction', 'Forced payment', 'Target effect', 'Order effects', 'Card placement',
+export const decisionFixtures = ['Turn order', 'Opening hand', 'Gig die', 'Main turn', 'Crowded table', 'Reaction', 'Forced payment', 'Target effect', 'Order effects', 'Card placement',
   'Gig adjustment', 'Single Gig adjustment', 'Increase a Gig', 'Decrease a Gig', 'Overtime', 'Complete'] as const;
 export type DecisionFixture = typeof decisionFixtures[number];
 type Position = EngineState & { G: {
@@ -24,7 +24,7 @@ type Position = EngineState & { G: {
   turnMetadata: { activePlayerId: Seat; overtimeActive: boolean };
   players: Record<Seat, { eddies: number; eddieCardIds: string[]; gigArea: string[]; fixerArea: string[] }>;
   gigDice: Record<string, { dieType: string; faceValue: number; location: string }>;
-  cardIndex: Record<string, { zone: string; meta: { faceDown: boolean; spent: boolean; hasLag: boolean } }>;
+  cardIndex: Record<string, { zone: string; meta: { faceDown: boolean; spent: boolean; hasLag: boolean; attachedToId?: string } }>;
 } };
 
 export function createDecisionFixture(name: DecisionFixture) {
@@ -71,6 +71,17 @@ export function createDecisionFixture(name: DecisionFixture) {
   place('player', 'floor-it', 'hand');
   place('player', 'kiroshi-optics', 'hand');
   eddie('player'); eddie('player');
+  if (name === 'Crowded table') {
+    const legend = state.G.players.player.zones.legendArea[0];
+    state.G.cardIndex[legend].meta.faceDown = false;
+    for (let index = 0; index < 8; index++) {
+      const unit = place('player', 'corpo-security', 'field');
+      const gear = place('player', 'kiroshi-optics', 'field');
+      state.G.cardIndex[gear].meta.attachedToId = index < 3 ? legend : unit;
+      place('player', 'floor-it', 'hand');
+      eddie('rival');
+    }
+  }
   let program: string | undefined;
   if (name === 'Forced payment') {
     const legend = state.G.cardIndex[state.G.players.player.zones.legendArea[0]];

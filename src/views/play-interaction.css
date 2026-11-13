@@ -6,7 +6,7 @@
 .play-card[data-drop-over="true"] .play-card-art { --card-ring-width: 3px; --card-ring: var(--color-ticket); scale: 1.05; }
 .play-program-drop { position: absolute; inset: 4px; z-index: 4; display: grid; place-items: center; border-radius: 8px; background-color: color-mix(in srgb, var(--color-surface) 82%, transparent); font: 800 28px/1 var(--font-display); text-transform: uppercase; }
 
-/* The tray lives in the command bar. Ordinary decisions stay on one line so the table never shifts. */
+/* Decision controls shared by the command bar and its panel. */
 .play-table-decision { flex: 1; min-width: 0; }
 .play-decision-tray .play-picks { gap: 6px; }
 .play-tray-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -37,28 +37,12 @@
 .play-opening-choices { flex: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
 .play-opening-choices h3 { margin-inline-end: var(--space-2); }
 .play-command .play-opening-choices .btn { min-height: 38px; padding-inline: 16px; font-size: 13px; }
-.play-on-mat-prompt { display: flex; flex-wrap: wrap; align-items: start; gap: 5px 12px; color: var(--color-text-muted); font-size: 12px; }
-.play-on-mat-prompt details { flex: 1; min-width: 0; }
-.play-on-mat-prompt summary { cursor: pointer; width: fit-content; color: var(--color-accent); }
-.play-on-mat-prompt details[open] { flex-basis: 100%; }
 .play-choice-option { position: relative; flex: none; display: grid; align-content: start; gap: 2px; }
 .play-choice-details { border: 0; padding: 2px; color: var(--color-text-muted); background: transparent; text-decoration: underline; font: 400 10px/1.4 var(--font-ui); cursor: pointer; }
 .play-placement-review { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); border: 1px solid var(--color-divider); border-radius: 3px; font-size: 11px; }
 .play-placement-review > div { display: grid; gap: 3px; padding: 6px 8px; min-width: 0; }
 .play-placement-review strong { color: var(--color-ticket); font-weight: 500; }
 .play-placement-review span { color: var(--color-text-muted); overflow-wrap: anywhere; }
-.play-decision-tray[data-compact="true"] .play-picks { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 10px; }
-.play-decision-tray[data-compact="true"] .play-tray-head { display: contents; }
-.play-decision-tray[data-compact="true"] .play-tray-intent { order: 0; flex: 1; min-width: 140px; }
-.play-decision-tray[data-compact="true"] .play-tray-intent > div { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; }
-.play-decision-tray[data-compact="true"] .play-tray-intent p { margin: 0; }
-.play-decision-tray[data-compact="true"] .play-choice-steps { order: 1; }
-.play-decision-tray[data-compact="true"] .play-on-mat-prompt { order: 2; }
-.play-decision-tray[data-compact="true"] .play-on-mat-prompt > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-.play-decision-tray[data-compact="true"] .play-tray-actions { order: 3; }
-.play-decision-tray[data-compact="true"] .play-picks > .play-choice-detail { order: 4; flex-basis: 100%; }
-.play-decision-tray[data-compact="true"]:has(details[open]) .play-on-mat-prompt { flex-basis: 100%; order: 5; }
-
 .play-card-menu {
   --menu-cut: 12px;
   --menu-frame: polygon(var(--menu-cut) 0, calc(100% - var(--menu-cut)) 0, 100% var(--menu-cut), 100% calc(100% - var(--menu-cut)), calc(100% - var(--menu-cut)) 100%, var(--menu-cut) 100%, 0 calc(100% - var(--menu-cut)), 0 var(--menu-cut));

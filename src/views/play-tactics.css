@@ -44,14 +44,10 @@
 .play-payment-receipt { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 5px 10px; border-inline-start: 3px solid var(--color-ticket); background: var(--color-canvas-deep); font: 400 12px/1.4 var(--font-ui); }
 .play-payment-receipt > strong { color: var(--color-ticket); white-space: nowrap; }
 .play-payment-receipt > span { color: var(--color-text); }
-.play-payment-receipt summary { color: var(--color-text-muted); cursor: pointer; }
-.play-payment-receipt details[open] { flex-basis: 100%; }
 .play-payment-receipt p { color: var(--color-text-muted); margin: 8px 0 4px; }
 .play-payment-receipt ul { list-style: none; padding: 0; margin: 6px 0; max-width: 360px; }
 .play-payment-receipt li { display: flex; justify-content: space-between; gap: 20px; }
 .play-payment-receipt li span { color: var(--color-text-muted); }
-.play-decision-tray[data-compact="true"] .play-payment-receipt { order: 4; flex-basis: 100%; }
-.play-decision-tray[data-compact="true"] .play-picks > .play-choice-detail { order: 5; }
 .play-combat-stage { flex: none; display: grid; gap: 3px; min-width: 95px; }
 .play-combat-stage small { font: 500 9px/1 var(--font-mono); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .07em; }
 .play-combat-stage strong { font: 700 16px/1.1 var(--font-display); color: var(--color-ticket); }
