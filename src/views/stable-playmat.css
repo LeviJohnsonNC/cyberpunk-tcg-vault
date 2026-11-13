@@ -167,7 +167,7 @@ html:has(.play-direct) { scrollbar-gutter: stable; }
 }
 
 @media (max-width: 1180px) {
-  .play-direct .play-table { --play-command-height: 132px; }
+  .play-direct .play-table { --play-command-height: 172px; }
   .play-gig-adjustment-intent { flex-basis: 100%; }
 }
 @media (max-width: 1060px) {
@@ -180,7 +180,7 @@ html:has(.play-direct) { scrollbar-gutter: stable; }
 }
 @media (max-width: 900px) {
   .play-direct .play-bench[data-portrait] { block-size: calc(var(--play-rival-height) * 2 + 6px); }
-  .play-direct .play-table { --play-command-height: 158px; }
+  .play-direct .play-table { --play-command-height: 212px; }
   .play-command-content { flex-wrap: wrap; }
   .play-gig-adjustment-values { max-width: min(100%, 225px); }
 }
