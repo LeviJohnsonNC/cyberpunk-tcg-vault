@@ -64,7 +64,10 @@ export function createDecisionFixture(name: DecisionFixture) {
   place('player', 'kiroshi-optics', 'hand');
   eddie('player'); eddie('player');
   let program: string | undefined;
-  if (name === 'Forced payment') place('player', 'jackie-welles-mama-s-favorite', 'legendArea');
+  if (name === 'Forced payment') {
+    const legend = state.G.cardIndex[state.G.players.player.zones.legendArea[0]];
+    legend.definitionId = engineCardId('jackie-welles-mama-s-favorite'); legend.meta.faceDown = false;
+  }
   if (name === 'Target effect') program = place('player', 'floor-it', 'hand');
   if (name === 'Card placement') program = place('player', 'three-mouths-one-desire', 'hand');
   if (name === 'Order effects') {

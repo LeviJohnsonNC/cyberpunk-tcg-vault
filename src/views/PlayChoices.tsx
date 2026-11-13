@@ -8,8 +8,8 @@ import { CardFace } from './PlayCard';
 import { DieFace } from './PlayDice';
 import type { CommandPresentation } from '../lib/play/commandPresentation';
 
-export function PlayChoices({ presentation, view, action, picks, fields, active, cards, busy, forced, select, step, submit, cancel, alternatives, reorder, inspect, revealed }: {
-  presentation: CommandPresentation;
+export function PlayChoices({ presentation, context, view, action, picks, fields, active, cards, busy, forced, select, step, submit, cancel, alternatives, reorder, inspect, revealed }: {
+  presentation: CommandPresentation; context?: ReactNode;
   view: PlayerView;
   revealed?: CardView[]; action: MatchActionForm; picks: Picks; fields: PickField[]; active?: PickField; cards: CardView[];
   inspect: (card: CardView, trigger: HTMLElement) => void; busy: boolean; forced: boolean; select: (field: string, value: string) => void;
@@ -54,7 +54,8 @@ export function PlayChoices({ presentation, view, action, picks, fields, active,
           {alternatives}
         </div>
       </div>
-      {action.detail && <p className="play-choice-detail"><Rules text={action.detail} /></p>}
+      {(context || payment || action.detail) && <div className="play-choice-context">
+      {context}
       {payment && <div className="play-payment-receipt" aria-label="Payment preview" aria-live="polite">
         <strong>Pay {payment.amount} €$</strong><span>{payment.ready ? payment.reserved.length ? `${payment.afterCosts} €$ after costs` : `${payment.afterPayment} €$ after payment` : 'Choose payment sources'}</span>
         {payment.reserved.length > 0 && <span>Also spends {payment.reserved.join(', ')}</span>}
@@ -64,6 +65,8 @@ export function PlayChoices({ presentation, view, action, picks, fields, active,
           {payment.reserved.length > 0 && <p>Ability also spends {payment.reserved.join(', ')}. {payment.afterCosts} €$ remain after these costs.</p>}
           {payment.amount === 0 && <p>No Eddies are required.</p>}
         </details>
+      </div>}
+      {action.detail && <p className="play-choice-detail"><Rules text={action.detail} /></p>}
       </div>}
       <div className="play-choice-steps" aria-label="Decision steps">{fields.map((field, index) =>
         <button type="button" key={field.id} className="btn quiet" aria-pressed={field.id === active?.id}

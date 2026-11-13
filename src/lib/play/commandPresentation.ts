@@ -38,7 +38,12 @@ export function commandPresentation({ view, actions, selected, active, busy = fa
     if (['attackUnit', 'attackRival'].includes(selected.id)) return show('target', active?.id === 'defender' ? 'Choose an attack target' : 'Choose an attacker', 'Select a highlighted Unit. Cancel to return to your move.');
     return show(choice ? 'effect' : 'target', active?.label ?? selected.label, choice ? 'Resolve the highlighted choice to continue.' : 'Complete this action, or cancel to return to your move.');
   }
-  if (choice) return show('effect', actions[0]?.label ?? 'Resolve a choice', actions[0]?.detail);
+  if (choice) {
+    // Direct choices have option labels ('unit', 'hand'), not an instruction.
+    const title = choice.type === 'chooseCardType' ? 'Choose a card type'
+      : choice.type === 'revealDestination' ? 'Place the revealed card' : actions[0]?.label ?? 'Resolve a choice';
+    return show('effect', title, actions[0]?.detail);
+  }
   if (combat) return show('combat', view.attackState?.step === 'react' ? 'Respond to the attack' : 'Continue combat', combat.hint, offered('resolveAttack') ? 'mandatory' : 'normal');
   return show('normal-turn', 'Your move', 'Select a card or drag it to a highlighted destination.', 'normal');
 }

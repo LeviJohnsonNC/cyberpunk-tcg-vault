@@ -19,6 +19,15 @@ describe('contextual decision presentation', () => {
     expect(commandPresentation({ view: state, actions })).toMatchObject({ variant: 'turn-order', attention: 'mandatory', title: 'Choose turn order' });
     expect(actions.map(action => action.move({}).args)).toEqual([{ goFirst: true }, { goFirst: false }]);
   });
+  it.each([
+    ['chooseCardType', 'resolveCardTypeChoice', { cardTypes: ['unit', 'gear', 'program'] }, 'Choose a card type'],
+    ['revealDestination', 'resolveRevealDestination', { destinations: ['hand', 'trash'] }, 'Place the revealed card'],
+  ] as const)('names the decision rather than its first option for %s', (type, moveId, payload, title) => {
+    const state = view();
+    state.prompt = { status: 'choice', choice: { type, payload }, availableMoves: [{ moveId, inputSpec: { type: 'none' } }] };
+    expect(present(state)).toMatchObject({ title, attention: 'mandatory' });
+    expect(matchActions(state).map(action => action.move({}).move)).toEqual(Array(type === 'chooseCardType' ? 3 : 2).fill(moveId));
+  });
   it('keeps the opening-hand decision after the mulligan is consumed', () => {
     const state = view(); state.gamePhase = 'setup';
     state.prompt.availableMoves = [{ moveId: 'keepHand', inputSpec: { type: 'none' } }];

@@ -90,7 +90,10 @@
   border-color: var(--color-accent);
   background: #ff8cbb14;
 }
-.play-direct .play-command .play-payment-receipt { flex-basis: 100%; }
+.play-direct .play-command .play-choice-context { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 16px; order: 4; flex-basis: 100%; }
+.play-direct .play-command .play-choice-context .play-payment-receipt { flex: 1 1 260px; }
+.play-direct .play-command .play-choice-context > .play-choice-detail { flex: 1 1 230px; }
+.play-direct .play-command .play-choice-context .play-combat-banner { margin: 0; padding: 0; border: 0; }
 .play-direct .play-command .play-combat-decision { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; }
 .play-direct .play-command .play-combat-decision > .play-command-lead { flex: 1 1 235px; }
 .play-direct .play-command .play-combat-banner { min-width: min(100%, 330px); }
@@ -110,6 +113,21 @@
   animation: play-command-arrive 260ms ease-out both;
 }
 @keyframes play-command-arrive { from { opacity: .85; } to { opacity: 0; } }
+/* Larger effect choices use the available width before consuming more field height. */
+.play-direct .play-command .play-decision-tray[data-compact="false"] .play-picks {
+  display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 6px 14px;
+}
+.play-direct .play-command .play-decision-tray[data-compact="false"] :is(.play-tray-head, .play-choice-context, .play-placement-review, .play-choice-order) { grid-column: 1 / -1; }
+.play-direct .play-command .play-decision-tray[data-compact="false"] .play-choice-steps { grid-column: 1; flex-direction: column; align-items: start; }
+.play-direct .play-command .play-decision-tray[data-compact="false"] .play-active-choice { grid-column: 2; }
+.play-direct .play-command .play-decision-tray[data-compact="false"] .play-active-choice > legend {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
+}
+.play-direct .play-command:has(.play-decision-tray[data-compact="false"]) .play-turn-plate { align-self: start; min-height: 68px; margin-bottom: 0; }
+@media (max-width: 760px) {
+  .play-direct .play-command .play-decision-tray[data-compact="false"] .play-picks { grid-template-columns: minmax(0, 1fr); }
+  .play-direct .play-command .play-decision-tray[data-compact="false"] .play-active-choice { grid-column: 1; }
+}
 /* Available dice stay legible; selected and focused states are separate from availability. */
 .play-direct .play-die[data-roll-available] .play-die-face {
   animation: none;

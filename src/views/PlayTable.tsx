@@ -469,8 +469,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
           {view.gameEnded ? <div className="play-command-lead"><strong>{decisionTitle}</strong><p>{winReasons[view.winReason ?? ''] ?? 'Match ended'}</p></div>
             : playback ? <>{combat && <CombatBanner view={view} watching compact />}<PlayPresentation playback={playback} /></>
             : selected ? <div className="play-table-decision" key={stateKey}>
-              {combat && <CombatBanner view={view} watching={false} compact inspect={inspect} />}
-              <PlayChoices presentation={command} view={view} action={selected} picks={picks} fields={fields} active={step} cards={cards} busy={busy} forced={!!choice} revealed={reveal?.revealedCards} select={chooseValue}
+              <PlayChoices presentation={command} context={combat && <CombatBanner view={view} watching={false} compact inspect={inspect} />} view={view} action={selected} picks={picks} fields={fields} active={step} cards={cards} busy={busy} forced={!!choice} revealed={reveal?.revealedCards} select={chooseValue}
                 step={(id) => { clearHover(); setChoice(selection, picks, id); }} reorder={(field, ids) => { const next = reorderPick(selected, picks, field, ids); if (next) setChoice(selection, next, field); }}
                 submit={() => selection !== undefined && commit({ action: selection, picks })}
                 cancel={() => { setChoice(choice ? defaultSelection : undefined, {}); clearHover(); }}
