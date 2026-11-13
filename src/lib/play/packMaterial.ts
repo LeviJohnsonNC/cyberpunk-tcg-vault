@@ -17,9 +17,9 @@ export interface PackMaterial {
 
 const satin: PackMaterial = {
   name: 'satin', edge: '#cee0df', secondary: '#c987a8', catch: '#ffe5bc',
-  rim: 'linear-gradient(135deg, #fff1d4 0%, #a4dce3 16%, #41626c 31%, #392631 47%, #bd8295 70%, #ffe4bc 93%, #6d5254)',
+  rim: 'linear-gradient(135deg, #effcff 0%, #7dd0df 14%, #294552 29%, #291c29 46%, #ba6e91 70%, #ffe1a5 90%, #fff1d4 96%, #8e6460)',
   sheen: 'linear-gradient(115deg, transparent 28%, #e8f3ee10 43%, #fff4df60 49%, #ffd4ae15 53%, transparent 63%)',
-  edgeOpacity: .7, bloom: .17, halo: .07, spill: .19, reflection: .12, surface: .16, duration: 480,
+  edgeOpacity: .9, bloom: .24, halo: .08, spill: .28, reflection: .16, surface: .16, duration: 480,
 };
 
 export function packMaterial(_rarity?: string): PackMaterial { return satin; }

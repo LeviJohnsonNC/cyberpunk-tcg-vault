@@ -1,7 +1,7 @@
 /* Light belongs to the card or the table. Only the card's layers share its pose. */
 .campaign-material-stage { --material-scale: 1; }
 .campaign-material-stage .campaign-tabletop-pose {
-  transform: perspective(1100px) translateY(-5px) rotateX(3deg) rotateY(-11deg) rotateZ(5deg);
+  transform: perspective(1100px) translateY(-5px) rotateX(3deg) rotateY(9deg) rotateZ(-4deg);
   transform-origin: 50% 88%;
   border-radius: 2.4% / 1.7%;
 }
@@ -40,7 +40,7 @@
 .campaign-material-shadow {
   z-index: -1; inset: auto -9% -4% -6%; height: 12%;
   background: radial-gradient(ellipse, #08040ccc 0%, #08040c66 23%, transparent 69%);
-  transform: rotate(5deg);
+  transform: rotate(-4deg);
 }
 .campaign-material-spill {
   z-index: -1; inset: auto -20% -9% -17%; height: 22%;
@@ -52,7 +52,7 @@
 }
 .campaign-material-reflection {
   z-index: -1; top: 96%; left: 1%; width: 98%; height: 20%; overflow: hidden;
-  opacity: var(--material-reflection); transform: rotate(5deg) skewX(-12deg);
+  opacity: var(--material-reflection); transform: rotate(-4deg) skewX(9deg);
   mask-image: linear-gradient(#0009, #0003 36%, transparent 93%);
 }
 .campaign-material-reflection img {
