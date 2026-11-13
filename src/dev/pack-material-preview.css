@@ -1,0 +1,19 @@
+.material-preview-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; padding: 9px 12px; background: #150d18; color: #f6dca9; }
+.material-preview-tools strong { font-size: 12px; }
+.material-preview-tools .btn { padding: 5px 8px; min-height: 30px; font-size: 12px; }
+.material-preview-tools select { background: #241a27; color: #f6dca9; }
+.material-comparison { --tabletop-feature-width: 210px; padding: 28px 4vw 36px; }
+.material-comparison h1 { font-size: 46px; }
+.material-comparison > p { color: var(--color-ticket); max-width: 70ch; }
+.material-comparison-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 48px 45px; margin-top: 42px; }
+.material-comparison-grid article { min-width: 0; text-align: center; }
+.material-comparison-grid .campaign-material-stage { max-width: 210px; margin-inline: auto; }
+.material-comparison-label { display: block; margin-top: 32px; color: var(--color-ticket); font: 500 13px var(--font-mono); }
+.material-comparison[data-columns='8'] .material-comparison-grid { grid-template-columns: repeat(8,minmax(0,1fr)); gap: 30px; }
+.material-comparison[data-columns='8'] { --tabletop-feature-width: min(9vw,210px); }
+.material-comparison[data-labels='false'] .material-comparison-label { visibility: hidden; }
+.material-preview-inspect { position: fixed; inset: 0; z-index: 10; background: #0e0711e8; display: grid; place-content: center; gap: 25px; }
+.material-preview-inspect .campaign-material-stage { width: min(350px,65vw); }
+@media(max-width:700px) { .material-comparison-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 38px 24px; } .material-comparison { --tabletop-feature-width: 36vw; } }
+
+.pack-material-preview[data-reduced] *, .pack-material-preview[data-reduced] *::before, .pack-material-preview[data-reduced] *::after { animation: none !important; transition: none !important; }

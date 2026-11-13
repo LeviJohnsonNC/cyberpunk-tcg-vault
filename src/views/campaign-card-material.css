@@ -1,0 +1,146 @@
+/* Light belongs to the card or the table. Only the card's layers share its pose. */
+.campaign-material-stage { --material-scale: 1; }
+.campaign-material-stage .campaign-tabletop-pose {
+  transform: perspective(1100px) translateY(-5px) rotateX(3deg) rotateY(9deg) rotateZ(-4deg);
+  transform-origin: 50% 88%;
+  border-radius: 2.4% / 1.7%;
+}
+.campaign-material-stage .campaign-tabletop-pose::before,
+.campaign-material-stage .campaign-tabletop-pose::after { display: none; }
+.campaign-material-stage .campaign-tabletop-pose .campaign-reward-art {
+  border-radius: inherit;
+  box-shadow: 1px 1px 0 #49353b, 2px 3px 0 #291a22, 3px 5px 0 #110b13,
+    4px 7px 2px #0b070bd9, 10px 17px 24px #09060b80;
+}
+.campaign-material-stage .campaign-reward-art::before { display: none; }
+.campaign-material-stage .campaign-reward-art img { border-radius: inherit; }
+.campaign-material-stage .campaign-tabletop-feature:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 12px; }
+.campaign-material-edge, .campaign-material-bloom, .campaign-material-sheen,
+.campaign-material-halo, .campaign-material-spill, .campaign-material-shadow, .campaign-material-reflection {
+  position: absolute; display: block; pointer-events: none;
+}
+.campaign-material-edge, .campaign-material-bloom {
+  inset: -1px; border-radius: inherit; border: 1.5px solid transparent;
+  background: var(--material-rim) border-box;
+  mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  z-index: 2;
+}
+.campaign-material-edge { opacity: var(--material-edge-opacity); }
+.campaign-material-bloom {
+  /* Narrow luminous edge and softer near bloom have independent falloff. */
+  mask: none; background: none; border-color: transparent; z-index: -1;
+  box-shadow: -2px -2px 6px var(--material-edge), 3px 4px 9px var(--material-catch), 0 0 22px var(--material-secondary);
+  opacity: var(--material-bloom);
+}
+.campaign-material-halo {
+  z-index: -2; inset: -3% -30% -7%; opacity: var(--material-halo);
+  mask-image: radial-gradient(ellipse 49% 49% at 50% 50%, #000 25%, transparent 100%);
+  background: radial-gradient(ellipse at 44% 44%, var(--material-edge), transparent 64%),
+    radial-gradient(ellipse at 70% 77%, var(--material-secondary), transparent 59%);
+}
+.campaign-material-shadow {
+  z-index: -1; inset: auto -9% -4% -6%; height: 12%;
+  background: radial-gradient(ellipse, #08040ccc 0%, #08040c66 23%, transparent 69%);
+  transform: rotate(-4deg);
+}
+.campaign-material-spill {
+  z-index: -1; inset: auto -20% -9% -17%; height: 22%;
+  opacity: var(--material-spill); mix-blend-mode: screen;
+  mask-image: radial-gradient(ellipse 49% 49% at 50% 50%, #000 25%, transparent 100%);
+  background:
+    radial-gradient(ellipse 37% 6% at 57% 43%, var(--material-catch), transparent 100%),
+    radial-gradient(ellipse 29% 19% at 35% 48%, var(--material-edge), transparent 100%),
+    radial-gradient(ellipse 42% 30% at 66% 61%, var(--material-secondary), transparent 100%);
+}
+.campaign-material-reflection {
+  z-index: -1; top: 96%; left: 1%; width: 98%; height: 20%; overflow: hidden;
+  opacity: var(--material-reflection); transform: rotate(-4deg) skewX(9deg);
+  mask-image: radial-gradient(ellipse 50% 100% at 50% 0%, #0008 10%, #0002 40%, transparent 92%);
+}
+.campaign-material-reflection img {
+  display: block; width: 100%; height: auto; transform: scaleY(-1) translateY(-100%); transform-origin: top;
+  filter: blur(2px) saturate(.65);
+}
+.campaign-material-sheen {
+  z-index: 3; inset: 0; border-radius: inherit; overflow: hidden; opacity: 0;
+  background: var(--material-sheen); background-size: 240% 100%;
+  mask-image: linear-gradient(#000 0%, #000b 45%, #0004 66%, #0002 94%);
+  mix-blend-mode: screen;
+}
+.campaign-material-stage:not([data-art-ready]) :is(.campaign-material-edge,.campaign-material-bloom,.campaign-material-halo,.campaign-material-spill) { opacity: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .campaign-material-stage[data-discovery][data-art-ready] .campaign-material-edge { animation: material-edge-arrive var(--material-duration) ease-out both; }
+  .campaign-material-stage[data-discovery][data-art-ready] .campaign-material-bloom { animation: material-bloom-arrive var(--material-duration) ease-out both; }
+  .campaign-material-stage[data-discovery][data-art-ready] .campaign-material-spill { animation: material-spill-arrive var(--material-duration) ease-out both; }
+  .campaign-material-stage[data-discovery][data-art-ready] .campaign-material-sheen { animation: material-surface-arrive var(--material-duration) cubic-bezier(.2,.6,.25,1) both; }
+}
+@keyframes material-edge-arrive { 0% { opacity: 0; } 28% { opacity: 1; } 100% { opacity: var(--material-edge-opacity); } }
+@keyframes material-bloom-arrive { 0% { opacity: 0; } 35% { opacity: calc(var(--material-bloom) * 1.8); } 100% { opacity: var(--material-bloom); } }
+@keyframes material-spill-arrive { 0% { opacity: 0; } 44% { opacity: calc(var(--material-spill) * 1.6); } 100% { opacity: var(--material-spill); } }
+@keyframes material-surface-arrive {
+  0% { opacity: 0; background-position: 140% 0; }
+  26% { opacity: var(--material-surface); }
+  70% { opacity: var(--material-surface); }
+  100% { opacity: 0; background-position: -40% 0; }
+}
+@media (max-width: 840px) {
+  .campaign-material-stage .campaign-tabletop-pose { transform: perspective(900px) rotateY(-6deg) rotateZ(2deg); }
+  .campaign-material-halo { inset-inline: -12%; }
+  .campaign-material-spill { inset-inline: -8%; }
+}
+/* Face-up lineup treatment is deliberately cheaper and quieter than the hero. */
+.campaign-tabletop-slot[data-face] .campaign-reward-art {
+  --pack-foil: transparent;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--material-edge) 58%, #3a2735),
+    1px 3px 0 #100911, 0 0 8px color-mix(in srgb, var(--material-edge) 15%, transparent);
+}
+.campaign-tabletop-slot[data-face] .campaign-reward-art::before {
+  inset: -1px; border: 1px solid transparent; background: var(--material-rim) border-box;
+  mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0); mask-composite: exclude;
+  opacity: .65; z-index: 1;
+}
+.campaign-tabletop .campaign-tabletop-slot[data-selected] { --lift: -7px; }
+.campaign-tabletop .campaign-tabletop-slot[data-selected] .campaign-tabletop-rest {
+  outline: 2px solid var(--color-accent); outline-offset: 4px;
+  box-shadow: 1px 4px 0 #100811, 3px 6px 4px #080409e8, 0 8px 18px #ff8cbb24;
+}
+.campaign-tabletop .campaign-tabletop-slot[data-selected]::after {
+  content: ''; position: absolute; width: 18px; height: 3px; background: var(--color-accent);
+  bottom: -11px; left: calc(50% - 9px); transform: skewX(-25deg); pointer-events: none;
+}
+/* Different surfaces hold different highlight shapes; no looping illumination. */
+.campaign-material-stage[data-material='silver'] .campaign-material-sheen { mask-image: linear-gradient(90deg,#000 0%,transparent 13%,transparent 87%,#000); }
+.campaign-material-stage[data-material='interference'] .campaign-material-sheen { background-size: 210% 100%; }
+.campaign-material-stage[data-material='pearl'] .campaign-material-sheen { background-size: 300% 100%; }
+.campaign-material-stage[data-material='dichroic'] .campaign-material-bloom { box-shadow: -4px -1px 10px var(--material-edge), 4px 4px 12px var(--material-secondary), 0 0 22px #89b1d833; }
+.campaign-material-stage[data-material='gilded'] .campaign-material-bloom { box-shadow: -2px -3px 8px var(--material-catch), 3px 5px 15px var(--material-edge), 2px 3px 30px #b7915426; }
+.campaign-material-stage[data-material='prismatic'] .campaign-material-bloom { box-shadow: -3px -2px 8px #a5e3f5, 3px 5px 13px #edb8d7, -1px 3px 23px #efdca8; }
+.campaign-material-stage[data-material='prismatic'] .campaign-material-edge { border-width: 2px; }
+
+/* Fine secondary catches suggest laminated foil without tinting the printed face. */
+.campaign-material-stage[data-material='dichroic'] .campaign-material-edge { border-width: 2px; }
+.campaign-material-stage[data-material='gilded'] .campaign-material-edge { border-width: 2px; }
+.campaign-material-stage[data-material='prismatic'] .campaign-material-edge {
+  inset: -2px; border-width: 2.5px;
+  filter: drop-shadow(0 0 1px #fff3c766);
+}
+.campaign-tabletop[data-act='1']::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(ellipse 27% 24% at 85% 13%, #10081430, transparent 100%);
+}
+
+.campaign-material-glints {
+  position: absolute; inset: -12px; z-index: 4; pointer-events: none; opacity: 0;
+  background:
+    radial-gradient(ellipse 13px 1px at 93% 4%, var(--material-catch), transparent),
+    radial-gradient(ellipse 1px 13px at 93% 4%, var(--material-catch), transparent),
+    radial-gradient(ellipse 8px 1px at 7% 96%, var(--material-edge), transparent),
+    radial-gradient(ellipse 1px 8px at 7% 96%, var(--material-edge), transparent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .campaign-material-stage[data-discovery][data-art-ready]:is([data-material='pearl'],[data-material='gilded'],[data-material='prismatic']) .campaign-material-glints {
+    animation: material-glint-arrive var(--material-duration) ease-out both;
+  }
+}
+@keyframes material-glint-arrive { 0%, 24% { opacity: 0; } 42% { opacity: .85; } 75%, 100% { opacity: 0; } }
