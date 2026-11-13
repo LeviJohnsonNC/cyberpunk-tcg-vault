@@ -101,7 +101,13 @@
 @keyframes play-gig-preview-in { from { opacity: .65; transform: translateY(2px); } }
 
 .play-gig-adjustment-actions { display: grid; grid-template-columns: auto auto; gap: 4px 6px; margin-inline-start: auto; }
-.play-gig-adjustment-actions .play-confirm { grid-column: 1 / -1; justify-self: stretch; min-height: 42px; font-weight: 700; }
+.play-direct .play-gig-adjustment-actions .play-confirm {
+  grid-column: 1 / -1;
+  justify-self: stretch;
+  justify-content: center;
+  min-height: 44px;
+  font-weight: 700;
+}
 .play-gig-adjustment-actions .quiet { min-height: 34px; padding: 5px 7px; font-size: 12px; }
 .play-gig-adjustment-actions .quiet:last-child:nth-child(2) { grid-column: 1 / -1; }
 .play-gig-adjustment-context { flex-basis: 100%; }

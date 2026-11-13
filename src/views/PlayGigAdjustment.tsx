@@ -39,7 +39,7 @@ export function PlayGigAdjustment({ view, action, picks, fields, active, cards, 
   const ready = !choosingDie && !!target && !!value && isReady(fields, picks);
 
   return <section className="play-decision-tray play-gig-adjustment" aria-label="Gig adjustment">
-    <form className="play-gig-adjustment-form" data-choosing-die={choosingDie || undefined} onSubmit={event => { event.preventDefault(); if (!busy && ready) submit(); }}>
+    <form className="play-gig-adjustment-form" onSubmit={event => { event.preventDefault(); if (!busy && ready) submit(); }}>
       <div className="play-gig-adjustment-intent">
         {source && <button type="button" className="play-tray-source" disabled={busy} aria-label={`Inspect ${sourceName ?? 'source card'}`} onClick={event => inspect(source, event.currentTarget)}><CardFace card={source} /></button>}
         <div>
