@@ -3,8 +3,9 @@ import { BY_SLUG } from '../data';
 import { sortLegacyPack } from './campaignPack';
 import { openDatabase } from './matchStorage';
 import { emptyCircuit, finishUnlocked, type CircuitProgress, type TableFinish } from './circuit';
-import { CAMPAIGN_VERSION, ENCOUNTERS, ENVIRONMENTS, campaignDeckIssues, emptyProfile, newCampaign,
+import { CAMPAIGN_VERSION, ENCOUNTERS, ENVIRONMENTS, campaignClearedCount, campaignDeckIssues, emptyProfile, newCampaign, pendingCampaignPack,
   type CampaignProfile, type CampaignRun, type Environment } from './campaign';
+import { aftermathBeats } from './campaignScenes';
 import type { StarterKey } from '../starters';
 
 const STORE = 'campaigns';
@@ -87,14 +88,14 @@ export async function resetCampaign(scope: string, expected: Pick<CampaignRun, '
 
 export function startCampaign(scope: string, starter: StarterKey, replace?: Pick<CampaignRun, 'id' | 'revision'>) {
   return updateCampaign(scope, (old, profile) => {
-    if (old?.phase === 'claimingFinish') throw new Error('Choose your earned room before starting another campaign.');
+    if (old?.phase === 'claimingFinish' || (old?.phase === 'rewardPending' && !!old.completedAt)) throw new Error('Choose your earned room before starting another campaign.');
     if (replace && (old?.id !== replace.id || old.revision !== replace.revision)) {
       throw new Error('The campaign changed in another tab. Reload the campaign before starting again.');
     }
     if (old && old.phase !== 'completed' && !replace) throw new Error('Finish or abandon your current campaign first.');
     const run = newCampaign(starter, crypto.randomUUID(), crypto.randomUUID());
     const nextProfile = old ? { ...profile, history: [...(profile.history ?? []), {
-      id: old.id, starter: old.starter, cleared: old.phase === 'completed' ? ENCOUNTERS.length : old.encounter,
+      id: old.id, starter: old.starter, cleared: campaignClearedCount(old),
       completed: old.phase === 'completed', endedAt: old.completedAt ?? Date.now(), deck: structuredClone(old.deck),
     }] } : profile;
     return { run, profile: nextProfile, value: { run, profile: nextProfile } };
@@ -103,26 +104,50 @@ export function startCampaign(scope: string, starter: StarterKey, replace?: Pick
 
 export function chooseReward(scope: string, expected: number, slug: string) {
   return updateCampaign(scope, (run, profile) => {
-    if (!run || run.revision !== expected || run.phase !== 'rewardPending') throw new Error('The pack changed in another tab. Reload the campaign.');
+    if (!run || run.revision !== expected || run.phase !== 'rewardPending' || (run.aftermath && !run.aftermath.sceneSeen)) throw new Error('The pack changed in another tab. Reload the campaign.');
     const reward = run.rewards[run.encounter];
-    if (!reward || !reward.offers.includes(slug) || reward.choice) throw new Error('Choose an available card from this pack.');
-    if ((run.inventory[slug] ?? 0) >= (BY_SLUG.get(slug)?.type === 'Legend' ? 1 : 3)) throw new Error('You already have the maximum copies.');
-    const next = { ...run, revision: run.revision + 1, encounter: run.encounter + 1, attempts: 0, revealed: 0, phase: 'upgrading' as const,
+    if (!reward || !reward.offers.includes(slug) || reward.choice || (run.aftermath && (run.revealed ?? 0) < reward.cards.length)) throw new Error('Choose an available card from this pack.');
+    if (BY_SLUG.get(slug)?.type === 'Legend' && (run.inventory[slug] ?? 0) >= 1) throw new Error('You already have the maximum copies.');
+    const next = { ...run, revision: run.revision + 1, encounter: run.encounter + 1, attempts: 0, defeats: 0, revealed: 0, aftermath: undefined, phase: 'upgrading' as const,
       inventory: { ...run.inventory, [slug]: (run.inventory[slug] ?? 0) + 1 },
       rewards: { ...run.rewards, [run.encounter]: { ...reward, choice: slug } } };
     return { run: next, value: { run: next, profile } };
   });
 }
 
+export function advanceCampaignScene(scope: string, expected: Pick<CampaignRun, 'id' | 'revision'>, skip = false) {
+  return updateCampaign(scope, (run, profile) => {
+    if (!run || run.id !== expected.id || run.revision !== expected.revision || !pendingCampaignPack(run)
+      || !run.aftermath || run.aftermath.sceneSeen) throw new Error('The story changed in another tab. Reload the campaign.');
+    const beat = run.aftermath.beat + 1;
+    const sceneSeen = skip || beat >= aftermathBeats(run).length;
+    const next = { ...run, revision: run.revision + 1,
+      aftermath: { ...run.aftermath, beat: sceneSeen ? run.aftermath.beat : beat, sceneSeen } };
+    return { run: next, value: { run: next, profile } };
+  });
+}
+
 export function revealCampaignPack(scope: string, expected: number, count: number) {
   return updateCampaign(scope, (run, profile) => {
-    if (!run || run.revision !== expected || run.phase !== 'rewardPending' || !Number.isInteger(count) || count < (run.revealed ?? 0) || count > 7)
+    const pack = run && pendingCampaignPack(run);
+    if (!run || run.revision !== expected || !pack || (run.aftermath && !run.aftermath.sceneSeen)
+      || !Number.isInteger(count) || count < (run.revealed ?? 0) || count > pack.cards.length)
       throw new Error('The pack changed in another tab. Reload the campaign.');
-    const pack = run.rewards[run.encounter];
-    const rewards = pack && !pack.printingIds && !(run.revealed ?? 0) && count > 0
+    const rewards = run.phase === 'rewardPending' && !pack.printingIds && !(run.revealed ?? 0) && count > 0
       ? { ...run.rewards, [run.encounter]: { ...pack, cards: sortLegacyPack(pack.cards) } }
       : run.rewards;
     const next = { ...run, revision: run.revision + 1, revealed: count, rewards };
+    return { run: next, value: { run: next, profile } };
+  });
+}
+
+export function finishCampaignPack(scope: string, expected: Pick<CampaignRun, 'id' | 'revision'>) {
+  return updateCampaign(scope, (run, profile) => {
+    const reward = run && pendingCampaignPack(run);
+    if (!run || run.id !== expected.id || run.revision !== expected.revision || !reward || reward.offers.length
+      || (run.revealed ?? 0) < reward.cards.length) throw new Error('Open every card in the saved pack first.');
+    const phase = run.phase === 'retryReward' ? 'preparing' as const : 'claimingFinish' as const;
+    const next = { ...run, revision: run.revision + 1, phase, revealed: 0, aftermath: undefined };
     return { run: next, value: { run: next, profile } };
   });
 }
@@ -176,7 +201,7 @@ export function campaignStatus(run?: CampaignRun) {
   if (!run) return 'Choose your starter';
   if (run.phase === 'completed') return 'Campaign completed';
   if (run.phase === 'claimingFinish') return 'Choose your new environment';
-  if (run.phase === 'rewardPending') return 'Open your earned pack';
+  if (pendingCampaignPack(run)) return run.aftermath && !run.aftermath.sceneSeen ? 'Continue your story' : 'Open your earned pack';
   if (run.phase === 'inMatch') return 'Return to match';
   return `${ENCOUNTERS[run.encounter]?.title ?? 'Next contract'} · ${run.encounter + 1} / ${ENCOUNTERS.length}`;
 }

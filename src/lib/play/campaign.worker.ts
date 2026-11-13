@@ -1,5 +1,5 @@
 import { updateCampaign } from './campaignStorage';
-import { ENCOUNTERS, campaignDeckIssues, encounterDeck, encounterSkill, generateReward, grantVictory } from './campaign';
+import { ENCOUNTERS, campaignDeckIssues, encounterDeck, encounterSkill, generateReward, settleCampaignMatch } from './campaign';
 import { prepareMatchDeck } from './matchDeck';
 import { createMatchController } from './workerController';
 import type { MatchSnapshot, Move } from './protocol';
@@ -38,7 +38,8 @@ self.addEventListener('message', async ({ data }: MessageEvent<Command>) => {
       if (!('snapshot' in response)) throw new Error(response.error);
       const match = controller.save(response.snapshot);
       const result = response.snapshot.view.gameEnded
-        ? grantVictory(run, profile, match, response.snapshot.view.winnerId)
+        ? settleCampaignMatch(run, profile, match, response.snapshot.view.winnerId,
+          action.move.move === 'concede' || /conced|concess/i.test(response.snapshot.view.winReason ?? ''))
         : { run: { ...run, match }, profile };
       return { run: result.run, profile: result.profile,
         value: { run: result.run, profile: result.profile, snapshot: response.snapshot } };

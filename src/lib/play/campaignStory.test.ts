@@ -34,7 +34,7 @@ describe('Last Call story and rival dialogue', () => {
     const cases: [CampaignPhase, number, number][] = [
       ['preparing', 0, 0], ['inMatch', 0, 0], ['rewardPending', 0, 1],
       ['upgrading', 1, 1], ['preparing', 3, 3], ['rewardPending', 7, 8],
-      ['inMatch', 8, 8], ['claimingFinish', 8, 9], ['completed', 8, 9],
+      ['retryReward', 7, 7], ['inMatch', 8, 8], ['rewardPending', 8, 9], ['claimingFinish', 8, 9], ['completed', 8, 9],
     ];
     for (const [phase, encounter, count] of cases) {
       expect(unlockedCampaignChapters({ ...run, phase, encounter })).toEqual(ENCOUNTERS.slice(0, count));

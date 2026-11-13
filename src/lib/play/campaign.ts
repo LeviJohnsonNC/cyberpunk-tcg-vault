@@ -3,7 +3,7 @@ import { validate } from '../decks';
 import { rating, synergy } from '../autobuild';
 import { STARTERS, starterAsDeck, type StarterKey } from '../starters';
 import { isEngineSupported } from './engineCards';
-import { rollCampaignPack } from './campaignPack';
+import { rollCampaignPack, rollRetryPack } from './campaignPack';
 import type { Deck } from '../store';
 import type { StoredMatch } from './workerController';
 import type { RivalSkill } from './protocol';
@@ -31,12 +31,19 @@ export const ENCOUNTERS = [
 
 export type EncounterId = typeof ENCOUNTERS[number]['id'];
 
-export type CampaignPhase = 'preparing' | 'inMatch' | 'rewardPending' | 'upgrading' | 'claimingFinish' | 'completed';
+export type CampaignPhase = 'preparing' | 'inMatch' | 'rewardPending' | 'retryReward' | 'upgrading' | 'claimingFinish' | 'completed';
 export interface CampaignReward {
   id: string; cards: string[]; offers: string[]; choice?: string;
   /** Exact collectible printing per card slot. Older rewards have only gameplay slugs. */
   printingIds?: string[];
 }
+export type CampaignOutcome = 'win' | 'loss' | 'draw';
+export interface CampaignAftermath {
+  outcome: CampaignOutcome;
+  beat: number;
+  sceneSeen?: boolean;
+}
+
 export interface CampaignRun {
   version: 1; id: string; starter: StarterKey; seed: string; revision: number; phase: CampaignPhase;
   encounter: number; attempts: number; inventory: Record<string, number>; deck: Deck; lastLegal: Deck;
@@ -44,6 +51,10 @@ export interface CampaignRun {
   balanceVersion?: 2;
   /** Presentation-only acknowledgement. Older runs can show their current act once. */
   briefedAct?: number;
+  aftermath?: CampaignAftermath;
+  latestRetry?: CampaignReward;
+  retryPacks?: number;
+  defeats?: number;
   rewards: Record<number, CampaignReward>; opponents: Deck[]; match?: StoredMatch; completedAt?: number; revealed?: number;
 }
 export interface CampaignArchive { id: string; starter: StarterKey; cleared: number; completed: boolean; endedAt: number; deck: Deck; }
@@ -148,14 +159,19 @@ function shuffled<T>(array: T[], seed: string): T[] {
   return out;
 }
 
+function compatibleRewards(run: CampaignRun, colours: readonly string[]) {
+  const limits = ramLimits(run.deck.legends);
+  return CARDS.filter(card => card.type !== 'Legend' && card.legal === 'legal' && isEngineSupported(card.slug)
+    && colours.includes(card.color) && fitsRam(card, limits));
+}
+
 export function generateReward(run: CampaignRun): CampaignReward {
   const seed = `${run.seed}:reward:${run.encounter}:v${run.balanceVersion ?? 1}`;
-  const limits = ramLimits(run.deck.legends);
   const colours = STARTERS.find(item => item.key === run.starter)!.colors;
-  const eligible = CARDS.filter(card => card.type !== 'Legend' && card.legal === 'legal' && isEngineSupported(card.slug)
-    && colours.includes(card.color) && fitsRam(card, limits) && (run.inventory[card.slug] ?? 0) < 3);
+  const compatible = compatibleRewards(run, colours);
+  const eligible = compatible.filter(card => (run.inventory[card.slug] ?? 0) < 3);
   const recruits = recruitCandidates(run, colours);
-  const offers = rewardOffers(run, eligible, recruits, seed);
+  const offers = run.encounter === ENCOUNTERS.length - 1 ? [] : rewardOffers(run, eligible, compatible, recruits, seed);
   const pulls = rollCampaignPack(rewardRandom(`${seed}:retail`), new Set(eligible.map(card => card.slug)), offers);
   return { id: `${run.id}:${run.encounter}`, cards: pulls.map(pull => pull.slug),
     printingIds: pulls.map(pull => pull.printing.id), offers };
@@ -171,11 +187,12 @@ function recruitCandidates(run: CampaignRun, colours: readonly string[]) {
     && run.deck.legends.some(slug => BY_SLUG.get(slug)?.color === card.color && (BY_SLUG.get(slug)?.ram ?? 0) <= (card.ram ?? 0)));
 }
 
-function rewardOffers(run: CampaignRun, eligible: Card[], recruits: Card[], seed: string) {
+function rewardOffers(run: CampaignRun, eligible: Card[], compatible: Card[], recruits: Card[], seed: string) {
   const themes = REWARD_THEMES[run.starter];
   const selected = new Set<string>();
   const slugOrder = (a: Card, b: Card) => a.slug.localeCompare(b.slug, 'en');
-  const sorted = [...eligible].sort(slugOrder);
+  const sorted = [...compatible].sort(slugOrder);
+  const canUseCopy = new Set(eligible.map(card => card.slug));
   const early = run.encounter < 3;
   const late = run.encounter >= 6;
   const economy = (card: Card) => (card.cost ?? 9) <= 3 && (card.sellable || card.type === 'Unit');
@@ -189,7 +206,9 @@ function rewardOffers(run: CampaignRun, eligible: Card[], recruits: Card[], seed
 
   // Each themed slot first tries its authored pool, then broadens to a compatible role.
   function pick(label: string, preference: (card: Card) => boolean, fallback: (card: Card) => boolean) {
-    const available = shuffled(sorted.filter(card => !selected.has(card.slug)), `${seed}:${label}:rank`)
+    const remaining = sorted.filter(card => !selected.has(card.slug));
+    const eligible = remaining.filter(card => canUseCopy.has(card.slug));
+    const available = shuffled(eligible.length ? eligible : remaining, `${seed}:${label}:rank`)
       .sort((a, b) => scores.get(b.slug)! - scores.get(a.slug)!);
     const pool = [available.filter(preference), available.filter(fallback), available].find(cards => cards.length > 0) ?? [];
     const card = shuffled(pool.slice(0, 4), `${seed}:${label}:pick`)[0];
@@ -215,17 +234,49 @@ function rewardOffers(run: CampaignRun, eligible: Card[], recruits: Card[], seed
   return offers;
 }
 
-export function grantVictory(run: CampaignRun, profile: CampaignProfile, match: StoredMatch, winner: string | null) {
-  if (run.phase !== 'inMatch' || !match.summary.ended) return { run, profile };
+export function pendingCampaignPack(run: CampaignRun) {
+  if (run.phase === 'rewardPending') return run.rewards[run.encounter];
+  if (run.phase === 'retryReward') return run.latestRetry;
+}
+
+export function campaignClearedCount(run: CampaignRun) {
+  if (run.phase === 'claimingFinish' || run.phase === 'completed') return ENCOUNTERS.length;
+  return run.encounter + Number(run.phase === 'rewardPending');
+}
+
+export function settleCampaignMatch(run: CampaignRun, profile: CampaignProfile, match: StoredMatch, winner: string | null, conceded = false) {
+  if (run.phase !== 'inMatch' || !match.summary.ended || run.match?.summary.matchId !== match.summary.matchId) return { run, profile };
   const next = { ...run, match, revision: run.revision + 1, attempts: run.attempts + 1, revealed: 0 };
-  if (winner !== 'player') return { run: { ...next, phase: 'preparing' as const }, profile };
+  if (conceded) return { run: { ...next, phase: 'preparing' as const }, profile };
+
+  const outcome = winner === 'player' ? 'win' : winner === null ? 'draw' : 'loss';
+  const aftermath = { outcome, beat: 0 } satisfies CampaignAftermath;
+  const inventory = { ...run.inventory };
+  function addPack(cards: readonly string[]) {
+    for (const slug of cards) inventory[slug] = (inventory[slug] ?? 0) + 1;
+  }
+
+  if (outcome !== 'win') {
+    const colours = STARTERS.find(item => item.key === run.starter)!.colors;
+    const eligible = compatibleRewards(run, colours);
+    // Keep every pre-sealed victory offer claimable even after many retries.
+    const reserved = new Set(run.rewards[run.encounter]?.offers);
+    const compatible = new Set(eligible.filter(card => !reserved.has(card.slug)).map(card => card.slug));
+    const pulls = rollRetryPack(rewardRandom(`${run.seed}:retry:${run.encounter}:${next.attempts}`), compatible, inventory);
+    const reward = { id: `${run.id}:retry:${match.summary.matchId}`, cards: pulls.map(pull => pull.slug),
+      printingIds: pulls.map(pull => pull.printing.id), offers: [] };
+    addPack(reward.cards);
+    return { run: { ...next, inventory, aftermath, phase: 'retryReward' as const, latestRetry: reward,
+      retryPacks: (run.retryPacks ?? 0) + 1, defeats: (run.defeats ?? 0) + Number(outcome === 'loss') }, profile };
+  }
+
+  const reward = run.rewards[run.encounter] ?? generateReward(run);
+  addPack(reward.cards);
+  const won = { ...next, inventory, aftermath, phase: 'rewardPending' as const, latestRetry: undefined,
+    rewards: { ...run.rewards, [run.encounter]: reward } };
   if (run.encounter === ENCOUNTERS.length - 1) {
-    return { run: { ...next, phase: 'claimingFinish' as const, completedAt: Date.now() },
+    return { run: { ...won, completedAt: Date.now() },
       profile: { ...profile, completions: { ...profile.completions, [run.starter]: profile.completions[run.starter] + 1 } } };
   }
-  const reward = run.rewards[run.encounter] ?? generateReward(run);
-  const inventory = { ...run.inventory };
-  for (const slug of reward.cards) inventory[slug] = (inventory[slug] ?? 0) + 1;
-  return { run: { ...next, inventory, phase: 'rewardPending' as const,
-    rewards: { ...run.rewards, [run.encounter]: reward } }, profile };
+  return { run: won, profile };
 }

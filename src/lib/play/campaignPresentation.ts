@@ -1,6 +1,6 @@
 import { BY_SLUG, fitsRam, ramLimits } from '../data';
-import { campaignPulls, type CampaignPull } from './campaignPack';
-import { campaignDeckIssues, makeStarterDeck, type CampaignRun } from './campaign';
+import { campaignPulls, RETRY_PACK_SIZE, type CampaignPull } from './campaignPack';
+import { campaignClearedCount, campaignDeckIssues, makeStarterDeck, pendingCampaignPack, type CampaignRun } from './campaign';
 
 export const CAMPAIGN_ACTS = [
   { title: 'A foot in the door.', kicker: 'Act I / The invitation', text: 'Start with a crew. Leave with a reputation.', room: 'booth' },
@@ -14,7 +14,8 @@ export function needsActBriefing(run: CampaignRun) {
 }
 
 export function latestPack(run: CampaignRun): CampaignPull[] {
-  const pack = run.rewards[run.phase === 'rewardPending' ? run.encounter : run.encounter - 1];
+  const pack = pendingCampaignPack(run) ?? run.latestRetry
+    ?? run.rewards[run.phase === 'claimingFinish' || run.phase === 'completed' ? run.encounter : run.encounter - 1];
   return pack ? [...campaignPulls(pack), ...(pack.choice ? [{ slug: pack.choice }] : [])] : [];
 }
 
@@ -58,6 +59,6 @@ export function campaignRecap(run: CampaignRun) {
   const recruits = run.deck.legends.filter(slug => !starter.legends.includes(slug));
   const packs = Object.values(run.rewards);
   return { additions, recruits, changedCopies: additions.reduce((sum, item) => sum + item.count, 0),
-    packs: packs.length, earnedCopies: packs.reduce((sum, pack) => sum + pack.cards.length + (pack.choice ? 1 : 0), 0),
-    clears: ['completed', 'claimingFinish'].includes(run.phase) ? 9 : run.encounter + (run.phase === 'rewardPending' ? 1 : 0) };
+    packs: packs.length + (run.retryPacks ?? 0), earnedCopies: packs.reduce((sum, pack) => sum + pack.cards.length + (pack.choice ? 1 : 0), (run.retryPacks ?? 0) * RETRY_PACK_SIZE),
+    clears: campaignClearedCount(run) };
 }

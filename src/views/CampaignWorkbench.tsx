@@ -147,7 +147,7 @@ export function CampaignWorkbench({ run, titleRef, busy, error, issues, canUndo,
         <div className="campaign-workbench-results" ref={results} tabIndex={0} role="region" aria-label={filter === 'legends' ? 'Legend replacements' : 'Reserve results'}>
           {filter === 'legends' ? <LegendReplacements run={run} printings={printings} busy={busy} inspect={inspect} review={review} />
             : visible.length ? <ul className="campaign-workbench-cards">{visible.map(inventoryCard)}</ul>
-              : <p>{filter === 'latest' && !pack.size ? 'Win a contract to earn your first pack.' : 'No cards match these filters.'}</p>}
+              : <p>{filter === 'latest' && !pack.size ? 'Finish a match to earn your first pack.' : 'No cards match these filters.'}</p>}
         </div>
         {filter !== 'legends' && <p className="campaign-workbench-limit">Main deck · {total} cards · {MAIN_MIN}–{MAIN_MAX} to play</p>}
       </section>

@@ -240,3 +240,12 @@
   .campaign-seal-scene[data-encounter='first-call']::after { background-position: left -53px bottom 67px, left -8px bottom -83px; }
   .campaign-seal-prop { --seal-pack-size: clamp(151px, 24.4svh, 215px); }
 }
+
+@media (min-width: 801px) {
+  .campaign-seal-stage:not(:has(.campaign-dispatch)) {
+    grid-template-areas: 'promise reward';
+    grid-template-rows: auto;
+    align-items: center;
+  }
+  .campaign-seal-stage:not(:has(.campaign-dispatch)) .campaign-seal-promise { align-self: center; }
+}

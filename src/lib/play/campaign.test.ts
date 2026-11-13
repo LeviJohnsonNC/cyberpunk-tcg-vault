@@ -1,12 +1,15 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
-import { BY_SLUG, fitsRam, ramLimits, PRINTING_INDEX } from '../data';
+import { BY_SLUG, CARDS, fitsRam, ramLimits, PRINTING_INDEX } from '../data';
 import { STARTERS } from '../starters';
-import { ENCOUNTERS, campaignDeckIssues, encounterDeck, encounterSkill, generateReward, grantVictory, newCampaign } from './campaign';
+import { ENCOUNTERS, campaignDeckIssues, encounterDeck, encounterSkill, generateReward, settleCampaignMatch, newCampaign } from './campaign';
 import { campaignPulls } from './campaignPack';
 import { matchDeckIssues, prepareMatchDeck } from './matchDeck';
 import { createMatchController } from './workerController';
-import { chooseReward, claimEnvironment, readCampaign, revealCampaignPack, saveCampaignDeck, startCampaign, updateCampaign } from './campaignStorage';
+import { aftermathBeats } from './campaignScenes';
+import { unlockedCampaignChapters } from './campaignStory';
+import { latestPack } from './campaignPresentation';
+import { advanceCampaignScene, finishCampaignPack, chooseReward, claimEnvironment, readCampaign, revealCampaignPack, saveCampaignDeck, startCampaign, updateCampaign } from './campaignStorage';
 import { readCircuitProgress, equipTableFinish, openDatabase, readMatchSummary } from './matchStorage';
 import { REWARD_THEMES } from './campaignBalance';
 import { isEngineSupported } from './engineCards';
@@ -84,6 +87,23 @@ describe('starter campaign', () => {
     expect(pack.offers.some(slug => saturated.has(slug))).toBe(false);
   });
 
+  it('can open a win and keep the bonus even after the reserve fills with duplicates', async () => {
+    const scope = 'campaign-full-reserve';
+    const { run } = await startCampaign(scope, 'the-heist');
+    run.encounter = 7;
+    run.inventory = Object.fromEntries(CARDS.filter(card => card.type !== 'Legend').map(card => [card.slug, 3]));
+    run.phase = 'rewardPending';
+    const pack = generateReward(run);
+    expect(pack.cards).toHaveLength(7);
+    expect(new Set([...pack.cards, ...pack.offers]).size).toBe(10);
+    run.rewards[7] = pack;
+    run.revealed = 7;
+    await updateCampaign(scope, () => ({ run, value: null }));
+    const result = await chooseReward(scope, run.revision, pack.offers[0]);
+    expect(result.run.encounter).toBe(8);
+    expect(result.run.inventory[pack.offers[0]]).toBe(4);
+  });
+
   it('keeps rival snapshots and skill for campaigns started before tuning', () => {
     const legacy = newCampaign('the-heist', 'compat', 'compat');
     delete legacy.balanceVersion;
@@ -105,7 +125,7 @@ describe('starter campaign', () => {
     expect(campaignDeckIssues(run, { ...run.deck, cards: { ...run.deck.cards, 'westbrook-netrunner': 3 } }).length).toBeGreaterThan(0);
   });
 
-  it('settles a first win exactly once and never grants a pack for a loss', () => {
+  it('settles a first win exactly once and skips the pack on concession', () => {
     const run = newCampaign('the-heist', 'reward', 'seed');
     const player = prepareMatchDeck(run.deck), rival = prepareMatchDeck(encounterDeck(run));
     const controller = createMatchController();
@@ -113,13 +133,74 @@ describe('starter campaign', () => {
     if (!('snapshot' in response)) throw new Error(response.error);
     const match = controller.save(response.snapshot);
     match.summary.ended = true;
-    run.phase = 'inMatch'; run.rewards[0] = generateReward(run);
+    run.phase = 'inMatch'; run.match = match; run.rewards[0] = generateReward(run);
     const profile = { version: 1 as const, completions: { 'the-heist': 0, 'embracing-power': 0 }, environments: [] };
-    const first = grantVictory(run, profile, match, 'player');
+    const first = settleCampaignMatch(run, profile, match, 'player');
     expect(first.run.phase).toBe('rewardPending');
     expect(first.run.inventory).not.toEqual(run.inventory);
-    expect(grantVictory(first.run, first.profile, match, 'player').run).toEqual(first.run);
-    expect(grantVictory(run, profile, match, 'rival').run.inventory).toEqual(run.inventory);
+    expect(settleCampaignMatch(first.run, first.profile, match, 'player').run).toEqual(first.run);
+    const conceded = settleCampaignMatch(run, profile, match, 'rival', true).run;
+    expect(conceded.inventory).toEqual(run.inventory);
+    expect(conceded.aftermath).toBeUndefined();
+    expect(conceded.phase).toBe('preparing');
+  });
+
+  it.each(STARTERS)('resumes repeat losses and draws with randomized five-card packs for $name', async starter => {
+    const scope = `campaign-house-packs:${starter.key}`;
+    const { run: initial } = await startCampaign(scope, starter.key);
+    const winPack = generateReward(initial);
+    const seen = new Set<string>();
+    let lastLine = '';
+    for (const winner of ['rival', 'rival', null, 'rival'] as const) {
+      const { run: before } = await readCampaign(scope);
+      const controller = createMatchController();
+      const response = controller.respond({ id: 1, action: { type: 'start', setup: {
+        player: prepareMatchDeck(before!.deck), rival: prepareMatchDeck(encounterDeck(before!)),
+      } } });
+      if (!('snapshot' in response)) throw new Error(response.error);
+      const match = controller.save(response.snapshot);
+      match.summary.ended = true;
+      await updateCampaign(scope, (run, profile) => ({ ...settleCampaignMatch({
+        ...run!, phase: 'inMatch', match, rewards: { 0: winPack },
+      }, profile, match, winner), value: null }));
+      const { run, profile } = await readCampaign(scope);
+      const pack = run!.latestRetry!;
+      expect(run!.phase).toBe('retryReward');
+      expect(unlockedCampaignChapters(run!)).toEqual([]);
+      expect(run!.rewards[0]).toEqual(winPack);
+      expect(pack.cards).toHaveLength(5);
+      expect(pack.offers).toEqual([]);
+      expect(new Set(pack.cards).size).toBe(5);
+      expect(pack.cards.some(slug => winPack.offers.includes(slug))).toBe(false);
+      for (const slug of pack.cards) {
+        const card = BY_SLUG.get(slug)!;
+        expect(starter.colors).toContain(card.color);
+        expect(card.type).not.toBe('Legend');
+        expect(run!.inventory[slug]).toBe((before!.inventory[slug] ?? 0) + 1);
+      }
+      expect(settleCampaignMatch(run!, profile, match, winner).run).toEqual(run);
+      seen.add(pack.cards.join(','));
+      const line = aftermathBeats(run!)[0].text;
+      expect(line).not.toBe(lastLine);
+      lastLine = line;
+      await expect(revealCampaignPack(scope, run!.revision, 1)).rejects.toThrow();
+      const [one, two] = await Promise.allSettled([advanceCampaignScene(scope, run!), advanceCampaignScene(scope, run!, true)]);
+      expect([one.status, two.status].sort()).toEqual(['fulfilled', 'rejected']);
+      const scene = (await readCampaign(scope)).run!;
+      expect(scene.aftermath?.sceneSeen).toBe(true);
+      await expect(finishCampaignPack(scope, scene)).rejects.toThrow();
+      const partial = await revealCampaignPack(scope, scene.revision, 2);
+      expect((await readCampaign(scope)).run?.revealed).toBe(2);
+      expect(partial.run.latestRetry).toEqual(pack);
+      await expect(revealCampaignPack(scope, partial.run.revision, 6)).rejects.toThrow();
+      const opened = await revealCampaignPack(scope, partial.run.revision, 5);
+      const finished = await finishCampaignPack(scope, opened.run);
+      await expect(finishCampaignPack(scope, opened.run)).rejects.toThrow();
+      expect(finished.run.encounter).toBe(0);
+      expect(finished.run.phase).toBe('preparing');
+      expect(latestPack(finished.run).map(pull => pull.slug)).toEqual(pack.cards);
+    }
+    expect(seen.size).toBe(4);
   });
 
   it('opens an older sealed reward common-first without changing the awarded cards or offers', async () => {
@@ -234,13 +315,17 @@ describe('starter campaign', () => {
       const live = (await readCampaign(scope)).run!;
       expect(live.phase).toBe('inMatch');
       expect(live.match?.summary.matchId).toBe(match.summary.matchId);
-      await updateCampaign(scope, (run, profile) => ({ ...grantVictory(run!, profile, match, 'player'), value: null }));
+      await updateCampaign(scope, (run, profile) => ({ ...settleCampaignMatch(run!, profile, match, 'player'), value: null }));
       const settled = (await readCampaign(scope)).run!;
-      expect(grantVictory(settled, (await readCampaign(scope)).profile, match, 'player').run).toEqual(settled);
+      expect(settleCampaignMatch(settled, (await readCampaign(scope)).profile, match, 'player').run).toEqual(settled);
+      expect(settled.phase).toBe('rewardPending');
+      expect(unlockedCampaignChapters(settled)).toHaveLength(encounter + 1);
+      const nextBeat = await advanceCampaignScene(scope, settled);
+      expect((await readCampaign(scope)).run?.aftermath).toMatchObject({ beat: 1, sceneSeen: false });
+      const skipped = await advanceCampaignScene(scope, nextBeat.run, true);
       if (encounter < 8) {
-        expect(settled.phase).toBe('rewardPending');
         expect(settled.rewards[encounter]).toEqual(sealed);
-        const firstCard = await revealCampaignPack(scope, settled.revision, 1);
+        const firstCard = await revealCampaignPack(scope, skipped.run.revision, 1);
         expect((await readCampaign(scope)).run?.revealed).toBe(1);
         await expect(revealCampaignPack(scope, settled.revision, 7)).rejects.toThrow();
         const revealed = await revealCampaignPack(scope, firstCard.run.revision, 7);
@@ -287,6 +372,12 @@ describe('starter campaign', () => {
         }
         expect((await readCampaign(scope)).run?.phase).toBe('upgrading');
         expect(await readMatchSummary(scope)).toEqual(freeSummary);
+      } else {
+        expect(settled.rewards[8].cards).toHaveLength(7);
+        expect(settled.rewards[8].offers).toEqual([]);
+        await expect(claimEnvironment(scope, skipped.run.revision, 'rooftop')).rejects.toThrow();
+        const opened = await revealCampaignPack(scope, skipped.run.revision, 7);
+        await finishCampaignPack(scope, opened.run);
       }
     }
     const finish = await readCampaign(scope);
