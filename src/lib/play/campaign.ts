@@ -176,11 +176,10 @@ const offerCrew = (legends: string[]) => [...legends].sort().join(',');
 
 export function generateReward(run: CampaignRun): CampaignReward {
   const seed = rewardSeed(run);
-  const compatible = compatibleRewards(run);
-  const eligible = compatible.filter(card => (run.inventory[card.slug] ?? 0) < COPY_MAX);
-  const offers = run.encounter === ENCOUNTERS.length - 1 ? [] : rewardOffers(run, compatible, seed);
-  const pulls = rollCampaignPack(rewardRandom(`${seed}:retail`), new Set(eligible.map(card => card.slug)), offers);
-  return { id: `${run.id}:${run.encounter}`, cards: pulls.map(pull => pull.slug),
+  const pulls = rollCampaignPack(rewardRandom(`${seed}:retail`));
+  const cards = pulls.map(pull => pull.slug);
+  const offers = run.encounter === ENCOUNTERS.length - 1 ? [] : rewardOffers(run, compatibleRewards(run), seed, cards);
+  return { id: `${run.id}:${run.encounter}`, cards,
     printingIds: pulls.map(pull => pull.printing.id), offers, offerCrew: offerCrew(run.deck.legends) };
 }
 
@@ -290,11 +289,7 @@ export function settleCampaignMatch(run: CampaignRun, profile: CampaignProfile, 
   }
 
   if (outcome !== 'win') {
-    const eligible = compatibleRewards(run);
-    // Keep every pre-sealed victory offer claimable even after many retries.
-    const reserved = new Set(run.rewards[run.encounter]?.offers);
-    const compatible = new Set(eligible.filter(card => !reserved.has(card.slug)).map(card => card.slug));
-    const pulls = rollRetryPack(rewardRandom(`${run.seed}:retry:${run.encounter}:${next.attempts}`), compatible, inventory);
+    const pulls = rollRetryPack(rewardRandom(`${run.seed}:retry:${run.encounter}:${next.attempts}`));
     const reward = { id: `${run.id}:retry:${match.summary.matchId}`, cards: pulls.map(pull => pull.slug),
       printingIds: pulls.map(pull => pull.printing.id), offers: [] };
     const retryPrintings = { ...run.retryPrintings };

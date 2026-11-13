@@ -20,7 +20,7 @@ function rewarded() {
 describe('campaign presentation and edit previews', () => {
   it('previews one-for-one swaps without mutating inventory or the saved draft', async () => {
     const run = rewarded(), original = structuredClone(run);
-    const incoming = run.rewards[0].cards[0];
+    const incoming = run.rewards[0].choice!;
     const outgoing = Object.keys(run.deck.cards).find(slug => slug !== incoming)!;
     const preview = previewCampaignEdit(run, incoming, outgoing);
     expect(preview.issues).toEqual([]);
@@ -36,7 +36,7 @@ describe('campaign presentation and edit previews', () => {
     const run = rewarded();
     const unknown = CARDS.find(card => !run.inventory[card.slug])!.slug;
     expect(previewCampaignEdit(run, unknown).issues.length).toBeGreaterThan(0);
-    const incoming = run.rewards[0].cards[0];
+    const incoming = run.rewards[0].choice!;
     expect(previewCampaignEdit(run, incoming, 'not-in-deck').issues.length).toBeGreaterThan(0);
     expect(previewCampaignEdit(run, incoming, incoming).issues.length).toBeGreaterThan(0);
     run.deck.cards[incoming] = 3; run.inventory[incoming] = 3;
@@ -62,7 +62,7 @@ describe('campaign presentation and edit previews', () => {
   it('recaps actual acquired copies and changes, including an unchanged starter', () => {
     const run = rewarded();
     expect(campaignRecap(run)).toMatchObject({ packs: 1, earnedCopies: 8, clears: 1, changedCopies: 0, recruits: [] });
-    const incoming = run.rewards[0].cards[0];
+    const incoming = run.rewards[0].choice!;
     run.deck = previewCampaignEdit(run, incoming).deck;
     run.phase = 'completed'; run.encounter = 8;
     expect(campaignRecap(run)).toMatchObject({ earnedCopies: 8, clears: 9, changedCopies: 1, additions: [{ slug: incoming, count: 1 }] });
