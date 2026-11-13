@@ -116,7 +116,7 @@ export interface GigRoll {
 export interface MatchFrame {
   view: PlayerView;
   /** Only identities legally revealed to this viewer may enter a frame. */
-  knownLegends: { instanceId: string; seat: Seat }[];
+  knownLegends: CardView[];
   peeks: CardView[];
   log: MatchLogEntry[];
   gigRolls: GigRoll[];
@@ -143,7 +143,7 @@ export interface MatchBeat extends MatchFrame {
   targetIds: string[];
   changes: MatchChange[];
   playedCardIds?: string[];
-  combatKillId?: string;
+  combatKillIds?: string[];
   tableCues?: MatchTableCue[];
 }
 

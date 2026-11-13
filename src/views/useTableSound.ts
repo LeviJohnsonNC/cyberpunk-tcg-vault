@@ -4,6 +4,9 @@ import { duckMusic } from '../lib/musicSignal';
 import diceRoll from '../assets/play/dice-roll.mp3';
 import cardPlay from '../assets/play/card-play.mp3';
 import unitKill from '../assets/play/unit-kill.mp3';
+import unitKillTwo from '../assets/play/unit-kill-2.mp3';
+import unitKillThree from '../assets/play/unit-kill-3.mp3';
+import unitKillFour from '../assets/play/unit-kill-4.mp3';
 
 import dealMultiple from '../assets/play/deal-multiple.mp3';
 import dealSingle from '../assets/play/deal-single.mp3';
@@ -17,7 +20,7 @@ import packTear from '../assets/play/pack-tear.mp3';
 const recordings = [
   { cue: 'dice-roll', url: diceRoll, gain: 2.1 },
   { cue: 'card-play', url: cardPlay, gain: 1.4 },
-  { cue: 'unit-kill', url: unitKill, gain: .65 },
+  ...[unitKill, unitKillTwo, unitKillThree, unitKillFour].map(url => ({ cue: 'unit-kill' as const, url, gain: .65 })),
   { cue: 'deal', url: dealMultiple, gain: 1.3 },
   { cue: 'draw', url: dealSingle, gain: 1.3 },
   { cue: 'turn', url: turnStart, gain: 1.3 },
@@ -37,6 +40,8 @@ async function decodeRecording(context: AudioContext, url: string) {
   }
 }
 
+type Clip = { gain: number; ready: Promise<AudioBuffer | undefined>; buffer?: AudioBuffer };
+
 const preference = 'cptv.play.dice-sound.v1', volumeKey = 'cptv.play.sound-volume.v1';
 function read(key: string, fallback: string) { try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; } }
 function save(key: string, value: string) { try { localStorage.setItem(key, value); } catch { /* Session only. */ } }
@@ -48,7 +53,7 @@ export function useTableSound() {
   const active = useRef(enabled), level = useRef(volume);
   const audio = useRef<AudioContext | null>(null), master = useRef<GainNode | null>(null);
   const buffers = useRef(new Map<string, AudioBuffer>());
-  const clips = useRef(new Map<TableCue, { gain: number; ready: Promise<AudioBuffer | undefined>; buffer?: AudioBuffer }>());
+  const clips = useRef(new Map<TableCue, Clip[]>());
   const pending = useRef(new Set<() => void>());
   const voices = useRef(new Set<() => void>());
   const recent = useRef(new Map<string, number>());
@@ -65,10 +70,12 @@ export function useTableSound() {
         limiter.threshold.value = -12; limiter.knee.value = 12; limiter.ratio.value = 8; limiter.attack.value = .003; limiter.release.value = .16;
         gain.connect(limiter); limiter.connect(context.destination);
         for (const recording of recordings) {
-          const clip: { gain: number; ready: Promise<AudioBuffer | undefined>; buffer?: AudioBuffer } = {
+          const clip: Clip = {
             gain: recording.gain, ready: decodeRecording(context, recording.url),
           };
-          clips.current.set(recording.cue, clip);
+          const variants = clips.current.get(recording.cue) ?? [];
+          variants.push(clip);
+          clips.current.set(recording.cue, variants);
           void clip.ready.then((buffer) => { clip.buffer = buffer; });
         }
       }
@@ -104,7 +111,8 @@ export function useTableSound() {
     return stop;
   }, []);
   const cue = useCallback((name: TableCue, delayMs = 0, pan = 0) => {
-    const clip = clips.current.get(name);
+    const variants = clips.current.get(name);
+    const clip = variants?.[variants.length === 1 ? 0 : Math.floor(Math.random() * variants.length)];
     const context = audio.current;
     if (!active.current || !level.current || !context || document.hidden) return;
     function start(delay: number, buffer?: AudioBuffer) {

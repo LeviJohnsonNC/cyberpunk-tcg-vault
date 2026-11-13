@@ -218,12 +218,14 @@ describe('play engine', () => {
   });
 
   it.each([
-    ['field-operator', true],
-    ['maelstrom-zealots', false],
-  ] as const)('marks a defending Unit defeated by %s only when the fight itself defeats it', (slug, combatKill) => {
+    ['delamain-cab', 'field-operator', ['defender']],
+    ['field-operator', 'delamain-cab', ['attacker']],
+    ['field-operator', 'field-operator', ['attacker', 'defender']],
+    ['maelstrom-zealots', 'corpo-security', ['attacker']],
+  ] as const)('marks actual combat defeats for %s fighting %s', (slug, defender, defeated) => {
     const { state } = rulesFixture('player');
     const attackerId = placeCard(state, 'player', slug, 'field');
-    const defenderId = placeCard(state, 'rival', 'corpo-security', 'field', true);
+    const defenderId = placeCard(state, 'rival', defender, 'field', true);
     state.G.players.rival.zones.hand = [];
     for (const id of state.G.players.rival.zones.legendArea) state.G.cardIndex[id].meta.spent = true;
     const session = createEngineSession(setup('chrome-syndicate'), undefined, {
@@ -232,8 +234,11 @@ describe('play engine', () => {
     });
     const before = session.start();
     const after = session.move(before.view.stateID, { move: 'attackUnit', args: { attackerId, defenderId } });
-    expect(after.view.players.rival.zones.trash).toEqual(expect.arrayContaining([expect.objectContaining({ instanceId: defenderId })]));
-    expect(after.presentation?.feedback?.combatKillId).toBe(combatKill ? defenderId : undefined);
+    expect(after.presentation?.feedback?.combatKillIds?.slice().sort())
+      .toEqual(defeated.map(side => side === 'attacker' ? attackerId : defenderId).sort());
+    if (slug === 'maelstrom-zealots') {
+      expect(after.view.players.rival.zones.trash).toEqual(expect.arrayContaining([expect.objectContaining({ instanceId: defenderId })]));
+    }
   });
 
   it('delivers chronological read-only rival frames once without saving presentation in checkpoints', () => {
@@ -302,6 +307,39 @@ describe('play engine', () => {
     });
     expect([...known.get(slot)!]).toEqual(['rival', 'player']);
     expect((engine.getFilteredView('player').players.player.zones.legendArea as CardView[])[0].definitionId).toBe('');
+  });
+
+  it('remembers a Kiroshi Optics peek after the next move and after reloading the match', () => {
+    const { state } = rulesFixture('player');
+    const attacker = placeCard(state, 'player', 'psycho-squad', 'field');
+    equipFixture(state, attacker, placeCard(state, 'player', 'kiroshi-optics', 'field'));
+    giveGig(state, 'rival');
+    state.G.players.rival.zones.hand = [];
+    for (const id of state.G.players.rival.zones.legendArea) state.G.cardIndex[id].meta.spent = true;
+    const checkpoint = {
+      matchId: 'test', state, botRng: new SeededRNG('legend-memory').getState(),
+      known: new Map<string, Set<Seat>>(), peeks: [], log: [], commandNumber: 20,
+    };
+    const session = createEngineSession(setup('chrome-syndicate'), undefined, checkpoint);
+    const move = (command: string, args: Record<string, unknown>) => session.move(session.start().view.stateID, { move: command, args });
+    const attacking = move('attackRival', { attackerId: attacker });
+    expect(attacking.view.prompt.choice?.type).toBe('chooseTarget');
+    const { eligibleIds: [slot, unseen] } = attacking.view.prompt.choice!.payload as { eligibleIds: string[] };
+    checkpoint.known.set(unseen, new Set(['rival']));
+    const peeked = move('resolveEffectTarget', { targetIds: [slot] });
+    expect(peeked.peeks[0]?.definitionId).toBe(state.G.cardIndex[slot].definitionId);
+    const later = move('passPhase', {});
+    expect(later.peeks).toEqual([]);
+    const resumed = createEngineSession(setup('chrome-syndicate'), undefined, structuredClone(session.checkpoint())).start();
+    for (const snapshot of [later, resumed]) {
+      expect(snapshot.knownLegends).toEqual([
+        expect.objectContaining({ instanceId: slot, definitionId: state.G.cardIndex[slot].definitionId, faceDown: true }),
+      ]);
+      expect(snapshot.view.players.player.zones.legendArea).toEqual(expect.arrayContaining([
+        expect.objectContaining({ instanceId: slot, definitionId: '', faceDown: true }),
+        expect.objectContaining({ instanceId: unseen, definitionId: '', faceDown: true }),
+      ]));
+    }
   });
 
   it('retains Sell for Turn after Bootleg Black Sapphire Show sells a deck card', () => {
@@ -726,10 +764,36 @@ describe('play engine', () => {
       issue(engine, active, 'resolveTrigger', { triggerId: first.triggerId });
       const zones = engine.getState().G.players[active].zones;
       expect(order === 'return-first' ? zones.hand : zones.trash).toEqual(expect.arrayContaining([unit, gear]));
+      expect(order === 'return-first' ? zones.trash : zones.hand).not.toContain(unit);
+      expect(engine.getFilteredView(active).activePlayerId).toBe(other);
     } else {
       expect(engine.getState().G.players[active].zones.field).toContain(unit);
       expect(engine.getState().G.players[active].zones.trash).not.toContain(unit);
     }
+  });
+
+  it.each([0, 1])('resumes independent end-of-turn choices after Misty %i resolves first', (first) => {
+    const { state, active } = rulesFixture('player');
+    const mistys = [0, 1].map(() => placeCard(state, active, 'misty-olszewski-mender-of-broken-spirits', 'field'));
+    const top = state.G.players[active].zones.deck.slice(0, 2);
+    for (const id of top) state.G.cardIndex[id].definitionId = engineCardId('floor-it');
+    const engine = new LocalEngine(state);
+    const turn = engine.getFilteredView(active).turnNumber;
+    issue(engine, active, 'passPhase');
+    const pending = engine.getFilteredView(active);
+    expect(pending.prompt.choice?.type).toBe('chooseTrigger');
+    const options = (pending.prompt.choice!.payload as { options: { sourceCardId: string; triggerId: string }[] }).options;
+    expect(options.map(option => option.sourceCardId)).toEqual(mistys);
+    const form = matchActions(pending).find(action => action.id === 'resolveTrigger')!;
+    const command = form.move({ trigger: [options[first].triggerId] });
+    issue(engine, active, command.move, command.args);
+    expect(engine.getFilteredView(active).prompt.choice?.type).toBe('chooseCardType');
+    issue(engine, active, 'resolveCardTypeChoice', { cardType: 'program' });
+    const resumed = new LocalEngine(structuredClone(engine.getState()));
+    expect(resumed.getFilteredView(active)).toMatchObject({ turnNumber: turn, prompt: { choice: { type: 'chooseCardType' } } });
+    issue(resumed, active, 'resolveCardTypeChoice', { cardType: 'program' });
+    expect(resumed.getState().G.players[active].zones.hand).toEqual(expect.arrayContaining(top));
+    expect(resumed.getFilteredView(active).turnNumber).toBe(turn + 1);
   });
 
   it('checks deck-out at the draw rather than before the turn starts', () => {

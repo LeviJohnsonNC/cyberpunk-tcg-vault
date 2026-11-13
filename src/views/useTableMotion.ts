@@ -92,10 +92,11 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
         const accents = tableAccents(previousView, view);
         const plan = planMotion(previousView, view, beat);
         const cues = new Set<TableCue>();
-        const combatKills = new Set(reducedBeats?.flatMap((beat) => beat.combatKillId ? [beat.combatKillId] : []));
+        const combatBeats = reducedBeats?.filter(beat => beat.combatKillIds?.length) ?? [];
+        const combatKills = new Set(combatBeats.flatMap(beat => beat.combatKillIds ?? []));
         const playedCard = reducedBeats?.some((beat) => beat.playedCardIds?.length);
         if (hasRolls) cues.add('dice-roll');
-        if (combatKills.size) cues.add('unit-kill');
+        combatBeats.forEach((_, index) => { const stop = sound?.('unit-kill', index * 180); if (stop) sounds.current.push(stop); });
         if (playedCard) cues.add('card-play');
         for (const accent of accents) {
           if (accent.kind === 'land' && !playedCard) cues.add('play');
@@ -316,15 +317,15 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       track(animations, () => finish.remove());
     }
 
-    const combatKillId = beat?.combatKillId;
+    const combatKills = new Set(beat?.combatKillIds);
     const ghosts = new Map<string, HTMLElement>();
     for (const [id, piece] of before) {
       if (next.has(id) || id.startsWith('pool:') || !moves(piece.zone)) continue;
       const defeated = plan.defeated.includes(id);
-      ghosts.set(id, leave(piece, anchor(plan.destinations[id]), { defeated, combatKill: id === combatKillId, delay: striker && (defeated || id === strike?.attackerId) ? impact + time(id === strike?.attackerId ? 260 : 0) : 0 }));
+      ghosts.set(id, leave(piece, anchor(plan.destinations[id]), { defeated, combatKill: combatKills.has(id), delay: striker && (defeated || id === strike?.attackerId) ? impact + time(id === strike?.attackerId ? 260 : 0) : 0 }));
     }
 
-    if (combatKillId) say('unit-kill', striker && struck ? impact : time(140));
+    if (combatKills.size) say('unit-kill', striker && struck ? impact : time(140));
     if (strike && striker && struck) {
       const dx = struck.x - striker.spot.x, dy = struck.y - striker.spot.y;
       const reach = Math.min(0.62, 230 / Math.max(1, Math.hypot(dx, dy)));
@@ -338,7 +339,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
         track([lunge], () => { delete body.dataset.striking; });
       }
       const burst = document.createElement('div');
-      if (!combatKillId) say('hit', impact);
+      if (!combatKills.size) say('hit', impact);
       burst.className = 'play-impact';
       burst.style.cssText = `left:${struck.x}px;top:${struck.y}px;animation-delay:${impact}ms;animation-duration:${time(520)}ms;`;
       layer.append(burst);
