@@ -3,7 +3,7 @@ import { Rules } from '../components/bits';
 import { isReady, type MatchActionForm, type PickField, type Picks } from '../lib/play/matchActions';
 import { commitLabel } from '../lib/play/matchInteraction';
 import type { CardView, PlayerView } from '../lib/play/protocol';
-import { decisionSource, paymentPreview } from '../lib/play/tacticalInfo';
+import { decisionSource } from '../lib/play/tacticalInfo';
 import { CardFace } from './PlayCard';
 import { DieFace } from './PlayDice';
 import type { CommandPresentation } from '../lib/play/commandPresentation';
@@ -24,12 +24,16 @@ export function PlayChoices({ presentation, context, view, action, picks, fields
   const ready = isReady(fields, picks);
   const rollingGig = action.id === 'gainGig';
   const sourceCard = decisionSource(view, action, picks, cards);
-  const payment = paymentPreview(view, action, picks);
+  const paying = active?.id === 'payment';
+  const detail = paying && presentation.detail ? <Rules text={presentation.detail} />
+    : sourceCard ? `${action.label} · ${sourceCard.cardName ?? 'Selected Legend'}` : presentation.detail;
   const placement = action.id === 'resolveScry';
   const assigned = new Set(Object.values(picks).flat());
   const unassigned = revealed?.filter((card) => !assigned.has(card.instanceId)) ?? [];
   const byId = new Map(cards.map((card) => [card.instanceId, card]));
   const onMat = !!active?.options.length && !active.ordered && active.options.every((option) => option.cardId?.startsWith('pool:') || cards.some((card) => card.instanceId === option.cardId && ['hand', 'field', 'legendArea', 'eddieArea', 'gigArea', 'fixerArea', 'resolvingProgram'].includes(card.zone ?? '')));
+  const showPanel = !onMat || (!paying && !rollingGig);
+  const countedStep = paying || rollingGig ? undefined : active;
   const options = active && <fieldset disabled={busy} data-pick-field={active.id} className="play-active-choice">
         <legend>{active.label}{active.ordered ? ' · select in order, first selected is placed first' : ''}</legend>
         <div className="play-pick-list">{active.options.map((option) => {
@@ -51,8 +55,7 @@ export function PlayChoices({ presentation, context, view, action, picks, fields
       <div className="play-tray-head">
         <div className="play-tray-intent">
           {sourceCard && <button type="button" className="play-tray-source" aria-label={`Inspect ${sourceCard.cardName ?? 'selected card'}`} onClick={(event) => inspect(sourceCard, event.currentTarget)}><CardFace card={sourceCard} /></button>}
-          <div><h3>{presentation.title}</h3>{sourceCard ? <p>{action.label} · {sourceCard.cardName ?? 'Selected Legend'}</p>
-            : presentation.detail && <p>{presentation.detail}</p>}</div>
+          <div><h3>{presentation.title}</h3>{detail && <p>{detail}</p>}</div>
         </div>
         <div className="play-tray-actions">
           <button className="btn play-confirm" data-confirm-move={action.id} disabled={busy || !ready}>{rollingGig ? 'Roll die' : commitLabel(action, picks)}</button>
@@ -60,23 +63,11 @@ export function PlayChoices({ presentation, context, view, action, picks, fields
           {alternatives}
         </div>
       </div>
-      <div className="play-tray-summary">
-        {active && active.id !== 'payment' && <span className="play-step-count">{active.label} <b>{picks[active.id]?.length ?? 0}/{active.min === active.max ? active.min : `${active.min}–${active.max}`}</b></span>}
-        {payment && <span className="play-payment-summary" aria-label="Payment preview" aria-live="polite">
-          <strong>Pay {payment.amount} €$</strong>
-          {active?.id === 'payment' && <span>{picks.payment?.length ?? 0}/{active.max} selected</span>}
-          <span>{payment.ready ? `${payment.reserved.length ? payment.afterCosts : payment.afterPayment} €$ left` : 'Choose payment sources'}</span>
-        </span>}
-        <PlayDecisionPanel key={onMat ? 'mat' : 'list'} label={payment ? 'Payment details' : onMat ? 'Options' : 'Choices'}
-          title={payment ? 'Payment details' : presentation.title} defaultOpen={!onMat}>
-          {action.detail && <p className="play-choice-detail"><Rules text={action.detail} /></p>}
-          {payment && <div className="play-payment-receipt" aria-label="Payment breakdown">
-            <strong>Pay {payment.amount} €$</strong>
-            <span>{payment.ready ? `${payment.afterPayment} €$ after payment` : 'Choose payment sources below or on the mat.'}</span>
-            {payment.reserved.length > 0 && <span>Also spends {payment.reserved.join(', ')}. {payment.afterCosts} €$ remain after these costs.</span>}
-            {payment.sources.length > 0 && <ul>{payment.sources.map(source =>
-              <li key={source.id}>{source.label}<span>{source.legend ? 'Spend Legend' : 'Spend Eddie'}</span></li>)}</ul>}
-          </div>}
+      {(countedStep || showPanel || context) && <div className="play-tray-summary">
+        {countedStep && <span className="play-step-count">{countedStep.label} <b>{picks[countedStep.id]?.length ?? 0}/{countedStep.min === countedStep.max ? countedStep.min : `${countedStep.min}–${countedStep.max}`}</b></span>}
+        {showPanel && <PlayDecisionPanel key={onMat ? 'mat' : 'list'} label={onMat ? 'Options' : 'Choices'}
+          title={presentation.title} defaultOpen={!onMat}>
+          {!paying && action.detail && <p className="play-choice-detail"><Rules text={action.detail} /></p>}
           {fields.length > 1 && <div className="play-choice-steps" aria-label="Decision steps">{fields.map(field =>
             <button type="button" key={field.id} className="btn quiet" aria-pressed={field.id === active?.id}
               data-step={field.id} disabled={busy} onClick={() => step(field.id)}>
@@ -95,9 +86,9 @@ export function PlayChoices({ presentation, context, view, action, picks, fields
                 reorder(active.id, reordered);
               }}>↑</button>
             </li>)}</ol>}
-        </PlayDecisionPanel>
+        </PlayDecisionPanel>}
         {context}
-      </div>
+      </div>}
     </form>
   </section>;
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { matchActions } from './matchActions';
-import { decisionSource, paymentPreview, powerExplanation, previewPosition } from './tacticalInfo';
+import { decisionSource, powerExplanation, previewPosition } from './tacticalInfo';
 import type { CardEffectView, CardView, PlayerView } from './protocol';
 
 const card = (id: string, extra: Partial<CardView> = {}): CardView => ({ instanceId: id, definitionId: id, cardName: id, zone: 'field', type: 'unit', faceDown: false, spent: false, power: 4, effectivePower: 4, cost: 2, ...extra });
@@ -32,25 +32,8 @@ describe('visible power explanations', () => {
   });
 });
 
-describe('payment consequences', () => {
-  it('shows the actual engine cost and selected sources without changing a command', () => {
-    const state = view(), action = matchActions(state)[0];
-    const picks = { card: ['unit'], payment: ['e1', 'legend'] };
-    const before = action.move(picks);
-    expect(paymentPreview(state, action, picks)).toMatchObject({ amount: 2, ready: true, afterPayment: 1, sources: [{ id: 'e1', legend: false }, { id: 'legend', legend: true }] });
-    expect(action.move(picks)).toEqual(before);
-    expect(paymentPreview(state, action, { card: ['unit'], payment: [] })).toMatchObject({ ready: false });
-    expect(paymentPreview(state, action, {})).toBeUndefined();
-  });
-  it('accounts separately for reserved Legends and handles a zero-Eddie ability', () => {
-    const state = view();
-    state.prompt.availableMoves = [{ moveId: 'activateAbility', inputSpec: { type: 'selectAbility', candidates: [{ cardId: 'legend', abilityIndex: 0, eddieCost: 0, spendsCard: true }] } }];
-    state.prompt.payment!.costs = { activateAbility: { 'legend:0': { amount: 0, reservedLegendIds: ['legend'] } } };
-    const action = matchActions(state)[0];
-    expect(paymentPreview(state, action, {})).toBeUndefined();
-    expect(paymentPreview(state, action, { ability: ['0'] })).toMatchObject({ amount: 0, ready: true, afterPayment: 3, afterCosts: 2, reserved: ['legend'] });
-  });
-  it('supports pool Eddies and forced paid plays whose first field is payment', () => {
+describe('decision source', () => {
+  it('finds the visible source of a forced paid play', () => {
     const state = view();
     state.prompt.payment!.eddieIds = [];
     state.prompt.payment!.costs = { resolveCardToPlay: { unit: { amount: 2 } } };
@@ -59,7 +42,6 @@ describe('payment consequences', () => {
     state.prompt.choice = { type: 'chooseCardToPlay', payload: { cardIds: ['unit'], source: { cardId: 'legend' } } };
     const action = matchActions(state)[0];
     expect(action.fields({})[0].id).toBe('payment');
-    expect(paymentPreview(state, action, { payment: ['pool:0', 'pool:1'] })).toMatchObject({ ready: true, amount: 2, afterPayment: 1 });
     expect(decisionSource(state, action, {}, [card('legend')])?.instanceId).toBe('legend');
     expect(decisionSource(state, action, {}, [card('legend', { definitionId: '' })])).toBeUndefined();
   });

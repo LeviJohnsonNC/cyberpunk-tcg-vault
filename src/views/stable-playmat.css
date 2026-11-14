@@ -95,8 +95,6 @@ html:has(.play-direct) { scrollbar-gutter: stable; }
   font-size: 12px;
 }
 .play-step-count b { color: var(--color-ticket); font-family: var(--font-mono); white-space: nowrap; }
-.play-payment-summary { display: inline-flex; gap: 8px; align-items: baseline; }
-.play-payment-summary strong { color: var(--color-ticket); }
 .play-direct .play-command .play-tray-summary > .play-combat-banner {
   flex: 0 1 auto;
   min-width: 0;
@@ -138,7 +136,6 @@ html:has(.play-direct) { scrollbar-gutter: stable; }
 .play-decision-panel-body > * { min-width: 0; }
 .play-decision-panel .play-active-choice .play-pick-list { flex-wrap: wrap; max-height: none; overflow: visible; }
 .play-decision-panel .play-active-choice .play-option { max-width: 100%; }
-.play-decision-panel .play-payment-receipt ul { flex-basis: 100%; }
 .play-decision-panel .play-combat-banner { flex-wrap: wrap; }
 .play-direct .play-command-inner > .play-command-error {
   position: absolute;
