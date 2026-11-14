@@ -28,10 +28,13 @@ export function layoutDiceThrow(release: PointerRelease, field: FieldBox, maxRad
   const origin = { x: field.left + field.width * release.x, y: field.top + field.height * release.y };
   const magnitude = Math.hypot(release.vx, release.vy);
   const speed = Math.min(MAX_SPEED, magnitude);
+  const strength = speed / MAX_SPEED;
+  const contact = .23 + strength * .25;
+  const secondBounce = contact + .2 + strength * .14;
   const direction = magnitude ? { x: release.vx / magnitude, y: release.vy / magnitude } : { x: .45, y: -.8 };
   const radius = Math.min(maxRadius, field.height * .23, field.width * .23);
   const inset = radius * .72;
-  return { origin, speed, direction, radius,
+  return { origin, speed, strength, contact, secondBounce, direction, radius,
     // The first rendered frame is at release, including when the pointer is already at an edge.
     minX: Math.min(origin.x, field.left + inset), maxX: Math.max(origin.x, field.left + field.width - inset),
     minY: Math.min(origin.y, field.top + inset), maxY: Math.max(origin.y, field.top + field.height - inset),
@@ -50,13 +53,10 @@ function rebound(origin: number, displacement: number, min: number, max: number)
 }
 
 export function diceThrowFrame(throwing: ThrowLayout, elapsed: number) {
-  const { origin, direction, speed } = throwing;
+  const { origin, direction, speed, strength, contact, secondBounce } = throwing;
   const t = clamp(elapsed / ROLL_SETTLE, 0, 1);
-  const strength = speed / MAX_SPEED;
   // Integrate a linear deceleration, so the velocity falls to zero at the settle frame.
   const travel = speed * ROLL_SETTLE / 1000 * t * (1 - t / 2);
-  const contact = .23 + strength * .25;
-  const secondBounce = contact + .2 + strength * .14;
   const lift = t < contact ? Math.sin(Math.PI * t / contact) * (9 + strength * 28)
     : t < secondBounce ? Math.sin(Math.PI * (t - contact) / (secondBounce - contact)) * (2 + strength * 10) : 0;
   const spin = (.13 + strength * 1.75) * Math.PI * 2 * (1 - t) ** 2;
@@ -68,4 +68,11 @@ export function diceThrowFrame(throwing: ThrowLayout, elapsed: number) {
     lift,
     tilt: { x: direction.y * spin, y: -direction.x * spin, z: (direction.x - direction.y * .4) * spin * .26 },
   };
+}
+
+export function diceThrowImpacts({ strength, contact, secondBounce }: ThrowLayout) {
+  return [
+    { time: contact * ROLL_SETTLE, strength: .24 + .76 * strength },
+    { time: secondBounce * ROLL_SETTLE, strength: .10 + .36 * strength },
+  ];
 }

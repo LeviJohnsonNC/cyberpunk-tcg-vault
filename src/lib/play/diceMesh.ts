@@ -130,17 +130,35 @@ function colorBetween(a: RGB, b: RGB, t: number) {
 const lightDirection = unit([-0.62, 0.7, 1]);
 const rimDirection = unit([0.9, -0.1, 0.55]);
 
-// Geometry, camera and motion only. The selected face is supplied by the saved engine event.
-export function paintDie(ctx: CanvasRenderingContext2D, type: string, result: number,
-  angles: Vec, radius: number, size: number, palette: DicePalette, settled: boolean) {
+function dieProjection(type: string, result: number, angles: Vec, radius: number, center: number) {
   const mesh = meshFor(type);
   const landing = mesh.faces[result - 1] ?? mesh.faces[0];
   const rotate = rotation(...angles);
   const transform = (v: Vec) => rotate([dot(v, landing.right), dot(v, landing.up), dot(v, landing.normal)]);
   const project = ([x, y, z]: Vec) => {
     const perspective = radius * 5 / (5 - z);
-    return [size / 2 + x * perspective, size / 2 - y * perspective] as const;
+    return [center + x * perspective, center - y * perspective] as const;
   };
+  return { mesh, landing, transform, project };
+}
+
+/** Bottom of the rendered silhouette, relative to the die's center. */
+export function dieContactPoint(type: string, result: number, angles: Vec, radius: number) {
+  const { mesh, transform, project } = dieProjection(type, result, angles, radius, 0);
+  let contact = { x: 0, y: -Infinity };
+  for (const { points } of mesh.surfaces) {
+    for (const point of points) {
+      const [x, y] = project(transform(point));
+      if (y > contact.y) contact = { x, y };
+    }
+  }
+  return contact;
+}
+
+// Geometry, camera and motion only. The selected face is supplied by the saved engine event.
+export function paintDie(ctx: CanvasRenderingContext2D, type: string, result: number,
+  angles: Vec, radius: number, size: number, palette: DicePalette, settled: boolean) {
+  const { mesh, landing, transform, project } = dieProjection(type, result, angles, radius, size / 2);
   function trace(points: (readonly [number, number])[]) {
     ctx.beginPath();
     points.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
