@@ -1,0 +1,48 @@
+--- a/submodules/cyberpunk/packages/engine/src/automation/search/tactical.ts
++++ b/submodules/cyberpunk/packages/engine/src/automation/search/tactical.ts
+@@ -1,3 +1,4 @@
++import { isLegalFight } from "../util/fight-legality.ts";
+ import type { PlayerId } from "../../types/branded.ts";
+ import type { CommandEnvelope } from "../../types/commands.ts";
+ import type { MoveId } from "../../moves/index.ts";
+@@ -667,7 +668,7 @@
+     return lined.length > 0 ? lined : fallbackChoice(prompt, ctx, fallback);
+   }
+   const profile = isGreedyAIStrategy(fallback) ? fallback.deckProfile : undefined;
+-  const enumerated = enumerateCandidateActions(prompt);
++  const enumerated = enumerateCandidateActions(prompt).filter(action => isLegalFight(action, ctx.view));
+   // Towerfall and Les Élémens are core cards and also the prompt's spare sells.
+   // The uninstalled-core hold would drop that sell, and the curve scorer still
+   // counts it as a legal spare the bot passed on.
+--- a/submodules/cyberpunk/packages/engine/src/automation/strategies/greedy.ts
++++ b/submodules/cyberpunk/packages/engine/src/automation/strategies/greedy.ts
+@@ -1,3 +1,4 @@
++import { isLegalFight } from "../util/fight-legality.ts";
+ import type { AIStrategy, DecisionContext, MoveDecision } from "../types.ts";
+ import type {
+   AbilityCandidate,
+@@ -1014,6 +1015,7 @@
+     for (const to of toCandidates) {
+       const fromCard = findCard(view, from);
+       const toCard = findCard(view, to);
++      if (!isLegalFight({ move: "attackUnit", args: { attackerId: from, defenderId: to } }, view)) continue;
+       const margin = (fromCard?.effectivePower ?? 0) - (toCard?.effectivePower ?? 0);
+       if (requiredAttackers.length === 0 && margin < minMargin) continue;
+       const targetValue = cardStrategicValue(toCard) + (toCard?.attachedGearIds.length ?? 0) * 8;
+--- /dev/null
++++ b/submodules/cyberpunk/packages/engine/src/automation/util/fight-legality.ts
+@@ -0,0 +1,14 @@
++import type { FilteredMatchView } from "../../view/filter.ts";
++
++/** The prompt lists both axes; only the specific attacker can authorize a ready target. */
++export function isLegalFight(action: { move: string; args?: Record<string, unknown> }, view: FilteredMatchView) {
++  if (action.move !== "attackUnit") return true;
++  const fields = Object.values(view.players).flatMap(player =>
++    Array.isArray(player.zones.field) ? player.zones.field : []
++  );
++  const attacker = fields.find(card => card.instanceId === action.args?.attackerId);
++  const defender = fields.find(card => card.instanceId === action.args?.defenderId);
++  return !!attacker && !!defender && (defender.spent
++    || attacker.grantedRules.includes("canAttackReadyUnits")
++    || (attacker.grantedRules.includes("canAttackReadyBlockers") && defender.grantedRules.includes("blocker")));
++}

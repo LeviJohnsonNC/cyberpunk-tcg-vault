@@ -1,5 +1,5 @@
 import { updateCampaign } from './campaignStorage';
-import { ENCOUNTERS, campaignDeckIssues, encounterDeck, encounterSkill, prepareCampaignReward, settleCampaignMatch } from './campaign';
+import { ENCOUNTERS, campaignDeckIssues, encounterDeck, encounterRivalPlan, encounterSkill, prepareCampaignReward, settleCampaignMatch } from './campaign';
 import { prepareMatchDeck } from './matchDeck';
 import { createMatchController } from './workerController';
 import type { MatchSnapshot, Move } from './protocol';
@@ -19,7 +19,7 @@ self.addEventListener('message', async ({ data }: MessageEvent<Command>) => {
         const rival = encounterDeck(run), rivalDeck = prepareMatchDeck(rival), player = prepareMatchDeck(run.deck);
         const reward = run.encounter < ENCOUNTERS.length - 1 ? prepareCampaignReward(run) : undefined;
         const controller = createMatchController();
-        const response = controller.respond({ id, action: { type: 'start', setup: { player, rival: rivalDeck, rivalSkill: encounterSkill(run) } } });
+        const response = controller.respond({ id, action: { type: 'start', setup: { player, rival: rivalDeck, rivalSkill: encounterSkill(run), campaignRivalPlan: encounterRivalPlan(run) } } });
         if (!('snapshot' in response)) throw new Error(response.error);
         const next = { ...run, deckUndo: undefined, phase: 'inMatch' as const, revision: run.revision + 1,
           rewards: reward ? { ...run.rewards, [run.encounter]: reward } : run.rewards,

@@ -25,7 +25,7 @@ import { CampaignWorkbench } from './CampaignWorkbench';
 import { aftermathBeats } from '../lib/play/campaignScenes';
 import { CampaignInvitation, CampaignScene } from './CampaignStory';
 import { CampaignRivalSeat } from './CampaignRivalDossier';
-import { knownRivalLegendSlugs } from '../lib/play/campaignRivalIntel';
+import { campaignRivalIntel, knownRivalLegendSlugs } from '../lib/play/campaignRivalIntel';
 import { CampaignCrewPick } from './CampaignCrewPick';
 import { useRivalDialogue } from './useRivalDialogue';
 import './campaign.css';
@@ -386,7 +386,11 @@ export function CampaignMode({ scope, exit, openInBuilder, preparationOnly = fal
   const finale = run?.phase === 'claimingFinish' || run?.phase === 'completed';
   const continueLabel = scenePending ? 'Continue story' : earnedPack ? 'Open your pack'
     : run?.phase === 'claimingFinish' ? 'Open Champion’s Cache' : 'Review deck and retry';
-  const resultNext = scenePending ? 'Next: The aftermath and your reward pack.' : undefined;
+  const stuckCard = snapshot?.report?.stuck.find(item => (item.card.cost ?? 0) >= 5)?.card.cardName;
+  const resultNext = run?.balanceVersion === 3 && run.aftermath?.outcome === 'loss' && encounter
+    ? stuckCard ? `${stuckCard} stayed in your hand. Consider swapping a copy for a cheaper play before the rematch.`
+      : campaignRivalIntel(encounter.id, run.starter).counterplay
+    : scenePending ? 'Next: The aftermath and your reward pack.' : undefined;
   const tools = run && profile && !choosingStarter && !tableOpen ? <CampaignHubTools run={run} profile={profile} busy={busy}
     soundEnabled={sound.enabled} toggleSound={sound.toggle} newRun={openNewCampaign} reset={openReset} exit={exit}
     equipRoom={room => void apply(() => equipEnvironment(scope, room), value => { setProfile(value.profile); sound.cue('reward-lock'); })}
@@ -455,8 +459,10 @@ export function CampaignMode({ scope, exit, openInBuilder, preparationOnly = fal
             flipSlot={slot => apply(() => revealCampaignSlot(scope, run, earnedPack.id, slot), value => setRun(value.run))}
             revealSound={tier => sound.cue(tier === 'foil' ? 'pack-foil' : tier === 'rare' ? 'pack-rare' : 'pack-reveal')}
             choose={slug => void apply(() => chooseReward(scope, run, earnedPack.id, slug), value => {
-              setRun(value.run); changeSurface(needsActBriefing(value.run) ? 'hub' : 'new-cards');
-              sound.cue(needsActBriefing(value.run) ? 'act-arrival' : 'reward-lock');
+              const actBriefing = needsActBriefing(value.run);
+              setRun(value.run);
+              changeSurface(actBriefing ? 'hub' : 'new-cards');
+              sound.cue(actBriefing ? 'act-arrival' : 'reward-lock');
             })} />
         : actPending || finale
           ? <section className="campaign-board-moment" aria-labelledby="campaign-moment-title">

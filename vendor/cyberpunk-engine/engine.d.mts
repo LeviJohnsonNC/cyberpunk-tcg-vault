@@ -67,7 +67,28 @@ export class SeededRNG {
   setState(state: { state: number }): void;
 }
 
+export interface DeckStrategyProfile {
+  deckId: string;
+  plan: string;
+  coreCards: readonly string[];
+  mulligan?: {
+    cheapUnitCost: number;
+    minCheapUnits: number;
+    minSellable: number;
+    congestionNames?: string[];
+    congestionMinCopies?: number;
+  };
+  gearHosts?: Record<string, string[]>;
+  gearHostTypes?: Record<string, 'unit' | 'legend'>;
+  blockDirectStealsAtLeast?: number;
+  curveSellCards?: string[];
+  pacing?: 'develop-first' | 'attack-first';
+  preferSecond?: boolean;
+  developLegends?: boolean;
+  planCombatSetup?: boolean;
+}
+
 /** Every strategy decides from the seat's filtered view. The tactical ones also need `engine` to look ahead. */
 export function chooseMove(view: PlayerView, rng: () => number, seat: Seat,
-  options?: { strategy?: 'greedy' | 'tactical' | 'tactical-ability-aware'; engine?: EngineHandle }): Move | undefined;
+  options?: { strategy?: 'greedy' | 'tactical' | 'tactical-ability-aware'; engine?: EngineHandle; profile?: DeckStrategyProfile }): Move | undefined;
 export function projectRevealedCardView(state: EngineState, instanceId: string): CardView | null;

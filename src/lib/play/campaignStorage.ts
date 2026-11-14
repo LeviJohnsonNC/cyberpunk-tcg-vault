@@ -105,11 +105,20 @@ export function startCampaign(scope: string, starter: StarterKey, replace?: Pick
 }
 
 export function chooseReward(scope: string, expected: PackCheckpoint, packId: string, slug: string) {
-  return updateCampaign(scope, (run, profile) => {
-    if (!run || run.id !== expected.id || run.revision !== expected.revision || run.phase !== 'rewardPending' || run.resultPending || (run.aftermath && !run.aftermath.sceneSeen)) throw new Error('The pack changed in another tab. Reload the campaign.');
-    const reward = run.rewards[run.encounter];
+  return updateCampaign<{ run: CampaignRun; profile: CampaignProfile }>(scope, (run, profile) => {
+    if (!run || run.id !== expected.id || run.revision !== expected.revision || (run.phase !== 'rewardPending' && run.phase !== 'retryReward') || run.resultPending || (run.aftermath && !run.aftermath.sceneSeen)) throw new Error('The pack changed in another tab. Reload the campaign.');
+    const reward = pendingCampaignPack(run);
     if (!reward || reward.id !== packId || !reward.offers.includes(slug) || reward.choice || campaignPackLayout(run, reward)?.revealedSlots.length !== reward.cards.length) throw new Error('Choose an available card from this pack.');
     if (BY_SLUG.get(slug)?.type === 'Legend' && (run.inventory[slug] ?? 0) >= 1) throw new Error('You already have the maximum copies.');
+    if (run.phase === 'retryReward') {
+      const card = BY_SLUG.get(slug);
+      if (!card || card.type === 'Legend' || campaignCardFit(card, campaignCrew(run.deck.legends))
+        || (run.inventory[slug] ?? 0) >= COPY_MAX) throw new Error('Choose an available card from this pack.');
+      const next = { ...run, revision: run.revision + 1, phase: 'preparing' as const, revealed: undefined,
+        packLayout: undefined, aftermath: undefined, latestRetry: { ...reward, choice: slug },
+        inventory: { ...run.inventory, [slug]: (run.inventory[slug] ?? 0) + 1 } };
+      return { run: next, value: { run: next, profile } };
+    }
     const next = { ...run, revision: run.revision + 1, encounter: run.encounter + 1, attempts: 0, defeats: 0, revealed: undefined, packLayout: undefined, aftermath: undefined, phase: 'upgrading' as const,
       inventory: { ...run.inventory, [slug]: (run.inventory[slug] ?? 0) + 1 },
       rewards: { ...run.rewards, [run.encounter]: { ...reward, choice: slug } } };

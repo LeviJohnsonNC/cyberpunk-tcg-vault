@@ -6,9 +6,9 @@ import { STARTERS, starterAsDeck, type StarterKey } from '../starters';
 import { campaignPulls, rollCampaignPack, rollRetryPack } from './campaignPack';
 import type { Deck } from '../store';
 import type { StoredMatch } from './workerController';
-import type { RivalSkill } from './protocol';
+import type { CampaignRivalPlan, RivalSkill } from './protocol';
 import recommended from '../../data/decks.json';
-import { ARASAKA_HOUSE_LIST, HEIST_OPENING_RIVAL, REWARD_THEMES, RIVAL_TUNING } from './campaignBalance';
+import { ARASAKA_HOUSE_LIST, HEIST_OPENING_RIVAL, MOTH_PRACTICE_DELTAS, REWARD_THEMES, RIVAL_TUNING, ROGUELIKE_RIVAL_DELTAS } from './campaignBalance';
 
 export const CAMPAIGN_VERSION = 1;
 export const ENVIRONMENTS = [
@@ -56,8 +56,8 @@ export interface CampaignPackLayout {
 export interface CampaignRun {
   version: 1; id: string; starter: StarterKey; seed: string; revision: number; phase: CampaignPhase;
   encounter: number; attempts: number; inventory: Record<string, number>; deck: Deck; lastLegal: Deck;
-  /** Absent on runs started before the balance pass. */
-  balanceVersion?: 2;
+  /** Absent on runs started before the versioned balance passes. */
+  balanceVersion?: 2 | 3;
   /** Presentation-only acknowledgement. Older runs can show their current act once. */
   briefedAct?: number;
   /** A finished match remains on its result screen until the player continues. */
@@ -84,9 +84,9 @@ export function makeStarterDeck(key: StarterKey): Deck {
   return { id: `campaign:${key}`, name: starter.name, legends, cards, sideboard: {}, notes: '', updatedAt: '' };
 }
 
-export function newCampaign(starter: StarterKey, id: string, seed: string): CampaignRun {
+export function newCampaign(starter: StarterKey, id: string, seed: string, balanceVersion: CampaignRun['balanceVersion'] = 3): CampaignRun {
   const deck = makeStarterDeck(starter);
-  const run: CampaignRun = { version: 1, id, seed, starter, revision: 0, phase: 'preparing', encounter: 0, attempts: 0, balanceVersion: 2,
+  const run: CampaignRun = { version: 1, id, seed, starter, revision: 0, phase: 'preparing', encounter: 0, attempts: 0, balanceVersion,
     inventory: { ...deck.cards, ...Object.fromEntries(deck.legends.map(slug => [slug, 1])) },
     deck, lastLegal: structuredClone(deck), rewards: {}, opponents: [] };
   run.opponents = ENCOUNTERS.map((_, encounter) => structuredClone(encounterDeck({ ...run, encounter })));
@@ -108,15 +108,18 @@ export function encounterDeck(run: CampaignRun): Deck {
   if (!info) throw new Error('The campaign is complete.');
   if (info.rival === 'other-starter') {
     const rival = makeStarterDeck(run.starter === 'the-heist' ? 'embracing-power' : 'the-heist');
-    if (run.balanceVersion === 2 && run.starter === 'the-heist') {
+    if (run.balanceVersion && run.starter === 'the-heist') {
       rival.name = MOTH_EMBRACING_POWER;
       applyCopyDeltas(rival.cards, HEIST_OPENING_RIVAL.cards);
     }
+    if (run.balanceVersion === 3) applyCopyDeltas(rival.cards, MOTH_PRACTICE_DELTAS[run.starter]);
     return rival;
   }
-  if (run.balanceVersion === 2 && info.id === 'last-call') {
+  if (run.balanceVersion && info.id === 'last-call') {
+    const cards = { ...ARASAKA_HOUSE_LIST.cards };
+    if (run.balanceVersion === 3) applyCopyDeltas(cards, ROGUELIKE_RIVAL_DELTAS[info.id]?.cards);
     return { id: 'campaign-rival:arasaka-nines', name: 'Arasaka 9s · House List',
-      legends: [...ARASAKA_HOUSE_LIST.legends], cards: { ...ARASAKA_HOUSE_LIST.cards },
+      legends: [...ARASAKA_HOUSE_LIST.legends], cards,
       sideboard: {}, notes: 'Hold the board with blockers and Arasaka Units, then close with Goro or Smasher.', updatedAt: '' };
   }
   const item = recommended.find(deck => deck.id === info.rival);
@@ -129,7 +132,8 @@ export function encounterDeck(run: CampaignRun): Deck {
       'emergency-atlus': 1, 'field-operator': 2, 'valentino-street-racer': 1, 'meredith-stout-stone-cold-corpo': 2,
       'all-is-lost': 3, detonate: 2, 'take-control': 2, 'peace-offering': 1 });
   }
-  if (run.balanceVersion === 2) applyCopyDeltas(cards, RIVAL_TUNING[info.id]?.cards);
+  if (run.balanceVersion) applyCopyDeltas(cards, RIVAL_TUNING[info.id]?.cards);
+  if (run.balanceVersion === 3) applyCopyDeltas(cards, ROGUELIKE_RIVAL_DELTAS[info.id]?.cards);
   return { id: `campaign-rival:${item.id}`, name: run.encounter === 8 ? 'Arasaka 9s · House List' : item.name, legends: [...item.legends], cards, sideboard: {}, notes: item.summary, updatedAt: '' };
 }
 
@@ -143,7 +147,13 @@ function applyCopyDeltas(cards: Record<string, number>, deltas?: Readonly<Record
 
 export function encounterSkill(run: CampaignRun): RivalSkill {
   const info = ENCOUNTERS[run.encounter];
-  return (run.balanceVersion === 2 ? RIVAL_TUNING[info.id]?.skill : undefined) ?? info.skill;
+  return (run.balanceVersion === 3 ? ROGUELIKE_RIVAL_DELTAS[info.id]?.skill : undefined)
+    ?? (run.balanceVersion ? RIVAL_TUNING[info.id]?.skill : undefined) ?? info.skill;
+}
+
+export function encounterRivalPlan(run: CampaignRun): CampaignRivalPlan | undefined {
+  const encounter = ENCOUNTERS[run.encounter];
+  if (run.balanceVersion === 3 && encounter) return ROGUELIKE_RIVAL_DELTAS[encounter.id]?.plan;
 }
 
 // Rewards have their own seed. A loss changes match shuffle, never the pack waiting behind it.
@@ -171,7 +181,8 @@ function compatibleRewards(run: CampaignRun) {
   return CARDS.filter(card => !campaignCardFit(card, crew));
 }
 
-const rewardSeed = (run: CampaignRun) => `${run.seed}:reward:${run.encounter}:v${run.balanceVersion ?? 1}`;
+// V3 changes retry rewards only. Keep the V2 contract reward stream.
+const rewardSeed = (run: CampaignRun) => `${run.seed}:reward:${run.encounter}:v${run.balanceVersion ? 2 : 1}`;
 const offerCrew = (legends: string[]) => [...legends].sort().join(',');
 
 export function generateReward(run: CampaignRun): CampaignReward {
@@ -254,6 +265,24 @@ function rewardOffers(run: CampaignRun, compatible: Card[], seed: string, sealed
   return offers;
 }
 
+function retryOffers(run: CampaignRun, inventory: Record<string, number>, pack: string[], seed: string) {
+  const excluded = new Set(pack);
+  const eligible = compatibleRewards(run).filter(card => !excluded.has(card.slug) && (inventory[card.slug] ?? 0) < COPY_MAX);
+  const value = (card: Card) => rating(card.slug).power + synergy(card, run.deck.legends);
+  const ranked = shuffled(eligible, seed).sort((a, b) => value(b) - value(a));
+  const earlyUnit = (card: Card) => card.type === 'Unit' && (card.cost ?? Infinity) <= 3 && (card.power ?? 0) > 0;
+  const blocker = (card: Card) => rating(card.slug).roles.includes('blocker');
+  const answer = (card: Card) => rating(card.slug).roles.includes('removal') && (card.cost ?? Infinity) <= 5;
+  const preferred = run.encounter >= 6 ? [answer, blocker, earlyUnit] : [earlyUnit, blocker, answer];
+  const selected = new Set<string>();
+  for (const role of preferred) {
+    const remaining = ranked.filter(card => !selected.has(card.slug));
+    const best = remaining.find(role) ?? remaining[0];
+    if (best) selected.add(best.slug);
+  }
+  return [...selected];
+}
+
 export function campaignPackLayout(run: CampaignRun, pack: CampaignReward): CampaignPackLayout | undefined {
   if (run.packLayout) return run.packLayout;
   const count = Math.min(pack.cards.length, run.revealed ?? 0);
@@ -290,13 +319,16 @@ export function settleCampaignMatch(run: CampaignRun, profile: CampaignProfile, 
 
   if (outcome !== 'win') {
     const pulls = rollRetryPack(rewardRandom(`${run.seed}:retry:${run.encounter}:${next.attempts}`));
-    const reward = { id: `${run.id}:retry:${match.summary.matchId}`, cards: pulls.map(pull => pull.slug),
+    const reward: CampaignReward = { id: `${run.id}:retry:${match.summary.matchId}`, cards: pulls.map(pull => pull.slug),
       printingIds: pulls.map(pull => pull.printing.id), offers: [] };
     const retryPrintings = { ...run.retryPrintings };
     for (const { slug, printing } of [...(run.latestRetry ? campaignPulls(run.latestRetry) : []), ...pulls]) {
       if (printing && (printing.rarity.startsWith('Iconic ') || !retryPrintings[slug])) retryPrintings[slug] = printing.id;
     }
     addPack(reward.cards);
+    if (run.balanceVersion === 3) {
+      reward.offers = retryOffers(run, inventory, reward.cards, `${run.seed}:retry-choice:${run.encounter}:${next.attempts}`);
+    }
     return { run: { ...next, inventory, aftermath, phase: 'retryReward' as const, latestRetry: reward, retryPrintings,
       retryPacks: (run.retryPacks ?? 0) + 1, defeats: (run.defeats ?? 0) + Number(outcome === 'loss') }, profile };
   }

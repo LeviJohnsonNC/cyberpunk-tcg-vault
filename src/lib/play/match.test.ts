@@ -124,6 +124,55 @@ describe('play engine', () => {
     }
   }, 60_000);
 
+  it.each(['standard', 'sharp', 'masterful'] as const)('%s chooses a legal attacker when a ready blocker is offered', skill => {
+    const { state, active, other } = rulesFixture();
+    for (const seat of [active, other]) {
+      state.G.players[seat].zones.hand = [];
+      for (const id of state.G.players[seat].zones.legendArea) state.G.cardIndex[id].meta.spent = true;
+    }
+    for (let i = 0; i < 3; i++) {
+      giveGig(state, active);
+      const die = state.G.players[active].gigArea.at(-1)!;
+      state.G.gigDice[die].faceValue = 4;
+    }
+    // Give the strong attacker priority in the prompt. The ready target is legal only for Guerrera.
+    placeCard(state, active, 'minotaur', 'field');
+    const guerrera = placeCard(state, active, 'valentino-guerrera', 'field');
+    const blocker = placeCard(state, other, 'secondhand-bombus', 'field');
+    // A real command updates the static effects after assembling the fixture.
+    const sellable = placeCard(state, active, 'floor-it', 'hand');
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'sellCard', { cardId: sellable });
+    const view = engine.getFilteredView(active);
+    expect(view.players[active].streetCred).toBeGreaterThan(view.players[other].streetCred);
+    expect((view.players[active].zones.field as CardView[]).find(card => card.instanceId === guerrera)?.grantedRules).toContain('canAttackReadyBlockers');
+    const offers = view.prompt.availableMoves.find(move => move.moveId === 'attackUnit');
+    expect(offers?.inputSpec.toCandidates).toContain(blocker);
+    const move = botDecision(engine, active, () => .3, skill)!;
+    expect(move).toEqual({ move: 'attackUnit', args: { attackerId: guerrera, defenderId: blocker } });
+    issue(engine, active, move.move, move.args);
+  });
+
+  it('calls a visible ready slot to develop Sato’s opening without reading face-down identities', () => {
+    const { state, active, other } = rulesFixture();
+    state.G.players[active].zones.hand = [];
+    const slots = state.G.players[active].zones.legendArea;
+    slots.forEach((id, index) => {
+      state.G.cardIndex[id].meta.spent = index !== 2;
+      state.G.cardIndex[id].meta.faceDown = true;
+    });
+    const original = new LocalEngine(state);
+    const alternate = structuredClone(state);
+    changeHiddenCards(alternate, other);
+    const alternateEngine = new LocalEngine(alternate);
+
+    expect(hideConcealedTargets(alternateEngine.getFilteredView(active))).toEqual(hideConcealedTargets(original.getFilteredView(active)));
+    const decision = (engine: LocalEngine) => botDecision(engine, active, () => .3, 'masterful', 'last-call-v3');
+    expect(decision(original)).toEqual({ move: 'callLegend', args: { legendId: slots[2] } });
+    expect(decision(alternateEngine)).toEqual(decision(original));
+    expect(original.getState()).toEqual(state);
+  });
+
   it.each(['sharp', 'masterful'] as const)('%s takes a seventh Gig instead of a low-value Unit fight', skill => {
     const { state, active, other } = rulesFixture();
     for (const seat of [active, other]) {

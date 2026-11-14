@@ -1,5 +1,6 @@
 import type { StarterKey } from '../starters';
-import type { RivalSkill } from './protocol';
+import type { DeckStrategyProfile } from '../../../vendor/cyberpunk-engine/engine.mjs';
+import type { CampaignRivalPlan, RivalSkill } from './protocol';
 
 /** The two deck directions each starter can pursue using campaign rewards. */
 export const REWARD_THEMES: Record<StarterKey, readonly [ReadonlySet<string>, ReadonlySet<string>]> = {
@@ -39,6 +40,7 @@ interface RivalTuning {
   /** Copy deltas against the public list. A zero-copy card is removed. */
   cards: Readonly<Record<string, number>>;
   skill?: RivalSkill;
+  plan?: CampaignRivalPlan;
 }
 
 /** Moth’s tuned Embracing Power list for The Heist’s route. */
@@ -108,5 +110,90 @@ export const ARASAKA_HOUSE_LIST = {
     'satori-sword-of-saburo': 3, 'arasaka-emergency-radioport': 2, 'over-the-edge': 2,
     'all-is-lost': 2, detonate: 2, 'corporate-surveillance': 2, 'nadia-fighting-through-grief': 1,
     'goro-takemura-losing-his-way': 2,
+  },
+};
+
+/** Campaign v3 lists are pinned when a run starts. V2 still uses the lists above. */
+export const MOTH_PRACTICE_DELTAS: Record<StarterKey, Readonly<Record<string, number>>> = {
+  'the-heist': {
+    'corporate-surveillance': -2, 'corpo-security': -2, 'ruthless-lowlife': -1,
+    'japantown-jonin': 1, 'riding-nomad': 1, 'sandevistan': -1,
+    'riot-shield': 2, 'arasaka-emergency-radioport': 1, 'maxtac-av': 1,
+  },
+  'embracing-power': {
+    'floor-it': -1, 'evelyn-parker-scheming-siren': -1, 'kiroshi-optics': -1,
+    'heywood-ripperdoc': 1, 'tetratronic-rippler': 1, 'dying-night-v-s-pistol': 1,
+  },
+};
+
+export const ROGUELIKE_RIVAL_DELTAS: Readonly<Partial<Record<string, RivalTuning>>> = {
+  'chrome-debt': {
+    skill: 'sharp',
+    plan: 'chrome-debt-v3',
+    cards: {
+      'secondhand-bombus': 1, 'augmented-negotiators': 3, 'dexter-deshawn-one-last-chance': 3,
+      'safety-override': 2, 'reboot-optics': 1, 'offduty-malfini': -1, 'maxtac-suppression-team': 1,
+      'alt-cunningham-mother-of-daemons': -1, 'placide-voodoo-sentinel': -1,
+      'adrenaline-converter': -1, 'viktor-vektor-drop-your-illusions': -2, 'the-heist': -2, 'sketchy-ripper': -3,
+    },
+  },
+  'dead-drop': {
+    skill: 'sharp',
+    plan: 'dead-drop-v3',
+    cards: {
+      'dexter-deshawn-one-last-chance': 1, 'augmented-negotiators': 3, 'secondhand-bombus': 2,
+      'pyramid-song': 2, 'nocturne-op55-n1': 1, 'kiroshi-optics': -1,
+      'mandibular-upgrade': -1, 'tetratronic-rippler': -2, 'heywood-ripperdoc': -1,
+      'jackie-welles-ride-or-die-choom': -1, 'reboot-optics': -1, 'afterparty-at-lizzie-s': -1,
+      'offduty-malfini': -1,
+    },
+  },
+  'last-call': {
+    plan: 'last-call-v3',
+    cards: {
+      'la-llorona-ghost-of-the-past': 1, 'goro-takemura-losing-his-way': 1,
+      'valentino-guerrera': 3, 'emergency-atlus': 2, 'maxtac-av': 2,
+      '6th-street-recruits': 1, 'detonate': 1, 'over-the-edge': 1, 'industrial-assembly': -1,
+      'field-operator': -2, 'arasaka-emergency-radioport': -2, 'corporate-surveillance': -2,
+      'screw-lovelorn-fool': -2, 'sandayu-oda-hanako-s-guardian': -1, 'nadia-fighting-through-grief': -1,
+      'valentino-street-racer': -1,
+    },
+  },
+};
+
+
+export const CAMPAIGN_RIVAL_PLANS: Readonly<Record<CampaignRivalPlan, DeckStrategyProfile>> = {
+  'chrome-debt-v3': {
+    deckId: 'chrome-debt-v3',
+    plan: 'Develop a Gear carrier early and turn a cheap attachment into a winning attack.',
+    coreCards: ['Zetatech Faceplate', 'Gorilla Arms', 'Dexter DeShawn', 'Safety Override'],
+    curveSellCards: ['The Heist', 'Tetratronic Rippler', 'Kiroshi Optics'],
+    pacing: 'develop-first',
+    mulligan: { cheapUnitCost: 3, minCheapUnits: 1, minSellable: 1 },
+    gearHostTypes: { 'Zetatech Faceplate': 'unit', 'Gorilla Arms': 'unit', 'Tetratronic Rippler': 'unit' },
+    gearHosts: { 'Gorilla Arms': ['Psycho Squad'], 'Zetatech Faceplate': ['Dexter DeShawn', 'Psycho Squad'] },
+  },
+  'dead-drop-v3': {
+    deckId: 'dead-drop-v3',
+    plan: 'Play a cheap attacker, then remove defenders and take Gigs while the rival rebuilds.',
+    coreCards: ['Dexter DeShawn', 'Pyramid Song', 'Maman Brigitte', 'Zetatech Faceplate'],
+    mulligan: { cheapUnitCost: 3, minCheapUnits: 1, minSellable: 1 },
+    gearHostTypes: { 'Zetatech Faceplate': 'unit', 'Dying Night': 'unit' },
+    gearHosts: { 'Zetatech Faceplate': ['Dexter DeShawn', 'Psycho Squad'] },
+  },
+  'last-call-v3': {
+    deckId: 'last-call-v3',
+    plan: 'Protect Gigs and build an Arasaka board, then clear a blocker for a multi-Gig attack.',
+    coreCards: ['La Llorona', 'Meredith Stout', 'Goro Takemura', 'MaxTac AV', 'Satori', 'Mantis Blades'],
+    curveSellCards: ['Detonate', 'All is Lost', 'Industrial Assembly'],
+    pacing: 'develop-first',
+    mulligan: { cheapUnitCost: 3, minCheapUnits: 1, minSellable: 1,
+      congestionNames: ['Minotaur', 'Sandayu Oda'], congestionMinCopies: 2 },
+    gearHostTypes: { 'Mantis Blades': 'unit', 'Satori': 'unit' },
+    gearHosts: { 'Mantis Blades': ['Minotaur', 'Adam Smasher', 'Goro Takemura'], Satori: ['Minotaur', 'Adam Smasher', 'Goro Takemura'] },
+    blockDirectStealsAtLeast: 1,
+    preferSecond: true,
+    developLegends: true,
+    planCombatSetup: true,
   },
 };
