@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 // Pulls the full Cyberpunk TCG card database (official netdeck.gg API),
-// TCGplayer prices (via tcgcsv.com daily mirror) and the USD->CAD rate,
-// then writes src/data/cards.json and src/data/prices.json.
+// TCGplayer prices (via tcgcsv.com daily mirror), the USD->CAD rate,
+// and public community deck statistics, then refreshes the snapshots in src/data/.
 // Run: node scripts/sync-data.mjs
 import { writeFile, mkdir } from 'node:fs/promises';
 import { buildPrices } from './price-build.mjs';
 import { priceSnapshot, saveWeekly } from './price-history.mjs';
+import { refreshCommunityMeta } from './sync-community-meta.mjs';
 
 const CARD_API = 'https://api.netdeck.gg/api/cards/cyberpunk';
 const TCG = 'https://tcgcsv.com/tcgplayer/92';
@@ -109,6 +110,11 @@ const main = async () => {
   );
   await import('./gen-api-data.mjs');
   console.log(`cards=${cardList.length} printingPrices=${Object.keys(printings).length} matched=${matched} pairs=${Object.keys(pairs).length} ambiguous=${ambiguous.length} usdToCad=${rate.usdToCad}`);
+  try {
+    await refreshCommunityMeta(cardList);
+  } catch (error) {
+    console.warn('Community deck statistics refresh failed. Keeping the last successful snapshot.', error);
+  }
 };
 
 main().catch((e) => { console.error(e); process.exit(1); });

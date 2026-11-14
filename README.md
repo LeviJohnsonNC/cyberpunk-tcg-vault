@@ -5,7 +5,7 @@ Repo: `cyberpunk-tcg-vault`. A Night City-styled collection tracker, price book 
 - **Collection:** the full card database (152 cards, every printing) with search, sort and filters (colour, type, rarity, cost, sell tag) and one-click quantity edits.
 - **Price book:** TCGplayer market prices in USD or CAD (toggle in the header), with value by rarity and colour, a price-confidence flag on every card, trade-binder extras and CSV export.
 - **Deck builder:** pick a three-Legend crew and see per-colour RAM limits enforced live. It checks 40-50 card decks, the 3-copy cap and the 7-card sideboard, and shows the cost curve, sellable count, which cards you own versus need, and the CAD cost to finish the deck.
-- **Meta intel:** a rules primer, early popularity data, 12 curated decks across all four colours with a "decks I can build" filter (all / 80%+ owned / fully owned), and **Built from your vault**: an instant, deterministic auto-builder that tries every Legend crew you own and returns the best three legal decks, with optional steering (colours, style, must-include cards) and priced upgrade suggestions. Signed-in users can **Refine with AI**: a language model tunes one build against your full pool and explains the game plan, mulligan and swaps. The model only proposes; the server repairs and re-validates its list, so the result is always legal and built from cards you own. Prices always come from our data, never the model.
+- **Meta intel:** a rules primer, recent public deck data, 12 curated decks across all four colours with a "decks I can build" filter (all / 80%+ owned / fully owned), and **Built from your vault**: an instant, deterministic auto-builder that tries every Legend crew you own and returns the best three legal decks, with optional steering (colours, style, must-include cards) and priced upgrade suggestions. Signed-in users can **Refine with AI**: a language model tunes one build against your full pool and explains the game plan, mulligan and swaps. The model only proposes; the server repairs and re-validates its list, so the result is always legal and built from cards you own. Prices always come from our data, never the model.
 - **Music:** an optional soundtrack player (never autoplays). Tracks live in `public/music/`, listed in `src/lib/playlist.ts`.
 - **Demo mode:** try everything with a sample collection, no sign-in, nothing saved.
 - **Feedback:** an in-app form (stored in Supabase) plus a How it works page.
@@ -23,14 +23,15 @@ Repo: `cyberpunk-tcg-vault`. A Night City-styled collection tracker, price book 
 | Front end | React 19 + Vite + TypeScript, hand-rolled CSS on shared tokens (`src/theme.css`, see `docs/design-system.md`) |
 | Auth + data | Supabase (Postgres + RLS) |
 | Photo scan | Vercel serverless function (`api/scan.ts`) → OpenRouter vision model |
-| Card + price data | `scripts/sync-data.mjs`, run daily by GitHub Actions and committed to `src/data/` |
+| Card, price and community deck data | Daily GitHub Actions refresh committed to `src/data/` |
 
 ## Run locally
 
 ```bash
 npm install
 npm run dev            # http://localhost:5173 (uses .env.production values for Supabase if no .env.local)
-node scripts/sync-data.mjs   # refresh cards + prices + FX
+node scripts/sync-data.mjs   # refresh cards + prices + FX + community deck statistics
+node scripts/sync-community-meta.mjs   # refresh Learn’s community deck statistics
 ```
 
 To test photo scanning locally, use `vercel dev` with the server env vars below.
@@ -66,7 +67,7 @@ To test photo scanning locally, use `vercel dev` with the server env vars below.
 4. *(Optional)* Enable **Web Analytics** in Vercel to count visits and screen views. Redeploy if the tracking script is unavailable after enabling it.
 
 ### 3. GitHub Actions
-`.github/workflows/sync-data.yml` refreshes cards, prices and the USD→CAD rate daily. Make sure **Settings → Actions → General → Workflow permissions** is set to **Read and write** so the bot can commit.
+`.github/workflows/sync-data.yml` refreshes cards, prices, the USD→CAD rate and community deck statistics daily. The Learn charts count one entry per public Constructed deck updated in the latest 30 calendar days (UTC), using the three Legends and crew colours in the official Community Decks feed. A failed community refresh leaves the last successful snapshot available. Make sure **Settings → Actions → General → Workflow permissions** is set to **Read and write** so the bot can commit.
 
 The same sync retains one USD quote snapshot per week for Price Book trends. To backfill, extract the dated [TCGCSV archives](https://tcgcsv.com/faq) and pass their date directories to `node scripts/backfill-price-history.mjs <YYYY-MM-DD directory> ...`. The backfill matches Cyberpunk quotes by TCGplayer product ID and finish.
 
