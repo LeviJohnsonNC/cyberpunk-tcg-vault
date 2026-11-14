@@ -6,7 +6,9 @@
   pointer-events: none;
 }
 .play-gig-roll > * { position: absolute; left: 0; top: 0; opacity: 0; }
-.play-gig-roll canvas { width: 176px; height: 176px; }
+.play-gig-mesh { width: 176px; height: 176px; }
+.play-gig-roll > .play-gig-sparks { opacity: 1; }
+.play-gig-sparks canvas { position: absolute; top: 0; left: 0; }
 .play-gig-shadow {
   width: 100px;
   height: 28px;
@@ -26,7 +28,7 @@
 }
 .play-gig-roll[data-seat="rival"] .play-gig-roll-label { color: var(--color-accent); }
 .play-gig-roll[data-decisive="true"] .play-gig-roll-label { border-color: var(--color-ticket); color: var(--color-ticket); }
-.play-gig-roll[data-decisive="true"] canvas { filter: drop-shadow(0 0 13px color-mix(in srgb, var(--color-ticket) 34%, transparent)); }
+.play-gig-roll[data-decisive="true"] .play-gig-mesh { filter: drop-shadow(0 0 13px color-mix(in srgb, var(--color-ticket) 34%, transparent)); }
 .play-mat-fixer .play-roll-source { visibility: hidden; flex: none; }
 .play-die[data-roll-pending] > * { visibility: hidden; }
 .play-die[data-roll-docked] { border-color: var(--color-ticket); box-shadow: 0 0 9px color-mix(in srgb, var(--color-ticket) 38%, transparent); }

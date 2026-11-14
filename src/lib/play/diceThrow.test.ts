@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { diceThrowFrame, layoutDiceThrow, pointerRelease, releaseOnField } from './diceThrow';
+import { diceThrowFrame, diceThrowImpacts, layoutDiceThrow, pointerRelease, releaseOnField } from './diceThrow';
 import { ROLL_SETTLE } from './diceTiming';
 
 const field = { left: 40, top: 300, width: 1200, height: 190 };
@@ -39,5 +39,20 @@ describe('Gig die throws', () => {
     expect(landed.lift).toBe(0);
     expect(Math.hypot(landed.tilt.x, landed.tilt.y, landed.tilt.z)).toBe(0);
     expect(diceThrowFrame(nearWall, ROLL_SETTLE + 150)).toEqual(landed);
+  });
+
+  it('places spark bursts at touchdown and scales down the second bounce and soft throws', () => {
+    const hard = layoutDiceThrow({ x: .5, y: .5, vx: -2100, vy: 0 }, field, 60);
+    const soft = layoutDiceThrow({ x: .5, y: .5, vx: 200, vy: 0 }, field, 60);
+    const [first, second] = diceThrowImpacts(hard);
+    const [softFirst] = diceThrowImpacts(soft);
+    expect(first.time).toBeLessThan(second.time);
+    expect(second.time).toBeLessThan(ROLL_SETTLE);
+    expect(first.strength).toBeGreaterThan(second.strength);
+    expect(first.strength).toBeGreaterThan(softFirst.strength);
+    for (const [throwing, impact] of [[hard, first], [hard, second], [soft, softFirst]] as const) {
+      expect(diceThrowFrame(throwing, impact.time - 12).lift).toBeGreaterThan(0);
+      expect(diceThrowFrame(throwing, impact.time).lift).toBeCloseTo(0);
+    }
   });
 });
