@@ -293,3 +293,9 @@
 }
 .campaign-crew-ready { color: var(--color-success); }
 .campaign-crew-refill > .campaign-crew-shortfall { display: block; margin-block: 5px 9px; }
+.campaign-rematch-swaps { margin-bottom: var(--space-3); padding: 0 0 var(--space-3); border-bottom: 1px solid var(--workbench-quiet-edge); }
+.campaign-rematch-swaps h2 { margin: 0 0 var(--space-2); font-size: 18px; }
+.campaign-rematch-swaps > div { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2); }
+.campaign-rematch-swaps > div + div { margin-top: var(--space-2); }
+.campaign-rematch-swaps p { margin: 0; }
+.campaign-rematch-swaps small { display: block; color: var(--color-text-muted); }

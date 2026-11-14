@@ -4,9 +4,10 @@ import { BY_SLUG, CARDS, defaultPrinting, type Card, type Printing } from '../li
 import { MAIN_MAX, MAIN_MIN } from '../lib/decks';
 import { totalCopies } from '../lib/deckDraft';
 import { deckStats } from '../lib/handtest';
-import type { CampaignRun } from '../lib/play/campaign';
+import { ENCOUNTERS, type CampaignRun } from '../lib/play/campaign';
 import { campaignCardAddReason, campaignCardFit, campaignCrew, campaignDeckIssues, campaignDeckSizeIssue, isCampaignLegend } from '../lib/play/campaignDeckRules';
 import { latestPack } from '../lib/play/campaignPresentation';
+import { hostileTakeoverSwaps } from '../lib/play/campaignRematch';
 import { CampaignCrewCards, type CampaignInspect } from './CampaignHub';
 import { CampaignRewardArt } from './CampaignRewardArt';
 import './campaign-workbench.css';
@@ -24,7 +25,7 @@ type WorkbenchProps = {
   run: CampaignRun; titleRef: Ref<HTMLHeadingElement>; busy: boolean; error?: string; issues: string[]; canUndo: boolean;
   fromPack: boolean; packNew: boolean; acknowledgePack: () => void;
   printings: ReadonlyMap<string, Printing>; inspect: CampaignInspect;
-  review: (slug: string, printingId?: string, swap?: boolean) => void;
+  review: (slug: string, printingId?: string, swap?: boolean, outgoing?: string) => void;
   manage: (slot?: number, incoming?: string) => void;
   quantity: (slug: string, change: number) => Promise<boolean> | undefined;
   undo: () => void; restore: (onSaved: () => void) => void; back: () => void;
@@ -67,6 +68,7 @@ export function CampaignWorkbench({ run, titleRef, busy, error, issues: savedIss
     });
   const readiness = !issues.length ? 'Ready to play'
     : campaignDeckSizeIssue(total) ?? (issues.some(issue => issue.includes('RAM')) ? 'Over RAM limit' : 'Deck needs edits');
+  const rematchSwaps = !issues.length && ENCOUNTERS[run.encounter]?.id === 'hostile-takeover' ? hostileTakeoverSwaps(run) : [];
 
   function selectView(next: ReserveView) {
     if (view === 'latest' && next !== 'latest' && packNew) acknowledgePack();
@@ -188,6 +190,14 @@ export function CampaignWorkbench({ run, titleRef, busy, error, issues: savedIss
         <p className="campaign-workbench-save" role="status">{busy ? 'Saving deck…' : error ? 'Save needs attention' : 'Saved in this browser'}</p>
       </aside>
       <section className="campaign-workbench-reserve" aria-label="Campaign reserve">
+        {rematchSwaps.length > 0 && <section className="campaign-rematch-swaps" aria-labelledby="campaign-rematch-swaps-title">
+          <h2 id="campaign-rematch-swaps-title">Swaps for the rematch</h2>
+          {rematchSwaps.map(({ incoming, outgoing, reason }) => <div key={incoming}>
+            <p><strong>{BY_SLUG.get(incoming)?.display}</strong> for {BY_SLUG.get(outgoing)?.display}<small>{reason}</small></p>
+            <button type="button" className="btn quiet" disabled={busy} aria-label={`Review swap for ${BY_SLUG.get(incoming)?.display}`}
+              onClick={() => review(incoming, pack.get(incoming)?.printing?.id, true, outgoing)}>Review swap</button>
+          </div>)}
+        </section>}
         <header className="campaign-workbench-reserve-head">
           <div className="campaign-workbench-filters" aria-label="Reserve views">{views.map(item => {
             const count = pools[item.id].length;

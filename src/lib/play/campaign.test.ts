@@ -2,18 +2,19 @@ import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
 import { BY_SLUG, CARDS, fitsRam, ramLimits, PRINTING_INDEX } from '../data';
 import { STARTERS } from '../starters';
-import { ENCOUNTERS, campaignDeckIssues, campaignPackLayout, encounterDeck, encounterRivalPlan, encounterSkill, generateReward, prepareCampaignReward, settleCampaignMatch, newCampaign, type CampaignRun } from './campaign';
+import { ENCOUNTERS, campaignDeckIssues, campaignPackLayout, emptyProfile, encounterDeck, encounterRivalPlan, encounterSkill, generateReward, prepareCampaignReward, settleCampaignMatch, newCampaign, type CampaignRun } from './campaign';
 import { campaignPulls } from './campaignPack';
 import { matchDeckIssues, prepareMatchDeck } from './matchDeck';
 import { createMatchController } from './workerController';
 import { aftermathBeats } from './campaignScenes';
 import { unlockedCampaignChapters } from './campaignStory';
-import { latestPack } from './campaignPresentation';
+import { latestPack, previewCampaignEdit } from './campaignPresentation';
 import { acknowledgeCampaignResult, advanceCampaignScene, finishCampaignPack, chooseReward, claimEnvironment, readCampaign, openCampaignPack, revealCampaignSlot, showCampaignBonus, saveCampaignDeck, startCampaign, updateCampaign } from './campaignStorage';
 import { readCircuitProgress, equipTableFinish, openDatabase, readMatchSummary } from './matchStorage';
 import { REWARD_THEMES } from './campaignBalance';
 import { isEngineSupported } from './engineCards';
 import { campaignCardFit, campaignCrew } from './campaignDeckRules';
+import { HOSTILE_TAKEOVER_REWARDS, hostileTakeoverSwaps } from './campaignRematch';
 
 async function revealSlots(scope: string, run: CampaignRun, packId: string, slots: number[]) {
   for (const slot of slots) ({ run } = await revealCampaignSlot(scope, run, packId, slot));
@@ -21,6 +22,29 @@ async function revealSlots(scope: string, run: CampaignRun, packId: string, slot
 }
 
 describe('starter campaign', () => {
+  it.each(STARTERS)('offers a legal Hostile Takeover rematch swap for $name', starter => {
+    const run = newCampaign(starter.key, 'hostile-rematch', 'qa-act3-0');
+    run.encounter = 7;
+    const match = { summary: { ended: true, matchId: 'hostile-loss' } } as NonNullable<CampaignRun['match']>;
+    const loss = settleCampaignMatch({ ...run, phase: 'inMatch', match }, emptyProfile(), match, 'rival').run;
+    const reward = loss.latestRetry!;
+    expect(reward.cards).toHaveLength(5);
+    expect(reward.offers).toHaveLength(3);
+    const incoming = HOSTILE_TAKEOVER_REWARDS[starter.key][0];
+    expect(reward.offers).toContain(incoming);
+    expect(reward.cards).not.toContain(incoming);
+    loss.inventory[incoming] = (loss.inventory[incoming] ?? 0) + 1;
+    reward.choice = incoming;
+    const swaps = hostileTakeoverSwaps(loss);
+    expect(swaps[0]?.incoming).toBe(incoming);
+    for (const swap of swaps) {
+      const edit = previewCampaignEdit(loss, swap.incoming, swap.outgoing);
+      expect(edit.canSave).toBe(true);
+      expect(edit.issues).toEqual([]);
+    }
+    expect(hostileTakeoverSwaps(run)).toEqual([]);
+  });
+
   it('uses the exact official legal starter and legal rival lists in all nine encounters', () => {
     for (const starter of STARTERS) {
       const run = newCampaign(starter.key, 'exact', 'seed');
