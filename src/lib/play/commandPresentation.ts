@@ -34,7 +34,7 @@ export function commandPresentation({ view, actions, selected, active, busy = fa
   if (selected) {
     if (selected.id === 'gainGig') return show('gig', 'Choose a Gig die', 'Drag onto your field, or select a die and choose Roll die.');
     if (selected.id === 'resolveAdjustGig') return show('gig-adjustment', active?.id === 'die' ? 'Choose a Gig to adjust' : 'Adjust a Gig value');
-    if (active?.id === 'payment') return show('payment', 'Choose payment', 'Review the selected Eddies and Legends before confirming.');
+    if (active?.id === 'payment') return show('payment', active.label, selected.detail);
     if (selected.id === 'useBlocker') return show('combat', 'Choose a blocker', 'Select a highlighted Unit, or pass the reaction.');
     if (['attackUnit', 'attackRival'].includes(selected.id)) return show('target', active?.id === 'defender' ? 'Choose an attack target' : 'Choose an attacker', 'Select a highlighted Unit. Cancel to return to your move.');
     return show(choice ? 'effect' : 'target', active?.label ?? selected.label, choice ? 'Resolve the highlighted choice to continue.' : 'Complete this action, or cancel to return to your move.');

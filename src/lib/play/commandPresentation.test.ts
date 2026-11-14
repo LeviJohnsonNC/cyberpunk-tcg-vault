@@ -39,7 +39,7 @@ describe('contextual decision presentation', () => {
     const selected = matchActions(state).find(action => action.id === 'callLegend')!;
     const active: PickField = { id: 'payment', label: 'Pay 2 €$', min: 2, max: 2, options: [] };
     const result = commandPresentation({ view: state, actions: matchActions(state), selected, active });
-    expect(result).toMatchObject({ variant: 'payment', attention: 'selection' });
+    expect(result).toMatchObject({ variant: 'payment', title: 'Pay 2 €$', attention: 'selection' });
     state.prompt.choice = { type: 'redirectDefeat', payload: {} };
     expect(commandPresentation({ view: state, actions: [selected], selected, active }).attention).toBe('mandatory');
   });

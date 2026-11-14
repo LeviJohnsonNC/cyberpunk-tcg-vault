@@ -1,5 +1,5 @@
-import { isReady, type MatchActionForm, type Picks } from './matchActions';
-import { visibleCards, zoneCards } from './matchView';
+import type { MatchActionForm, Picks } from './matchActions';
+import { zoneCards } from './matchView';
 import type { CardView, PlayerView } from './protocol';
 
 const signed = (value: number) => `${value >= 0 ? '+' : '−'} ${Math.abs(value)}`;
@@ -46,32 +46,6 @@ export function gigAdjustmentTarget(view: PlayerView, dieId: unknown) {
       return { seat, die, streetCred: total === player.streetCred ? total : undefined };
     }
   }
-}
-
-/** Exact payment balance, before card effects or subsequent costs. Not a simulated outcome. */
-export function paymentPreview(view: PlayerView, action: MatchActionForm, picks: Picks) {
-  const payment = view.prompt.payment;
-  if (!payment?.costs[action.id]) return;
-  const fields = action.fields(picks);
-  if (!isReady(fields.filter((field) => field.id !== 'payment'), picks)) return;
-  const args = action.move(picks).args ?? {};
-  const key = action.id === 'callLegend' || action.id === 'resolveRedirectDefeat' ? 'action'
-    : action.id === 'activateAbility' ? `${args.cardId}:${args.abilityIndex}` : String(args.cardId);
-  const cost = payment.costs[action.id]?.[key];
-  if (!cost) return;
-  const selected = picks.payment ?? [];
-  const legends = new Set(payment.legendIds);
-  const reserved = (cost.reservedLegendIds ?? []).filter((id) => legends.has(id));
-  const ready = isReady(fields, picks);
-  const sources = fields.find((field) => field.id === 'payment')?.options.filter((option) => selected.includes(option.id)) ?? [];
-  const names = visibleCards(view);
-  return { amount: cost.amount, ready,
-    afterPayment: Math.max(0, view.players.player.availableEddies - cost.amount),
-    sources: sources.map((source) => ({ ...source, legend: legends.has(source.id) })),
-    reserved: reserved.map((id) => names.find((card) => card.instanceId === id)?.cardName ?? 'Legend slot'),
-    // Separate this consequence from the payment balance; avoid implying that effects are forecast.
-    afterCosts: Math.max(0, view.players.player.availableEddies - cost.amount - reserved.length),
-  };
 }
 
 export interface PreviewRect { left: number; top: number; width: number; height: number }

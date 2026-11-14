@@ -41,13 +41,6 @@
 .play-hover-preview[data-landscape="true"] small { margin-top: auto; }
 .play-hover-rules { min-height: 0; overflow: hidden; white-space: pre-line; font: 400 12px/1.5 var(--font-ui); }
 .play-tray-source { padding: 0; border: 1px solid var(--color-divider); border-radius: 3px; background: none; cursor: pointer; }
-.play-payment-receipt { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 5px 10px; border-inline-start: 3px solid var(--color-ticket); background: var(--color-canvas-deep); font: 400 12px/1.4 var(--font-ui); }
-.play-payment-receipt > strong { color: var(--color-ticket); white-space: nowrap; }
-.play-payment-receipt > span { color: var(--color-text); }
-.play-payment-receipt p { color: var(--color-text-muted); margin: 8px 0 4px; }
-.play-payment-receipt ul { list-style: none; padding: 0; margin: 6px 0; max-width: 360px; }
-.play-payment-receipt li { display: flex; justify-content: space-between; gap: 20px; }
-.play-payment-receipt li span { color: var(--color-text-muted); }
 .play-combat-stage { flex: none; display: grid; gap: 3px; min-width: 95px; }
 .play-combat-stage small { font: 500 9px/1 var(--font-mono); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .07em; }
 .play-combat-stage strong { font: 700 16px/1.1 var(--font-display); color: var(--color-ticket); }
