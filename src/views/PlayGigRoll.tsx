@@ -179,12 +179,13 @@ function RollingDie({ roll, index, seatIndex, seatCount, release, cue }: {
       }
       sparkCanvases.forEach(({ element, context }, i) => {
         const impact = impacts[i];
+        const firstImpact = i === 0;
         const age = impact ? elapsed - impact.time : -1;
-        const visible = context && impact && age >= 0 && age < sparkDuration(impact.strength);
+        const visible = context && impact && age >= 0 && age < sparkDuration(impact.strength, firstImpact);
         element.hidden = !visible;
         if (!visible) return;
         element.style.transform = `translate3d(${impact.x - SPARK_WIDTH / 2}px, ${impact.y - SPARK_HEIGHT / 2}px, 0)`;
-        paintDiceSparks(context, age, impact.strength, impact.velocity);
+        paintDiceSparks(context, age, impact.strength, impact.velocity, firstImpact);
       });
       if (route && elapsed >= 0) {
         if (!launched) {
