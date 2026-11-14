@@ -68,6 +68,8 @@ To test photo scanning locally, use `vercel dev` with the server env vars below.
 ### 3. GitHub Actions
 `.github/workflows/sync-data.yml` refreshes cards, prices and the USD→CAD rate daily. Make sure **Settings → Actions → General → Workflow permissions** is set to **Read and write** so the bot can commit.
 
+The same sync retains one USD quote snapshot per week for Price Book trends. To backfill, extract the dated [TCGCSV archives](https://tcgcsv.com/faq) and pass their date directories to `node scripts/backfill-price-history.mjs <YYYY-MM-DD directory> ...`. The backfill matches Cyberpunk quotes by TCGplayer product ID and finish.
+
 ## Google sign-in
 
 1. Google Cloud Console → **APIs & Services → OAuth consent screen**: set up an External app (name, support email). Scopes: `openid`, `email`, `profile` only. Then **Publish app**: these basic scopes need no Google review, and while the app is left in Testing, only listed test users can sign in.

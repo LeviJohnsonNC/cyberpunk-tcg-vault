@@ -16,7 +16,7 @@ jobs:
       - run: node scripts/sync-data.mjs
       - name: Commit if changed
         run: |
-          if git diff --quiet -- src/data api/_cards.ts api/_carddata.ts; then echo "No changes"; exit 0; fi
+          if [ -z "$(git status --porcelain -- src/data api/_cards.ts api/_carddata.ts)" ]; then echo "No changes"; exit 0; fi
           git config user.name "vault-bot"
           git config user.email "vault-bot@users.noreply.github.com"
           git add src/data api/_cards.ts api/_carddata.ts

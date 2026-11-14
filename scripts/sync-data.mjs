@@ -5,6 +5,7 @@
 // Run: node scripts/sync-data.mjs
 import { writeFile, mkdir } from 'node:fs/promises';
 import { buildPrices } from './price-build.mjs';
+import { priceSnapshot, saveWeekly } from './price-history.mjs';
 
 const CARD_API = 'https://api.netdeck.gg/api/cards/cyberpunk';
 const TCG = 'https://tcgcsv.com/tcgplayer/92';
@@ -94,11 +95,13 @@ const main = async () => {
   for (const a of ambiguous) console.warn(`unpriced (ambiguous finish ${a.finishes.join('/')}): ${a.card} ${a.set} #${a.num}`);
   await mkdir(OUT, { recursive: true });
   cardList.sort((a, b) => a.display.localeCompare(b.display));
+  const updatedAt = new Date().toISOString();
   await writeFile(new URL('cards.json', OUT), JSON.stringify(cardList));
   await writeFile(
     new URL('prices.json', OUT),
-    JSON.stringify({ version: 2, updatedAt: new Date().toISOString(), source: 'TCGplayer market (via tcgcsv.com)', fx: rate, printings, pairs }),
+    JSON.stringify({ version: 2, updatedAt, source: 'TCGplayer market (via tcgcsv.com)', fx: rate, printings, pairs }),
   );
+  await saveWeekly(new URL('price-history.json', OUT), priceSnapshot(updatedAt, printings));
   const names = cardList.filter((c) => c.text || c.type === 'Legend').map((c) => ({ slug: c.slug, name: c.name, display: c.display }));
   await writeFile(
     new URL('../api/_cards.ts', import.meta.url),

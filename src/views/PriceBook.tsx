@@ -1,15 +1,17 @@
 // Price Book: reference implementation of the Afterlife design language.
 // See docs/design-system.md. Uses only semantic tokens (src/theme.css) and pricebook.css.
-import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { lazy, Suspense, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { VaultSelect } from '../components/VaultSelect';
 import { BASIS_CLASS, PRICES, printingLabel } from '../lib/data';
 import { getCurrency, money, moneyOr, toDisplay } from '../lib/currency';
-import { buildPriceBook, sortLines, toCsv, type Basis, type Group, type Line, type SortKey } from '../lib/pricebook';
+import { buildPriceBook, FILTERS, filterHoldings, filterOptions, sortLines, summarizeHoldings, toCsv, type Basis, type Group, type Line, type PriceFilters, type SortKey } from '../lib/pricebook';
 import { useStore } from '../lib/store';
 import { CardImg } from '../components/bits';
 import { PrintingArt } from '../components/PrintingArt';
 import { Masthead, MetricStrip } from '../components/ui';
 import './pricebook.css';
+
+const PriceTrend = lazy(() => import('./PriceTrend'));
 
 const COLOR_VAR: Record<string, string> = {
   Yellow: 'var(--color-card-yellow)',
@@ -46,8 +48,8 @@ function Skyline() {
   );
 }
 
-function Marquee({ top, loading, hasCards, onOpen, goAdd }: {
-  top: Line | null; loading: boolean; hasCards: boolean; onOpen: OpenHolding; goAdd: () => void;
+function Marquee({ top, loading, hasCards, filtered, onOpen, goAdd }: {
+  top: Line | null; loading: boolean; hasCards: boolean; filtered: boolean; onOpen: OpenHolding; goAdd: () => void;
 }) {
   if (loading) {
     return (
@@ -66,9 +68,9 @@ function Marquee({ top, loading, hasCards, onOpen, goAdd }: {
       <section className="pb-marquee is-empty" aria-label="Most valuable card">
         <span className="pb-ticket">Most valuable card</span>
         <div className="pb-marquee-copy">
-          <h2 className="pb-marquee-name">{hasCards ? 'No priced holdings yet' : 'Nothing on the books'}</h2>
-          <p className="pb-marquee-sub">{hasCards ? 'Your holdings appear below. Their value is pending a quote.' : 'Add cards and your most valuable one headlines here.'}</p>
-          {!hasCards && <button className="btn quiet" onClick={goAdd}>Add cards</button>}
+          <h2 className="pb-marquee-name">{hasCards ? 'No priced holdings' : filtered ? 'No matching holdings' : 'Nothing on the books'}</h2>
+          {(!filtered || hasCards) && <p className="pb-marquee-sub">{hasCards ? 'Your holdings appear below. Their value is pending a quote.' : 'Add cards and your most valuable one headlines here.'}</p>}
+          {!hasCards && !filtered && <button className="btn quiet" onClick={goAdd}>Add cards</button>}
         </div>
         <Skyline />
       </section>
@@ -130,23 +132,37 @@ function Breakdown({ title, groups, total, fill, children }: { title: string; gr
 export function PriceBook({ mobile, onOpen, goAdd }: { mobile: boolean; onOpen: OpenHolding; goAdd: () => void }) {
   const { entries, collectionReady, collectionError, retryCollection } = useStore();
   const [sortBy, setSortBy] = useState<SortKey>('total');
-  const pb = useMemo(() => buildPriceBook(entries), [entries]);
+  const [query, setQuery] = useState('');
+  const [filters, setFilters] = useState<PriceFilters>({});
+  const rail = useRef<HTMLElement>(null);
+  const search = useRef<HTMLInputElement>(null);
+  const full = useMemo(() => buildPriceBook(entries), [entries]);
+  const options = useMemo(() => filterOptions(full.lines), [full.lines]);
+  const activeCount = FILTERS.filter(({ key }) => filters[key]).length;
+  const filtered = !!query.trim() || activeCount > 0;
+  const pb = useMemo(() => filtered ? summarizeHoldings(filterHoldings(full.lines, query, filters), full) : full,
+    [filtered, full, query, filters]);
   const sorted = useMemo(() => sortLines(pb.lines, sortBy), [pb.lines, sortBy]);
   const loading = !collectionReady && !collectionError;
   const currency = getCurrency();
   const headline = {
-    label: 'Total value',
+    label: filtered ? 'Filtered value' : 'Total value',
     context: collectionReady ? `${currency} · ${pb.count} ${pb.count === 1 ? 'card' : 'cards'}${pb.unpriced ? ` · ${pb.unpriced} unpriced` : ''}` : currency,
-    value: !collectionReady ? '—' : pb.count && !pb.pricedCount ? 'Unpriced' : money(pb.total),
+    value: !collectionReady || filtered && !pb.count ? '—' : pb.count && !pb.pricedCount ? 'Unpriced' : money(pb.total),
   };
   const valuationDetails = [
-    { label: 'Average / card', context: pb.unpriced ? 'Near Mint · priced cards' : 'Near Mint', value: !collectionReady ? '—' : pb.count && !pb.pricedCount ? 'Unpriced' : money(pb.average) },
+    { label: 'Average / card', context: pb.unpriced ? 'Near Mint · priced cards' : 'Near Mint', value: !collectionReady || filtered && !pb.count ? '—' : pb.count && !pb.pricedCount ? 'Unpriced' : money(pb.average) },
     {
       label: 'Trade bait',
-      context: `${pb.extrasCopies} extra ${pb.extrasCopies === 1 ? 'copy' : 'copies'}${pb.extrasUnpriced ? ` · ${pb.extrasUnpriced} unpriced` : ''}`,
+      context: `${pb.extrasCopies} extra ${pb.extrasCopies === 1 ? 'copy' : 'copies'}${pb.extrasUnpriced ? ` · ${pb.extrasUnpriced} unpriced` : ''}${filtered ? ' · Full collection' : ''}`,
       value: !collectionReady ? '—' : pb.extrasCopies && pb.extrasUnpriced === pb.extrasCopies ? 'Unpriced' : money(pb.extrasValue),
     },
   ];
+  const clearFilters = () => {
+    setFilters({});
+    setQuery('');
+    search.current?.focus({ preventScroll: true });
+  };
 
   const exportCsv = () => {
     const a = document.createElement('a');
@@ -169,7 +185,7 @@ export function PriceBook({ mobile, onOpen, goAdd }: { mobile: boolean; onOpen: 
         />
         <div className="pb-valuation">
           <MetricStrip items={mobile ? [headline] : [headline, ...valuationDetails]} />
-          {mobile && collectionReady && pb.count > 0 && (
+          {mobile && collectionReady && full.count > 0 && (
             <details className="pb-valuation-details">
               <summary>More valuation details</summary>
               <dl>{valuationDetails.map(({ label, context, value }) => <div key={label}>
@@ -178,22 +194,45 @@ export function PriceBook({ mobile, onOpen, goAdd }: { mobile: boolean; onOpen: 
             </details>
           )}
         </div>
-        {!collectionError && (!mobile || pb.top) && <Marquee top={pb.top} loading={loading} hasCards={pb.count > 0} onOpen={onOpen} goAdd={goAdd} />}
+        {!collectionError && (!mobile || full.top) && <Marquee top={pb.top} loading={loading} hasCards={pb.count > 0} filtered={filtered} onOpen={onOpen} goAdd={goAdd} />}
       </div>
 
       <div className="pb-body">
         <section className="pb-holdings" aria-labelledby="pb-holdings-title">
           <header className="pb-holdings-head">
-            <h2 id="pb-holdings-title" tabIndex={-1}>Holdings {collectionReady && <span className="pb-count">{pb.count} {pb.count === 1 ? 'card' : 'cards'}</span>}</h2>
+            <h2 id="pb-holdings-title" tabIndex={-1}>Holdings</h2>
             <div className="pb-controls">
               <label className="sr-only" htmlFor="pb-sort">Sort holdings</label>
               <VaultSelect id="pb-sort" className="pb-select" value={sortBy} onValueChange={(value) => setSortBy(value as SortKey)}
                 options={mobile ? holdingSorts : holdingSorts.map(({ value, label }) => ({ value, label: `Sort: ${label.toLowerCase()}` }))} />
-              <button className="pb-btn" onClick={exportCsv} disabled={!collectionReady || !pb.lines.length}>
+              <button className="pb-btn" onClick={exportCsv} disabled={!collectionReady || !pb.lines.length} aria-label={filtered ? 'Export matching holdings as CSV' : undefined}>
                 <span aria-hidden="true">↓</span> Export CSV
               </button>
             </div>
           </header>
+          {collectionReady && full.lines.length > 0 && <div className="pb-filters">
+            <input ref={search} className="input search pb-search" type="search" aria-label="Search holdings"
+              placeholder="Search name, set, or card number" value={query} onChange={(event) => setQuery(event.target.value)} />
+            <details className="pb-filter-disclosure">
+              <summary>Filters{activeCount > 0 && <span className="pb-filter-count">{activeCount}</span>}</summary>
+              <div className="pb-filter-fields">
+                {FILTERS.map(({ key, label, all }) => <label key={key}>
+                  <span>{label}</span>
+                  <VaultSelect className="pb-select" aria-label={label} value={filters[key] ?? ''}
+                    options={[{ value: '', label: all }, ...options[key]]}
+                    onValueChange={(value) => setFilters((previous) => ({ ...previous, [key]: value }))} />
+                </label>)}
+              </div>
+            </details>
+            <div className="pb-filter-results">
+              <span className="pb-count" role="status">{filtered ? `${pb.count} of ${full.count} copies` : `${pb.count} ${pb.count === 1 ? 'copy' : 'copies'}`}</span>
+              {filtered && <button type="button" className="pb-text-action" onClick={clearFilters}>Clear all</button>}
+              <button type="button" className="pb-text-action pb-stats-jump" onClick={() => {
+                rail.current?.focus({ preventScroll: true });
+                rail.current?.scrollIntoView({ block: 'start' });
+              }}>View stats and trends</button>
+            </div>
+          </div>}
 
           {collectionError ? (
             <div className="pb-empty" role="alert">
@@ -203,11 +242,13 @@ export function PriceBook({ mobile, onOpen, goAdd }: { mobile: boolean; onOpen: 
             <div className="pb-rows" aria-busy="true">
               {[0, 1, 2, 3, 4].map((i) => <div key={i} className="pb-skel pb-skel-row" />)}
             </div>
-          ) : pb.lines.length === 0 ? (
+          ) : full.lines.length === 0 ? (
             <div className="pb-empty">
               <p>Add a card to see its printing, quantity, and latest available price here.</p>
               <button className="pb-btn" onClick={goAdd}>Add cards</button>
             </div>
+          ) : pb.lines.length === 0 ? (
+            <div className="pb-empty"><p>No holdings match your search and filters.</p></div>
           ) : (
             <div className="pb-rows" role="table" aria-label="Holdings" aria-rowcount={sorted.length + 1}>
               <div className="pb-row pb-row-head" role="row">
@@ -255,7 +296,7 @@ export function PriceBook({ mobile, onOpen, goAdd }: { mobile: boolean; onOpen: 
 
           {pb.extras.length > 0 && (
             <footer className="pb-trade">
-              <h3>Trade binder <span className="pb-dim">copies beyond the 3-per-deck limit</span></h3>
+              <h3>Trade binder <span className="pb-dim">{filtered ? 'full collection · ' : ''}copies beyond the 3-per-deck limit</span></h3>
               <ul>
                 {pb.extras.map((x) => (
                   <li key={x.slug}>
@@ -269,7 +310,7 @@ export function PriceBook({ mobile, onOpen, goAdd }: { mobile: boolean; onOpen: 
           )}
         </section>
 
-        <aside className="pb-rail" aria-label="Value breakdown">
+        <aside className="pb-rail" aria-label="Value breakdown and price trend" ref={rail} tabIndex={-1}>
           <Breakdown
             title="Price confidence"
             groups={pb.byConfidence}
@@ -295,6 +336,9 @@ export function PriceBook({ mobile, onOpen, goAdd }: { mobile: boolean; onOpen: 
           <p className="pb-source">
             Source: {PRICES.source}, in USD. CAD uses 1 USD = {PRICES.fx.usdToCad.toFixed(4)} CAD. Updated {updated}.
           </p>
+          {collectionReady && <Suspense fallback={<section className="pb-breakdown pb-trend" aria-busy="true"><header><h3>30-day price trend</h3></header></section>}>
+            <PriceTrend lines={pb.lines} count={pb.count} currency={currency} />
+          </Suspense>}
         </aside>
       </div>
     </div>
