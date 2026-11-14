@@ -17,12 +17,26 @@ The opening sweep uses version 4 and seeds 76–85. The finale sweep uses versio
 Several Sato variants tried early Eddie sales, different Gear hosts, and changes to removal, ramp, and finishers. Results varied with the route and shuffle. On seeds 66–71, Sato's current list and plan yielded 4/12 starter wins and 8/12 edited wins with win packs alone. Prioritizing early Eddie sales narrowed that upgrade advantage in exploratory trials. The benchmark shows that earned edits can help, but the boss still misses the target of fewer than 10% starter wins and around 30–45% edited wins on both routes. Human play is pending.
 
 ```sh
-CAMPAIGN_FIRST_SEED=76 CAMPAIGN_SEEDS=10 CAMPAIGN_SEATS=player \
+CAMPAIGN_BALANCE=v4 CAMPAIGN_FIRST_SEED=76 CAMPAIGN_SEEDS=10 CAMPAIGN_SEATS=player \
   CAMPAIGN_POLICIES=starter,boss-ready CAMPAIGN_ENCOUNTERS=1,2 \
   node scripts/benchmark-campaign.mjs /tmp/campaign-v4-opening.json
 CAMPAIGN_BALANCE=v3 CAMPAIGN_FIRST_SEED=76 CAMPAIGN_SEEDS=12 CAMPAIGN_SEATS=player \
   CAMPAIGN_POLICIES=starter,boss-ready CAMPAIGN_ENCOUNTERS=9 CAMPAIGN_RETRY_PACKS=2 \
   node scripts/benchmark-campaign.mjs /tmp/campaign-v3-boss.json
+```
+
+### Last Call defense
+
+The replay traces showed that an equipped MaxTac AV or Go Solo attacker could take two Gigs in one attack. Sato's new profile can recognize that breakpoint on a visible attacker and target the Gear with Detonate during the reaction window. The check covers the selected Gear and the same choice with the opponent's concealed cards rearranged.
+
+The new profile is selected when a new campaign reaches Last Call. Existing campaigns use their original profile. The broader defensive evaluation and several rebuilt lists gave inconsistent results between seed ranges. For example, the Sandevistan list cut Embracing Power's upgraded wins from 8/10 to 7/10 on seeds 102–111 and raised The Heist's starter wins from 2/10 to 5/10.
+
+Replacing both copies of All Is Lost with Take Control raised untouched Embracing Power from 2/10 to 6/10 wins on those same seeds. The retained version uses the existing deck and a targeted Detonate reaction.
+
+```sh
+CAMPAIGN_BALANCE=v5 CAMPAIGN_FIRST_SEED=102 CAMPAIGN_SEEDS=16 CAMPAIGN_SEATS=player \
+  CAMPAIGN_POLICIES=starter,boss-ready CAMPAIGN_ENCOUNTERS=9 CAMPAIGN_RETRY_PACKS=2 \
+  node scripts/benchmark-campaign.mjs /tmp/campaign-v5-boss.json
 ```
 
 ### Version 2 calibration

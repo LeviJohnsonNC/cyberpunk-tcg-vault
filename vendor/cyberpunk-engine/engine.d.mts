@@ -86,6 +86,7 @@ export interface DeckStrategyProfile {
   preferSecond?: boolean;
   developLegends?: boolean;
   planCombatSetup?: boolean;
+  detonateForGigDefense?: boolean;
 }
 
 /** Every strategy decides from the seat's filtered view. The tactical ones also need `engine` to look ahead. */

@@ -12,7 +12,7 @@ export interface MatchDeck {
 /** How the rival chooses its moves. Every level plays from what a player could see. */
 export type RivalSkill = 'standard' | 'sharp' | 'masterful';
 
-export type CampaignRivalPlan = 'chrome-debt-v3' | 'dead-drop-v3' | 'last-call-v3';
+export type CampaignRivalPlan = 'chrome-debt-v3' | 'dead-drop-v3' | 'last-call-v3' | 'last-call-v5';
 
 export interface MatchSetup {
   player: MatchDeck;

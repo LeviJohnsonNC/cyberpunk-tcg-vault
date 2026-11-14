@@ -57,7 +57,7 @@ export interface CampaignRun {
   version: 1; id: string; starter: StarterKey; seed: string; revision: number; phase: CampaignPhase;
   encounter: number; attempts: number; inventory: Record<string, number>; deck: Deck; lastLegal: Deck;
   /** Absent on runs started before the versioned balance passes. */
-  balanceVersion?: 2 | 3 | 4;
+  balanceVersion?: 2 | 3 | 4 | 5;
   /** Presentation-only acknowledgement. Older runs can show their current act once. */
   briefedAct?: number;
   /** A finished match remains on its result screen until the player continues. */
@@ -84,7 +84,7 @@ export function makeStarterDeck(key: StarterKey): Deck {
   return { id: `campaign:${key}`, name: starter.name, legends, cards, sideboard: {}, notes: '', updatedAt: '' };
 }
 
-export function newCampaign(starter: StarterKey, id: string, seed: string, balanceVersion: CampaignRun['balanceVersion'] = 4): CampaignRun {
+export function newCampaign(starter: StarterKey, id: string, seed: string, balanceVersion: CampaignRun['balanceVersion'] = 5): CampaignRun {
   const deck = makeStarterDeck(starter);
   const run: CampaignRun = { version: 1, id, seed, starter, revision: 0, phase: 'preparing', encounter: 0, attempts: 0, balanceVersion,
     inventory: { ...deck.cards, ...Object.fromEntries(deck.legends.map(slug => [slug, 1])) },
@@ -124,7 +124,7 @@ export function encounterDeck(run: CampaignRun): Deck {
   }
   const item = recommended.find(deck => deck.id === info.rival);
   if (!item) throw new Error('This opponent is not available.');
-  if (run.balanceVersion === 4 && info.id === 'chrome-debt') {
+  if ((run.balanceVersion ?? 0) >= 4 && info.id === 'chrome-debt') {
     return { id: `campaign-rival:${item.id}`, name: item.name, legends: [...LEDGER_GEAR_LIST.legends],
       cards: { ...LEDGER_GEAR_LIST.cards }, sideboard: {},
       notes: 'Equip cheap attackers and use Gear removal and blockers to protect the Gig lead.', updatedAt: '' };
@@ -158,6 +158,7 @@ export function encounterSkill(run: CampaignRun): RivalSkill {
 
 export function encounterRivalPlan(run: CampaignRun): CampaignRivalPlan | undefined {
   const encounter = ENCOUNTERS[run.encounter];
+  if (run.balanceVersion === 5 && encounter?.id === 'last-call') return 'last-call-v5';
   if ((run.balanceVersion ?? 0) >= 3 && encounter) return ROGUELIKE_RIVAL_DELTAS[encounter.id]?.plan;
 }
 
@@ -186,7 +187,7 @@ function compatibleRewards(run: CampaignRun) {
   return CARDS.filter(card => !campaignCardFit(card, crew));
 }
 
-// V3 and V4 keep the V2 contract reward stream.
+// Later passes keep the V2 contract reward stream.
 const rewardSeed = (run: CampaignRun) => `${run.seed}:reward:${run.encounter}:v${run.balanceVersion ? 2 : 1}`;
 const offerCrew = (legends: string[]) => [...legends].sort().join(',');
 

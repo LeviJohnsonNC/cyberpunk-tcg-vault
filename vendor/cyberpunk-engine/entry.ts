@@ -16,7 +16,12 @@ const strategies: Record<string, AIStrategy> = {
   "tactical-ability-aware": abilityAwareTacticalStrategy,
 };
 
-type VaultDeckProfile = DeckStrategyProfile & { preferSecond?: boolean; developLegends?: boolean; planCombatSetup?: boolean };
+type VaultDeckProfile = DeckStrategyProfile & {
+  preferSecond?: boolean;
+  developLegends?: boolean;
+  planCombatSetup?: boolean;
+  detonateForGigDefense?: boolean;
+};
 const profiledStrategies = new WeakMap<VaultDeckProfile, Record<string, AIStrategy>>();
 
 function strategyFor(name: string, profile?: VaultDeckProfile) {
@@ -35,12 +40,42 @@ function strategyFor(name: string, profile?: VaultDeckProfile) {
   return configured[name] ?? strategies.greedy;
 }
 
+/** Remove Gear that enables a multi-Gig steal while the lead is in play. */
+function protectGigs({ view, prompt, playerId }: DecisionContext) {
+  const attack = view.attackState;
+  const defender = view.players[playerId];
+  if (attack?.kind !== "direct" || attack.step !== "react" || attack.rivalId !== playerId
+      || !defender || defender.gigCount < 4) return undefined;
+  const rival = view.players[view.activePlayerId];
+  const field = rival?.zones.field;
+  if (!Array.isArray(field)) return undefined;
+  const attacker = field.find(card => card.instanceId === attack.attackerId);
+  if (!attacker || attacker.effectivePower <= 0 || attacker.grantedRules.includes("stealsOneFewerGig")) return undefined;
+  const gear = field.filter(card => card.type === "gear" && card.attachedToId === attacker.instanceId
+    && card.effectivePower <= 2
+    && Math.floor(attacker.effectivePower / 10) > Math.floor((attacker.effectivePower - card.effectivePower) / 10));
+  if (gear.length === 0) return undefined;
+
+  if (prompt.choice?.type === "chooseTarget") {
+    const { source, eligibleIds } = prompt.choice.payload;
+    if (source?.displayName !== "Detonate") return undefined;
+    const target = gear.find(card => eligibleIds?.includes(card.instanceId));
+    return target ? { move: "resolveEffectTarget", args: { targetIds: [target.instanceId] } } : undefined;
+  }
+  const play = prompt.availableMoves.find(move => move.moveId === "playCard");
+  const hand = defender.zones.hand;
+  if (prompt.status !== "action" || play?.inputSpec.type !== "playCard" || !Array.isArray(hand)) return undefined;
+  const candidates = play.inputSpec.candidates;
+  const answer = hand.find(card => card.cardName === "Detonate"
+    && candidates.some(candidate => candidate.cardId === card.instanceId));
+  return answer ? { move: "playCard", args: { cardId: answer.instanceId } } : undefined;
+}
+
 export function chooseMove(view: DecisionContext["view"], rng: () => number, playerId: DecisionContext["playerId"],
   options: { strategy?: string; engine?: EngineHandle; profile?: VaultDeckProfile } = {}) {
   // Supply only the seat's projection, including its own legal prompt. Greedy needs nothing
   // more. The tactical strategies look ahead, so they also take a boundary-safe engine handle
   // to try their own moves on a fork; they stop searching wherever hidden information changes.
-  const strategy = strategyFor(options.strategy ?? "greedy", options.profile);
   const { prompt } = view;
   const context = { view, prompt, playerId, rng, ...(options.engine && { engine: options.engine }) };
   // The house list uses the extra opening resources of the second seat to develop.
@@ -66,6 +101,9 @@ export function chooseMove(view: DecisionContext["view"], rng: () => number, pla
       if (legendId) return { move: "callLegend", args: { legendId } };
     }
   }
+  const defense = options.profile?.detonateForGigDefense && protectGigs(context);
+  if (defense) return defense;
+  const strategy = strategyFor(options.strategy ?? "greedy", options.profile);
   const decision = prompt.status === "choice" && prompt.choice
     ? runResolver(prompt.choice, strategy, context)
     : strategy.decideAction(context);

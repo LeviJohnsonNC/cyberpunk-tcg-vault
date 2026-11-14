@@ -154,6 +154,8 @@ describe('starter campaign', () => {
     const current = newCampaign('the-heist', 'current', 'compat');
     const previous = newCampaign('the-heist', 'previous', 'compat', 2);
     const roguelike = newCampaign('the-heist', 'roguelike', 'compat', 3);
+    const ledgerUpdate = newCampaign('the-heist', 'ledger', 'compat', 4);
+    expect(current.opponents).toEqual(ledgerUpdate.opponents);
     expect(encounterDeck(legacy).cards).toEqual(STARTERS.find(starter => starter.key === 'embracing-power')?.cards);
     const tuned = encounterDeck(current);
     expect(tuned.name).toBe('Moth’s Embracing Power');
@@ -164,7 +166,8 @@ describe('starter campaign', () => {
     expect(encounterSkill({ ...previous, encounter: 1 })).toBe('standard');
     expect(encounterRivalPlan({ ...previous, encounter: 8 })).toBeUndefined();
     expect(encounterSkill({ ...current, encounter: 1 })).toBe('sharp');
-    expect(encounterRivalPlan({ ...current, encounter: 8 })).toBe('last-call-v3');
+    expect(encounterRivalPlan({ ...current, encounter: 8 })).toBe('last-call-v5');
+    expect(encounterRivalPlan({ ...ledgerUpdate, encounter: 8 })).toBe('last-call-v3');
     expect(encounterRivalPlan({ ...roguelike, encounter: 1 })).toBe('chrome-debt-v3');
     expect(roguelike.opponents[1].legends).toContain('alt-cunningham-soulkiller-architect');
     expect(encounterDeck({ ...roguelike, opponents: [], encounter: 1 })).toEqual(roguelike.opponents[1]);

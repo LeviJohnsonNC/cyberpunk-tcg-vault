@@ -174,6 +174,22 @@ export const LEDGER_GEAR_LIST = {
   },
 };
 
+const satoPlan: DeckStrategyProfile = {
+  deckId: 'last-call-v3',
+  plan: 'Protect Gigs and build an Arasaka board, then clear a blocker for a multi-Gig attack.',
+  coreCards: ['La Llorona', 'Meredith Stout', 'Goro Takemura', 'MaxTac AV', 'Satori', 'Mantis Blades'],
+  curveSellCards: ['Detonate', 'All is Lost', 'Industrial Assembly'],
+  pacing: 'develop-first',
+  mulligan: { cheapUnitCost: 3, minCheapUnits: 1, minSellable: 1,
+    congestionNames: ['Minotaur', 'Sandayu Oda'], congestionMinCopies: 2 },
+  gearHostTypes: { 'Mantis Blades': 'unit', 'Satori': 'unit' },
+  gearHosts: { 'Mantis Blades': ['Minotaur', 'Adam Smasher', 'Goro Takemura'], Satori: ['Minotaur', 'Adam Smasher', 'Goro Takemura'] },
+  blockDirectStealsAtLeast: 1,
+  preferSecond: true,
+  developLegends: true,
+  planCombatSetup: true,
+};
+
 export const CAMPAIGN_RIVAL_PLANS: Readonly<Record<CampaignRivalPlan, DeckStrategyProfile>> = {
   'chrome-debt-v3': {
     deckId: 'chrome-debt-v3',
@@ -193,19 +209,6 @@ export const CAMPAIGN_RIVAL_PLANS: Readonly<Record<CampaignRivalPlan, DeckStrate
     gearHostTypes: { 'Zetatech Faceplate': 'unit', 'Dying Night': 'unit' },
     gearHosts: { 'Zetatech Faceplate': ['Dexter DeShawn', 'Psycho Squad'] },
   },
-  'last-call-v3': {
-    deckId: 'last-call-v3',
-    plan: 'Protect Gigs and build an Arasaka board, then clear a blocker for a multi-Gig attack.',
-    coreCards: ['La Llorona', 'Meredith Stout', 'Goro Takemura', 'MaxTac AV', 'Satori', 'Mantis Blades'],
-    curveSellCards: ['Detonate', 'All is Lost', 'Industrial Assembly'],
-    pacing: 'develop-first',
-    mulligan: { cheapUnitCost: 3, minCheapUnits: 1, minSellable: 1,
-      congestionNames: ['Minotaur', 'Sandayu Oda'], congestionMinCopies: 2 },
-    gearHostTypes: { 'Mantis Blades': 'unit', 'Satori': 'unit' },
-    gearHosts: { 'Mantis Blades': ['Minotaur', 'Adam Smasher', 'Goro Takemura'], Satori: ['Minotaur', 'Adam Smasher', 'Goro Takemura'] },
-    blockDirectStealsAtLeast: 1,
-    preferSecond: true,
-    developLegends: true,
-    planCombatSetup: true,
-  },
+  'last-call-v3': satoPlan,
+  'last-call-v5': { ...satoPlan, deckId: 'last-call-v5', detonateForGigDefense: true },
 };
