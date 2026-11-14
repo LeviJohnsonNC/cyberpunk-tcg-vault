@@ -39,6 +39,30 @@ CAMPAIGN_BALANCE=v5 CAMPAIGN_FIRST_SEED=102 CAMPAIGN_SEEDS=16 CAMPAIGN_SEATS=pla
   node scripts/benchmark-campaign.mjs /tmp/campaign-v5-boss.json
 ```
 
+### Last Call opening trials
+
+The benchmark records the rival's field count, power, Gigs, and Eddie cards before passing on each of its first three turns. It also reports turn order and the reason the game ended. These fields help show whether a list reaches the board early and where a win-rate change comes from.
+
+With the existing list, the early development trial sold spare Programs to enable a Unit, prioritized a second Unit when the reference had caught up on board, and kept the existing Detonate response. Sato finished his third turn with at least two Units or Go Solo Legends in 71 of 72 trial games, up from 57 of 72. The two seed ranges expose the trade-off.
+
+| Seeds | Sato's opening | The Heist starter | The Heist edited | Embracing Power starter | Embracing Power edited |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 118–127 | Current | 6/10 | 5/10 | 4/10 | 7/10 |
+| 118–127 | Earlier development | 5/10 | 4/10 | 3/10 | 7/10 |
+| 128–135 | Current | 5/8 | 5/8 | 5/8 | 4/8 |
+| 128–135 | Earlier development | 4/8 | 2/8 | 2/8 | 0/8 |
+| 136–145 | Current | 4/10 | 3/10 | 8/10 | 8/10 |
+
+These games use the Sharp reference in the production player seat. Edited decks use eight win packs and two simulated House packs. The candidate made Sato's field more consistent, but reduced the benefit of upgrading. Selling a spare Program only when it enabled the first Unit yielded the same outcomes as the current plan on seeds 118–135. Shortening the development priority to the first two turns and requiring more Units in the mulligan also failed to give both routes a reliable upgrade advantage. The live encounter continues to use its existing deck and AI.
+
+Two removal-heavy Sato lists used Yorinobu, Bonnie and Clyde, and Carnage at the Colosseum. The Yellow variant added Viktor and Gear. The Green variant kept Saburo and added more MaxTac AVs. On seeds 128–135, both gave untouched Embracing Power 5/8 wins and edited Embracing Power 4/8. Against the current deck on those seeds, the pressure and control policies yielded 3/8 and 1/8 wins on The Heist and 5/8 and 2/8 on Embracing Power. The boss-ready policy with win packs alone yielded 4/8 and 5/8. This sample puts the effect of deck construction and retry packs in the same range as several rival changes. Comparing earned decks with several distinct game plans is part of judging the next Last Call candidate.
+
+```sh
+CAMPAIGN_BALANCE=v5 CAMPAIGN_FIRST_SEED=118 CAMPAIGN_SEEDS=28 CAMPAIGN_SEATS=player \
+  CAMPAIGN_POLICIES=starter,boss-ready CAMPAIGN_ENCOUNTERS=9 CAMPAIGN_RETRY_PACKS=2 \
+  node scripts/benchmark-campaign.mjs /tmp/campaign-v5-opening-baseline.json
+```
+
 ### Version 2 calibration
 
 Both player decks start with the official retail list. Each run saves its opponent decks when it starts. The rest of this document records the earlier version 2 pass.
