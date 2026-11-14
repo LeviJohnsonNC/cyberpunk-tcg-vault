@@ -156,13 +156,14 @@
 .pb-disclosure dd { margin: 0; line-height: 1.45; }
 .pb-source { margin: 0; padding: var(--space-3) 0; border-top: 1px dashed var(--color-divider); font: 400 11px/1.5 var(--font-mono); color: var(--color-text-faint); }
 .pb-trend { border-top: 1px dashed var(--color-divider); }
-.pb-trend-summary { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); color: var(--color-text-muted); font-size: 12px; }
-.pb-trend-value { font-size: 24px; color: var(--color-ticket); overflow-wrap: anywhere; }
+.pb-trend-summary { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 var(--space-2); color: var(--color-text-muted); font-size: 12px; }
+.pb-trend-summary > span span { white-space: nowrap; }
+.pb-trend-value { font-size: 24px; color: var(--color-ticket); white-space: nowrap; }
 .pb-trend-change, .pb-trend-note { margin: var(--space-1) 0; color: var(--color-text-muted); font-size: 12px; line-height: 1.4; }
 .pb-trend-change[data-direction="1"] { color: var(--color-basis-market); }
 .pb-trend-change[data-direction="-1"] { color: var(--color-accent); }
 .pb-trend-change span { color: var(--color-text-muted); white-space: nowrap; }
-.pb-trend-chart { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); margin-top: var(--space-2); }
+.pb-trend-chart { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 5px var(--space-2); margin-top: var(--space-2); }
 .pb-trend-plot { position: relative; height: 122px; background: var(--color-canvas); border: 1px solid var(--color-divider); border-radius: var(--radius-sm); }
 .pb-trend-scale { display: flex; flex-direction: column; justify-content: space-between; align-items: end; padding-block: 13px; color: var(--color-text-muted); font: 400 10px/1.2 var(--font-mono); }
 .pb-trend-plot svg { display: block; width: 100%; height: 100%; overflow: visible; }
@@ -176,7 +177,7 @@
 .pb-trend-point[data-missing]::after { border-color: var(--color-text-faint); border-radius: 1px; height: 2px; }
 .pb-trend-point[aria-pressed="true"]::after { background: var(--color-ticket); border-color: var(--color-ticket); box-shadow: 0 0 0 3px var(--color-accent-deep); }
 .pb-trend-point:focus-visible { z-index: 1; }
-.pb-trend-axis { display: flex; justify-content: space-between; margin: 5px 0 var(--space-2); color: var(--color-text-muted); font: 400 11px/1.3 var(--font-mono); }
+.pb-trend-axis { display: flex; grid-column: 2; justify-content: space-between; margin-bottom: var(--space-2); color: var(--color-text-muted); font: 400 11px/1.3 var(--font-mono); }
 .pb-trend-method { margin-top: var(--space-2); }
 .pb-trend-method p { margin: var(--space-1) 0 0; font-size: 12px; line-height: 1.4; }
 
