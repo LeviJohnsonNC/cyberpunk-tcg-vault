@@ -67,7 +67,7 @@ To test photo scanning locally, use `vercel dev` with the server env vars below.
 4. *(Optional)* Enable **Web Analytics** in Vercel to count visits and screen views. Redeploy if the tracking script is unavailable after enabling it.
 
 ### 3. GitHub Actions
-`.github/workflows/sync-data.yml` refreshes cards, prices, the USD→CAD rate and community deck statistics daily. The Learn charts count one entry per public Constructed deck updated in the latest 30 calendar days (UTC), using the three Legends and crew colours in the official Community Decks feed. A failed community refresh leaves the last successful snapshot available. Make sure **Settings → Actions → General → Workflow permissions** is set to **Read and write** so the bot can commit.
+`.github/workflows/sync-data.yml` refreshes cards, prices, the USD→CAD rate and community deck statistics daily. The Learn charts count one entry per public Constructed deck updated in the latest 30 calendar days (UTC), using the three Legends and crew colours in the official Community Decks feed. The Curated Decks popularity sort counts how often each exact three-Legend crew appears in that same sample. A failed community refresh leaves the last successful snapshot available. Make sure **Settings → Actions → General → Workflow permissions** is set to **Read and write** so the bot can commit.
 
 The same sync retains one USD quote snapshot per week for Price Book trends. To backfill, extract the dated [TCGCSV archives](https://tcgcsv.com/faq) and pass their date directories to `node scripts/backfill-price-history.mjs <YYYY-MM-DD directory> ...`. The backfill matches Cyberpunk quotes by TCGplayer product ID and finish.
 
