@@ -74,7 +74,7 @@ export function CampaignMode({ scope, exit, openInBuilder, preparationOnly = fal
   const [surface, setSurface] = useState<CampaignSurface>('hub');
   const [inspected, setInspected] = useState<CardSelection>();
   const [crewEdit, setCrewEdit] = useState<SavedRun & { slot?: number; incoming?: string }>();
-  const [reviewed, setReviewed] = useState<CardSelection & SavedRun & { swap?: boolean }>();
+  const [reviewed, setReviewed] = useState<CardSelection & SavedRun & { swap?: boolean; outgoing?: string }>();
   const hub = useRef<HTMLDivElement>(null);
   const inspection = useRef<HTMLDialogElement>(null);
   const worker = useRef<Worker>(null);
@@ -361,8 +361,8 @@ export function CampaignMode({ scope, exit, openInBuilder, preparationOnly = fal
     for (const { slug, printing } of campaignPulls(run.latestRetry)) rememberPrinting(slug, printing);
   }
   const inspectCard = (slug: string, printingId?: string) => setInspected({ slug, printingId });
-  function reviewCard(slug: string, printingId = campaignPrintings.get(slug)?.id, swap?: boolean) {
-    if (run) setReviewed({ id: run.id, revision: run.revision, slug, printingId, swap });
+  function reviewCard(slug: string, printingId = campaignPrintings.get(slug)?.id, swap?: boolean, outgoing?: string) {
+    if (run) setReviewed({ id: run.id, revision: run.revision, slug, printingId, swap, outgoing });
   }
   const latestReward = run && latestCampaignReward(run);
   const currentPack = run && latestReward && `${run.id}:${latestReward.id}`;
@@ -490,7 +490,7 @@ export function CampaignMode({ scope, exit, openInBuilder, preparationOnly = fal
             preparationOnly={preparationOnly} primary={run.resultPending || run.phase === 'inMatch' ? resume : earnedPack ? () => changeSurface(aftermathSurface) : launch} />)}
     </div>}
     {reviewed && run && workbench && <CampaignUpgradeDialog key={reviewed.slug} run={run} slug={reviewed.slug} printingId={reviewed.printingId} printings={campaignPrintings}
-      swap={reviewed.swap} busy={busy} error={error} close={() => setReviewed(undefined)}
+      swap={reviewed.swap} initialOutgoing={reviewed.outgoing} busy={busy} error={error} close={() => setReviewed(undefined)}
       commit={deck => edit(deck, () => setReviewed(undefined), reviewed)} />}
     {crewEdit && run && workbench && <CampaignCrewEditor run={run} printings={campaignPrintings}
       slot={crewEdit.slot} incoming={crewEdit.incoming} busy={busy} error={error} inspect={inspectCard}

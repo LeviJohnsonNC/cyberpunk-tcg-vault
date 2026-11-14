@@ -14,6 +14,8 @@ const policiesByName = {
   pressure: { swaps: 2, style: 'aggro', recruit: true },
   control: { swaps: 2, style: 'control', recruit: true },
   'boss-ready': { swaps: 3, style: 'balanced', matchup: true },
+  'act-three-pressure': { swaps: 2, style: 'aggro', actThree: true },
+  'act-three-control': { swaps: 2, style: 'control', actThree: true },
 };
 const seedCount = Number(process.env.CAMPAIGN_SEEDS ?? 6);
 const firstSeed = Number(process.env.CAMPAIGN_FIRST_SEED ?? 0);
@@ -35,6 +37,18 @@ const balanceVersions = { legacy: 2, v2: 2, v3: 3, v4: 4, v5: 5 };
 if (!Object.hasOwn(balanceVersions, balance)) throw new Error(`Unknown CAMPAIGN_BALANCE: ${balance}.`);
 const trace = process.env.CAMPAIGN_TRACE === '1';
 const trials = process.env.CAMPAIGN_TRIALS ? JSON.parse(readFileSync(process.env.CAMPAIGN_TRIALS, 'utf8')) : {};
+const checkpointPath = process.env.CAMPAIGN_ROUTE_CHECKPOINTS;
+const replayEdits = process.env.CAMPAIGN_REPLAY_EDITS;
+const replayRetriesOnly = process.env.CAMPAIGN_REPLAY_RETRIES_ONLY === '1';
+if (replayEdits && (!checkpointPath || !['one', 'two'].includes(replayEdits))) {
+  throw new Error('CAMPAIGN_REPLAY_EDITS requires route checkpoints and must be one or two.');
+}
+const checkpointStage = Number(process.env.CAMPAIGN_CHECKPOINT_STAGE ?? 0);
+if (!Number.isSafeInteger(checkpointStage) || checkpointStage < 0 || (checkpointStage && !maxAttempts)) {
+  throw new Error('CAMPAIGN_CHECKPOINT_STAGE requires route mode and a positive encounter number.');
+}
+if (checkpointPath && maxAttempts) throw new Error('Replay route checkpoints with CAMPAIGN_MAX_ATTEMPTS unset.');
+if (replayRetriesOnly && !checkpointPath) throw new Error('CAMPAIGN_REPLAY_RETRIES_ONLY requires route checkpoints.');
 const vite = await createServer({ server: { middlewareMode: true, ws: false }, appType: 'custom', logLevel: 'error' });
 try {
   const { LocalEngine, SeededRNG } = await vite.ssrLoadModule('/vendor/cyberpunk-engine/engine.mjs');
@@ -48,8 +62,9 @@ try {
   const routeEncounters = maxAttempts ? ENCOUNTERS.slice(0, lastEncounter).map((_, index) => index + 1) : encounters;
   const { deckFromRecommended, COPY_MAX } = await vite.ssrLoadModule('/src/lib/decks.ts');
   const { BY_SLUG } = await vite.ssrLoadModule('/src/lib/data.ts');
-  const { cardScore, scoreDeck, compositionPenalty } = await vite.ssrLoadModule('/src/lib/autobuild.ts');
+  const { cardScore, scoreDeck, compositionPenalty, rating } = await vite.ssrLoadModule('/src/lib/autobuild.ts');
   const { campaignCardFit, campaignCrew } = await vite.ssrLoadModule('/src/lib/play/campaignDeckRules.ts');
+  const { hostileTakeoverSwaps } = await vite.ssrLoadModule('/src/lib/play/campaignRematch.ts');
 
   // Value early attackers and answers to the blockers and Gear in Sato's list.
   // The reference builds with earned cards and keeps its starting Legends.
@@ -81,15 +96,29 @@ try {
   function upgrade(run, pack, policy, { cardsAlreadyGranted = false, swaps = policy.swaps } = {}) {
     if (!swaps && !cardsAlreadyGranted) return 0;
     const matchupValues = new Map();
+    const matchupTuned = policy.matchup || policy.actThree;
     const matchup = slug => {
-      if (!policy.matchup) return 0;
-      if (!matchupValues.has(slug)) matchupValues.set(slug, bossCardValue(BY_SLUG.get(slug), run.starter));
+      if (!matchupTuned) return 0;
+      if (!matchupValues.has(slug)) {
+        const card = BY_SLUG.get(slug);
+        let value = bossCardValue(card, run.starter);
+        if (policy.actThree) {
+          const cheapThreat = card.type === 'Unit' && (card.cost ?? Infinity) <= 4 && (card.power ?? 0) > 0;
+          const answer = card.sellable && (card.cost ?? Infinity) <= 4 && rating(slug).roles.includes('removal');
+          value = (cheapThreat ? 4 : 0) + (answer && policy.style === 'control' ? 4 : 0)
+            - ((card.cost ?? 0) >= 6 ? 2 : 0) + value * 0.5;
+          if (card.sellable) value += 1.5;
+          if (policy.style === 'aggro' && card.type === 'Gear' && (card.power ?? 0) >= 2 && (card.cost ?? 0) <= 3) value += 3;
+          if (policy.style === 'control' && rating(slug).roles.includes('blocker')) value += 2;
+        }
+        matchupValues.set(slug, value);
+      }
       return matchupValues.get(slug);
     };
     const score = slug => cardScore(BY_SLUG.get(slug), run.deck.legends, policy.style) + matchup(slug);
     const deckScore = cards => {
       const base = scoreDeck(run.deck.legends, cards, policy.style);
-      return policy.matchup ? base + Object.entries(cards).reduce((sum, [slug, count]) => sum + count * matchup(slug), 0) : base;
+      return matchupTuned ? base + Object.entries(cards).reduce((sum, [slug, count]) => sum + count * matchup(slug), 0) : base;
     };
     const main = pack.offers.filter(slug => BY_SLUG.get(slug).type !== 'Legend').sort((a, b) => score(b) - score(a));
     const recruit = policy.recruit ? pack.offers.filter(slug => BY_SLUG.get(slug).type === 'Legend')
@@ -129,8 +158,9 @@ try {
     return applied;
   }
 
-  function play(run, rivalDeck, rivalSkill, plan, seat, seed) {
+  function play(run, rivalDeck, rivalSkill, plan, seat, seed, referenceSlots) {
     const player = prepareMatchDeck(run.deck), rival = prepareMatchDeck(rivalDeck);
+    if (referenceSlots) player.mainDeck = referenceSlots;
     const setup = seat === 'player' ? { player, rival } : { player: rival, rival: player };
     const engine = new LocalEngine(initialEngineState(setup, seed, seed));
     const referenceRng = new SeededRNG(seed + ':reference'), opponentRng = new SeededRNG(seed + ':opponent');
@@ -187,13 +217,15 @@ try {
 
   const results = [];
   const routes = [];
+  const checkpoints = [];
   const matchCache = new Map();
 
-  function benchmarkMatch(run, original, name, seed, seat) {
+  function benchmarkMatch(run, original, name, seed, seat, referenceSlots) {
     const { encounter, starter, attempts } = run;
     const stageTrial = trials[encounter + 1];
     const trial = stageTrial?.byStarter?.[starter] ?? stageTrial;
     const rival = trial?.deck ? deckFromRecommended(trial.deck) : encounterDeck(run);
+    if (!rival) throw new Error(`Unknown trial deck: ${trial.deck}.`);
     if (trial?.legends) rival.legends = trial.legends;
     if (trial?.main) rival.cards = { ...trial.main };
     if (trial?.cards) {
@@ -210,10 +242,10 @@ try {
     const firstAttemptSeed = `campaign-calibration:${starter}:${seed}:${encounter}`;
     const seedKey = attempts ? `${firstAttemptSeed}:retry:${attempts}` : firstAttemptSeed;
     const replaced = Object.entries(original).reduce((n, [slug, qty]) => n + Math.max(0, qty - (run.deck.cards[slug] ?? 0)), 0);
-    const key = JSON.stringify([seedKey, seat, skill, plan, run.deck.legends, run.deck.cards, rival.legends, rival.cards]);
-    if (!matchCache.has(key)) matchCache.set(key, play(run, rival, skill, plan, seat, seedKey));
+    const key = JSON.stringify([seedKey, seat, skill, plan, run.deck.legends, run.deck.cards, rival.legends, rival.cards, referenceSlots]);
+    if (!matchCache.has(key)) matchCache.set(key, play(run, rival, skill, plan, seat, seedKey, referenceSlots));
     const result = { starter, policy: name, seed, seat, encounter: encounter + 1, opponent: rival.name, skill, plan, replaced,
-      ...(maxAttempts && { attempt: attempts + 1, retryPacksBefore: run.retryPacks ?? 0 }),
+      ...((maxAttempts || checkpointPath) && { attempt: attempts + 1, retryPacksBefore: run.retryPacks ?? 0 }),
       ...(trace && { deck: run.deck.cards, deckStats: compositionPenalty(run.deck.cards).stats }),
       ...matchCache.get(key) };
     results.push(result);
@@ -229,6 +261,10 @@ try {
     let draws = 0;
     let failed = false;
     while (cleared < lastEncounter && run.attempts < maxAttempts) {
+      if (checkpointStage && run.encounter + 1 >= checkpointStage) {
+        const { match: _match, opponents: _opponents, ...state } = run;
+        checkpoints.push({ state: structuredClone(state), seed, seat, policy: name });
+      }
       if (run.encounter < ENCOUNTERS.length - 1) run.rewards[run.encounter] = prepareCampaignReward(run);
       run.phase = 'inMatch';
       const result = benchmarkMatch(run, original, name, seed, seat);
@@ -245,15 +281,46 @@ try {
       } else {
         if (result.outcome === 'loss') defeats++;
         else draws++;
+        const before = run.deck.cards;
         result.swapsAfter = upgrade(run, run.latestRetry, policy, { cardsAlreadyGranted: true, swaps: policy.skipRetryEdits ? 0 : policy.swaps });
+        if (trace) result.retryChanges = Object.fromEntries([...new Set([...Object.keys(before), ...Object.keys(run.deck.cards)])]
+          .map(slug => [slug, (run.deck.cards[slug] ?? 0) - (before[slug] ?? 0)]).filter(([, delta]) => delta));
         run.phase = 'preparing';
       }
     }
     routes.push({ starter: run.starter, policy: name, seed, seat, cleared, defeats, draws,
       retryPacks: run.retryPacks ?? 0, status: failed ? 'error' : cleared === lastEncounter ? 'cleared' : 'attempt-cap' });
+    if (process.env.CAMPAIGN_PROGRESS === '1') console.error(`${run.starter} ${name} seed ${seed}: cleared ${cleared}/${lastEncounter} after ${defeats} losses`);
   }
 
-  for (const starter of starters) for (const name of policies) {
+  if (checkpointPath) {
+    const entries = JSON.parse(readFileSync(checkpointPath, 'utf8')).checkpoints;
+    if (!entries?.length) throw new Error('No route checkpoints were saved.');
+    for (const { state, seed, seat, policy } of entries) {
+      if ((replayRetriesOnly && !state.attempts) || !encounters.includes(state.encounter + 1) || !starters.includes(state.starter)
+          || !policies.includes(policy) || !referenceSeats.includes(seat)) continue;
+      const initial = newCampaign(state.starter, state.id, state.seed, balanceVersions[balance]);
+      const run = { ...state, opponents: initial.opponents, balanceVersion: initial.balanceVersion };
+      if (balance === 'legacy') { delete run.balanceVersion; run.opponents = []; }
+      benchmarkMatch(run, initial.deck.cards, policy, seed, seat);
+      if (replayEdits && run.encounter === 7) {
+        const edited = structuredClone(run);
+        const suggestions = hostileTakeoverSwaps(edited).slice(0, replayEdits === 'one' ? 1 : 2);
+        // Replay the same shuffle permutation with each incoming copy in its outgoing copy's slot.
+        const slots = prepareMatchDeck(run.deck).mainDeck;
+        for (const { incoming, outgoing } of suggestions) {
+          slots[slots.indexOf(outgoing)] = incoming;
+          if (--edited.deck.cards[outgoing] === 0) delete edited.deck.cards[outgoing];
+          edited.deck.cards[incoming] = (edited.deck.cards[incoming] ?? 0) + 1;
+        }
+        const issues = campaignDeckIssues(edited, edited.deck);
+        if (issues.length) throw new Error(issues.join(' '));
+        const result = benchmarkMatch(edited, initial.deck.cards, `${policy}+${replayEdits}-swap`, seed, seat, slots);
+        result.replaySwaps = suggestions.length;
+      }
+    }
+    if (!results.length) throw new Error('No route checkpoints matched the requested sweep.');
+  } else for (const starter of starters) for (const name of policies) {
     const policy = policiesByName[name];
     if (!policy) throw new Error(`Unknown upgrade policy: ${name}`);
     if (!maxAttempts && policy.skipRetryEdits) throw new Error(`${name} requires CAMPAIGN_MAX_ATTEMPTS.`);
@@ -281,12 +348,13 @@ try {
       }
     }
   }
+  const reportedPolicies = replayEdits ? policies.flatMap(name => [name, `${name}+${replayEdits}-swap`]) : policies;
   for (const [index, encounter] of ENCOUNTERS.entries()) {
     const played = results.filter(result => result.encounter === index + 1);
     if (!played.length) continue;
     console.log(`${index + 1} ${encounter.title}`);
     for (const starter of starters) {
-      const summary = policies.map(policy => {
+      const summary = reportedPolicies.map(policy => {
         const games = played.filter(game => game.starter === starter && game.policy === policy);
         const wins = games.filter(game => game.outcome === 'win').length;
         if (!maxAttempts) return `${policy} ${wins}/${games.length}`;
@@ -301,9 +369,9 @@ try {
     if (group.length) console.log(`${starter} ${policy}: ${group.filter(run => run.status === 'cleared').length}/${group.length} cleared through encounter ${lastEncounter}`);
   }
   if (process.argv[2]) writeFileSync(process.argv[2], JSON.stringify({
-    firstSeed, seedCount, policies, encounters: routeEncounters,
+    firstSeed, seedCount, policies: reportedPolicies, encounters: routeEncounters,
     playerSkill, fixedRivalSkill, useRivalPlan, retryPacks, referenceSeats, balance, trials, results,
-    ...(maxAttempts && { maxAttempts, routes }),
+    ...(maxAttempts && { maxAttempts, routes }), ...(checkpointStage && { checkpoints }),
   }, null, 2) + '\n');
   if (results.some(result => result.error)) process.exitCode = 1;
 } finally { await vite.close(); }

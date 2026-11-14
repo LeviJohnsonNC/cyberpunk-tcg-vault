@@ -9,6 +9,7 @@ import type { StoredMatch } from './workerController';
 import type { CampaignRivalPlan, RivalSkill } from './protocol';
 import recommended from '../../data/decks.json';
 import { ARASAKA_HOUSE_LIST, HEIST_OPENING_RIVAL, LEDGER_GEAR_LIST, MOTH_PRACTICE_DELTAS, REWARD_THEMES, RIVAL_TUNING, ROGUELIKE_RIVAL_DELTAS } from './campaignBalance';
+import { HOSTILE_TAKEOVER_REWARDS } from './campaignRematch';
 
 export const CAMPAIGN_VERSION = 1;
 export const ENVIRONMENTS = [
@@ -281,7 +282,12 @@ function retryOffers(run: CampaignRun, inventory: Record<string, number>, pack: 
   const answer = (card: Card) => rating(card.slug).roles.includes('removal') && (card.cost ?? Infinity) <= 5;
   const preferred = run.encounter >= 6 ? [answer, blocker, earlyUnit] : [earlyUnit, blocker, answer];
   const selected = new Set<string>();
+  if (ENCOUNTERS[run.encounter]?.id === 'hostile-takeover') {
+    const threat = HOSTILE_TAKEOVER_REWARDS[run.starter].find(slug => eligible.some(card => card.slug === slug));
+    if (threat) selected.add(threat);
+  }
   for (const role of preferred) {
+    if (selected.size === 3) break;
     const remaining = ranked.filter(card => !selected.has(card.slug));
     const best = remaining.find(role) ?? remaining[0];
     if (best) selected.add(best.slug);

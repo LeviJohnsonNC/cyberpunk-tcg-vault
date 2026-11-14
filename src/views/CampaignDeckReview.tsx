@@ -10,14 +10,14 @@ import { CampaignRewardArt } from './CampaignRewardArt';
 import { packCardContext, previewCampaignEdit } from '../lib/play/campaignPresentation';
 
 /** Keyed by incoming card so a new review starts with a fresh, explicit proposal. */
-export function CampaignUpgradeDialog({ run, slug, printingId, printings, swap, busy, error, close, commit }: { run: CampaignRun; slug: string; printingId?: string; printings: ReadonlyMap<string, Printing>; swap?: boolean; busy: boolean; error?: string; close: () => void; commit: (deck: Deck) => void }) {
+export function CampaignUpgradeDialog({ run, slug, printingId, printings, swap, initialOutgoing, busy, error, close, commit }: { run: CampaignRun; slug: string; printingId?: string; printings: ReadonlyMap<string, Printing>; swap?: boolean; initialOutgoing?: string; busy: boolean; error?: string; close: () => void; commit: (deck: Deck) => void }) {
   const card = BY_SLUG.get(slug)!;
   const printing = PRINTING_INDEX.get(printingId ?? '')?.printing;
   const alternatives = Object.keys(run.deck.cards).filter(item => item !== slug && run.deck.cards[item] > 0).sort((a, b) => {
       const ca = BY_SLUG.get(a)!, cb = BY_SLUG.get(b)!;
       return Number(cb.type === card.type) - Number(ca.type === card.type) || Math.abs((ca.cost ?? 0) - (card.cost ?? 0)) - Math.abs((cb.cost ?? 0) - (card.cost ?? 0)) || ca.display.localeCompare(cb.display);
     });
-  const [outgoing, setOutgoing] = useState(swap ? alternatives[0] ?? '' : '');
+  const [outgoing, setOutgoing] = useState(initialOutgoing ?? (swap ? alternatives[0] ?? '' : ''));
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => { const node = dialog.current; node?.showModal(); return () => node?.close(); }, []);
   const proposal = previewCampaignEdit(run, slug, outgoing || undefined);

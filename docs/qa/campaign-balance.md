@@ -19,6 +19,27 @@ Set `CAMPAIGN_ENCOUNTERS=9` for a full route. An isolated matchup sweep can stil
 
 In the seeds 166–167 smoke run, the Heist run on seed 167 cleared Night Drive on its third try after applying retry swaps. The paired win-only run exhausted its attempts at Dead Drop. Both policies cleared Night Drive with Embracing Power on both seeds. A separate full-route smoke run on seeds 162–163 let both untouched Embracing Power decks clear Last Call. Neither untouched Heist deck reached it. These samples check the retry loop and flag matchup differences. Estimating completion rates will take more runs.
 
+### Act 3 rematches
+
+Hostile Takeover's bonus choices now reserve a slot for a compatible attacker when one is available. The five retail pulls still come from the normal House pack. After claiming the pack, both starters can review one-for-one swaps from owned, crew-compatible cards. Offduty Malfini lets The Heist spend a rival attacker while adding a body. A second attacker can replace a slower or more defensive card before the next try. Embracing Power can add another early attacker or a low-cost answer from its reserve.
+
+The replay compares the saved list with one or two suggested swaps using the same shuffle and deck slots. On the retries captured on seeds 162–163 and 214–215, two swaps improved The Heist from 1/8 to 2/8 wins and Embracing Power from 6/8 to 7/8. A single swap gave The Heist 1/8 and Embracing Power 7/8. These are isolated rematches at saved deck checkpoints.
+
+The Hostile Takeover list trial traded early pressure for blockers and a second way to find Units. It improved some Heist checkpoints, but the six fresh shuffles 288–293 gave untouched starters 5/6 and 6/6 wins, up from 3/6 and 2/6. The live opponent keeps its original list. Both starters were checked in Chromium for the House pack, the preselected swap, the saved deck, and entry into the rematch. On the current lists, a full engine replay of seed 214 cleared all nine matches with 16 earned main-deck substitutions on each route. The Heist took seven losses, and Embracing Power took nine.
+
+```sh
+CAMPAIGN_FIRST_SEED=162 CAMPAIGN_SEEDS=2 CAMPAIGN_SEATS=player \
+  CAMPAIGN_MAX_ATTEMPTS=4 CAMPAIGN_CHECKPOINT_STAGE=8 \
+  CAMPAIGN_POLICIES=balanced,balanced-win-only \
+  node scripts/benchmark-campaign.mjs /tmp/act-three-route.json
+CAMPAIGN_ROUTE_CHECKPOINTS=/tmp/act-three-route.json CAMPAIGN_REPLAY_RETRIES_ONLY=1 \
+  CAMPAIGN_REPLAY_EDITS=two CAMPAIGN_SEATS=player CAMPAIGN_ENCOUNTERS=8 \
+  CAMPAIGN_POLICIES=balanced,balanced-win-only \
+  node scripts/benchmark-campaign.mjs /tmp/act-three-rematches.json
+```
+
+The saved checkpoints also support Last Call comparisons against decks that actually reached the table. Select `CAMPAIGN_ENCOUNTERS=9` and omit the replay-edit flags. The benchmark still needs to reach the Last Call goal for each route: fewer than 10% wins with untouched starters and around 30–45% with well-upgraded decks. One early Chrome Fang and Memory Relapse trial gave 1/5 and 0/5 untouched wins on seeds 208–212. With fresh seeds 216–223 it gave both starters 4/8 untouched wins. A Red/Yellow trial scored 9/10 untouched Embracing Power wins on seeds 278–287. These trials have no production tuning.
+
 ### Night Drive trials
 
 On seeds 146–153 the live list lost 15 of 16 games to untouched starters and 12 of 16 to edited decks. The trials compared cheaper bodies and a stronger midgame with a separate mulligan and Gear-host profile. Early-body variants repeatedly made The Heist's matchup tougher while Embracing Power swept its untouched games on seeds 154–159. A mixed list with Emergency Atlus, Dexter, Gilded Mato-N and MaxTac AV gave both starters a reason to edit on seeds 160–163. That advantage reversed for Embracing Power on fresh seeds.
