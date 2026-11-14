@@ -64,7 +64,7 @@ try {
   const { BY_SLUG } = await vite.ssrLoadModule('/src/lib/data.ts');
   const { cardScore, scoreDeck, compositionPenalty, rating } = await vite.ssrLoadModule('/src/lib/autobuild.ts');
   const { campaignCardFit, campaignCrew } = await vite.ssrLoadModule('/src/lib/play/campaignDeckRules.ts');
-  const { hostileTakeoverSwaps } = await vite.ssrLoadModule('/src/lib/play/campaignRematch.ts');
+  const { hostileTakeoverSwaps, redLineSwaps } = await vite.ssrLoadModule('/src/lib/play/campaignRematch.ts');
 
   // Value early attackers and answers to the blockers and Gear in Sato's list.
   // The reference builds with earned cards and keeps its starting Legends.
@@ -303,13 +303,17 @@ try {
       const run = { ...state, opponents: initial.opponents, balanceVersion: initial.balanceVersion };
       if (balance === 'legacy') { delete run.balanceVersion; run.opponents = []; }
       benchmarkMatch(run, initial.deck.cards, policy, seed, seat);
-      if (replayEdits && run.encounter === 7) {
+      const encounterId = ENCOUNTERS[run.encounter].id;
+      if (replayEdits && (encounterId === 'red-line' || encounterId === 'hostile-takeover')) {
         const edited = structuredClone(run);
-        const suggestions = hostileTakeoverSwaps(edited).slice(0, replayEdits === 'one' ? 1 : 2);
+        const proposals = encounterId === 'red-line' ? redLineSwaps(edited) : hostileTakeoverSwaps(edited);
+        const suggestions = proposals.slice(0, replayEdits === 'one' ? 1 : 2);
         // Replay the same shuffle permutation with each incoming copy in its outgoing copy's slot.
         const slots = prepareMatchDeck(run.deck).mainDeck;
         for (const { incoming, outgoing } of suggestions) {
-          slots[slots.indexOf(outgoing)] = incoming;
+          const slot = slots.indexOf(outgoing);
+          if (slot < 0) throw new Error(`No slot for replay cut ${outgoing}.`);
+          slots[slot] = incoming;
           if (--edited.deck.cards[outgoing] === 0) delete edited.deck.cards[outgoing];
           edited.deck.cards[incoming] = (edited.deck.cards[incoming] ?? 0) + 1;
         }
@@ -317,6 +321,7 @@ try {
         if (issues.length) throw new Error(issues.join(' '));
         const result = benchmarkMatch(edited, initial.deck.cards, `${policy}+${replayEdits}-swap`, seed, seat, slots);
         result.replaySwaps = suggestions.length;
+        if (trace) result.replayEdits = suggestions;
       }
     }
     if (!results.length) throw new Error('No route checkpoints matched the requested sweep.');

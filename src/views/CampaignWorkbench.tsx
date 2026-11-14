@@ -7,7 +7,7 @@ import { deckStats } from '../lib/handtest';
 import { ENCOUNTERS, type CampaignRun } from '../lib/play/campaign';
 import { campaignCardAddReason, campaignCardFit, campaignCrew, campaignDeckIssues, campaignDeckSizeIssue, isCampaignLegend } from '../lib/play/campaignDeckRules';
 import { latestPack } from '../lib/play/campaignPresentation';
-import { hostileTakeoverSwaps } from '../lib/play/campaignRematch';
+import { hostileTakeoverSwaps, redLineSwaps } from '../lib/play/campaignRematch';
 import { CampaignCrewCards, type CampaignInspect } from './CampaignHub';
 import { CampaignRewardArt } from './CampaignRewardArt';
 import './campaign-workbench.css';
@@ -68,7 +68,9 @@ export function CampaignWorkbench({ run, titleRef, busy, error, issues: savedIss
     });
   const readiness = !issues.length ? 'Ready to play'
     : campaignDeckSizeIssue(total) ?? (issues.some(issue => issue.includes('RAM')) ? 'Over RAM limit' : 'Deck needs edits');
-  const rematchSwaps = !issues.length && ENCOUNTERS[run.encounter]?.id === 'hostile-takeover' ? hostileTakeoverSwaps(run) : [];
+  const encounterId = ENCOUNTERS[run.encounter]?.id;
+  const rematchSwaps = issues.length ? [] : encounterId === 'red-line' ? redLineSwaps(run)
+    : encounterId === 'hostile-takeover' ? hostileTakeoverSwaps(run) : [];
 
   function selectView(next: ReserveView) {
     if (view === 'latest' && next !== 'latest' && packNew) acknowledgePack();

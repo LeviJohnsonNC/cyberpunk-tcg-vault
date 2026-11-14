@@ -14,7 +14,7 @@ import { readCircuitProgress, equipTableFinish, openDatabase, readMatchSummary }
 import { REWARD_THEMES } from './campaignBalance';
 import { isEngineSupported } from './engineCards';
 import { campaignCardFit, campaignCrew } from './campaignDeckRules';
-import { HOSTILE_TAKEOVER_REWARDS, hostileTakeoverSwaps } from './campaignRematch';
+import { HOSTILE_TAKEOVER_REWARDS, hostileTakeoverSwaps, redLineSwaps } from './campaignRematch';
 
 async function revealSlots(scope: string, run: CampaignRun, packId: string, slots: number[]) {
   for (const slot of slots) ({ run } = await revealCampaignSlot(scope, run, packId, slot));
@@ -22,6 +22,38 @@ async function revealSlots(scope: string, run: CampaignRun, packId: string, slot
 }
 
 describe('starter campaign', () => {
+  it.each([
+    { starter: 'the-heist', incoming: 'offduty-malfini', outgoing: 'heywood-ripperdoc' },
+    { starter: 'embracing-power', incoming: 'detonate', outgoing: 'shattered-memories' },
+  ] as const)('offers a legal Red Line rematch swap for $starter', ({ starter, incoming, outgoing }) => {
+    const run = newCampaign(starter, 'red-line-rematch', 'qa-red-line-0');
+    run.encounter = 5;
+    if (starter === 'the-heist') {
+      run.deck.cards[incoming] = 1;
+      run.inventory[incoming] = 1;
+      run.deck.cards['secondhand-bombus']++;
+      run.inventory['secondhand-bombus']++;
+    }
+    const match = { summary: { ended: true, matchId: 'red-line-loss' } } as NonNullable<CampaignRun['match']>;
+    const loss = settleCampaignMatch({ ...run, phase: 'inMatch', match }, emptyProfile(), match, 'rival').run;
+    const reward = loss.latestRetry!;
+    expect(reward.cards).toHaveLength(5);
+    expect(new Set([...reward.cards, ...reward.offers]).size).toBe(8);
+    expect(reward.offers[0]).toBe(incoming);
+    expect(redLineSwaps(run)).toEqual([]);
+    expect(redLineSwaps(loss)).toEqual([]);
+
+    loss.inventory[incoming] = (loss.inventory[incoming] ?? 0) + 1;
+    reward.choice = incoming;
+    const [swap] = redLineSwaps(loss);
+    expect(swap).toMatchObject({ incoming, outgoing });
+    const edit = previewCampaignEdit(loss, swap.incoming, swap.outgoing);
+    expect(edit.canSave).toBe(true);
+    expect(edit.issues).toEqual([]);
+    const cards = { ...loss.deck.cards, [incoming]: (loss.deck.cards[incoming] ?? 0) + 1, [outgoing]: loss.deck.cards[outgoing] - 1 };
+    expect(redLineSwaps({ ...loss, deck: { ...loss.deck, cards } })).toEqual([]);
+  });
+
   it.each(STARTERS)('offers a legal Hostile Takeover rematch swap for $name', starter => {
     const run = newCampaign(starter.key, 'hostile-rematch', 'qa-act3-0');
     run.encounter = 7;

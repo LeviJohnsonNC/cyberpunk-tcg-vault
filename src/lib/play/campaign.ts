@@ -9,7 +9,7 @@ import type { StoredMatch } from './workerController';
 import type { CampaignRivalPlan, RivalSkill } from './protocol';
 import recommended from '../../data/decks.json';
 import { ARASAKA_HOUSE_LIST, HEIST_OPENING_RIVAL, LEDGER_GEAR_LIST, MOTH_PRACTICE_DELTAS, REWARD_THEMES, RIVAL_TUNING, ROGUELIKE_RIVAL_DELTAS } from './campaignBalance';
-import { HOSTILE_TAKEOVER_REWARDS } from './campaignRematch';
+import { HOSTILE_TAKEOVER_REWARDS, redLineReward } from './campaignRematch';
 
 export const CAMPAIGN_VERSION = 1;
 export const ENVIRONMENTS = [
@@ -24,7 +24,7 @@ export const ENCOUNTERS = [
   { id: 'dead-drop', title: 'Dead Drop', brief: 'Efficient bodies and a clean curve. Bring your first upgrades.', rival: 'heist-reloaded', skill: 'standard' },
   { id: 'night-drive', title: 'Night Drive', brief: 'The Nomads flood the field. Pick your trades.', rival: 'nomad-convoy', skill: 'standard' },
   { id: 'dead-air', title: 'Dead Air', brief: 'The Netrunners control the pace. Keep your economy moving.', rival: 'lowball-netrun-plus', skill: 'sharp' },
-  { id: 'red-line', title: 'Red Line', brief: 'A heavy finisher waits at the end of this fight.', rival: 'smasher-surge', skill: 'sharp' },
+  { id: 'red-line', title: 'Red Line', brief: 'Brake gears up cheap Units to take Gigs before Smasher hits the field.', rival: 'smasher-surge', skill: 'sharp' },
   { id: 'mosh-pit', title: 'Mosh Pit', brief: 'Expect quick pressure. Leave room for early answers.', rival: 'mosh-pit', skill: 'sharp' },
   { id: 'hostile-takeover', title: 'Hostile Takeover', brief: 'They have answers of their own. Make every card count.', rival: 'streetkid-braindance', skill: 'sharp' },
   { id: 'last-call', title: 'Last Call', brief: 'Arasaka has the best table in the house. Take it.', rival: 'arasaka-nines', skill: 'masterful' },
@@ -280,11 +280,19 @@ function retryOffers(run: CampaignRun, inventory: Record<string, number>, pack: 
   const earlyUnit = (card: Card) => card.type === 'Unit' && (card.cost ?? Infinity) <= 3 && (card.power ?? 0) > 0;
   const blocker = (card: Card) => rating(card.slug).roles.includes('blocker');
   const answer = (card: Card) => rating(card.slug).roles.includes('removal') && (card.cost ?? Infinity) <= 5;
-  const preferred = run.encounter >= 6 ? [answer, blocker, earlyUnit] : [earlyUnit, blocker, answer];
+  let preferred = run.encounter >= 6 ? [answer, blocker, earlyUnit] : [earlyUnit, blocker, answer];
   const selected = new Set<string>();
-  if (ENCOUNTERS[run.encounter]?.id === 'hostile-takeover') {
+  const encounterId = ENCOUNTERS[run.encounter]?.id;
+  if (encounterId === 'hostile-takeover') {
     const threat = HOSTILE_TAKEOVER_REWARDS[run.starter].find(slug => eligible.some(card => card.slug === slug));
     if (threat) selected.add(threat);
+  }
+  if (encounterId === 'red-line') {
+    const upgrade = redLineReward(run, inventory, eligible);
+    if (upgrade) {
+      selected.add(upgrade);
+      preferred = run.starter === 'the-heist' ? [blocker, answer] : [earlyUnit, blocker];
+    }
   }
   for (const role of preferred) {
     if (selected.size === 3) break;

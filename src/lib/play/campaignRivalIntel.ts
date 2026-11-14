@@ -45,9 +45,9 @@ const dossiers: Record<EncounterId, Intel> = {
   },
   'red-line': {
     bio: 'Brake collects the key when a room changes hands. The house pays him to bring it back, and he takes that personally.',
-    playstyle: { label: 'Heavy finishers', summary: 'Early removal clears a path for expensive Units that can take several Gigs.' },
-    threat: 'Adam Smasher can Go Solo, defeat a rival Unit on entry, and attack that turn.',
-    counterplay: 'Pressure Gigs early, spread your defense across several Units, and keep an answer for the first finisher.',
+    playstyle: { label: 'Gear and finishers', summary: 'Cheap Units and Gear pressure your Gigs before the expensive finishers arrive.' },
+    threat: 'Brake can turn even a blocker into an attacker with Gear. Adam Smasher can Go Solo, defeat a Unit on entry, and attack that turn.',
+    counterplay: 'Answer early attackers as they come down and develop a second Unit so one trade can’t clear your field.',
   },
   'mosh-pit': {
     bio: 'Feedback plays the late set, takes bets during the break, and remembers which table laughed when the speakers blew.',
