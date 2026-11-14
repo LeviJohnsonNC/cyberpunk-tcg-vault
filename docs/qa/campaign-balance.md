@@ -19,6 +19,25 @@ Set `CAMPAIGN_ENCOUNTERS=9` for a full route. An isolated matchup sweep can stil
 
 In the seeds 166–167 smoke run, the Heist run on seed 167 cleared Night Drive on its third try after applying retry swaps. The paired win-only run exhausted its attempts at Dead Drop. Both policies cleared Night Drive with Embracing Power on both seeds. A separate full-route smoke run on seeds 162–163 let both untouched Embracing Power decks clear Last Call. Neither untouched Heist deck reached it. These samples check the retry loop and flag matchup differences. Estimating completion rates will take more runs.
 
+### Red Line rematches
+
+Brake's cheap Units and Gear come online earlier than the old briefing suggested. Across the six development seeds 184–189 and six fresh seeds 316–321, none of the 28 baseline rematch losses featured Adam Smasher. The new briefing tells players to trade before Gear stacks up and develop a second Unit. Brake still plays the same deck at Sharp difficulty.
+
+Red Line's House pack can offer one relevant bonus card if the player lacks a spare copy for the recommended edit. The Heist can add Offduty Malfini for a duplicate Heywood Ripperdoc, preserving one copy of its Gear removal. Embracing Power can add its first Detonate for a duplicate Shattered Memories or Corporate Surveillance. The Workbench only proposes owned, crew-compatible cards and opens the existing swap review with both cards selected. The five retail pulls and the three-option bonus choice retain their counts.
+
+The final rules flipped three losses to wins with zero reversals across 43 paired retries from seeds 184–189, 316–321, and 340–343. The Heist went from 5/19 to 7/19 and Embracing Power from 7/24 to 8/24, counting checkpoints where no edit applied. On fresh seeds 316–321 and 340–343 alone, each route gained one win. The replay provided the eligible bonus card in reserve when there was no spare copy and kept each replacement in the outgoing card's shuffle slot. These paired outcomes measure the exact edits on saved decks. Chromium also checked the bonus selection, swap review, saved deck after reload, and completed rematch on both routes.
+
+```sh
+CAMPAIGN_FIRST_SEED=184 CAMPAIGN_SEEDS=6 CAMPAIGN_SEATS=player \
+  CAMPAIGN_MAX_ATTEMPTS=4 CAMPAIGN_CHECKPOINT_STAGE=6 CAMPAIGN_ENCOUNTERS=6 \
+  CAMPAIGN_POLICIES=balanced \
+  node scripts/benchmark-campaign.mjs /tmp/red-line-route.json
+CAMPAIGN_ROUTE_CHECKPOINTS=/tmp/red-line-route.json CAMPAIGN_REPLAY_RETRIES_ONLY=1 \
+  CAMPAIGN_REPLAY_EDITS=one CAMPAIGN_SEATS=player CAMPAIGN_ENCOUNTERS=6 \
+  CAMPAIGN_POLICIES=balanced CAMPAIGN_TRACE=1 \
+  node scripts/benchmark-campaign.mjs /tmp/red-line-rematches.json
+```
+
 ### Act 3 rematches
 
 Hostile Takeover's bonus choices now reserve a slot for a compatible attacker when one is available. The five retail pulls still come from the normal House pack. After claiming the pack, both starters can review one-for-one swaps from owned, crew-compatible cards. Offduty Malfini lets The Heist spend a rival attacker while adding a body. A second attacker can replace a slower or more defensive card before the next try. Embracing Power can add another early attacker or a low-cost answer from its reserve.

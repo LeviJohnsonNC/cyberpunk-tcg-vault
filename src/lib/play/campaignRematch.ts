@@ -5,6 +5,7 @@ import type { CampaignRun } from './campaign';
 import { campaignCardFit, campaignCrew } from './campaignDeckRules';
 
 type RematchRole = 'cheap-threat' | 'low-cost-answer';
+type RematchSwap = { incoming: string; outgoing: string; reason: string };
 export const HOSTILE_TAKEOVER_REWARDS = {
   'the-heist': ['offduty-malfini', 'dexter-deshawn-one-last-chance', 'gilded-mato-n', 'maelstrom-goons'],
   'embracing-power': ['meredith-stout-stone-cold-corpo', 'emergency-atlus', 'swordwise-huscle', 'valentino-guerrera'],
@@ -13,6 +14,33 @@ const pressureCards = new Set(['dexter-deshawn-one-last-chance', 'maelstrom-goon
   'psycho-squad', 'swordwise-huscle', 'emergency-atlus', 'valentino-guerrera', 'meredith-stout-stone-cold-corpo']);
 const interactionCards = new Set(['detonate', 'nocturne-op55-n1', 'pyramid-song', 'safety-override', 'memory-relapse', 'take-control']);
 const sweepers = new Set(['towerfall', 'don-t-fear-the-reaper']);
+
+const redLineUpgrades = {
+  'the-heist': { incoming: 'offduty-malfini', outgoing: ['heywood-ripperdoc'],
+    target: 2, reason: 'Spend one of Brake’s attackers with a 5-power Unit that costs 4 Eddies.' },
+  'embracing-power': { incoming: 'detonate', outgoing: ['shattered-memories', 'corporate-surveillance'],
+    target: 1, reason: 'Keep 1 Eddie open to destroy Gear such as Mantis Blades before it wins a fight or takes a Gig.' },
+} as const;
+
+function redLineUpgrade(run: CampaignRun) {
+  const { incoming, outgoing, target, reason } = redLineUpgrades[run.starter];
+  const cut = outgoing.find(slug => (run.deck.cards[slug] ?? 0) > 1);
+  if (cut && (run.deck.cards[incoming] ?? 0) < target) return { incoming, outgoing: cut, reason };
+}
+
+export function redLineReward(run: CampaignRun, inventory: CampaignRun['inventory'], eligible: readonly Card[]) {
+  const swap = redLineUpgrade(run);
+  // A bonus choice helps only when the player has no spare copy to make the swap.
+  if (swap && (inventory[swap.incoming] ?? 0) <= (run.deck.cards[swap.incoming] ?? 0)
+      && eligible.some(card => card.slug === swap.incoming)) return swap.incoming;
+}
+
+export function redLineSwaps(run: CampaignRun): RematchSwap[] {
+  if (!run.latestRetry || !run.attempts) return [];
+  const swap = redLineUpgrade(run);
+  if (!swap || (run.inventory[swap.incoming] ?? 0) <= (run.deck.cards[swap.incoming] ?? 0)) return [];
+  return campaignCardFit(BY_SLUG.get(swap.incoming)!, campaignCrew(run.deck.legends)) ? [] : [swap];
+}
 
 function rematchRole(card: Card): RematchRole | undefined {
   if (card.type === 'Unit' && (card.cost ?? Infinity) <= 4 && (card.power ?? 0) >= 3
@@ -31,7 +59,7 @@ export function hostileTakeoverSwaps(run: CampaignRun) {
     .filter(slug => (run.deck.cards[slug] ?? 0) < Math.min(run.inventory[slug], COPY_MAX))
     .map(slug => BY_SLUG.get(slug))
     .filter((card): card is Card => !!card && !campaignCardFit(card, crew));
-  const proposals: { incoming: string; outgoing: string; reason: string }[] = [];
+  const proposals: RematchSwap[] = [];
   if (run.starter === 'the-heist' && run.deck.cards['heywood-ripperdoc'] > 0) {
     const [malfini, ...heistPressure] = HOSTILE_TAKEOVER_REWARDS['the-heist'];
     if (available.some(card => card.slug === malfini)) {
