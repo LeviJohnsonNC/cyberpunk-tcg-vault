@@ -173,8 +173,6 @@
 @media (prefers-reduced-motion: no-preference) {
   .play-card[data-target="true"]:not([aria-pressed="true"]) .play-card-art { animation: play-card-target-pulse 1.3s ease-in-out infinite; }
   @keyframes play-card-target-pulse { 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 35%, transparent), var(--card-depth, 0 3px 9px var(--play-shadow)); } }
-  .play-eddie[data-target="true"]:not([aria-pressed="true"]) .play-eddie-card { animation: play-target-pulse 1.3s ease-in-out infinite; }
-  @keyframes play-target-pulse { 50% { outline-color: color-mix(in srgb, var(--color-accent) 35%, transparent); outline-offset: 4px; } }
   .play-table [data-drop-available="true"] { animation: play-drop-pulse 1s ease-in-out infinite; }
   @keyframes play-drop-pulse { 50% { background-color: color-mix(in srgb, var(--color-accent) 18%, transparent); } }
 }

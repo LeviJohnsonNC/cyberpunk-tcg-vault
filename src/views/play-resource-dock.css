@@ -1,0 +1,275 @@
+.play-direct .play-table {
+  --play-legend-art: clamp(35px, min(4.1vw, var(--play-legend-width)), 74px);
+  /* The diagonal is the widest point of a 5:7 card during a centered turn. */
+  --play-legend-slot: calc(var(--play-legend-art) * 1.73 + 8px);
+  --play-crew-width: max(224px, calc(var(--play-legend-slot) * 3 + 12px));
+  --play-eddie-slot: clamp(29px, calc((var(--play-crew-width) - 105px) / 4), 45px);
+  --play-eddie-panel-height: calc(var(--play-eddie-slot) + 12px);
+  --play-dock-height: calc(var(--play-legend-slot) + var(--play-eddie-panel-height) + 33px);
+}
+
+.play-direct .play-bench[data-seat="player"] .play-bench-crew { inline-size: var(--play-crew-width); }
+.play-legends { display: grid; gap: 4px; min-width: 0; }
+.play-legends > .play-zone-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 17px;
+  color: var(--color-ticket);
+  font-size: 11px;
+}
+.play-legends > .play-zone-label b {
+  margin: 0;
+  padding: 2px 6px;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 42%, transparent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-accent) 7%, var(--color-canvas-deep));
+  font: italic 800 13px/.9 var(--font-display);
+  white-space: nowrap;
+}
+.play-legends > .play-zone-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--play-edge), transparent);
+}
+.play-legend-slots { display: grid; grid-template-columns: repeat(3, var(--play-legend-slot)); gap: 6px; }
+.play-legend-slot {
+  display: grid;
+  position: relative;
+  place-items: center;
+  inline-size: var(--play-legend-slot);
+  block-size: var(--play-legend-slot);
+}
+.play-empty-legend {
+  width: var(--play-legend-art);
+  aspect-ratio: 5/7;
+  border: 1px dashed var(--color-divider);
+  border-radius: 5px;
+}
+
+.play-legend-slot > .play-card-shell[data-legend-slot] {
+  --w: var(--play-legend-art);
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+.play-card[data-legend-card] { display: grid; place-items: center; width: 100%; height: 100%; }
+.play-direct .play-card[data-legend-card] .play-card-art {
+  width: var(--w);
+  pointer-events: none;
+  translate: none;
+  scale: none;
+  outline: none;
+  border-radius: 5px;
+  animation: none;
+  --card-ring-width: 0px;
+}
+.play-direct .play-legend-slot .play-card[data-legend-card] .play-card-art { outline: none; }
+.play-legend-slot .play-card[data-spent="true"] .play-card-art {
+  rotate: 90deg;
+  filter: saturate(.76) brightness(.79);
+}
+.play-card[data-legend-card] .play-art-fallback:has(b) {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1px;
+  padding-inline: 1px;
+  font-size: 7px;
+}
+.play-card[data-legend-card] .play-art-fallback b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 8px;
+}
+.play-card-shell[data-legend-slot] > .play-details {
+  width: 16px;
+  height: 16px;
+  inset: 2px 2px auto auto;
+  font-size: 9px;
+  z-index: 3;
+}
+.play-card-shell[data-legend-slot]:has(> .play-card[aria-pressed="true"]) > .play-details { display: grid; }
+.play-legend-note {
+  position: absolute;
+  inset: auto auto 2px 3px;
+  pointer-events: none;
+  padding: 1px 3px;
+  background: var(--color-canvas-deep);
+  border-radius: 2px;
+  color: var(--color-ticket);
+  font: 600 8px/1.2 var(--font-mono);
+  text-transform: uppercase;
+}
+
+.play-legend-gear {
+  position: absolute;
+  z-index: 21;
+  inset: auto 3px 3px auto;
+}
+.play-gear-thumbnails { position: absolute; inset: 2px; pointer-events: none; }
+.play-gear-thumbnail { position: absolute; inset: 0 auto auto 0; width: 10px; aspect-ratio: 5/7; }
+.play-gear-thumbnail > .card-art { display: block; width: 100%; height: 100%; object-fit: contain; }
+.play-gear-trigger, .play-eddie-stack-trigger {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 0 4px;
+  border: 1px solid var(--play-edge);
+  border-radius: 4px;
+  background: var(--color-canvas-deep);
+  color: var(--color-ticket);
+  font: 700 11px/1 var(--font-mono);
+  cursor: pointer;
+}
+.play-gear-trigger { display: flex; align-items: center; gap: 2px; min-width: 26px; min-height: 17px; }
+.play-gear-trigger > span { color: var(--color-accent); }
+.play-gear-trigger:hover, .play-eddie-stack-trigger:hover { border-color: var(--color-accent); }
+
+.play-eddies {
+  position: relative;
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  block-size: var(--play-eddie-panel-height);
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 30%, var(--play-edge));
+  border-radius: 7px;
+  background: radial-gradient(ellipse at 0 100%, color-mix(in srgb, var(--color-accent) 10%, transparent), transparent 75%),
+    linear-gradient(115deg, var(--color-surface), var(--color-canvas-deep));
+}
+.play-eddies-total {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-ticket);
+}
+.play-eddies-total b {
+  flex: none;
+  font: 800 clamp(25px, 2.3vw, 40px)/.9 var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+.play-eddies-total span { font: 600 10px/1.1 var(--font-ui); text-transform: uppercase; }
+.play-eddie-row {
+  display: grid;
+  grid-template-columns: repeat(4, var(--play-eddie-slot));
+  align-items: center;
+  min-width: 0;
+  block-size: 100%;
+  padding-inline-start: 4px;
+  border-inline-start: 1px solid color-mix(in srgb, var(--color-accent) 30%, var(--play-edge));
+}
+.play-eddie-row[data-empty] { border-color: transparent; }
+.play-eddie, .play-eddie-stack {
+  display: grid;
+  position: relative;
+  place-items: center;
+  width: var(--play-eddie-slot);
+  height: var(--play-eddie-slot);
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--color-ticket);
+}
+.play-eddie:disabled { opacity: 1; }
+.play-eddie-card {
+  display: block;
+  width: calc((100% - 4px) / 1.73);
+  aspect-ratio: 5/7;
+  border-radius: 3px;
+  box-shadow: 0 2px 5px var(--play-shadow);
+  pointer-events: none;
+}
+.play-eddie-card img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--color-ticket-muted);
+  border-radius: inherit;
+}
+.play-eddie[data-spent="true"] .play-eddie-card { rotate: 90deg; filter: saturate(.76) brightness(.79); }
+.play-eddie-stack-art, .play-eddie-stack-art > .play-eddie { position: absolute; inset: 0; pointer-events: none; }
+.play-eddie-stack-art > .play-eddie:not(:last-child) .play-eddie-card { visibility: hidden; }
+.play-eddie-stack-trigger { width: 100%; height: 100%; }
+.play-eddie-stack:has(.play-eddie-stack-art > .play-eddie) .play-eddie-stack-trigger {
+  place-items: end;
+  padding: 2px 2px 1px;
+  text-shadow: 0 1px 3px #000, 0 0 4px #000;
+  background: linear-gradient(transparent 35%, var(--color-canvas-deep));
+  border-color: transparent;
+}
+
+.play-legend-slot .play-card[data-target="true"],
+.play-legend-slot .play-card[data-drop-available="true"],
+.play-legend-slot .play-card[data-source="true"],
+.play-eddie[data-target="true"],
+.play-gear-trigger[data-target],
+.play-eddie-stack-trigger[data-target] {
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+  background-color: color-mix(in srgb, var(--color-accent) 9%, transparent);
+  cursor: pointer;
+}
+.play-legend-slot .play-card[aria-pressed="true"],
+.play-legend-slot .play-card[data-drop-over="true"],
+.play-eddie[aria-pressed="true"],
+.play-gear-trigger[data-selected],
+.play-eddie-stack-trigger[data-selected] {
+  box-shadow: inset 0 0 0 2px var(--color-ticket);
+  background-color: color-mix(in srgb, var(--color-ticket) 9%, transparent);
+}
+.play-legend-slot .play-card[aria-pressed="true"] .play-card-art::after { content: none; }
+.play-legend-slot .play-card[aria-pressed="true"]::after, .play-eddie[aria-pressed="true"]::after {
+  content: '✓';
+  position: absolute;
+  inset: 3px auto auto 3px;
+  color: var(--color-ticket);
+  text-shadow: 0 0 4px var(--color-canvas-deep);
+  font: 800 10px/1 var(--font-ui);
+}
+.play-legend-slot .play-card:hover:not(:disabled) { background-color: color-mix(in srgb, var(--color-accent) 8%, transparent); }
+.play-legend-slot .play-card:focus-visible, .play-eddie:focus-visible, .play-gear-trigger:focus-visible, .play-eddie-stack-trigger:focus-visible {
+  outline: 2px solid var(--color-ticket);
+  outline-offset: -2px;
+}
+.play-legend-slot .play-card[data-effect-source], .play-legend-slot .play-card[data-effect-target] { box-shadow: inset 0 0 0 1px var(--color-ticket); }
+.play-legend-slot:has(.play-card[data-spent="true"]) {
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--play-edge) 55%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 3%, transparent);
+}
+
+.play-bench[data-seat="rival"] .play-eddies {
+  --play-eddie-slot: 31px;
+  inline-size: 116px;
+  block-size: 70px;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 2px;
+}
+.play-bench[data-seat="rival"] .play-eddie-row { grid-template-columns: repeat(3, var(--play-eddie-slot)); padding: 0; border: 0; }
+.play-bench[data-seat="rival"] .play-eddies-total b { font-size: 27px; }
+.play-bench[data-seat="rival"] .play-eddies-total span { font-size: 9px; }
+.play-resource-breakdown { margin: 4px 0 12px; color: var(--color-text-muted); font-size: 13px; }
+.play-resource-eddie-list, .play-resource-pool { display: flex; flex-wrap: wrap; gap: 5px; }
+.play-resource-eddie-list { --play-eddie-slot: 70px; }
+.play-resource-pool { margin-top: 8px; }
+.play-resource-pool button[aria-pressed="true"] { border-color: var(--color-ticket); color: var(--color-ticket); }
+.play-resource-gear-list .play-card-art { translate: none; }
+
+@media (max-width: 1060px) {
+  .play-direct .play-table { --play-legend-art: clamp(31px, 4vw, 42px); }
+}
+@media (max-width: 900px) {
+  .play-direct .play-table { --play-legend-art: 30px; }
+  .play-direct .play-bench[data-seat="rival"] .play-bench-crew { gap: 6px; }
+  .play-bench[data-seat="rival"] .play-eddies { --play-eddie-slot: 30px; inline-size: 106px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .play-card[data-legend-card] .play-card-art, .play-eddie-card {
+    transition: rotate 210ms cubic-bezier(.2,.7,.25,1), filter 210ms ease;
+  }
+}

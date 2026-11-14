@@ -35,6 +35,7 @@ describe('desktop match prompts', () => {
 
   it('links Eddie payment choices to the mat without exposing pool markers to the engine', () => {
     const view = freshView();
+    view.players.player.zones.eddieArea = [card('spent-card', { zone: 'eddieArea', spent: true }), card('sold-card', { zone: 'eddieArea' })];
     view.prompt.availableMoves = [{ moveId: 'callLegend', inputSpec: { type: 'callLegend', candidates: ['calling'] } }];
     view.prompt.payment = {
       eddieIds: ['sold-card'], eddies: 2, legendIds: ['reserved', 'ready-legend'], effectGearHosts: {},
@@ -42,6 +43,7 @@ describe('desktop match prompts', () => {
     };
     const [action] = matchActions(view);
     const fields = action.fields({ card: ['calling'] });
+    expect(fields[1].options.slice(0, 2).map(({ label }) => label)).toEqual(['Eddie 2', 'Pooled Eddie 1']);
     expect(fields[1].options.map(({ id, cardId }) => ({ id, cardId }))).toEqual([
       { id: 'sold-card', cardId: 'sold-card' }, { id: 'pool:0', cardId: 'pool:0' },
       { id: 'ready-legend', cardId: 'ready-legend' },
