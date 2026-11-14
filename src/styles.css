@@ -48,7 +48,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .navlink[aria-current='page']::after { content: ''; position: absolute; left: var(--space-3); right: var(--space-3); bottom: -1px; height: 3px; background: var(--color-accent); }
 .status { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); font: 500 12px/1 var(--font-mono); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
 .status > .seg { flex: none; }
-.footer { margin-top: 48px; padding-top: var(--space-4); border-top: 1px dashed var(--color-divider); color: var(--color-text-faint); font: 400 12px/1.7 var(--font-mono); }
+.footer { margin-top: var(--space-5); padding-top: var(--space-3); border-top: 1px dashed var(--color-divider); color: var(--color-text-faint); font: 400 12px/1.7 var(--font-mono); }
 .footer a { color: var(--color-text-muted); }
 
 /* ---------- panels ---------- */
