@@ -18,6 +18,10 @@ function clone(el: HTMLElement, spot: Spot) {
   node.querySelectorAll('img').forEach((img) => { img.loading = 'eager'; img.decoding = 'sync'; });
   node.querySelectorAll('.play-float').forEach((float) => float.remove());
   node.style.cssText = `position:absolute;inset:0;width:${spot.w}px;height:${spot.h}px;margin:0;translate:none;rotate:none;scale:none;`;
+  if (el.matches('[data-legend-card]')) {
+    const art = el.querySelector<HTMLElement>('.play-card-art');
+    if (art) node.style.setProperty('--w', `${art.offsetWidth}px`);
+  }
   return node;
 }
 
@@ -231,6 +235,8 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
     const plan = planMotion(previousView, view, beat);
     const accents = tableAccents(previousView, view);
     const publicCards = Object.values(view.players).flatMap((seat) => Object.values(seat.zones).flatMap((zone) => Array.isArray(zone) ? zone : []));
+    const previousCards = Object.values(previousView.players).flatMap((seat) => Object.values(seat.zones).flatMap((zone) => Array.isArray(zone) ? zone : []));
+    const previousById = new Map(previousCards.map((card) => [card.instanceId, card]));
     const playedCards = new Set(beat?.playedCardIds);
     const arrivalCue = (id: string): TableCue => {
       if (playedCards.delete(id)) return 'card-play';
@@ -260,6 +266,10 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
           continue;
         }
         const moved = Math.hypot(earlier.spot.x - piece.spot.x, earlier.spot.y - piece.spot.y);
+        const sameEddie = earlier.zone === piece.zone && piece.zone.startsWith('eddies:');
+        const sameLegendGear = earlier.zone === piece.zone
+          && earlier.el.matches('.play-gear-thumbnail') && piece.el.matches('.play-gear-thumbnail');
+        if (sameEddie || sameLegendGear) continue;
         if (earlier.zone !== piece.zone || earlier.el !== piece.el) {
           const arriving = piece.zone.split(':')[0];
           if (moved > 3) fly(piece, earlier.spot, { delay: id === strike?.attackerId ? impact : 0,
@@ -273,6 +283,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       }
       if (id.startsWith('pool:')) continue;
       const [kind, seat] = piece.zone.split(':');
+      if (kind === 'eddies' && previousById.get(id)?.zone === 'eddieArea') continue;
       const from = kind === 'hand' ? anchor('deck:player') : seat === 'rival' && ['field', 'resolving', 'eddies'].includes(kind) ? anchor('hand:rival') : undefined;
       if (from) fly(piece, from, { delay: 70 * entered++, back: kind !== 'eddies' ? CARD_BACK : undefined, showcase: plan.showcase.includes(id),
         cue: kind === 'hand' || kind === 'eddies' ? undefined : arrivalCue(id) });

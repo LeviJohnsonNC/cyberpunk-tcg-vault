@@ -54,10 +54,11 @@ export function matchActions(view: PlayerView): MatchActionForm[] {
   };
   const options = (ids: string[]) => ids.map(option);
   const payment = prompt.payment;
+  const eddieSlots = new Map(zoneCards(view.players.player, 'eddieArea').map((card, index) => [card.instanceId, index + 1]));
   const poolOptions = payment ? [
-    ...payment.eddieIds.map((id, index) => ({ ...pick(id, `Eddie ${index + 1}`), cardId: id })),
+    ...payment.eddieIds.map((id, index) => ({ ...pick(id, `Eddie ${eddieSlots.get(id) ?? index + 1}`), cardId: id })),
     ...Array.from({ length: Math.max(0, payment.eddies - payment.eddieIds.length) },
-      (_, index) => ({ ...pick(`pool:${index}`, `Eddie ${payment.eddieIds.length + index + 1}`), cardId: `pool:${index}` })),
+      (_, index) => ({ ...pick(`pool:${index}`, `Pooled Eddie ${index + 1}`), cardId: `pool:${index}` })),
   ] : [];
   const paymentFields = (move: string, key?: string) => {
     const cost = key ? payment?.costs[move]?.[key] : undefined;

@@ -34,6 +34,7 @@ import './play-interaction.css';
 import './play-presentation.css';
 import './play-command.css';
 import './stable-playmat.css';
+import './play-resource-dock.css';
 
 const winReasons: Record<string, string> = { gig_victory: 'Seven Gigs secured', overtime_majority: 'Majority of Gigs in overtime', deck_out_victory: 'Deck-out', concede: 'Concession', concession: 'Concession' };
 type SavedDecision = { matchId: string; state: number; selection?: number; picks: Picks; step?: string };
@@ -320,7 +321,10 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     const position = previewPosition(rect, { width: innerWidth, height: innerHeight }, blocked);
     if (position) hoverTimer.current = setTimeout(() => setPreview({ state: stateKey, card, ...position }), 400);
   }
-  function renderCard(card: CardView, fallback = 'Face-down card', fan?: { index: number; count: number }) {
+  function renderCard(card: CardView, fallback = 'Face-down card', options?: {
+    legendSlot?: boolean; attachedGear?: boolean; fan?: { index: number; count: number };
+  }) {
+    const { legendSlot, attachedGear, fan } = options ?? {};
     const printing = vaultCard(card);
     const name = printing?.name ?? card.cardName ?? fallback;
     const target = !busy && targetIds.has(card.instanceId);
@@ -335,13 +339,15 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     const visibleRole = combatRole ?? (effectTarget ? 'Target' : effectSource ? 'Source' : undefined);
     const remembered = rememberedLegends.has(card.instanceId);
     const state = [visibleRole, card.spent && 'Spent', card.hasLag && 'Lag', remembered && 'Known', !!card.damage && `${card.damage} dmg`].filter(Boolean).join(' · ');
+    const slotNote = visibleRole ?? (card.hasLag ? 'Lag' : remembered ? 'Known' : undefined);
     const power = card.zone === 'field' && card.type !== 'gear' ? card.effectivePower : undefined;
     const cost = card.effectiveCost ?? card.cost;
     const repriced = inHand && cost != null && card.cost != null && cost !== card.cost;
     const change = feedback?.changes.find((item) => item.card?.instanceId === card.instanceId);
-    return <div key={card.instanceId} className="play-card-shell" data-dragging={drag?.card.instanceId === card.instanceId}
+    return <div key={card.instanceId} className="play-card-shell" data-legend-slot={legendSlot || undefined} data-dragging={drag?.card.instanceId === card.instanceId}
       style={fan && { '--i': fan.index, '--n': fan.count } as CSSProperties}>
       <button type="button" className="play-card" disabled={!!playback} data-card-id={card.instanceId} data-board-card={card.instanceId}
+        data-legend-card={legendSlot || undefined}
         data-drop-zone={card.instanceId === combat?.attackerId ? 'attacker' : undefined} data-drop-available={!!dropLegal} data-drop-over={drag?.destination?.cardId === card.instanceId}
         data-source={!!selected && sourceId === card.instanceId} data-target={target} data-unplayable={unavailable || undefined} data-spent={card.spent} data-combat={!!combatRole} data-combat-role={combatRole?.toLowerCase()} data-effect-target={effectTarget || undefined} data-effect-source={effectSource || undefined} data-feedback={change?.kind} data-color={printing?.color} data-draggable={dragLegal}
         data-power-shift={power != null && power !== card.power ? power > card.power ? 'up' : 'down' : undefined}
@@ -355,16 +361,22 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
           cue?.('select');
           if (pickOnBoard(card.instanceId)) return;
           const intents = availableIntents(card);
-          if (event.currentTarget.closest('dialog') || (remembered && !intents.length)) inspect(card, event.currentTarget);
+          const dialog = event.currentTarget.closest('dialog');
+          const gearTrigger = attachedGear && dialog?.previousElementSibling;
+          if (dialog && gearTrigger instanceof HTMLButtonElement && intents.length) {
+            dialog.close();
+            showMenu(card, gearTrigger, intents);
+          } else if (dialog || (remembered && !intents.length)) inspect(card, event.currentTarget);
           else showMenu(card, event.currentTarget, intents);
         }}>
         <span className="play-card-art"><CardFace card={card} />
           {printing && <span className="play-art-fallback" aria-hidden="true"><b>{name}</b>{printing.type}</span>}
           {power != null && <span className="play-power" aria-hidden="true">{power}</span>}
           {repriced && <span className="play-cost" aria-hidden="true">{cost} €$</span>}
-          {state && <small>{visibleRole ?? state}</small>}
+          {!legendSlot && state && <small>{visibleRole ?? state}</small>}
         </span><span className="play-card-name">{name}</span>
       </button>
+      {legendSlot && slotNote && <span className="play-legend-note" aria-hidden="true">{slotNote}</span>}
       <button type="button" className="play-details" disabled={!!playback} aria-label={`Details for ${name}`} title="Inspect card · I" onClick={(event) => inspect(card, event.currentTarget)}>i</button>
       {feedback && change && (change.kind === 'power' || change.kind === 'called') && <span className="play-float" key={feedback.id} data-tone={(change.amount ?? 0) < 0 ? 'down' : 'up'} aria-hidden="true">{change.label}</span>}
     </div>;
@@ -509,7 +521,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
         overlay={dropZones.has('program') && <div className="play-program-drop" data-drop-zone="program" data-drop-available="true" data-drop-over={dropOver === 'program'}>Play Program</div>} />
       <PlayerBench rolls={rolls} active={playing && yourTurn} {...targeting} dieDrag={gigChoice ? dragControl : undefined} renderCard={renderCard} renderFace={face}>
         <section className="play-hand" data-zone="hand:player" data-crowded={hand.length > 9 || undefined} aria-label="Your hand">
-          <div className="play-card-row">{hand.length ? hand.map((card, index) => renderCard(card, undefined, { index, count: hand.length })) : !setup && <span className="play-empty">No cards in hand</span>}</div>
+          <div className="play-card-row">{hand.length ? hand.map((card, index) => renderCard(card, undefined, { fan: { index, count: hand.length } })) : !setup && <span className="play-empty">No cards in hand</span>}</div>
         </section>
       </PlayerBench>
       {!playback && snapshot.peeks.length > 0 && <section className="play-private-peek" aria-label="Private Legend peek">

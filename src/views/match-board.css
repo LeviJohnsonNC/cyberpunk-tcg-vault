@@ -80,35 +80,6 @@
 .play-direct .play-bench[data-seat="rival"] .play-bench-crew { align-items: center; }
 .play-direct .play-bench[data-seat="rival"] .play-bench-crew { gap: clamp(8px, 1vw, 15px); }
 .play-direct .play-bench-piles { gap: clamp(6px, .7vw, 13px); }
-.play-direct .play-bench[data-seat="rival"] .play-eddies { width: clamp(128px, 10vw, 170px); }
-.play-direct .play-eddies {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  align-content: center;
-  justify-items: start;
-  gap: 1px 5px;
-  padding: 4px 7px;
-  background: linear-gradient(115deg, var(--color-surface), var(--color-canvas-deep));
-}
-.play-direct .play-eddies-total { grid-area: 1 / 1; grid-template-columns: auto auto; align-items: center; gap: 5px; }
-.play-direct .play-eddies-total b { font-size: clamp(24px, 2.1vw, 36px); line-height: 1; }
-.play-direct .play-eddies-total span { font: 500 11px/1.1 var(--font-ui); letter-spacing: 0; }
-.play-direct .play-eddies-split { grid-column: 1 / -1; color: var(--color-text-muted); font: 500 12px/1.2 var(--font-ui); }
-.play-direct .play-eddie-row {
-  grid-area: 1 / 2;
-  width: 100%;
-  min-height: 0;
-  position: relative;
-  overflow-x: auto;
-  scrollbar-width: thin;
-  padding: 3px;
-  align-self: center;
-}
-.play-direct .play-eddie { flex-basis: calc(var(--play-legend-width) * .49); flex-shrink: 0; }
-.play-direct .play-bench[data-seat="rival"] .play-eddie-row { grid-area: 3 / 1 / 4 / 3; }
-.play-direct .play-bench[data-seat="rival"] .play-eddies-split { overflow: visible; text-overflow: clip; }
-.play-direct .play-bench[data-seat="rival"] .play-eddies-total { margin-block-end: 2px; }
-.play-direct .play-eddie:focus-visible .play-eddie-card { outline-color: var(--color-ticket); }
 .play-direct .play-seat-hand { font: 500 12px/1.2 var(--font-ui); letter-spacing: 0; text-transform: none; }
 .play-direct .play-seat-hand b { color: var(--color-ticket); font: 700 17px/1 var(--font-display); }
 .play-direct .play-rival-hand { width: 100%; padding-inline: 0; }

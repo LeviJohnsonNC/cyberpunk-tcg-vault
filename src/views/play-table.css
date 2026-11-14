@@ -53,45 +53,6 @@
 .play-seat-hand { color: var(--color-text-muted); }
 .play-bench[data-active="true"] .play-seat-name .play-eyebrow { color: var(--color-accent); }
 
-.play-legends { display: grid; gap: 3px; min-width: 0; }
-.play-legends .play-card-row { justify-content: flex-start; gap: 6px; }
-.play-empty-legend { flex: none; width: var(--play-legend-width); aspect-ratio: 5/7; border: 1px dashed var(--color-divider); border-radius: 5px; }
-
-.play-eddies {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-  padding: 4px 8px;
-  border: 1px solid color-mix(in srgb, var(--play-edge) 70%, transparent);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--color-canvas-deep) 52%, transparent);
-}
-.play-bench[data-seat="rival"] .play-eddies { align-self: stretch; max-width: calc(var(--play-card-width) * 2.6); }
-.play-eddies-total { flex: none; display: grid; justify-items: center; gap: 1px; }
-.play-eddies-total b { color: var(--color-ticket); font: 800 clamp(22px, calc(var(--play-card-width) * .3), 40px)/.9 var(--font-display); font-variant-numeric: tabular-nums; }
-.play-eddies-total span { color: var(--color-text-muted); font: 500 9px/1.2 var(--font-mono); letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; }
-.play-eddie-row { display: flex; align-items: center; min-width: 0; min-height: calc(var(--play-legend-width) * .66); }
-.play-eddie {
-  position: relative;
-  flex: 0 1 calc(var(--play-legend-width) * .5);
-  min-width: 9px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--color-ticket);
-}
-.play-eddie:last-child { flex-shrink: 0; }
-.play-eddie-card { display: block; position: relative; width: calc(var(--play-legend-width) * .44); aspect-ratio: 5/7; border-radius: 3px; outline: 2px solid transparent; outline-offset: 1px; }
-.play-eddie-card img { display: block; width: 100%; height: 100%; border: 1px solid var(--color-ticket-muted); border-radius: 3px; }
-.play-eddie[data-spent="true"] .play-eddie-card { rotate: 90deg; scale: .86; opacity: .5; }
-.play-eddie[data-target="true"] { cursor: pointer; }
-.play-eddie[data-target="true"] .play-eddie-card { outline-color: var(--color-accent); }
-.play-eddie[aria-pressed="true"] .play-eddie-card { outline-color: var(--color-ticket); translate: 0 -4px; }
-.play-eddies-split { margin: 0; color: var(--color-text-faint); font: 400 9px/1.2 var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.play-eddies-split > span { color: var(--color-accent); }
-
 .play-fixer { display: grid; gap: 3px; justify-items: start; }
 .play-fixer .play-dice { display: grid; grid-template-columns: repeat(3, var(--play-die)); gap: 2px; min-height: var(--play-die); }
 .play-pile { display: grid; justify-items: center; gap: 3px; padding: 0; border: 0; background: none; color: var(--color-text); }
@@ -146,7 +107,6 @@
 }
 .play-card-shell:last-child { flex: none; width: var(--w); }
 .play-card-shell:hover, .play-card-shell:focus-within { z-index: 20; }
-.play-legends .play-card-shell { --w: var(--play-legend-width); flex: none; width: var(--w); }
 .play-hand .play-card-shell { --w: var(--play-hand-width); --card-gap: 8px; }
 .play-pile-cards .play-card-shell { --w: 112px; flex: none; width: var(--w); }
 .play-equipped { position: relative; flex: none; display: flex; align-items: flex-end; margin-inline-end: var(--card-gap, 10px); }
@@ -154,8 +114,6 @@
 .play-equipped > .play-card-shell { z-index: 2; flex: none; width: var(--w); }
 .play-attachments { display: flex; align-items: flex-end; }
 .play-attachments .play-card-shell { --w: calc(var(--play-card-width) * .56); flex: none; width: var(--w); margin-inline-start: calc(var(--w) * -.42); }
-.play-legends .play-equipped { margin-inline-end: 0; }
-.play-legends .play-attachments .play-card-shell { --w: calc(var(--play-legend-width) * .68); }
 .play-equipped > .play-card-shell:hover, .play-attachments .play-card-shell:hover, .play-attachments .play-card-shell:focus-within { z-index: 20; }
 
 /* ---------- a card ---------- */
@@ -181,7 +139,7 @@
 .play-pile-cards .play-card-name { display: block; margin-block-start: 4px; font-size: 11px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .play-card:hover:not(:disabled) .play-card-art { --card-ring-width: 2px; --card-ring: color-mix(in srgb, var(--color-accent) 75%, transparent); }
-.play-field .play-card:hover:not(:disabled) .play-card-art, .play-legends .play-card:hover:not(:disabled) .play-card-art { translate: 0 -4px; --card-depth: 0 10px 18px var(--play-shadow); }
+.play-field .play-card:hover:not(:disabled) .play-card-art { translate: 0 -4px; --card-depth: 0 10px 18px var(--play-shadow); }
 .play-card[data-spent="true"] .play-card-art { rotate: 8deg; scale: .93; filter: saturate(.5) brightness(.7); }
 .play-card[data-spent="true"]:hover .play-card-art { filter: saturate(.8) brightness(.9); }
 .play-card[data-source="true"] .play-card-art { --card-ring-width: 3px; --card-ring: var(--color-accent); translate: 0 -6px; }
@@ -267,7 +225,7 @@
 }
 .play-card-shell:hover > .play-details, .play-details:focus-visible, .play-card:focus-visible + .play-details, .play-pile-cards .play-details { opacity: .9; }
 .play-details:hover, .play-details:focus-visible { border-color: var(--color-accent); opacity: 1; }
-.play-legends .play-details, .play-attachments .play-details { width: 16px; height: 16px; font-size: 9px; inset: 2px 2px auto auto; }
+.play-attachments .play-details { width: 16px; height: 16px; font-size: 9px; inset: 2px 2px auto auto; }
 .play-card-shell:has(> .play-card[aria-pressed="true"]) > .play-details { display: none; }
 
 /* ---------- combat stance ---------- */
@@ -517,6 +475,5 @@
   .play-card-art { transition: translate 170ms ease, rotate 220ms ease, scale 170ms ease, filter 220ms ease, box-shadow 170ms ease; }
   .play-hand .play-card-shell { transition: rotate 170ms ease; }
   .play-hand .play-card, .play-hand .play-details { transition: translate 170ms cubic-bezier(.2, .8, .2, 1), scale 170ms cubic-bezier(.2, .8, .2, 1), opacity 120ms ease; }
-  .play-eddie-card { transition: rotate 220ms ease, scale 220ms ease, opacity 220ms ease, translate 140ms ease, outline-color 140ms ease; }
   .play-details { transition: opacity 120ms ease; }
 }

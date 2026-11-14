@@ -7,7 +7,7 @@ import { DieFace } from './PlayDice';
 
 type DieDrag = { start: (event: PointerEvent<HTMLElement>, die: CardView) => void; suppressClick: () => boolean };
 export type Targeting = { dieDrag?: DieDrag; effectIds?: Set<string>; dropZones?: Set<string>; dropOver?: string; targetIds: Set<string>; chosenIds: Set<string>; onPick: (id: string) => void };
-type CardTile = (card: CardView, label?: string) => ReactNode;
+type CardTile = (card: CardView, label?: string, options?: { legendSlot?: boolean; attachedGear?: boolean }) => ReactNode;
 /** The latest public outcome, shown where it happened. */
 export interface Outcome { id: number; changes: MatchChange[] }
 type MatProps = Targeting & { snapshot: MatchSnapshot; renderCard: CardTile; outcome?: Outcome; rolls?: GigRoll[] };
@@ -89,14 +89,14 @@ function crew(view: SeatView) {
   return { legends, field, attached, units: field.filter((card) => !attachedIds.has(card.instanceId)) };
 }
 
-function withGear(attached: CardView[], renderCard: CardTile, card: CardView, label?: string) {
+function withGear(attached: CardView[], renderCard: CardTile, card: CardView) {
   const gear = attached.filter((item) => item.attachedToId === card.instanceId);
   return gear.length ? <div key={card.instanceId} className="play-equipped" style={{ '--gear': gear.length } as CSSProperties}>
-    {renderCard(card, label)}
-    <div className="play-attachments" role="group" aria-label={`Gear attached to ${card.cardName ?? label ?? 'this card'}`}>
+    {renderCard(card)}
+    <div className="play-attachments" role="group" aria-label={`Gear attached to ${card.cardName ?? 'this card'}`}>
       {gear.map((item) => renderCard(item))}
     </div>
-  </div> : renderCard(card, label);
+  </div> : renderCard(card);
 }
 
 /** One side of the field: the Units a crew has in play, large enough to read. */
@@ -117,14 +117,57 @@ export function SeatField({ seat, snapshot, active, renderCard, overlay, ...targ
   </section>;
 }
 
-function Legends({ seat, snapshot, renderCard }: { seat: Seat; snapshot: MatchSnapshot; renderCard: CardTile }) {
+function ResourceDialog({ title, label, className, trigger, target, selected, children }: {
+  title: string; label: string; className: string; trigger: ReactNode; target?: boolean; selected?: boolean; children: ReactNode;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  return <>
+    <button type="button" className={className} aria-label={label} aria-haspopup="dialog" title={label}
+      data-target={target || undefined} data-selected={selected || undefined} onClick={() => dialog.current?.showModal()}>{trigger}</button>
+    <dialog ref={dialog} className="al-dialog play-pile-dialog play-resource-dialog" aria-labelledby={titleId} onClick={(event) => {
+      if (event.target === dialog.current) dialog.current?.close();
+    }}>
+      <div className="al-dialog-body">
+        <div className="play-inspect-head"><h2 id={titleId}>{title}</h2>
+          <button type="button" className="btn quiet" onClick={() => dialog.current?.close()}>Close</button></div>
+        {children}
+      </div>
+    </dialog>
+  </>;
+}
+
+function Legends({ seat, snapshot, renderCard, renderFace, targetIds, chosenIds }: {
+  seat: Seat; snapshot: MatchSnapshot; renderCard: CardTile; renderFace: (card: CardView) => ReactNode;
+} & Pick<Targeting, 'targetIds' | 'chosenIds'>) {
   const { legends, attached } = crew(snapshot.view.players[seat]);
-  return <section className="play-legends" data-zone={`legends:${seat}`} aria-label={seat === 'player' ? 'Your Legends' : 'Rival Legends'}>
+  const own = seat === 'player';
+  return <section className="play-legends" data-zone={`legends:${seat}`} aria-label={own ? 'Your Legends' : 'Rival Legends'}>
     <h3 className="play-zone-label">Legends <b>{legends.length}/3</b></h3>
-    <div className="play-card-row">{legends.map((card, index) => withGear(attached, renderCard, card, `Legend slot ${index + 1}`))}
-      {Array.from({ length: Math.max(0, 3 - legends.length) }, (_, index) => <span key={`empty:${index}`} className="play-empty-legend" aria-label="Empty Legend slot" />)}
+    <div className="play-legend-slots">{legends.map((card, index) => {
+      const gear = attached.filter((item) => item.attachedToId === card.instanceId);
+      const host = card.cardName ?? `Legend slot ${index + 1}`;
+      return <div key={card.instanceId} className="play-legend-slot">
+        {renderCard(card, `Legend slot ${index + 1}`, { legendSlot: true })}
+        {gear.length > 0 && <div className="play-legend-gear" data-zone={`field:${seat}`}>
+          <span className="play-gear-thumbnails" aria-hidden="true">{gear.map(item =>
+            <span key={item.instanceId} className="play-gear-thumbnail" data-card-id={item.instanceId}>{renderFace(item)}</span>)}</span>
+          <ResourceDialog title={`Gear on ${host}`} label={`${gear.length} attached Gear on ${host}`} className="play-gear-trigger"
+            target={gear.some(item => targetIds.has(item.instanceId))} selected={gear.some(item => chosenIds.has(item.instanceId))}
+            trigger={<><span aria-hidden="true">↗</span> {gear.length}</>}>
+            <div className="play-pile-cards play-resource-gear-list">{gear.map(item => renderCard(item, undefined, { attachedGear: true }))}</div>
+          </ResourceDialog>
+        </div>}
+      </div>;
+    })}
+      {Array.from({ length: Math.max(0, 3 - legends.length) }, (_, index) =>
+        <div key={`empty:${index}`} className="play-legend-slot" aria-label="Empty Legend slot"><span className="play-empty-legend" /></div>)}
     </div>
   </section>;
+}
+
+function EddieArt() {
+  return <span className="play-eddie-card"><img src={eddiesBack} alt="" /></span>;
 }
 
 function Eddies({ seat, snapshot, outcome, ...targeting }: Targeting & { seat: Seat; snapshot: MatchSnapshot; outcome?: Outcome }) {
@@ -135,22 +178,53 @@ function Eddies({ seat, snapshot, outcome, ...targeting }: Targeting & { seat: S
   const ready = eddies.filter((card) => !card.spent).length;
   const spent = eddies.length - ready;
   const fromLegends = Math.max(0, view.availableEddies - view.eddies);
-  const pool = Array.from({ length: Math.max(0, view.eddies - ready) }, (_, index) => ({ instanceId: `pool:${index}`, spent: false }));
+  const pooled = Math.max(0, view.eddies - ready);
+  const pool = own ? Array.from({ length: pooled }, (_, index) => `pool:${index}`) : [];
+  const slots = own ? 4 : 3;
+  const showStack = eddies.length > slots || pooled > 0;
+  const shown = showStack ? eddies.slice(0, slots - 1) : eddies;
+  const stacked = eddies.slice(shown.length);
+  const stackIds = [...stacked.map(card => card.instanceId), ...pool];
+  const breakdownText = [
+    ready > 0 && `${ready} ready ${ready === 1 ? 'Eddie card' : 'Eddie cards'}`,
+    spent > 0 && `${spent} spent`,
+    pooled > 0 && `${pooled} in the pool`,
+    fromLegends > 0 && `${fromLegends} from Legends`,
+  ].filter(Boolean).join(' · ');
+  function eddieButton(card: CardView, index: number, inDialog = false) {
+    const target = targeting.targetIds.has(card.instanceId);
+    const label = `${own ? 'Your' : 'Rival'} Eddie ${index + 1}, ${card.spent ? 'spent' : 'ready'}`;
+    return <button key={card.instanceId} type="button" className="play-eddie" aria-label={label} title={label}
+      data-card-id={inDialog ? undefined : card.instanceId} data-spent={card.spent} data-target={target} disabled={!target}
+      aria-pressed={target ? targeting.chosenIds.has(card.instanceId) : undefined} onClick={() => targeting.onPick(card.instanceId)}>
+      <EddieArt />
+    </button>;
+  }
   return <section className="play-eddies" data-zone={`eddies:${seat}`} data-drop-zone={`eddies:${seat}`} data-drop-available={targeting.dropZones?.has(`eddies:${seat}`)} data-drop-over={targeting.dropOver === `eddies:${seat}`} aria-label={own ? 'Your Eddies' : 'Rival Eddies'} aria-describedby={breakdown}>
-    <div className="play-eddies-total" title={`${view.eddies} ready · ${spent} spent · ${fromLegends} from Legends`}>
-      <b>{view.availableEddies}</b><span>€$ available</span>
+    <div className="play-eddies-total" title={breakdownText || undefined}><b>{view.availableEddies}</b><span>€$<wbr /> available</span></div>
+    <span id={breakdown} className="sr-only">{view.availableEddies} Eddies available{breakdownText && `. ${breakdownText}`}.</span>
+    <div className="play-eddie-row" data-empty={!eddies.length && !showStack || undefined}>
+      {shown.map((card, index) => eddieButton(card, index))}
+      {showStack && <div className="play-eddie-stack">
+        <div className="play-eddie-stack-art" aria-hidden="true">{stacked.map(card =>
+          <span key={card.instanceId} className="play-eddie" data-card-id={card.instanceId} data-spent={card.spent}><EddieArt /></span>)}</div>
+        <ResourceDialog title={own ? 'Your Eddies' : 'Rival Eddies'} className="play-eddie-stack-trigger"
+          label={`View Eddies · ${eddies.length} cards${pooled ? ` · ${pooled} in the pool` : ''}`}
+          target={stackIds.some(id => targeting.targetIds.has(id))}
+          selected={stackIds.some(id => targeting.chosenIds.has(id))}
+          trigger={stacked.length ? `+${stacked.length + pooled}` : `${pooled}€$`}>
+          <p className="play-resource-breakdown">{view.availableEddies} €$ available · {breakdownText}</p>
+          {eddies.length > 0 && <div className="play-resource-eddie-list" aria-label="Eddie cards">
+            {eddies.map((card, index) => eddieButton(card, index, true))}
+          </div>}
+          {pool.length > 0 && <div className="play-resource-pool" aria-label="Pooled Eddies">{pool.map((id, index) => {
+            const target = targeting.targetIds.has(id);
+            return <button key={id} type="button" className="btn quiet" disabled={!target}
+              aria-pressed={target ? targeting.chosenIds.has(id) : undefined} onClick={() => targeting.onPick(id)}>Pooled Eddie {index + 1}</button>;
+          })}</div>}
+        </ResourceDialog>
+      </div>}
     </div>
-    <span id={breakdown} className="sr-only">{view.availableEddies} Eddies available. {view.eddies} ready, {spent} spent, {fromLegends} from Legends.</span>
-    <p className="play-eddies-split" aria-hidden="true">{view.eddies} ready <span>·</span> +{fromLegends} Legends</p>
-    <div className="play-eddie-row">{[...eddies, ...pool].map((card, index) => {
-      const target = targeting.targetIds.has(card.instanceId) && (own || !card.instanceId.startsWith('pool:'));
-      const label = `${own ? 'Your' : 'Rival'} Eddie ${index + 1}, ${card.spent ? 'spent' : 'ready'}`;
-      return <button key={card.instanceId} type="button" className="play-eddie" aria-label={label} title={label}
-        data-card-id={card.instanceId} data-spent={card.spent} data-target={target} disabled={!target}
-        aria-pressed={target ? targeting.chosenIds.has(card.instanceId) : undefined} onClick={() => targeting.onPick(card.instanceId)}>
-        <span className="play-eddie-card"><img src={eddiesBack} alt="" /></span>
-      </button>;
-    })}</div>
     <ZoneFloat outcome={outcome} seat={seat} kinds={['eddies']} />
   </section>;
 }
@@ -198,7 +272,7 @@ export function RivalBench({ snapshot, name, active, renderCard, renderFace, out
     </div>
     <div className="play-bench-crew">
       <Eddies seat="rival" snapshot={snapshot} outcome={outcome} {...targeting} />
-      <Legends seat="rival" snapshot={snapshot} renderCard={renderCard} />
+      <Legends seat="rival" snapshot={snapshot} renderCard={renderCard} renderFace={renderFace} {...targeting} />
     </div>
   </section>;
 }
@@ -207,7 +281,7 @@ export function RivalBench({ snapshot, name, active, renderCard, renderFace, out
 export function PlayerBench({ snapshot, active, renderCard, renderFace, outcome, rolls, children, ...targeting }: BenchProps & { children: ReactNode }) {
   return <div className="play-bench" data-seat="player" data-active={active}>
     <div className="play-bench-crew" role="group" aria-label="Your crew and Eddies">
-      <Legends seat="player" snapshot={snapshot} renderCard={renderCard} />
+      <Legends seat="player" snapshot={snapshot} renderCard={renderCard} renderFace={renderFace} {...targeting} />
       <Eddies seat="player" snapshot={snapshot} outcome={outcome} {...targeting} />
     </div>
     {children}
