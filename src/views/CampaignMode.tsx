@@ -387,7 +387,7 @@ export function CampaignMode({ scope, exit, openInBuilder, preparationOnly = fal
   const continueLabel = scenePending ? 'Continue story' : earnedPack ? 'Open your pack'
     : run?.phase === 'claimingFinish' ? 'Open Champion’s Cache' : 'Review deck and retry';
   const stuckCard = snapshot?.report?.stuck.find(item => (item.card.cost ?? 0) >= 5)?.card.cardName;
-  const resultNext = run?.balanceVersion === 3 && run.aftermath?.outcome === 'loss' && encounter
+  const resultNext = (run?.balanceVersion ?? 0) >= 3 && run?.aftermath?.outcome === 'loss' && encounter
     ? stuckCard ? `${stuckCard} stayed in your hand. Consider swapping a copy for a cheaper play before the rematch.`
       : campaignRivalIntel(encounter.id, run.starter).counterplay
     : scenePending ? 'Next: The aftermath and your reward pack.' : undefined;

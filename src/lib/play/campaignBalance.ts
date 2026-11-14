@@ -162,6 +162,18 @@ export const ROGUELIKE_RIVAL_DELTAS: Readonly<Partial<Record<string, RivalTuning
 };
 
 
+/** Ledger uses cheap Gear to pressure Gigs and Red interaction to defend her carriers. */
+export const LEDGER_GEAR_LIST = {
+  legends: ['river-ward-detective-on-the-hunt', 'viktor-vektor-sit-down-and-relax', 'v-streetkid'],
+  cards: {
+    'maelstrom-goons': 3, 'dexter-deshawn-one-last-chance': 3, 'viktor-vektor-you-might-feel-a-little-pinch': 3,
+    'gilded-mato-n': 2, 'meredith-stout-stone-cold-corpo': 3, 'ruthless-lowlife': 1, 'la-llorona-ghost-of-the-past': 2,
+    'kerry-eurodyne-the-last-rockerboy': 2, 'mantis-blades': 3, 'satori-sword-of-saburo': 2, 'zetatech-faceplate': 3,
+    'kiroshi-optics': 2, detonate: 2, 'industrial-assembly': 2, 'safety-override': 1, 'the-heist': 2,
+    'augmented-negotiators': 2, 'offduty-malfini': 1, 'gorilla-arms': 1,
+  },
+};
+
 export const CAMPAIGN_RIVAL_PLANS: Readonly<Record<CampaignRivalPlan, DeckStrategyProfile>> = {
   'chrome-debt-v3': {
     deckId: 'chrome-debt-v3',
