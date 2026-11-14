@@ -1,6 +1,6 @@
-import { useId, useRef, useState, type ReactNode } from 'react';
+import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
-/** Expands above the command bar while leaving the mat and its controls in place. */
+/** Expands above the command bar, reserving space when the panel exceeds the upper mat. */
 export function PlayDecisionPanel({ label, title, defaultOpen = false, children }: {
   label: string; title: string; defaultOpen?: boolean; children: ReactNode;
 }) {
@@ -9,6 +9,30 @@ export function PlayDecisionPanel({ label, title, defaultOpen = false, children 
   const visible = open ?? defaultOpen;
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const section = panel.current;
+    const command = section?.closest<HTMLElement>('.play-command');
+    const table = command?.parentElement;
+    if (!section || !command || !table) return;
+
+    let reserved = 0;
+    const fitPanel = () => {
+      const room = command.getBoundingClientRect().top - table.getBoundingClientRect().top - reserved;
+      const next = Math.max(0, Math.ceil(section.offsetHeight + 12 - room));
+      if (reserved === next) return;
+      reserved = next;
+      command.style.marginBlockStart = `${reserved}px`;
+    };
+    fitPanel();
+    const observer = new ResizeObserver(fitPanel);
+    observer.observe(section);
+    observer.observe(table);
+    return () => {
+      observer.disconnect();
+      command.style.removeProperty('margin-block-start');
+    };
+  }, [visible]);
+
   function close() {
     setOpen(false);
     trigger.current?.focus({ preventScroll: true });
