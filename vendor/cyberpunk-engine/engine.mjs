@@ -897,45 +897,51 @@ function We(e, n, r) {
 function C(e, t) {
 	return e ?? t;
 }
+// upstream/submodules/cyberpunk/packages/engine/src/automation/util/fight-legality.ts
+function Ge(e, t) {
+	if (e.move !== "attackUnit") return !0;
+	let n = Object.values(t.players).flatMap((e) => Array.isArray(e.zones.field) ? e.zones.field : []), r = n.find((t) => t.instanceId === e.args?.attackerId), i = n.find((t) => t.instanceId === e.args?.defenderId);
+	return !!r && !!i && (i.spent || r.grantedRules.includes("canAttackReadyUnits") || r.grantedRules.includes("canAttackReadyBlockers") && i.grantedRules.includes("blocker"));
+}
 // upstream/submodules/cyberpunk/packages/engine/src/automation/util/attack-readiness.ts
-function Ge(e) {
+function Ke(e) {
 	return (e.type === "unit" || e.keywords.includes("goSolo") || e.grantedRules.includes("goSolo")) && !e.faceDown && !e.spent;
 }
-function Ke(e, t) {
-	return !Ge(e) || e.grantedRules.includes("cantAttack") || e.grantedRules.includes("requiresProgramPlayedThisTurn") && !t ? !1 : !e.hasLag || Ye(e, "adrenaline") || e.grantedRules.includes("canAttackOnPlayedTurnAgainstUnits") || e.grantedRules.includes("canAttackRivalOnPlayedTurn");
-}
 function qe(e, t) {
-	return e.grantedRules.includes("cantAttackRival") || !Ke(e, t) ? !1 : !e.hasLag || Ye(e, "adrenaline") || e.grantedRules.includes("canAttackRivalOnPlayedTurn");
+	return !Ke(e) || e.grantedRules.includes("cantAttack") || e.grantedRules.includes("requiresProgramPlayedThisTurn") && !t ? !1 : !e.hasLag || Xe(e, "adrenaline") || e.grantedRules.includes("canAttackOnPlayedTurnAgainstUnits") || e.grantedRules.includes("canAttackRivalOnPlayedTurn");
 }
-function Je(e) {
-	return Ge(e) && Ye(e, "blocker");
+function Je(e, t) {
+	return e.grantedRules.includes("cantAttackRival") || !qe(e, t) ? !1 : !e.hasLag || Xe(e, "adrenaline") || e.grantedRules.includes("canAttackRivalOnPlayedTurn");
 }
-function Ye(e, t) {
+function Ye(e) {
+	return Ke(e) && Xe(e, "blocker");
+}
+function Xe(e, t) {
 	return e.keywords.includes(t) || e.grantedRules.includes(t);
 }
 // upstream/submodules/cyberpunk/packages/engine/src/automation/util/board-presence.ts
-function Xe(e, t) {
+function Ze(e, t) {
 	let n = e.players[t]?.zones.field;
 	if (!Array.isArray(n)) return !1;
 	let r = e.playedCardTypesThisTurn[t]?.includes("program") === !0;
-	return n.filter((e) => qe(e, r)).length > Object.entries(e.players).filter(([e]) => e !== t).reduce((e, [, t]) => {
+	return n.filter((e) => Je(e, r)).length > Object.entries(e.players).filter(([e]) => e !== t).reduce((e, [, t]) => {
 		let n = t.zones.field;
-		return e + (Array.isArray(n) ? n.filter(Je).length : 0);
+		return e + (Array.isArray(n) ? n.filter(Ye).length : 0);
 	}, 0);
 }
 // upstream/submodules/cyberpunk/packages/engine/src/automation/deck-profile.ts
-function Ze(e, t, n) {
+function Qe(e, t, n) {
 	if (!n || !e || !t?.cardName) return "none";
 	let r = n.gearHosts?.[e], i = n.gearHostTypes?.[e], a = r?.includes(t.cardName) === !0, o = i ? t.type === i : !1;
 	return a && (o || !i) ? "preferred" : a ? "named" : o ? "typed" : "none";
 }
-function Qe(e, t) {
+function $e(e, t) {
 	return !t || !e ? !1 : t.coreCards.includes(e);
 }
-function $e(e, t) {
+function et(e, t) {
 	return !t?.preferSpendOverAttack?.length || !e?.cardName || e.type !== "unit" ? !1 : t.preferSpendOverAttack.includes(e.cardName);
 }
-function et(e) {
+function tt(e) {
 	let t = /* @__PURE__ */ new Set();
 	if (!e?.gearHosts) return t;
 	for (let [n, r] of Object.entries(e.gearHosts)) if (e.gearHostTypes?.[n] !== "unit") for (let e of r) t.add(e);
@@ -954,7 +960,7 @@ function w(e, n) {
 				kind: "stuck",
 				reason: "playCard: no candidates"
 			};
-			let e = n.pickPlayCard ? n.pickPlayCard(i.candidates) : nt(i.candidates);
+			let e = n.pickPlayCard ? n.pickPlayCard(i.candidates) : rt(i.candidates);
 			if (!e) return {
 				kind: "stuck",
 				reason: "playCard: no playable candidate"
@@ -980,7 +986,7 @@ function w(e, n) {
 			return e ? {
 				kind: "command",
 				move: r,
-				args: tt(r, e)
+				args: nt(r, e)
 			} : {
 				kind: "stuck",
 				reason: `${r}: no candidates`
@@ -1103,7 +1109,7 @@ function w(e, n) {
 		default: return t(r, "MoveId in decisionFromMove");
 	}
 }
-function tt(e, t) {
+function nt(e, t) {
 	switch (e) {
 		case "sellCard": return { cardId: t };
 		case "callLegend": return { legendId: t };
@@ -1114,7 +1120,7 @@ function tt(e, t) {
 		default: return { cardId: t };
 	}
 }
-function nt(e) {
+function rt(e) {
 	for (let t of e) {
 		if (t.attachTargets === void 0) return { cardId: t.cardId };
 		let e = t.attachTargets[0];
@@ -1126,14 +1132,14 @@ function nt(e) {
 	return null;
 }
 // upstream/submodules/cyberpunk/packages/engine/src/automation/strategies/greedy.ts
-var rt = {
+var it = {
 	ownNearWinThreshold: 5,
 	rivalNearWinThreshold: 5,
 	mulliganMinCheapCards: 2,
 	mulliganCheapCostThreshold: 2,
 	mulliganMinSellable: 1,
 	fightMinMargin: 1,
-	defaultPriority: it([
+	defaultPriority: at([
 		"mulligan",
 		"keepHand",
 		"attackRival",
@@ -1146,7 +1152,7 @@ var rt = {
 		"passPhase",
 		"resolveAttack"
 	]),
-	ownNearWinPriority: it([
+	ownNearWinPriority: at([
 		"attackRival",
 		"attackUnit",
 		"activateAbility",
@@ -1158,7 +1164,7 @@ var rt = {
 		"sellCard",
 		"mulligan"
 	]),
-	rivalNearWinPriority: it([
+	rivalNearWinPriority: at([
 		"attackRival",
 		"attackUnit",
 		"activateAbility",
@@ -1171,29 +1177,29 @@ var rt = {
 		"mulligan"
 	])
 };
-function it(e) {
+function at(e) {
 	let t = {};
 	for (let n = 0; n < e.length; n++) t[e[n]] = e.length - n;
 	return t;
 }
-function at(e) {
+function ot(e) {
 	let t = e;
 	return typeof t.greedyWeights == "object" && t.greedyWeights !== null;
 }
-function ot(e, t) {
-	return !at(e) || e.deckProfile === t ? e : dt(e.greedyWeights, e.name, t);
+function st(e, t) {
+	return !ot(e) || e.deckProfile === t ? e : ft(e.greedyWeights, e.name, t);
 }
-var st = {
+var ct = {
 	playCard: 10,
 	callLegend: 9,
 	attackRival: 8,
 	attackUnit: 7
 };
-function ct(e, t) {
-	let n = lt(e);
+function lt(e, t) {
+	let n = ut(e);
 	t?.pacing === "develop-first" && (n.defaultPriority = {
 		...n.defaultPriority,
-		...st
+		...ct
 	});
 	let r = t?.weights;
 	return r && (r.ownNearWinThreshold !== void 0 && (n.ownNearWinThreshold = r.ownNearWinThreshold), r.rivalNearWinThreshold !== void 0 && (n.rivalNearWinThreshold = r.rivalNearWinThreshold), r.mulliganMinCheapCards !== void 0 && (n.mulliganMinCheapCards = r.mulliganMinCheapCards), r.mulliganCheapCostThreshold !== void 0 && (n.mulliganCheapCostThreshold = r.mulliganCheapCostThreshold), r.mulliganMinSellable !== void 0 && (n.mulliganMinSellable = r.mulliganMinSellable), r.fightMinMargin !== void 0 && (n.fightMinMargin = r.fightMinMargin), r.defaultPriority && (n.defaultPriority = {
@@ -1207,7 +1213,7 @@ function ct(e, t) {
 		...r.rivalNearWinPriority
 	})), n;
 }
-function lt(e) {
+function ut(e) {
 	return {
 		...e,
 		defaultPriority: { ...e.defaultPriority },
@@ -1215,32 +1221,32 @@ function lt(e) {
 		rivalNearWinPriority: { ...e.rivalNearWinPriority }
 	};
 }
-function ut(e, t) {
+function dt(e, t) {
 	let n = (t) => t === "concede" ? -Infinity : e[t] ?? 0, r = t.map((e) => e.moveId);
 	return [...new Set(r)].sort((e, t) => {
 		let r = n(e), i = n(t);
 		return r === i ? e.localeCompare(t) : i - r;
 	});
 }
-function dt(e = rt, t = "greedy", n) {
-	let r = ct(e, n);
+function ft(e = it, t = "greedy", n) {
+	let r = lt(e, n);
 	return {
 		name: t,
 		greedyWeights: e,
 		deckProfile: n,
 		decideAction(e) {
-			let t = e.prompt.availableMoves.find((e) => e.moveId === "mulligan"), i = mt(e, r, n);
+			let t = e.prompt.availableMoves.find((e) => e.moveId === "mulligan"), i = ht(e, r, n);
 			if (t && i) return {
 				kind: "command",
 				move: "mulligan"
 			};
-			let a = _t(e, r, n);
+			let a = vt(e, r, n);
 			for (let t of a) {
 				if (t === "mulligan" && !i) continue;
 				let a = e.prompt.availableMoves.find((e) => e.moveId === t);
 				if (!a) continue;
-				let o = yt(a, e, r, n);
-				if (o.kind === "command") return pt(e, o, n) ?? o;
+				let o = bt(a, e, r, n);
+				if (o.kind === "command") return mt(e, o, n) ?? o;
 			}
 			return {
 				kind: "stuck",
@@ -1249,16 +1255,16 @@ function dt(e = rt, t = "greedy", n) {
 		}
 	};
 }
-var ft = dt();
-function pt(e, t, n) {
+var pt = ft();
+function mt(e, t, n) {
 	if (t.move !== "attackRival" && t.move !== "attackUnit") return null;
 	let r = t.args?.attackerId;
 	if (typeof r != "string") return null;
 	let i = e.prompt.availableMoves.find((e) => e.moveId === "playCard");
 	if (i?.inputSpec.type !== "playCard") return null;
-	let a = Xt(i.inputSpec.candidates.filter((t) => {
+	let a = Zt(i.inputSpec.candidates.filter((t) => {
 		let i = T(e.view, t.cardId);
-		return i?.type === "gear" && (i.effectivePower ?? 0) > 0 && t.attachTargets?.includes(r) && on(t.attachTargets, e.view, t.cardId, n) === r;
+		return i?.type === "gear" && (i.effectivePower ?? 0) > 0 && t.attachTargets?.includes(r) && sn(t.attachTargets, e.view, t.cardId, n) === r;
 	}), e.view, e.playerId, n);
 	return a ? {
 		kind: "command",
@@ -1266,8 +1272,8 @@ function pt(e, t, n) {
 		args: { ...a }
 	} : null;
 }
-function mt(e, t = rt, n) {
-	let r = ht(e);
+function ht(e, t = it, n) {
+	let r = gt(e);
 	if (r.length === 0) return !1;
 	let i = n?.mulligan;
 	if (!i) {
@@ -1281,22 +1287,22 @@ function mt(e, t = rt, n) {
 	let c = i.cheapUnitCost ?? t.mulliganCheapCostThreshold, l = a.filter((e) => e.type === "unit" && (e.cost ?? Infinity) <= c).length, u = i.minCheapUnits ?? t.mulliganMinCheapCards, d = (i.engineNames ?? []).some((e) => a.some((t) => t.cardName === e));
 	return l < Math.max(0, u - (d ? i.engineRelief ?? 0 : 0));
 }
-function ht(e) {
+function gt(e) {
 	let t = e.view.players?.[e.playerId];
 	if (!t) return [];
 	let n = t.zones.hand;
 	return Array.isArray(n) ? n : [];
 }
-function gt(e, t) {
+function _t(e, t) {
 	if (!t?.preferSpendOverAttack?.length) return !1;
 	let n = e.prompt.availableMoves.find((e) => e.moveId === "activateAbility");
-	return n?.inputSpec.type === "selectAbility" && n.inputSpec.candidates.some((n) => $e(T(e.view, n.cardId), t));
+	return n?.inputSpec.type === "selectAbility" && n.inputSpec.candidates.some((n) => et(T(e.view, n.cardId), t));
 }
-function _t(e, t, n) {
-	let { ownGigCount: r, rivalGigCount: i } = vt(e), a = r >= t.ownNearWinThreshold, o = i >= t.rivalNearWinThreshold, s = ut(a ? t.ownNearWinPriority : o ? t.rivalNearWinPriority : t.defaultPriority, e.prompt.availableMoves);
-	return r < 5 && gt(e, n) ? ["activateAbility", ...s.filter((e) => e !== "activateAbility")] : s;
+function vt(e, t, n) {
+	let { ownGigCount: r, rivalGigCount: i } = yt(e), a = r >= t.ownNearWinThreshold, o = i >= t.rivalNearWinThreshold, s = dt(a ? t.ownNearWinPriority : o ? t.rivalNearWinPriority : t.defaultPriority, e.prompt.availableMoves);
+	return r < 5 && _t(e, n) ? ["activateAbility", ...s.filter((e) => e !== "activateAbility")] : s;
 }
-function vt(e) {
+function yt(e) {
 	let t = e.playerId, n = e.view.players;
 	if (!n) return {
 		ownGigCount: 0,
@@ -1309,7 +1315,7 @@ function vt(e) {
 		rivalGigCount: i
 	};
 }
-function yt(e, n, r, i) {
+function bt(e, n, r, i) {
 	let { moveId: a, inputSpec: o } = e;
 	switch (a) {
 		case "playCard":
@@ -1317,24 +1323,24 @@ function yt(e, n, r, i) {
 			return w(e, {
 				pickFromCandidates: () => null,
 				pickPair: () => null,
-				pickPlayCard: (e) => Yt(e, n.view, n.playerId, i)
+				pickPlayCard: (e) => Xt(e, n.view, n.playerId, i)
 			});
 		case "sellCard":
 			if (o.type !== "selectCard") break;
 			return w(e, {
-				pickFromCandidates: (e) => wt(e, n.view, n.playerId, i),
+				pickFromCandidates: (e) => Tt(e, n.view, n.playerId, i),
 				pickPair: () => null
 			});
 		case "attackUnit":
 			if (o.type !== "selectPair") break;
 			return w(e, {
 				pickFromCandidates: () => null,
-				pickPair: (e, t) => qt(e, t, n.view, n.playerId, r.fightMinMargin)
+				pickPair: (e, t) => Jt(e, t, n.view, n.playerId, r.fightMinMargin)
 			});
 		case "attackRival":
 			if (o.type !== "selectCard") break;
 			return w(e, {
-				pickFromCandidates: (e) => At(e, n.view, n.playerId),
+				pickFromCandidates: (e) => jt(e, n.view, n.playerId),
 				pickPair: () => null
 			});
 		case "useBlocker":
@@ -1343,7 +1349,7 @@ function yt(e, n, r, i) {
 				kind: "stuck",
 				reason: "useBlocker: attack already redirected by blocker"
 			} : w(e, {
-				pickFromCandidates: (e) => Kt(e, n.view, n.playerId, r, i),
+				pickFromCandidates: (e) => qt(e, n.view, n.playerId, r, i),
 				pickPair: () => null
 			});
 		case "callLegend":
@@ -1354,7 +1360,7 @@ function yt(e, n, r, i) {
 		case "goSolo":
 			if (o.type !== "selectCard") break;
 			return w(e, {
-				pickFromCandidates: (e) => Ot(e, n, r, i),
+				pickFromCandidates: (e) => kt(e, n, r, i),
 				pickPair: () => null
 			});
 		case "activateAbility":
@@ -1362,7 +1368,7 @@ function yt(e, n, r, i) {
 			return w(e, {
 				pickFromCandidates: () => null,
 				pickPair: () => null,
-				pickAbility: (e) => Et(e, n, i)
+				pickAbility: (e) => Dt(e, n, i)
 			});
 		case "passPhase":
 		case "concede":
@@ -1410,16 +1416,16 @@ function T(e, t) {
 	}
 	return null;
 }
-function bt(e) {
+function xt(e) {
 	if (!e) return 0;
 	let t = e.effectivePower ?? 0, n = e.keywords.includes("blocker") || e.grantedRules.includes("blocker") ? 18 : 0, r = e.keywords.includes("adrenaline") || e.keywords.includes("goSolo") ? 8 : 0, i = e.type === "unit" ? 10 : e.type === "gear" ? 6 : 4;
 	return t * 3 + n + r + i + e.triggerHints.length * 5;
 }
-var xt = 6;
-function St(e, t) {
+var St = 6;
+function Ct(e, t) {
 	return !t || t.length === 0 || e === null ? !1 : e.cardName !== null && t.includes(e.cardName);
 }
-function Ct(e, t, n) {
+function wt(e, t, n) {
 	if (!n) return 0;
 	let r = e.players[t];
 	if (!r) return 0;
@@ -1427,19 +1433,19 @@ function Ct(e, t, n) {
 	for (let e of [r.zones.field, r.zones.legendArea]) if (Array.isArray(e)) for (let t of e) t.cardName === n && (i += 1);
 	return i;
 }
-function wt(e, t, n, r) {
-	let i = t.players[n]?.availableEddies ?? 0, a = e.filter((e) => !St(T(t, e), r?.coreCards)), o = e.filter((e) => {
+function Tt(e, t, n, r) {
+	let i = t.players[n]?.availableEddies ?? 0, a = e.filter((e) => !Ct(T(t, e), r?.coreCards)), o = e.filter((e) => {
 		let i = T(t, e);
-		return St(i, r?.coreCards) && Ct(t, n, i?.cardName) > 0;
+		return Ct(i, r?.coreCards) && wt(t, n, i?.cardName) > 0;
 	}), s = a.length > 0 ? a : o.length > 0 ? o : null;
 	return s ? [...s].sort((e, n) => {
-		let r = T(t, e), a = T(t, n), o = (r?.cost ?? Infinity) <= i ? 8 : 0, s = (a?.cost ?? Infinity) <= i ? 8 : 0, c = bt(r) + o, l = bt(a) + s;
+		let r = T(t, e), a = T(t, n), o = (r?.cost ?? Infinity) <= i ? 8 : 0, s = (a?.cost ?? Infinity) <= i ? 8 : 0, c = xt(r) + o, l = xt(a) + s;
 		if (c !== l) return c - l;
 		let u = r?.cost ?? Infinity, d = a?.cost ?? Infinity;
 		return u === d ? e.localeCompare(n) : u - d;
 	})[0] ?? null : null;
 }
-var Tt = {
+var Et = {
 	stealGig: 40,
 	defeat: 30,
 	playCard: 24,
@@ -1454,17 +1460,17 @@ var Tt = {
 	moveCard: 10,
 	scry: 8
 };
-function Et(e, t, n) {
-	let { ownGigCount: r, rivalGigCount: i } = vt(t);
+function Dt(e, t, n) {
+	let { ownGigCount: r, rivalGigCount: i } = yt(t);
 	return [...e].sort((e, a) => {
 		let o = (e) => {
-			let a = e.effectHints.reduce((e, t) => e + (Tt[t] ?? 5), 0);
-			return r >= 5 && e.effectHints.includes("stealGig") && (a += 30), i >= 5 && e.effectHints.some((e) => e === "defeat" || e === "ready") && (a += 15), a -= e.eddieCost * 5, e.spendsCard && (a -= 3), $e(T(t.view, e.cardId), n) && (a += 40), a;
+			let a = e.effectHints.reduce((e, t) => e + (Et[t] ?? 5), 0);
+			return r >= 5 && e.effectHints.includes("stealGig") && (a += 30), i >= 5 && e.effectHints.some((e) => e === "defeat" || e === "ready") && (a += 15), a -= e.eddieCost * 5, e.spendsCard && (a -= 3), et(T(t.view, e.cardId), n) && (a += 40), a;
 		}, s = o(e), c = o(a);
 		return s === c ? e.cardId === a.cardId ? e.abilityIndex - a.abilityIndex : e.cardId.localeCompare(a.cardId) : c - s;
 	})[0] ?? null;
 }
-function Dt(e, t) {
+function Ot(e, t) {
 	if (e.length === 0) return null;
 	let n = null;
 	for (let r of e) {
@@ -1477,14 +1483,14 @@ function Dt(e, t) {
 	}
 	return n?.id ?? e[0];
 }
-function Ot(e, t, n, r) {
-	let i = et(r);
-	return (Mt(t.view, t.playerId) >= n.ownNearWinThreshold || i.size === 0 ? e : e.filter((e) => {
+function kt(e, t, n, r) {
+	let i = tt(r);
+	return (Nt(t.view, t.playerId) >= n.ownNearWinThreshold || i.size === 0 ? e : e.filter((e) => {
 		let n = T(t.view, e)?.cardName;
 		return !n || !i.has(n);
 	}))[0] ?? null;
 }
-function kt(e, t, n) {
+function At(e, t, n) {
 	if (e.length === 0) return null;
 	let r = null;
 	for (let n of e) {
@@ -1496,38 +1502,38 @@ function kt(e, t, n) {
 	}
 	return r?.id ?? e[0];
 }
-function At(e, t, n) {
+function jt(e, t, n) {
 	if (e.length === 0) return null;
-	let r = Jt(e, t);
-	if (r.length > 0) return kt(r, t, n);
-	if (jt(t, n) === 0) return null;
-	let i = en(t, n), a = i.reduce((e, t) => Math.max(e, t.effectivePower ?? 0), -Infinity), o = i.length === 0 ? e : e.filter((e) => (T(t, e)?.effectivePower ?? 0) > a);
-	return o.length > 0 ? kt(o, t, n) : Xe(t, n) ? [...e].filter((e) => (T(t, e)?.effectivePower ?? 0) > 0).sort((e, n) => bt(T(t, e)) - bt(T(t, n)) || e.localeCompare(n))[0] ?? null : null;
+	let r = Yt(e, t);
+	if (r.length > 0) return At(r, t, n);
+	if (Mt(t, n) === 0) return null;
+	let i = tn(t, n), a = i.reduce((e, t) => Math.max(e, t.effectivePower ?? 0), -Infinity), o = i.length === 0 ? e : e.filter((e) => (T(t, e)?.effectivePower ?? 0) > a);
+	return o.length > 0 ? At(o, t, n) : Ze(t, n) ? [...e].filter((e) => (T(t, e)?.effectivePower ?? 0) > 0).sort((e, n) => xt(T(t, e)) - xt(T(t, n)) || e.localeCompare(n))[0] ?? null : null;
 }
-function jt(e, t) {
+function Mt(e, t) {
 	for (let [n, r] of Object.entries(e.players)) if (n !== t) return r.gigCount;
 	return 0;
 }
-function Mt(e, t) {
+function Nt(e, t) {
 	return e.players[t]?.gigCount ?? 0;
 }
-function Nt(e, t) {
+function Pt(e, t) {
 	for (let n of Object.keys(e.players)) if (n !== t) return n;
 	return null;
 }
-function Pt(e, t) {
+function Ft(e, t) {
 	let n = e.effectivePower ?? 0;
 	if (n <= 0 || t <= 0) return 0;
 	let r = 1 + Math.floor(n / 10), i = +!!e.grantedRules.includes("stealsOneFewerGig");
 	return Math.min(Math.max(0, r - i), t);
 }
-function Ft(e, t) {
+function It(e, t) {
 	return e.spent || e.faceDown || e.grantedRules.includes("cantAttack") || e.grantedRules.includes("requiresProgramPlayedThisTurn") && !t ? !1 : e.hasLag ? e.grantedRules.includes("adrenaline") || e.grantedRules.includes("canAttackRivalOnPlayedTurn") : e.type === "unit" || e.keywords.includes("goSolo");
 }
-function It(e, t) {
+function Lt(e, t) {
 	return e > t ? "survive" : e === t ? "trade" : "chump";
 }
-function Lt(e) {
+function Rt(e) {
 	switch (e) {
 		case "survive": return 0;
 		case "trade": return 1;
@@ -1535,78 +1541,86 @@ function Lt(e) {
 		default: return t(e, "BlockerOutcome in outcomeRank");
 	}
 }
-function Rt(e, t) {
+function zt(e, t) {
 	return e.triggerHints.includes("gigStolen") ? !0 : e.attachedGearIds.some((e) => T(t, e)?.triggerHints.includes("gigStolen") === !0);
 }
-function zt(e) {
+function Bt(e) {
 	return e.triggerHints.includes("blockerActivated");
 }
-function Bt(e, t, n, r) {
-	let i = Mt(t, n), a = jt(t, n), o = Pt(e, i);
-	return o <= 0 ? !1 : o >= 2 || i >= r.ownNearWinThreshold || a + o >= r.rivalNearWinThreshold || Rt(e, t);
+function Vt(e, t, n, r) {
+	let i = Nt(t, n), a = Mt(t, n), o = Ft(e, i);
+	return o <= 0 ? !1 : o >= 2 || i >= r.ownNearWinThreshold || a + o >= r.rivalNearWinThreshold || zt(e, t);
 }
-function Vt(e, t, n) {
+function Ht(e, t, n) {
 	let r = T(t, e);
 	return r ? {
 		id: e,
-		outcome: It(r.effectivePower ?? 0, n),
+		outcome: Lt(r.effectivePower ?? 0, n),
 		power: r.effectivePower ?? 0,
 		cost: r.cost ?? Infinity,
-		blockerTrigger: zt(r)
+		blockerTrigger: Bt(r)
 	} : null;
 }
-function Ht(e, t) {
-	let n = Lt(e.outcome), r = Lt(t.outcome);
+function Ut(e, t) {
+	let n = Rt(e.outcome), r = Rt(t.outcome);
 	return n === r ? e.blockerTrigger === t.blockerTrigger ? e.power === t.power ? e.cost === t.cost ? e.id.localeCompare(t.id) : e.cost - t.cost : e.power - t.power : e.blockerTrigger ? -1 : 1 : n - r;
 }
-function Ut(e, t, n, r, i, a) {
-	let o = n.effectivePower ?? 0, s = Bt(n, t, r, i), c = Math.min(a?.blockDirectStealsAtLeast ?? 2, 2), l = Pt(n, Mt(t, r)) >= c;
-	return e.map((e) => Vt(e, t, o)).filter((e) => e !== null).filter((e) => e.outcome === "chump" ? !s && !l ? !1 : !Wt(e, t, r, n.instanceId, i) : !0).sort(Ht)[0]?.id ?? null;
+function Wt(e, t, n, r, i, a) {
+	let o = n.effectivePower ?? 0, s = Vt(n, t, r, i), c = Math.min(a?.blockDirectStealsAtLeast ?? 2, 2), l = Ft(n, Nt(t, r)) >= c;
+	return e.map((e) => Ht(e, t, o)).filter((e) => e !== null).filter((e) => e.outcome === "chump" ? !s && !l ? !1 : !Gt(e, t, r, n.instanceId, i) : !0).sort(Ut)[0]?.id ?? null;
 }
-function Wt(e, t, n, r, i) {
-	let a = Mt(t, n), o = jt(t, n);
+function Gt(e, t, n, r, i) {
+	let a = Nt(t, n), o = Mt(t, n);
 	if (a >= i.ownNearWinThreshold || o >= i.rivalNearWinThreshold) return !1;
-	let s = T(t, r), c = s ? Pt(s, a) : 0;
-	if (s && Rt(s, t)) return !1;
-	let l = Nt(t, n);
+	let s = T(t, r), c = s ? Ft(s, a) : 0;
+	if (s && zt(s, t)) return !1;
+	let l = Pt(t, n);
 	if (!l) return !1;
-	let u = t.playedCardTypesThisTurn?.[l]?.includes("program") === !0, d = Qt(t, n).filter((e) => e.instanceId !== r && Ft(e, u)), f = d.filter((e) => e.grantedRules.includes("mustAttack")), p = f.length > 0 ? f : d, m = Math.max(0, a - c);
+	let u = t.playedCardTypesThisTurn?.[l]?.includes("program") === !0, d = $t(t, n).filter((e) => e.instanceId !== r && It(e, u)), f = d.filter((e) => e.grantedRules.includes("mustAttack")), p = f.length > 0 ? f : d, m = Math.max(0, a - c);
 	return p.some((t) => {
-		let n = t.effectivePower ?? 0, r = Pt(t, m);
+		let n = t.effectivePower ?? 0, r = Ft(t, m);
 		return e.power > n && r > 0 && r >= c;
 	});
 }
-function Gt(e, t, n, r) {
+function Kt(e, t, n, r) {
 	let i = n.effectivePower ?? 0, a = r.effectivePower ?? 0;
 	if (a > i) return null;
 	let o = a + (r.cost ?? 0);
-	return e.map((e) => Vt(e, t, i)).filter((e) => {
+	return e.map((e) => Ht(e, t, i)).filter((e) => {
 		if (!e) return !1;
 		if (e.outcome !== "chump") return !0;
 		let t = e.power + (Number.isFinite(e.cost) ? e.cost : 0);
 		return o > t;
-	}).sort(Ht)[0]?.id ?? null;
+	}).sort(Ut)[0]?.id ?? null;
 }
-function Kt(e, t, n, r, i) {
+function qt(e, t, n, r, i) {
 	if (e.length === 0) return null;
 	let a = t.attackState;
-	if (!a || !a.attackerId) return Dt(e, t);
+	if (!a || !a.attackerId) return Ot(e, t);
 	let o = T(t, a.attackerId);
 	if (!o) return null;
-	if (a.kind === "direct") return Ut(e, t, o, n, r, i);
+	if (a.kind === "direct") return Wt(e, t, o, n, r, i);
 	if (a.kind === "fight" && a.defenderId) {
 		let n = T(t, a.defenderId);
-		return n ? Gt(e, t, o, n) : null;
+		return n ? Kt(e, t, o, n) : null;
 	}
 	return null;
 }
-function qt(e, t, n, r, i) {
+function Jt(e, t, n, r, i) {
 	if (e.length === 0 || t.length === 0) return null;
-	let a = Jt(e, n), o = a.length > 0 ? a : e, s = null;
+	let a = Yt(e, n), o = a.length > 0 ? a : e, s = null;
 	for (let e of o) for (let r of t) {
-		let t = T(n, e), o = T(n, r), c = (t?.effectivePower ?? 0) - (o?.effectivePower ?? 0);
+		let t = T(n, e), o = T(n, r);
+		if (!Ge({
+			move: "attackUnit",
+			args: {
+				attackerId: e,
+				defenderId: r
+			}
+		}, n)) continue;
+		let c = (t?.effectivePower ?? 0) - (o?.effectivePower ?? 0);
 		if (a.length === 0 && c < i) continue;
-		let l = bt(o) + (o?.attachedGearIds.length ?? 0) * 8, u = bt(t), d = l * 10 - u + Math.min(c, 5);
+		let l = xt(o) + (o?.attachedGearIds.length ?? 0) * 8, u = xt(t), d = l * 10 - u + Math.min(c, 5);
 		(!s || d > s.score || d === s.score && `${e}:${r}` < `${s.from}:${s.to}`) && (s = {
 			from: e,
 			to: r,
@@ -1619,31 +1633,31 @@ function qt(e, t, n, r, i) {
 		to: s.to
 	} : null;
 }
-function Jt(e, t) {
+function Yt(e, t) {
 	return e.filter((e) => T(t, e)?.grantedRules.includes("mustAttack") === !0);
 }
-function Yt(e, t, n, r) {
-	if (e.length === 0) return null;
-	if (Zt(t, n)) {
-		let n = nn(e, t);
-		if (n) return rn(n, t, e, r);
-	}
-	return Xt(e, t, n, r);
-}
 function Xt(e, t, n, r) {
-	let i = Mt(t, n) >= 5, a = [...e].sort((e, n) => {
+	if (e.length === 0) return null;
+	if (Qt(t, n)) {
+		let n = rn(e, t);
+		if (n) return an(n, t, e, r);
+	}
+	return Zt(e, t, n, r);
+}
+function Zt(e, t, n, r) {
+	let i = Nt(t, n) >= 5, a = [...e].sort((e, n) => {
 		let a = (e) => {
-			let n = T(t, e.cardId), a = bt(n) + (n?.cost ?? 0);
-			return St(n, r?.coreCards) && (a += xt), i && (n?.keywords.includes("adrenaline") || n?.keywords.includes("goSolo")) && (a += 20), e.attachTargets?.length && (a += Math.max(...e.attachTargets.map((e) => T(t, e)?.effectivePower ?? 0))), a;
+			let n = T(t, e.cardId), a = xt(n) + (n?.cost ?? 0);
+			return Ct(n, r?.coreCards) && (a += St), i && (n?.keywords.includes("adrenaline") || n?.keywords.includes("goSolo")) && (a += 20), e.attachTargets?.length && (a += Math.max(...e.attachTargets.map((e) => T(t, e)?.effectivePower ?? 0))), a;
 		}, o = a(e), s = a(n);
 		return o === s ? e.cardId.localeCompare(n.cardId) : s - o;
 	});
-	return a[0] ? rn(a[0], t, e, r) : null;
-}
-function Zt(e, t) {
-	return Qt(e, t).length !== 0 && $t(e, t).length === 0;
+	return a[0] ? an(a[0], t, e, r) : null;
 }
 function Qt(e, t) {
+	return $t(e, t).length !== 0 && en(e, t).length === 0;
+}
+function $t(e, t) {
 	let n = [];
 	for (let [r, i] of Object.entries(e.players)) {
 		if (r === t) continue;
@@ -1652,25 +1666,25 @@ function Qt(e, t) {
 	}
 	return n;
 }
-function $t(e, t) {
+function en(e, t) {
 	let n = e.players[t];
 	if (!n) return [];
 	let r = n.zones.field;
-	return Array.isArray(r) ? r.filter((e) => tn(e)) : [];
+	return Array.isArray(r) ? r.filter((e) => nn(e)) : [];
 }
-function en(e, t) {
+function tn(e, t) {
 	let n = [];
 	for (let [r, i] of Object.entries(e.players)) {
 		if (r === t) continue;
 		let e = i.zones.field;
-		Array.isArray(e) && n.push(...e.filter((e) => tn(e)));
+		Array.isArray(e) && n.push(...e.filter((e) => nn(e)));
 	}
 	return n;
 }
-function tn(e) {
+function nn(e) {
 	return e.type === "unit" && !e.spent && !e.faceDown && (e.keywords.includes("blocker") || e.grantedRules.includes("blocker"));
 }
-function nn(e, t) {
+function rn(e, t) {
 	return e.map((e) => ({
 		cand: e,
 		card: T(t, e.cardId)
@@ -1681,26 +1695,26 @@ function nn(e, t) {
 		return i === a ? e.cand.cardId.localeCompare(t.cand.cardId) : a - i;
 	})[0]?.cand ?? null;
 }
-function rn(e, t, n, r) {
+function an(e, t, n, r) {
 	if (e.attachTargets === void 0) return { cardId: e.cardId };
 	if (e.attachTargets.length === 0) return null;
-	let i = on(e.attachTargets, t, e.cardId, r);
+	let i = sn(e.attachTargets, t, e.cardId, r);
 	return i ? {
 		cardId: e.cardId,
 		attachToId: i
 	} : null;
 }
-var an = {
+var on = {
 	preferred: 0,
 	typed: 1,
 	named: 2,
 	none: 3
 };
-function on(e, t, n, r) {
+function sn(e, t, n, r) {
 	if (e.length === 0) return null;
 	let i = T(t, n)?.cardName, a = i == null ? void 0 : r?.gearHosts?.[i];
 	return [...e].sort((e, n) => {
-		let o = T(t, e), s = T(t, n), c = an[Ze(i, o, r)], l = an[Ze(i, s, r)];
+		let o = T(t, e), s = T(t, n), c = on[Qe(i, o, r)], l = on[Qe(i, s, r)];
 		if (c !== l) return c - l;
 		let u = o?.cardName && a ? a.indexOf(o.cardName) : 2 ** 53 - 1, d = s?.cardName && a ? a.indexOf(s.cardName) : 2 ** 53 - 1, f = u >= 0 ? u : 2 ** 53 - 1, p = d >= 0 ? d : 2 ** 53 - 1;
 		if (f !== p) return f - p;
@@ -1709,7 +1723,7 @@ function on(e, t, n, r) {
 	})[0] ?? null;
 }
 // upstream/submodules/agnostic-simulator/packages/bot-core/src/deadlock.ts
-function sn(e = {}) {
+function cn(e = {}) {
 	let t = e.repeatThreshold ?? 3, n = Math.max(t, e.windowSize ?? 24), r = [], i = /* @__PURE__ */ new Map();
 	return {
 		observe(e) {
@@ -1734,19 +1748,19 @@ function sn(e = {}) {
 	};
 }
 // upstream/submodules/agnostic-simulator/packages/bot-core/src/hash.ts
-function cn(e) {
-	return Array.isArray(e) ? e.map(cn) : e && typeof e == "object" ? Object.fromEntries(Object.entries(e).sort(([e], [t]) => e.localeCompare(t)).map(([e, t]) => [e, cn(t)])) : e;
-}
 function ln(e) {
-	return JSON.stringify(cn(e));
+	return Array.isArray(e) ? e.map(ln) : e && typeof e == "object" ? Object.fromEntries(Object.entries(e).sort(([e], [t]) => e.localeCompare(t)).map(([e, t]) => [e, ln(t)])) : e;
 }
 function un(e) {
-	let t = ln(e), n = 2166136261;
+	return JSON.stringify(ln(e));
+}
+function dn(e) {
+	let t = un(e), n = 2166136261;
 	for (let e = 0; e < t.length; e++) n ^= t.charCodeAt(e), n = Math.imul(n, 16777619);
 	return `fnv1a32:${(n >>> 0).toString(16).padStart(8, "0")}`;
 }
 // upstream/submodules/agnostic-simulator/packages/bot-core/src/statistics.ts
-function dn(e) {
+function fn(e) {
 	let t = 2166136261;
 	for (let n = 0; n < e.length; n++) t ^= e.charCodeAt(n), t = Math.imul(t, 16777619);
 	return () => {
@@ -1756,51 +1770,51 @@ function dn(e) {
 	};
 }
 // upstream/submodules/cyberpunk/packages/engine/src/automation/public-view-hash.ts
-function fn(e) {
-	return un(JSON.parse(JSON.stringify(e, (e, t) => e === "stateID" || e === "_stateID" ? void 0 : t)));
+function pn(e) {
+	return dn(JSON.parse(JSON.stringify(e, (e, t) => e === "stateID" || e === "_stateID" ? void 0 : t)));
 }
 // upstream/submodules/cyberpunk/packages/engine/src/automation/search/gig-race.ts
-function pn(e) {
+function mn(e) {
 	return e.overtimeActive || e.turnBeganWithEmptyFixer;
 }
-function mn(e, t) {
+function hn(e, t) {
 	let n = e.players[t]?.zones.field;
 	return Array.isArray(n) ? n : [];
 }
-function hn(e, t, n, r) {
+function gn(e, t, n, r) {
 	let i = !r && e.playedCardTypesThisTurn[t]?.includes("program") === !0, a = !r && e.activePlayerId === t && e.attackState?.kind === "direct" ? e.attackState : null, o = 0, s = [];
-	for (let n of mn(e, t)) {
+	for (let n of hn(e, t)) {
 		let e = a?.attackerId === n.instanceId, t = r ? {
 			...n,
 			spent: !1,
 			hasLag: !1
 		} : n;
-		if (!e && !qe(t, i)) continue;
-		let c = Math.max(0, n.effectivePower), l = c === 0 ? 0 : Math.max(0, 1 + Math.floor(c / 10) - +!!Ye(n, "stealsOneFewerGig"));
-		Ye(n, "cantBeBlocked") || e && a?.step === "steal" ? o += l : s.push(l);
+		if (!e && !Je(t, i)) continue;
+		let c = Math.max(0, n.effectivePower), l = c === 0 ? 0 : Math.max(0, 1 + Math.floor(c / 10) - +!!Xe(n, "stealsOneFewerGig"));
+		Xe(n, "cantBeBlocked") || e && a?.step === "steal" ? o += l : s.push(l);
 	}
-	let c = mn(e, n).filter(Je).length;
+	let c = hn(e, n).filter(Ye).length;
 	return s.sort((e, t) => t - e), Math.min(e.players[n]?.gigCount ?? 0, o + s.slice(c).reduce((e, t) => e + t, 0));
 }
-function gn(e) {
+function _n(e) {
 	return e >= 7 ? 1e5 : e < 6 ? -1e5 : 0;
 }
-function _n(e, t, n = !1) {
-	if (!pn(e)) return 0;
+function vn(e, t, n = !1) {
+	if (!mn(e)) return 0;
 	let r = e.activePlayerId, i = Object.keys(e.players).find((e) => e !== r);
 	if (!i) return 0;
 	let a = e.players[r]?.gigCount ?? 0, o;
 	if (!e.overtimeActive && !e.previousTurnBeganWithEmptyFixer) {
-		let t = hn(e, i, r, !0), n = Math.max(0, a - t);
-		o = gn(n) + (n - 6) * 8e3;
+		let t = gn(e, i, r, !0), n = Math.max(0, a - t);
+		o = _n(n) + (n - 6) * 8e3;
 	} else {
-		let t = n ? 0 : hn(e, r, i, !1), s = a + t;
-		o = (a - 6) * 4e3 + t * 2e3, a >= 7 ? o += 2e5 : s >= 7 ? o += 3e4 : s < 6 ? o -= 1e5 : hn(e, i, r, !0) > 0 && (o -= 4e4);
+		let t = n ? 0 : gn(e, r, i, !1), s = a + t;
+		o = (a - 6) * 4e3 + t * 2e3, a >= 7 ? o += 2e5 : s >= 7 ? o += 3e4 : s < 6 ? o -= 1e5 : gn(e, i, r, !0) > 0 && (o -= 4e4);
 	}
 	return r === t ? o : -o;
 }
 // upstream/submodules/cyberpunk/packages/engine/src/automation/search/evaluate-board.ts
-var vn = {
+var yn = {
 	gigRace: 120,
 	streetCred: 1,
 	fieldMaterial: 6,
@@ -1811,58 +1825,58 @@ var vn = {
 	availableEddies: 6,
 	deckSafety: 2,
 	gigSetup: 1
-}, yn = 1e6;
-function bn(e, t, n = vn) {
-	if (e.gameEnded) return e.winnerId === t ? yn : e.winnerId ? -1e6 : 0;
-	let r = xn(e, t), i = Object.keys(e.players).filter((e) => e !== t);
-	if (i.length === 0) return Cn(r, n);
-	let a = pn(e) ? {
+}, bn = 1e6;
+function xn(e, t, n = yn) {
+	if (e.gameEnded) return e.winnerId === t ? bn : e.winnerId ? -1e6 : 0;
+	let r = Sn(e, t), i = Object.keys(e.players).filter((e) => e !== t);
+	if (i.length === 0) return wn(r, n);
+	let a = mn(e) ? {
 		...n,
 		gigRace: 0
 	} : n;
-	return _n(e, t) + Math.min(...i.map((t) => Sn(r, xn(e, t), a)));
+	return vn(e, t) + Math.min(...i.map((t) => Cn(r, Sn(e, t), a)));
 }
-function xn(e, t) {
+function Sn(e, t) {
 	let n = e.players[t];
-	if (!n) return kn();
-	let r = Dn(n.zones.field), i = Dn(n.zones.legendArea).filter((e) => !e.faceDown), a = e.playedCardTypesThisTurn[t]?.includes("program") === !0, o = r.filter((e) => Ke(e, a)), s = r.filter((e) => qe(e, a)), c = r.filter(Je), l = n.gigCount;
+	if (!n) return An();
+	let r = On(n.zones.field), i = On(n.zones.legendArea).filter((e) => !e.faceDown), a = e.playedCardTypesThisTurn[t]?.includes("program") === !0, o = r.filter((e) => qe(e, a)), s = r.filter((e) => Je(e, a)), c = r.filter(Ye), l = n.gigCount;
 	return {
-		gigRace: wn(l),
+		gigRace: Tn(l),
 		streetCred: n.streetCred,
-		fieldMaterial: r.reduce((e, t) => e + Tn(t), 0) + i.reduce((e, t) => e + Tn(t) * .5, 0),
+		fieldMaterial: r.reduce((e, t) => e + En(t), 0) + i.reduce((e, t) => e + En(t) * .5, 0),
 		readyPower: o.reduce((e, t) => e + Math.max(0, t.effectivePower), 0),
 		blockerCoverage: c.reduce((e, t) => e + 1 + Math.max(0, t.effectivePower) / 10, 0),
-		attackPressure: s.reduce((e, t) => e + En(t.effectivePower), 0),
-		handSize: On(n.zones.hand),
+		attackPressure: s.reduce((e, t) => e + Dn(t.effectivePower), 0),
+		handSize: kn(n.zones.hand),
 		availableEddies: n.availableEddies,
-		deckSafety: Math.min(10, On(n.zones.deck)),
+		deckSafety: Math.min(10, kn(n.zones.deck)),
 		gigSetup: pe(e, t)
 	};
 }
-function Sn(e, t, n) {
+function Cn(e, t, n) {
 	return Object.keys(n).reduce((r, i) => r + (e[i] - t[i]) * n[i], 0);
 }
-function Cn(e, t) {
+function wn(e, t) {
 	return Object.keys(t).reduce((n, r) => n + e[r] * t[r], 0);
 }
-function wn(e) {
+function Tn(e) {
 	let t = Math.max(0, Math.min(7, e));
 	return t + (t >= 6 ? 8 : t >= 5 ? 4 : t >= 4 ? 2 : 0);
 }
-function Tn(e) {
-	let t = Math.max(0, e.effectivePower), n = Math.max(0, e.cost ?? 0), r = e.attachedGearIds.length * 2, i = Ye(e, "blocker") ? 3 : 0, a = e.keywords.includes("adrenaline") || e.keywords.includes("goSolo") ? 2 : 0, o = Math.min(3, e.triggerHints.length);
+function En(e) {
+	let t = Math.max(0, e.effectivePower), n = Math.max(0, e.cost ?? 0), r = e.attachedGearIds.length * 2, i = Xe(e, "blocker") ? 3 : 0, a = e.keywords.includes("adrenaline") || e.keywords.includes("goSolo") ? 2 : 0, o = Math.min(3, e.triggerHints.length);
 	return t + n * 1.5 + r + i + a + o;
 }
-function En(e) {
+function Dn(e) {
 	return e <= 0 ? 0 : 1 + Math.floor(e / 10);
 }
-function Dn(e) {
+function On(e) {
 	return Array.isArray(e) ? e : [];
 }
-function On(e) {
+function kn(e) {
 	return Array.isArray(e) ? e.length : e ?? 0;
 }
-function kn() {
+function An() {
 	return {
 		gigRace: 0,
 		streetCred: 0,
@@ -1877,22 +1891,22 @@ function kn() {
 	};
 }
 // upstream/submodules/cyberpunk/packages/engine/src/automation/search/shared.ts
-function An(e) {
+function jn(e) {
 	let t = [];
-	for (let n of e.availableMoves) n.moveId !== "concede" && n.moveId !== "cancelPendingResolution" && t.push(...Fn(n));
+	for (let n of e.availableMoves) n.moveId !== "concede" && n.moveId !== "cancelPendingResolution" && t.push(...In(n));
 	if (t.length === 0) {
 		let n = e.availableMoves.find((e) => e.moveId === "concede");
 		if (n) {
-			let e = w(n, Ln());
+			let e = w(n, Rn());
 			e.kind === "command" && t.push(e);
 		}
 	}
 	return t;
 }
-function jn(e, t, n) {
+function Mn(e, t, n) {
 	let r = /* @__PURE__ */ new Set();
 	for (let i of n) {
-		let n = un({
+		let n = dn({
 			move: i.move,
 			args: i.args ?? {}
 		});
@@ -1907,17 +1921,17 @@ function jn(e, t, n) {
 		reason: "no executable candidate actions"
 	};
 }
-function Mn(e) {
+function Nn(e) {
 	switch (e.type) {
 		case "scry": return [];
 		case "revealDestination": return e.payload.destinations.map((e) => E("resolveRevealDestination", { destination: e }));
-		case "chooseTarget": return Nn(e);
+		case "chooseTarget": return Pn(e);
 		case "chooseEffect": return e.payload.options.map((e) => E("resolveChooseEffect", { optionId: e.id }));
 		case "chooseTrigger": {
 			let t = e.payload.options.map((e) => E("resolveTrigger", { triggerId: e.triggerId }));
 			return e.payload.canPass && t.push(E("resolveTrigger", { pass: !0 })), t;
 		}
-		case "chooseGigsToSteal": return Pn(e.payload.eligibleDice.map((e) => e.dieId), e.payload.count).map((e) => E("resolveStealGigs", { dieIds: e }));
+		case "chooseGigsToSteal": return Fn(e.payload.eligibleDice.map((e) => e.dieId), e.payload.count).map((e) => E("resolveStealGigs", { dieIds: e }));
 		case "preventGigSteal": return [E("resolvePreventGigSteal", {
 			pass: !0,
 			preventions: []
@@ -1934,7 +1948,7 @@ function Mn(e) {
 		case "chooseFirstPlayer": return [E("resolveFirstPlayer", { goFirst: !0 }), E("resolveFirstPlayer", { goFirst: !1 })];
 	}
 }
-function Nn(e) {
+function Pn(e) {
 	let t = e.payload;
 	if (t.type === "adjustGig") {
 		if (t.currentValue === void 0 || t.maxFaceValue === void 0 || t.maxAmount === void 0) return [];
@@ -1952,14 +1966,14 @@ function Nn(e) {
 		return (t.effectiveCostsByCardId?.[e] ?? Infinity) <= n;
 	});
 	if (t.type === "discardFromHand") {
-		let e = Pn(n, t.amount ?? 1).map((e) => E("resolveDiscardFromHand", { cardIds: e }));
+		let e = Fn(n, t.amount ?? 1).map((e) => E("resolveDiscardFromHand", { cardIds: e }));
 		return t.canDecline && e.push(E("resolveDiscardFromHand", { pass: !0 })), e;
 	}
 	let r = t.min ?? 1, i = Math.min(t.max ?? 1, n.length), a = [];
-	for (let e = r; e <= i; e++) for (let t of Pn(n, e)) a.push(E("resolveEffectTarget", { targetIds: t }));
+	for (let e = r; e <= i; e++) for (let t of Fn(n, e)) a.push(E("resolveEffectTarget", { targetIds: t }));
 	return t.canDecline && a.push(E("resolveEffectTarget", { pass: !0 })), a;
 }
-function Pn(e, t, n = 24) {
+function Fn(e, t, n = 24) {
 	if (t === 0) return [[]];
 	if (t < 0 || t > e.length) return [];
 	let r = [], i = (a, o) => {
@@ -1977,37 +1991,37 @@ function E(e, t) {
 		...t ? { args: t } : {}
 	};
 }
-function Fn(e) {
+function In(e) {
 	let t = [];
 	switch (e.inputSpec.type) {
 		case "none": {
-			let n = w(e, Ln());
+			let n = w(e, Rn());
 			return n.kind === "command" && t.push(n), t;
 		}
 		case "selectCard":
 			for (let n of e.inputSpec.candidates) {
-				let r = w(e, Rn(n));
+				let r = w(e, zn(n));
 				r.kind === "command" && t.push(r);
 			}
 			return t;
 		case "selectPair":
 			for (let n of e.inputSpec.fromCandidates) for (let r of e.inputSpec.toCandidates) {
-				let i = w(e, zn(n, r));
+				let i = w(e, Bn(n, r));
 				i.kind === "command" && t.push(i);
 			}
 			return t;
 		case "selectAbility":
 			for (let n of e.inputSpec.candidates) {
-				let r = w(e, Bn(n));
+				let r = w(e, Vn(n));
 				r.kind === "command" && t.push(r);
 			}
 			return t;
 		case "playCard":
 			for (let n of e.inputSpec.candidates) if (n.attachTargets === void 0) {
-				let r = w(e, Vn({ cardId: n.cardId }));
+				let r = w(e, Hn({ cardId: n.cardId }));
 				r.kind === "command" && t.push(r);
 			} else for (let r of n.attachTargets) {
-				let i = w(e, Vn({
+				let i = w(e, Hn({
 					cardId: n.cardId,
 					attachToId: r
 				}));
@@ -2016,25 +2030,25 @@ function Fn(e) {
 			return t;
 	}
 }
-function In(e) {
+function Ln(e) {
 	let t = e.availableMoves.find((e) => e.moveId === "passPhase");
 	if (!t) return null;
-	let n = w(t, Ln());
+	let n = w(t, Rn());
 	return n.kind === "command" ? n : null;
 }
-function Ln() {
+function Rn() {
 	return {
 		pickFromCandidates: (e) => e[0] ?? null,
 		pickPair: () => null
 	};
 }
-function Rn(e) {
+function zn(e) {
 	return {
 		pickFromCandidates: () => e,
 		pickPair: () => null
 	};
 }
-function zn(e, t) {
+function Bn(e, t) {
 	return {
 		pickFromCandidates: () => null,
 		pickPair: () => ({
@@ -2043,34 +2057,34 @@ function zn(e, t) {
 		})
 	};
 }
-function Bn(e) {
+function Vn(e) {
 	return {
 		pickFromCandidates: () => null,
 		pickPair: () => null,
 		pickAbility: () => e
 	};
 }
-function Vn(e) {
+function Hn(e) {
 	return {
 		pickFromCandidates: () => null,
 		pickPair: () => null,
 		pickPlayCard: () => e
 	};
 }
-function Hn(e, t, n, r, i) {
-	let a = e.getFilteredView(t), o = Object.keys(a.players), s = sn({
+function Un(e, t, n, r, i) {
+	let a = e.getFilteredView(t), o = Object.keys(a.players), s = cn({
 		repeatThreshold: 8,
 		windowSize: 64
 	});
 	for (let a = 0; a < i; a++) {
 		let i = e.getFilteredView(t);
-		if (i.gameEnded) return Un(i.winnerId);
+		if (i.gameEnded) return Wn(i.winnerId);
 		let c = [...o].sort((e, t) => (e === i.activePlayerId ? 0 : 1) - (t === i.activePlayerId ? 0 : 1)).find((t) => {
 			let n = e.getPrompt(t).status;
 			return n === "action" || n === "choice";
 		});
-		if (s.observe(Gn(i)).repeated) return Wn(o, c ?? t, "repeatedState");
-		if (!c) return Wn(o, o.find((e) => e === i.activePlayerId) ?? t, "noAction");
+		if (s.observe(Kn(i)).repeated) return Gn(o, c ?? t, "repeatedState");
+		if (!c) return Gn(o, o.find((e) => e === i.activePlayerId) ?? t, "noAction");
 		let l = !1;
 		for (let t of [c]) {
 			let i = e.getPrompt(t), s = {
@@ -2079,20 +2093,20 @@ function Hn(e, t, n, r, i) {
 				prompt: i,
 				rng: r
 			}, c = i.status === "choice" && i.choice ? We(i.choice, n, s) : n.decideAction(s);
-			if (c.kind !== "command") return Wn(o, t, "stuck");
+			if (c.kind !== "command") return Gn(o, t, "stuck");
 			let u = {
 				commandID: `rollout-${t}-${a}`,
 				move: c.move,
 				input: c.args ? { args: c.args } : void 0
 			};
-			if (!e.processCommand(u, t).success) return Wn(o, t, "illegal");
+			if (!e.processCommand(u, t).success) return Gn(o, t, "illegal");
 			l = !0;
 		}
-		if (!l) return Wn(o, c, "noAction");
+		if (!l) return Gn(o, c, "noAction");
 	}
-	return Wn(o, t, "maxSteps");
+	return Gn(o, t, "maxSteps");
 }
-function Un(e) {
+function Wn(e) {
 	return e ? {
 		kind: "winner",
 		winnerId: e
@@ -2101,7 +2115,7 @@ function Un(e) {
 		winnerId: null
 	};
 }
-function Wn(e, t, n) {
+function Gn(e, t, n) {
 	let r = e.filter((e) => e !== t);
 	return {
 		kind: "automationFailure",
@@ -2110,11 +2124,11 @@ function Wn(e, t, n) {
 		reason: n
 	};
 }
-function Gn(e) {
-	return un(JSON.parse(JSON.stringify(e, (e, t) => e === "stateID" || e === "_stateID" ? void 0 : t)));
+function Kn(e) {
+	return dn(JSON.parse(JSON.stringify(e, (e, t) => e === "stateID" || e === "_stateID" ? void 0 : t)));
 }
 // upstream/submodules/cyberpunk/packages/engine/src/automation/search/tactical.ts
-var Kn = 9e5, qn = /* @__PURE__ */ new Set([
+var qn = 9e5, Jn = /* @__PURE__ */ new Set([
 	"draw",
 	"lookAt",
 	"rerollGig",
@@ -2125,7 +2139,7 @@ var Kn = 9e5, qn = /* @__PURE__ */ new Set([
 	"searchDeck",
 	"sellFromDeck",
 	"trashFromDeck"
-]), Jn = /* @__PURE__ */ new Set([
+]), Yn = /* @__PURE__ */ new Set([
 	"attackUnit",
 	"attackRival",
 	"useBlocker",
@@ -2144,25 +2158,25 @@ var Kn = 9e5, qn = /* @__PURE__ */ new Set([
 	"resolveSacrificialGear",
 	"resolveFirstPlayer"
 ]);
-function Yn(e = {}) {
-	let t = e.maxDepth ?? 3, n = e.maxNodes ?? 48, r = e.branchLimit ?? 12, i = e.deckProfile, a = e.fallbackStrategy ?? (i ? ot(ft, i) : ft), o = {
+function Xn(e = {}) {
+	let t = e.maxDepth ?? 3, n = e.maxNodes ?? 48, r = e.branchLimit ?? 12, i = e.deckProfile, a = e.fallbackStrategy ?? (i ? st(pt, i) : pt), o = {
 		abilityAware: e.abilityAware === !0,
 		disabled: new Set(e.disabledHeuristics ?? [])
 	}, s = (e, s = 0) => {
-		if (!e.engine) return Xr(e, a);
-		let l = ar(e.prompt, e, a, o);
+		if (!e.engine) return Zr(e, a);
+		let l = or(e.prompt, e, a, o);
 		if (l.length === 0) {
-			let t = In(e.prompt);
-			return t ? Ci(t, {
+			let t = Ln(e.prompt);
+			return t ? wi(t, {
 				strategy: "tactical",
 				candidateCount: 0,
 				nodesEvaluated: 0,
 				depthReached: 0,
 				scoreGap: null,
 				cutoffReason: "complete"
-			}) : Xr(e, a);
+			}) : Zr(e, a);
 		}
-		if (l.length === 1) return Ci(l[0], {
+		if (l.length === 1) return wi(l[0], {
 			strategy: "tactical",
 			candidateCount: 1,
 			nodesEvaluated: 0,
@@ -2175,11 +2189,11 @@ function Yn(e = {}) {
 			maxNodes: n,
 			deepest: 0,
 			cutoffReason: "complete"
-		}, d = e.playerId, f = Qn(e.engine, d, l, t, r, u, a, o, i);
-		if (f.length === 0) return Xr(e, a);
-		f.sort(wi);
+		}, d = e.playerId, f = $n(e.engine, d, l, t, r, u, a, o, i);
+		if (f.length === 0) return Zr(e, a);
+		f.sort(Ti);
 		let p = c(e, f, s), m = p[0] ?? f[0], h = p[1];
-		return Ci(m.action, {
+		return wi(m.action, {
 			strategy: "tactical",
 			candidateCount: l.length,
 			nodesEvaluated: u.nodes,
@@ -2196,7 +2210,7 @@ function Yn(e = {}) {
 	}
 	function l(e, t, n) {
 		if (!e.engine || !t.child) return !1;
-		let r = fn(e.view), i = fn(t.child.getFilteredView(e.playerId)), a = Zr(t.child, e.playerId);
+		let r = pn(e.view), i = pn(t.child.getFilteredView(e.playerId)), a = Qr(t.child, e.playerId);
 		if (!a || a !== e.playerId) return !1;
 		let o = t.child.getPrompt(a);
 		if (o.status === "action" || o.status !== "choice" || n >= 2) return i === r;
@@ -2209,13 +2223,13 @@ function Yn(e = {}) {
 			engine: t.child
 		}, n + 1);
 		if (c.kind !== "command") return !0;
-		let l = ir(t.child, a, c, {
+		let l = ar(t.child, a, c, {
 			nodes: 0,
 			maxNodes: 1,
 			deepest: 0,
 			cutoffReason: "complete"
 		});
-		return !l || fn(l.getFilteredView(e.playerId)) === r;
+		return !l || pn(l.getFilteredView(e.playerId)) === r;
 	}
 	return {
 		tactical: !0,
@@ -2240,13 +2254,13 @@ function Yn(e = {}) {
 		}
 	};
 }
-var Xn = Yn(), Zn = Yn({
+var Zn = Xn(), Qn = Xn({
 	name: "tactical-ability-aware",
 	abilityAware: !0
 });
-function Qn(e, t, n, r, i, a, o, s, c) {
-	let l = rr(e, t, t, n, !0, a, s, c).slice(0, Math.max(i, Math.min(n.length, 24))), u = e.getFilteredView(t);
-	pn(u) && l.sort((e, n) => nr(n.action, u, t, c, s) - nr(e.action, u, t, c, s));
+function $n(e, t, n, r, i, a, o, s, c) {
+	let l = ir(e, t, t, n, !0, a, s, c).slice(0, Math.max(i, Math.min(n.length, 24))), u = e.getFilteredView(t);
+	mn(u) && l.sort((e, n) => rr(n.action, u, t, c, s) - rr(e.action, u, t, c, s));
 	let d = [];
 	for (let { action: n, child: u } of l) {
 		if (!u) {
@@ -2258,17 +2272,17 @@ function Qn(e, t, n, r, i, a, o, s, c) {
 			});
 			continue;
 		}
-		let l = e.getFilteredView(t), f = u.getFilteredView(t), p = Qr(l, f, n, t), m = p ? oi(l, n, t, t, a, c, s) : tr(u, t, r - 1, 1, i, a, o, s, c, [fn(l)], !0);
+		let l = e.getFilteredView(t), f = u.getFilteredView(t), p = $r(l, f, n, t), m = p ? si(l, n, t, t, a, c, s) : nr(u, t, r - 1, 1, i, a, o, s, c, [pn(l)], !0);
 		d.push({
 			action: n,
-			score: p || f.gameEnded || m <= er ? m : m + $n(n, l, f, t),
-			abilityFit: di(n, l, t, s),
+			score: p || f.gameEnded || m <= tr ? m : m + er(n, l, f, t),
+			abilityFit: fi(n, l, t, s),
 			child: p ? null : u
 		});
 	}
 	return d;
 }
-function $n(e, t, n, r) {
+function er(e, t, n, r) {
 	if (e.move !== "playCard" && e.move !== "activateAbility") return 0;
 	let i = O(t, k(e.args?.cardId)), a = 0;
 	if (e.move === "playCard" && i?.type === "unit") {
@@ -2281,75 +2295,75 @@ function $n(e, t, n, r) {
 	}), u = ee(t), d = e.move === "playCard" ? i?.effectiveCost ?? i?.cost ?? 0 : 0;
 	return c ? a += u === "early" ? Math.max(0, 30 - d * 7) : 32 : l && u === "late" && (a += 30), Math.min(50, a);
 }
-var er = -1000001;
-function tr(e, t, n, r, i, a, o, s, c, l, u) {
+var tr = -1000001;
+function nr(e, t, n, r, i, a, o, s, c, l, u) {
 	a.deepest = Math.max(a.deepest, r);
-	let d = e.getFilteredView(t), f = fn(d), p = Zr(e, t), m = !p || e.getPrompt(p).status !== "choice", h = u && l.includes(f) && p === t;
-	if (h && m) return er;
+	let d = e.getFilteredView(t), f = pn(d), p = Qr(e, t), m = !p || e.getPrompt(p).status !== "choice", h = u && l.includes(f) && p === t;
+	if (h && m) return tr;
 	if (d.gameEnded) {
-		let e = bn(d, t);
+		let e = xn(d, t);
 		return e - Math.sign(e) * r;
 	}
-	if (n <= 0) return a.cutoffReason === "complete" && (a.cutoffReason = "depth"), h ? er : bn(d, t);
-	if (a.nodes >= a.maxNodes) return a.cutoffReason = "node-budget", h ? er : bn(d, t);
-	let g = [...l, f], _ = Zr(e, t);
-	if (!_) return bn(d, t);
+	if (n <= 0) return a.cutoffReason === "complete" && (a.cutoffReason = "depth"), h ? tr : xn(d, t);
+	if (a.nodes >= a.maxNodes) return a.cutoffReason = "node-budget", h ? tr : xn(d, t);
+	let g = [...l, f], _ = Qr(e, t);
+	if (!_) return xn(d, t);
 	let ee = e.getPrompt(_);
-	if (_ !== t && ee.choice && !ni(ee.choice, d)) return a.cutoffReason = "hidden-information", ai(d, t, _);
+	if (_ !== t && ee.choice && !ri(ee.choice, d)) return a.cutoffReason = "hidden-information", oi(d, t, _);
 	let te = {
 		view: e.getFilteredView(_),
 		playerId: _,
 		prompt: ee,
 		rng: () => .5,
 		engine: e
-	}, v = ar(_ === t ? ee : ei(ee, d), te, _ === t ? o : ft, s);
-	if (v.length === 0) return _ === t ? -9e5 : (a.cutoffReason = "hidden-information", ai(d, t, _));
+	}, v = or(_ === t ? ee : ti(ee, d), te, _ === t ? o : pt, s);
+	if (v.length === 0) return _ === t ? -9e5 : (a.cutoffReason = "hidden-information", oi(d, t, _));
 	if (v.length === 1) {
-		let l = v[0], u = e.getFilteredView(t), d = ir(e, _, l, a);
-		return d ? Qr(u, d.getFilteredView(t), l, _) ? oi(u, l, t, _, a, c, s) : tr(d, t, n, r + 1, i, a, o, s, c, g, _ === t) : _ === t ? -9e5 : Kn;
+		let l = v[0], u = e.getFilteredView(t), d = ar(e, _, l, a);
+		return d ? $r(u, d.getFilteredView(t), l, _) ? si(u, l, t, _, a, c, s) : nr(d, t, n, r + 1, i, a, o, s, c, g, _ === t) : _ === t ? -9e5 : qn;
 	}
-	let y = _ === t, ne = rr(e, t, _, v, y, a, s, c).slice(0, i), b = !y && ii(d, _);
+	let y = _ === t, ne = ir(e, t, _, v, y, a, s, c).slice(0, i), b = !y && ai(d, _);
 	b && (a.cutoffReason = "hidden-information");
-	let x = y ? -Infinity : b ? ai(d, t, _) : Infinity;
+	let x = y ? -Infinity : b ? oi(d, t, _) : Infinity;
 	for (let { action: l, child: u } of ne) {
 		let d = e.getFilteredView(t);
 		if (!u) {
-			let e = y ? -9e5 : Kn;
+			let e = y ? -9e5 : qn;
 			x = y ? Math.max(x, e) : Math.min(x, e);
 			continue;
 		}
-		let f = Qr(d, u.getFilteredView(t), l, _) ? oi(d, l, t, _, a, c, s) : tr(u, t, n - 1, r + 1, i, a, o, s, c, g, _ === t);
+		let f = $r(d, u.getFilteredView(t), l, _) ? si(d, l, t, _, a, c, s) : nr(u, t, n - 1, r + 1, i, a, o, s, c, g, _ === t);
 		x = y ? Math.max(x, f) : Math.min(x, f);
 	}
-	return Number.isFinite(x) ? x : bn(d, t);
+	return Number.isFinite(x) ? x : xn(d, t);
 }
-function nr(e, t, n, r, i) {
-	return e.move === "passPhase" ? 1e6 : ui(e, t, n, r, i);
+function rr(e, t, n, r, i) {
+	return e.move === "passPhase" ? 1e6 : di(e, t, n, r, i);
 }
-function rr(e, t, n, r, i, a, o, s) {
-	let c = e.getFilteredView(t), l = e.getFilteredView(n), u = [], d = pn(l) ? [...r].sort((e, t) => nr(t, l, n, s, o) - nr(e, l, n, s, o)) : r, f = pn(l) ? Math.min(24, Math.max(1, Math.floor((a.maxNodes - a.nodes) / 2))) : d.length;
+function ir(e, t, n, r, i, a, o, s) {
+	let c = e.getFilteredView(t), l = e.getFilteredView(n), u = [], d = mn(l) ? [...r].sort((e, t) => rr(t, l, n, s, o) - rr(e, l, n, s, o)) : r, f = mn(l) ? Math.min(24, Math.max(1, Math.floor((a.maxNodes - a.nodes) / 2))) : d.length;
 	for (let r of d.slice(0, f)) {
 		if (a.nodes >= a.maxNodes) {
 			a.cutoffReason = "node-budget";
 			break;
 		}
 		a.nodes += 1;
-		let d = e.fork(), f = d.processCommand(Si(r, `rank:${Ei(r)}`), n), p = f.success ? d.getFilteredView(t) : c, m = Qr(c, p, r, n) ? bn(c, t) : bn(p, t), h = f.success ? m + (i ? 1 : -1) * ui(r, l, n, n === t ? s : void 0, o) : i ? -9e5 : Kn;
+		let d = e.fork(), f = d.processCommand(Ci(r, `rank:${Di(r)}`), n), p = f.success ? d.getFilteredView(t) : c, m = $r(c, p, r, n) ? xn(c, t) : xn(p, t), h = f.success ? m + (i ? 1 : -1) * di(r, l, n, n === t ? s : void 0, o) : i ? -9e5 : qn;
 		u.push({
 			action: r,
 			score: h,
-			abilityFit: di(r, l, n, o),
+			abilityFit: fi(r, l, n, o),
 			child: f.success ? d : null
 		});
 	}
-	return u.sort(i ? wi : Ti);
-}
-function ir(e, t, n, r) {
-	r.nodes += 1;
-	let i = e.fork();
-	return i.processCommand(Si(n, `tactical:${r.nodes}`), t).success ? i : null;
+	return u.sort(i ? Ti : Ei);
 }
 function ar(e, t, n, r) {
+	r.nodes += 1;
+	let i = e.fork();
+	return i.processCommand(Ci(n, `tactical:${r.nodes}`), t).success ? i : null;
+}
+function or(e, t, n, r) {
 	if (e.status === "choice" && e.choice) {
 		if (e.choice.type === "chooseGigsToSteal") {
 			let { eligibleDice: n, count: r } = e.choice.payload, i = Fe(t.view, t.playerId, n, r);
@@ -2359,58 +2373,58 @@ function ar(e, t, n, r) {
 				args: { dieIds: i }
 			}];
 		}
-		if (pi(e.choice.type)) return Yr(e, t, n);
-		let r = Tr(Mn(e.choice), t), i = at(n) ? n.deckProfile : void 0, a = xr(r.length > 0 ? r : Yr(e, t, n), t, i);
-		return a.length > 0 ? a : Yr(e, t, n);
+		if (mi(e.choice.type)) return Xr(e, t, n);
+		let r = Er(Nn(e.choice), t), i = ot(n) ? n.deckProfile : void 0, a = Sr(r.length > 0 ? r : Xr(e, t, n), t, i);
+		return a.length > 0 ? a : Xr(e, t, n);
 	}
-	let i = at(n) ? n.deckProfile : void 0, a = An(e), o = dr(a, t, i);
+	let i = ot(n) ? n.deckProfile : void 0, a = jn(e).filter((e) => Ge(e, t.view)), o = fr(a, t, i);
 	if (o) return o;
-	let s = Lr(a, t, i, r);
-	return s = xr(s, t, i), s = Vr(s, t, i), s = Hr(s, t, i), s = Br(s, t, i), s = zr(s, t, i), s = Wr(s, t, n), s = _r(s, t, i), s = br(s, t, i), s = yr(s, t, i), s = fr(s, t, i), Gr(s, t, n, r);
-}
-function or(e) {
-	return Array.isArray(e) ? [...e] : [];
+	let s = Rr(a, t, i, r);
+	return s = Sr(s, t, i), s = Hr(s, t, i), s = Ur(s, t, i), s = Vr(s, t, i), s = Br(s, t, i), s = Gr(s, t, n), s = vr(s, t, i), s = xr(s, t, i), s = br(s, t, i), s = pr(s, t, i), Kr(s, t, n, r);
 }
 function sr(e) {
+	return Array.isArray(e) ? [...e] : [];
+}
+function cr(e) {
 	return e % 2 == 1 ? (e + 1) / 2 : e / 2;
 }
-function cr(e, t) {
+function lr(e, t) {
 	return O(e.view, t)?.cardName ?? void 0;
 }
-function lr(e, t) {
+function ur(e, t) {
 	let n = k(t.args?.cardId) || k(t.args?.legendId) || k(t.args?.attackerId);
-	return n ? cr(e, n) : void 0;
+	return n ? lr(e, n) : void 0;
 }
-function ur(e) {
+function dr(e) {
 	return e === "authored-rry-llorona-steel-dragon" || e === "authored-rry-detonate-gear-curve";
 }
 function D(e, t) {
 	let n = e.filter(t);
 	return n.length > 0 ? n : e;
 }
-function dr(e, t, n) {
-	if (!n || !ur(n.deckId) && n.deckId !== "authored-bbg-towerfall-control") return null;
-	let r = sr(t.view.turnNumber);
+function fr(e, t, n) {
+	if (!n || !dr(n.deckId) && n.deckId !== "authored-bbg-towerfall-control") return null;
+	let r = cr(t.view.turnNumber);
 	if (r < 1 || r > 5) return null;
 	let i = t.view.players[t.playerId];
 	if (!i || i.soldThisTurn) return null;
-	let a = new Set(n.curveSellCards ?? []), o = e.filter((e) => e.move === "sellCard" && a.has(lr(t, e) ?? ""));
+	let a = new Set(n.curveSellCards ?? []), o = e.filter((e) => e.move === "sellCard" && a.has(ur(t, e) ?? ""));
 	return o.length > 0 ? o : null;
 }
-function fr(e, t, n) {
-	if (!n || !ur(n.deckId) && n.deckId !== "authored-bbg-towerfall-control") return e;
-	let r = sr(t.view.turnNumber);
+function pr(e, t, n) {
+	if (!n || !dr(n.deckId) && n.deckId !== "authored-bbg-towerfall-control") return e;
+	let r = cr(t.view.turnNumber);
 	if (r < 1 || r > 5) return e;
 	let i = t.view.turnNumber % 2 == 1, a = t.playerId;
-	return t.view.players[a] ? ur(n.deckId) ? pr(e, t, n, r, i) : mr(e, t, n, r, i) : e;
+	return t.view.players[a] ? dr(n.deckId) ? mr(e, t, n, r, i) : hr(e, t, n, r, i) : e;
 }
-function pr(e, t, n, r, i) {
-	let a = (e) => lr(t, e), o = (e) => e.move !== "goSolo";
+function mr(e, t, n, r, i) {
+	let a = (e) => ur(t, e), o = (e) => e.move !== "goSolo";
 	if (r === 1 && i) return D(e, (e) => e.move === "callLegend" && O(t.view, k(e.args?.legendId))?.spent === !1);
 	if (r === 1 && !i) return D(e, (e) => e.move === "callLegend" && (a(e) === "Muamar Reyes" || a(e) === "Dexter DeShawn") || e.move === "playCard" && (a(e) === "All is Lost" || a(e) === "The Heist"));
-	let s = or(t.view.players[t.playerId]?.zones.hand), c = new Set(s.map((e) => e.cardName)), l = (n.curveUnits ?? []).some((e) => c.has(e));
+	let s = sr(t.view.players[t.playerId]?.zones.hand), c = new Set(s.map((e) => e.cardName)), l = (n.curveUnits ?? []).some((e) => c.has(e));
 	if (r === 2 && !l && e.some((e) => a(e) === "All is Lost")) return D(e, (e) => a(e) === "All is Lost");
-	let u = hr(t), d = s.some((e) => e.cardName === "Mantis Blades" || e.cardName === "Satori");
+	let u = gr(t), d = s.some((e) => e.cardName === "Mantis Blades" || e.cardName === "Satori");
 	if (r === 2 && !d && (u.includes(1) || u.includes(2)) && e.some((e) => a(e) === "The Heist")) return D(e, (e) => a(e) === "The Heist");
 	if (r === 3) return D(e, (e) => e.move === "playCard" && (a(e) === "La Llorona" || a(e) === "Dexter DeShawn"));
 	if (r === 4) return D(e, (e) => e.move === "playCard" && (a(e) === "Meredith Stout" || a(e) === "6th Street Recruits"));
@@ -2432,15 +2446,15 @@ function pr(e, t, n, r, i) {
 		}, r = e.filter((e) => {
 			if (e.move === "goSolo") return !1;
 			if (e.move !== "playCard" || !e.args?.attachToId) return !0;
-			let r = a(e), i = cr(t, k(e.args.attachToId)), o = r ? n[r] : void 0;
+			let r = a(e), i = lr(t, k(e.args.attachToId)), o = r ? n[r] : void 0;
 			return o != null && i != null && o.includes(i);
 		});
 		return r.length > 0 ? r : e.filter((e) => e.move !== "goSolo" && !(e.move === "playCard" && e.args?.attachToId));
 	}
 	return e.filter(o);
 }
-function mr(e, t, n, r, i) {
-	let a = (e) => lr(t, e), o = hr(t), s = o.some((e) => e >= 2 && e <= 4), c = (e, t) => e.move === "playCard" && a(e) === t, l = or(t.view.players[t.playerId]?.zones.field), u = new Set(or(t.view.players[t.playerId]?.zones.hand).map((e) => e.cardName));
+function hr(e, t, n, r, i) {
+	let a = (e) => ur(t, e), o = gr(t), s = o.some((e) => e >= 2 && e <= 4), c = (e, t) => e.move === "playCard" && a(e) === t, l = sr(t.view.players[t.playerId]?.zones.field), u = new Set(sr(t.view.players[t.playerId]?.zones.hand).map((e) => e.cardName));
 	if (r === 1 && i) {
 		let n = (t.view.playedCardTypesThisTurn[t.playerId] ?? []).includes("program"), r = t.view.players[t.playerId]?.calledLegendThisTurn === !0;
 		if (n || r) {
@@ -2466,7 +2480,7 @@ function mr(e, t, n, r, i) {
 		});
 		return !d && t.some((e) => c(e, "Jacked-In Voodoo Boy")) ? D(t, (e) => c(e, "Jacked-In Voodoo Boy")) : t.length > 0 ? t : e;
 	}
-	let f = (t.view.playedCardTypesThisTurn[t.playerId] ?? []).includes("program"), p = gr(o);
+	let f = (t.view.playedCardTypesThisTurn[t.playerId] ?? []).includes("program"), p = _r(o);
 	if (r === 3 && !f) {
 		if (!p && e.some((e) => c(e, "Peace Offering"))) return D(e, (e) => c(e, "Peace Offering"));
 		if (e.some((e) => c(e, "Trust No One"))) return D(e, (e) => c(e, "Trust No One"));
@@ -2475,8 +2489,8 @@ function mr(e, t, n, r, i) {
 	if (r === 3 && f && d) return D(e, (e) => (e.move === "attackUnit" || e.move === "attackRival") && a(e) === "Jacked-In Voodoo Boy");
 	let m = l.some((e) => e.cardName === "Pepe Najarro");
 	if (r === 4 && e.some((e) => c(e, "Pepe Najarro"))) return D(e, (e) => c(e, "Pepe Najarro"));
-	if (r === 4 && m && p && Mr(t)) return D(e, (e) => (e.move === "attackUnit" || e.move === "attackRival") && a(e) === "Pepe Najarro");
-	if (r === 4 && m && (!p || !Mr(t))) return e.filter((e) => a(e) !== "Pepe Najarro" || e.move === "playCard");
+	if (r === 4 && m && p && Nr(t)) return D(e, (e) => (e.move === "attackUnit" || e.move === "attackRival") && a(e) === "Pepe Najarro");
+	if (r === 4 && m && (!p || !Nr(t))) return e.filter((e) => a(e) !== "Pepe Najarro" || e.move === "playCard");
 	let h = /* @__PURE__ */ new Set([
 		"Chrome Reverie",
 		"Nocturne OP55 N1",
@@ -2488,11 +2502,11 @@ function mr(e, t, n, r, i) {
 	]), g = t.view.players[t.playerId]?.zones, _ = ["hand", "trash"].some((e) => Array.isArray(g?.[e]) && g[e].some((e) => e.type === "program" && e.cost != null && e.cost <= 3 && h.has(e.cardName ?? "")));
 	return r === 5 && _ && e.some((e) => c(e, "Lizzy Wizzy")) ? D(e, (e) => c(e, "Lizzy Wizzy")) : e;
 }
-function hr(e) {
+function gr(e) {
 	let t = e.view.players[e.playerId]?.zones.gigArea;
 	return Array.isArray(t) ? t.map((e) => e.effectivePower ?? e.power ?? 0) : [];
 }
-function gr(e) {
+function _r(e) {
 	let t = /* @__PURE__ */ new Set();
 	for (let n of e) {
 		if (t.has(n)) return !0;
@@ -2500,20 +2514,20 @@ function gr(e) {
 	}
 	return !1;
 }
-function _r(e, t, n) {
+function vr(e, t, n) {
 	if (!n?.gearHostTypes) return e;
 	let r = t.view.players[t.playerId], i = r?.zones.hand;
 	if (!Array.isArray(i) || !i.some((e) => e.cardName != null && n.gearHostTypes?.[e.cardName] === "unit")) return e;
 	let a = r?.zones.field;
-	if (Array.isArray(a) && a.some((e) => e.type === "unit") || !e.some((e) => e.move === "sellCard" && !Qe(O(t.view, k(e.args?.cardId))?.cardName, n))) return e;
+	if (Array.isArray(a) && a.some((e) => e.type === "unit") || !e.some((e) => e.move === "sellCard" && !$e(O(t.view, k(e.args?.cardId))?.cardName, n))) return e;
 	let o = e.filter((e) => e.move !== "passPhase");
 	return o.length > 0 ? o : e;
 }
-function vr(e) {
+function yr(e) {
 	return e?.curveSellCards ?? [];
 }
-function yr(e, t, n) {
-	let r = vr(n);
+function br(e, t, n) {
+	let r = yr(n);
 	if (r.length === 0) return e;
 	let i = t.view.players[t.playerId];
 	if (!i || i.soldThisTurn || !e.some((e) => {
@@ -2524,7 +2538,7 @@ function yr(e, t, n) {
 	let a = e.filter((e) => e.move !== "passPhase");
 	return a.length > 0 ? a : e;
 }
-function br(e, t, n) {
+function xr(e, t, n) {
 	let r = n?.curveUnits;
 	if (!r || r.length === 0) return e;
 	let i = Infinity;
@@ -2543,14 +2557,14 @@ function br(e, t, n) {
 	});
 	return a.length > 0 ? a : e;
 }
-function xr(e, t, n) {
-	if (!n) return e;
-	let r = Sr(e, t, n);
-	return r = Cr(r, t, n), r = Dr(r, t, n), r = Nr(r, t, n), r = Or(r, t, n), r = jr(r, t, n), r = Pr(r, t, n), r;
-}
 function Sr(e, t, n) {
+	if (!n) return e;
+	let r = Cr(e, t, n);
+	return r = wr(r, t, n), r = Or(r, t, n), r = Pr(r, t, n), r = kr(r, t, n), r = Mr(r, t, n), r = Fr(r, t, n), r;
+}
+function Cr(e, t, n) {
 	let r = n.priorityPlays;
-	if (!r || r.length === 0 || !wr(t)) return e;
+	if (!r || r.length === 0 || !Tr(t)) return e;
 	let i = t.view.players[t.playerId]?.zones.hand;
 	if (!(Array.isArray(i) && i.some((e) => e.type === "program"))) return e;
 	let a = new Set(r), o = e.filter((e) => {
@@ -2560,8 +2574,8 @@ function Sr(e, t, n) {
 	});
 	return o.length > 0 ? o : e;
 }
-function Cr(e, t, n) {
-	if (!n.playThrough || !wr(t)) return e;
+function wr(e, t, n) {
+	if (!n.playThrough || !Tr(t)) return e;
 	for (let [r, i] of Object.entries(n.playThrough)) {
 		let n = new Set(i), a = t.view.players[t.playerId]?.zones.hand;
 		if (!(Array.isArray(a) && a.some((e) => e.cardName != null && n.has(e.cardName)))) continue;
@@ -2570,7 +2584,7 @@ function Cr(e, t, n) {
 	}
 	return e;
 }
-function wr(e) {
+function Tr(e) {
 	for (let [t, n] of Object.entries(e.view.players)) {
 		if (t === e.playerId) continue;
 		let r = n.zones.field;
@@ -2578,14 +2592,14 @@ function wr(e) {
 	}
 	return !1;
 }
-function Tr(e, t) {
+function Er(e, t) {
 	let n = t.prompt.choice;
 	if (n?.type !== "chooseTarget" || n.payload.type !== "effectTarget" || !n.payload.adjustGig) return e;
 	let r = n.payload.adjustGig, i = r.direction ?? "either", a = r.maxAmount ?? 0, o = [];
 	for (let e of n.payload.eligibleIds ?? []) {
 		let n = O(t.view, e);
 		if (!n) continue;
-		let r = n.effectivePower ?? n.power ?? 0, s = Er(n.definitionId) ?? r, c = i === "increase" ? r : Math.max(1, r - a), l = i === "decrease" ? r : Math.min(s, r + a);
+		let r = n.effectivePower ?? n.power ?? 0, s = Dr(n.definitionId) ?? r, c = i === "increase" ? r : Math.max(1, r - a), l = i === "decrease" ? r : Math.min(s, r + a);
 		for (let t = c; t <= l; t += 1) t !== r && o.push({
 			kind: "command",
 			move: "resolveAdjustGig",
@@ -2602,7 +2616,7 @@ function Tr(e, t) {
 		args: { kind: "noAdjustment" }
 	}), o.length > 0 ? o : e;
 }
-function Er(e) {
+function Dr(e) {
 	switch (e) {
 		case "d4": return 4;
 		case "d6": return 6;
@@ -2613,7 +2627,7 @@ function Er(e) {
 		default: return;
 	}
 }
-function Dr(e, t, n) {
+function Or(e, t, n) {
 	if (!n.playThrough) return e;
 	let r = e;
 	for (let [e, i] of Object.entries(n.playThrough)) {
@@ -2629,47 +2643,47 @@ function Dr(e, t, n) {
 	}
 	return r;
 }
-function Or(e, t, n) {
+function kr(e, t, n) {
 	let r = n.preferredFreeCards;
 	if (!r || r.length === 0) return e;
 	let i = new Set(r), a = e.filter((e) => {
-		let n = Ar(e);
+		let n = jr(e);
 		if (!n) return !1;
-		let r = kr(t, n);
+		let r = Ar(t, n);
 		return r != null && i.has(r);
 	});
 	return a.length > 0 ? a : e;
 }
-function kr(e, t) {
+function Ar(e, t) {
 	let n = O(e.view, t)?.cardName;
 	if (n) return n;
 	let r = e.prompt.choice;
 	if (r && (r.type === "chooseTarget" || r.type === "chooseCardToPlay")) return r.payload.cards?.find((e) => e.instanceId === t)?.cardName ?? void 0;
 }
-function Ar(e) {
+function jr(e) {
 	if (e.move === "resolveCardToPlay") return k(e.args?.cardId);
 	if (e.move !== "resolveEffectTarget") return "";
 	let t = e.args?.targetIds;
 	return Array.isArray(t) && typeof t[0] == "string" ? t[0] : "";
 }
-function jr(e, t, n) {
+function Mr(e, t, n) {
 	let r = n.commitSources;
 	if (!r || r.length === 0) return e;
-	let i = Ir(t);
+	let i = Lr(t);
 	if (!i || !r.includes(i)) return e;
 	let a = e.filter((e) => e.args?.pass !== !0 && e.args?.kind !== "noAdjustment");
 	return a.length > 0 ? a : e;
 }
-function Mr(e) {
+function Nr(e) {
 	let t = e.view.players[e.playerId]?.zones.legendArea;
 	if (!Array.isArray(t)) return !1;
 	let n = /* @__PURE__ */ new Set(["Alt Cunningham", "Jackie Welles"]);
 	return t.some((e) => e.cardName != null && n.has(e.cardName) && e.spent && !e.faceDown && e.classifications.includes("Merc"));
 }
-function Nr(e, t, n) {
+function Pr(e, t, n) {
 	let r = n.minGigSources;
 	if (!r || r.length === 0) return e;
-	let i = sr(t.view.turnNumber);
+	let i = cr(t.view.turnNumber);
 	if (n.deckId === "authored-bbg-towerfall-control" && i >= 1 && i <= 5) return e;
 	let a = t.view.players[t.playerId]?.zones.gigArea;
 	if (!(Array.isArray(a) && a.some((e) => (e.effectivePower ?? e.power ?? 0) > 1))) return e;
@@ -2680,33 +2694,33 @@ function Nr(e, t, n) {
 	});
 	return o.length > 0 ? o : e;
 }
-function Pr(e, t, n) {
+function Fr(e, t, n) {
 	let r = n.minGigSources;
 	if (!r || r.length === 0 || t.prompt.choice?.type !== "chooseTarget") return e;
 	let i = t.prompt.choice.payload, a = i.type === "effectTarget" && i.adjustGig !== void 0;
 	if (i.type !== "adjustGig" && !a) return e;
-	let o = Ir(t);
+	let o = Lr(t);
 	if (!o || !r.includes(o)) return e;
 	let s = e.filter((e) => {
 		if (e.move !== "resolveAdjustGig" || e.args?.value !== 1) return !1;
 		let n = k(e.args?.dieId);
-		return n !== "" && Fr(t, n) === t.playerId;
+		return n !== "" && Ir(t, n) === t.playerId;
 	});
 	return s.length > 0 ? s : e;
 }
-function Fr(e, t) {
+function Ir(e, t) {
 	for (let [n, r] of Object.entries(e.view.players)) {
 		let e = r.zones.gigArea;
 		if (Array.isArray(e) && e.some((e) => e.instanceId === t)) return n;
 	}
 }
-function Ir(e) {
+function Lr(e) {
 	let t = e.prompt.choice;
 	if (!t || t.type !== "chooseTarget") return;
 	let n = t.payload.source?.cardId;
 	if (n) return O(e.view, n)?.cardName ?? void 0;
 }
-function Lr(e, t, n, r) {
+function Rr(e, t, n, r) {
 	let i = !r.disabled.has("legend-gear");
 	if (!n && !i) return e;
 	let a = e;
@@ -2721,20 +2735,20 @@ function Lr(e, t, n, r) {
 			if (i.move !== "playCard") continue;
 			let a = k(i.args?.cardId), o = k(i.args?.attachToId);
 			if (!a || !o) continue;
-			let s = e[Ze(O(t.view, a)?.cardName, O(t.view, o), n)], c = r.get(a);
+			let s = e[Qe(O(t.view, a)?.cardName, O(t.view, o), n)], c = r.get(a);
 			(c === void 0 || s < c) && r.set(a, s);
 		}
 		if (r.size > 0) {
 			a = a.filter((i) => {
 				if (i.move !== "playCard") return !0;
 				let a = k(i.args?.cardId), o = k(i.args?.attachToId);
-				return !a || !o || !r.has(a) || e[Ze(O(t.view, a)?.cardName, O(t.view, o), n)] === r.get(a);
+				return !a || !o || !r.has(a) || e[Qe(O(t.view, a)?.cardName, O(t.view, o), n)] === r.get(a);
 			});
 			let i = a.filter((e) => {
 				if (e.move !== "playCard") return !0;
 				let r = O(t.view, k(e.args?.cardId))?.cardName;
 				if (!r || n.gearHostTypes?.[r] !== "unit") return !0;
-				let i = Ze(r, O(t.view, k(e.args?.attachToId)), n);
+				let i = Qe(r, O(t.view, k(e.args?.attachToId)), n);
 				return i === "preferred" || i === "typed";
 			});
 			i.length > 0 && (a = i);
@@ -2746,22 +2760,22 @@ function Lr(e, t, n, r) {
 		let r = O(t.view, k(e.args?.cardId)), i = r?.cardName;
 		if (!i || !r) return !0;
 		let a = O(t.view, k(e.args?.attachToId));
-		if (!a || a.zone !== "legendArea" || a.faceDown || a.keywords.includes("goSolo") || a.grantedRules.includes("goSolo") || Rr(r)) return !0;
-		let o = Ze(i, a, n);
+		if (!a || a.zone !== "legendArea" || a.faceDown || a.keywords.includes("goSolo") || a.grantedRules.includes("goSolo") || zr(r)) return !0;
+		let o = Qe(i, a, n);
 		return o === "preferred" || o === "named";
 	});
 	return o.length > 0 ? o : a;
 }
-function Rr(e) {
+function zr(e) {
 	return e.abilityHints.length > 0 || e.triggerHints.length > 0;
 }
-function zr(e, t, n) {
-	if (!n?.preferSpendOverAttack?.length || (t.view.players[t.playerId]?.gigCount ?? 0) >= 5 || !e.some((e) => e.move === "activateAbility" && $e(O(t.view, k(e.args?.cardId)), n))) return e;
-	let r = e.filter((e) => e.move === "activateAbility" && $e(O(t.view, k(e.args?.cardId)), n));
+function Br(e, t, n) {
+	if (!n?.preferSpendOverAttack?.length || (t.view.players[t.playerId]?.gigCount ?? 0) >= 5 || !e.some((e) => e.move === "activateAbility" && et(O(t.view, k(e.args?.cardId)), n))) return e;
+	let r = e.filter((e) => e.move === "activateAbility" && et(O(t.view, k(e.args?.cardId)), n));
 	return r.length > 0 ? r : e;
 }
-function Br(e, t, n) {
-	let r = et(n);
+function Vr(e, t, n) {
+	let r = tt(n);
 	if (r.size === 0 || (t.view.players[t.playerId]?.gigCount ?? 0) >= 5) return e;
 	let i = e.filter((e) => {
 		let n = O(t.view, k(e.args?.cardId));
@@ -2769,34 +2783,34 @@ function Br(e, t, n) {
 	});
 	return i.length > 0 ? i : e;
 }
-function Vr(e, t, n) {
-	return !n || n.coreCards.length === 0 || !e.some((e) => e.move === "sellCard" && !Qe(O(t.view, k(e.args?.cardId))?.cardName, n)) ? e : e.filter((e) => e.move !== "sellCard" || !Qe(O(t.view, k(e.args?.cardId))?.cardName, n));
-}
 function Hr(e, t, n) {
+	return !n || n.coreCards.length === 0 || !e.some((e) => e.move === "sellCard" && !$e(O(t.view, k(e.args?.cardId))?.cardName, n)) ? e : e.filter((e) => e.move !== "sellCard" || !$e(O(t.view, k(e.args?.cardId))?.cardName, n));
+}
+function Ur(e, t, n) {
 	if (!n || n.coreCards.length === 0) return e;
 	let r = e.filter((e) => {
 		if (e.move !== "sellCard") return !0;
 		let r = O(t.view, k(e.args?.cardId));
-		return !Qe(r?.cardName, n) || !r?.cardName || Ur(t.view, t.playerId, r.cardName) > 0;
+		return !$e(r?.cardName, n) || !r?.cardName || Wr(t.view, t.playerId, r.cardName) > 0;
 	});
 	return r.length > 0 ? r : e;
 }
-function Ur(e, t, n) {
+function Wr(e, t, n) {
 	let r = e.players[t];
 	if (!r) return 0;
 	let i = 0;
 	for (let e of [r.zones.field, r.zones.legendArea]) if (Array.isArray(e)) for (let t of e) t.cardName === n && (i += 1);
 	return i;
 }
-function Wr(e, t, n) {
+function Gr(e, t, n) {
 	if (!e.some((e) => e.move === "mulligan")) return e;
 	let r = n.decideAction(t);
 	return r.kind === "command" && r.move === "mulligan" ? e.filter((e) => e.move === "mulligan") : e.filter((e) => e.move !== "mulligan");
 }
-function Gr(e, t, n, r) {
-	if (pn(t.view)) return e;
-	let i = Kr(e, t.view, r);
-	if (i = qr(i, t.view, t.playerId, r), i.some((e) => e.move === "useBlocker")) {
+function Kr(e, t, n, r) {
+	if (mn(t.view)) return e;
+	let i = qr(e, t.view, r);
+	if (i = Jr(i, t.view, t.playerId, r), i.some((e) => e.move === "useBlocker")) {
 		let e = n.decideAction(t);
 		if (e.kind === "command" && e.move === "useBlocker") {
 			let t = k(e.args?.blockerId);
@@ -2806,7 +2820,7 @@ function Gr(e, t, n, r) {
 	}
 	return i;
 }
-function Kr(e, t, n) {
+function qr(e, t, n) {
 	let r = e.filter((e) => e.move === "attackUnit");
 	if (r.length === 0) return e;
 	let i = new Set(r.map((e) => k(e.args?.attackerId)).filter((e) => O(t, e)?.grantedRules.includes("mustAttack") === !0)), a = i.size === 0 && !n.disabled.has("remove-targets"), o = /* @__PURE__ */ new Set();
@@ -2832,10 +2846,10 @@ function Kr(e, t, n) {
 		return !r || !c || (r.effectivePower ?? 0) <= (c.effectivePower ?? 0) ? !1 : !a || o.has(`${n}:${c.instanceId}`);
 	});
 }
-function qr(e, t, n, r) {
+function Jr(e, t, n, r) {
 	let i = e.filter((e) => e.move === "attackRival");
 	if (i.length === 0) return e;
-	let a = Object.entries(t.players).find(([e]) => e !== n)?.[1], o = a?.gigCount ?? 0, s = a ? Jr(a.zones.field) : [], c = s.reduce((e, t) => Math.max(e, t.effectivePower), -Infinity), l = i.filter((e) => O(t, k(e.args?.attackerId))?.grantedRules.includes("mustAttack")), u = Xe(t, n), d = l.length > 0 ? l : i.filter((e) => {
+	let a = Object.entries(t.players).find(([e]) => e !== n)?.[1], o = a?.gigCount ?? 0, s = a ? Yr(a.zones.field) : [], c = s.reduce((e, t) => Math.max(e, t.effectivePower), -Infinity), l = i.filter((e) => O(t, k(e.args?.attackerId))?.grantedRules.includes("mustAttack")), u = Ze(t, n), d = l.length > 0 ? l : i.filter((e) => {
 		let n = O(t, k(e.args?.attackerId));
 		return o > 0 && (n?.effectivePower ?? 0) > 0 && (u || (n?.effectivePower ?? 0) > c);
 	}), f = [...d].sort((e, n) => {
@@ -2844,18 +2858,18 @@ function qr(e, t, n, r) {
 	})[0];
 	return f !== void 0 && s.length === 0 && !r.disabled.has("safe-steal") && !e.some((e) => e.move === "useBlocker") ? e.filter((e) => e === f || e.move === "attackUnit") : e.filter((e) => e.move !== "attackRival" || (u ? d.includes(e) : e === f));
 }
-function Jr(e) {
+function Yr(e) {
 	return Array.isArray(e) ? e.filter((e) => e.type === "unit" && !e.faceDown && !e.spent && (e.keywords.includes("blocker") || e.grantedRules.includes("blocker"))) : [];
 }
-function Yr(e, t, n) {
+function Xr(e, t, n) {
 	if (!e.choice) return [];
 	let r = We(e.choice, n, t);
 	return r.kind === "command" ? [r] : [];
 }
-function Xr(e, t) {
+function Zr(e, t) {
 	return e.prompt.status === "choice" && e.prompt.choice ? We(e.prompt.choice, t, e) : t.decideAction(e);
 }
-function Zr(e, t) {
+function Qr(e, t) {
 	let n = e.getFilteredView(t);
 	if (n.gameEnded) return null;
 	let r = [...Object.keys(n.players)].sort((e, t) => (e === n.activePlayerId ? 0 : 1) - (t === n.activePlayerId ? 0 : 1));
@@ -2865,19 +2879,19 @@ function Zr(e, t) {
 	}
 	return null;
 }
-function Qr(e, t, n, r) {
-	if (n.move === "mulligan" || n.move === "gainGig" || mi(t.prompt) || hi(e.prompt, n)) return !0;
+function $r(e, t, n, r) {
+	if (n.move === "mulligan" || n.move === "gainGig" || hi(t.prompt) || gi(e.prompt, n)) return !0;
 	let i = /* @__PURE__ */ new Set();
 	for (let t of Object.values(e.players)) for (let e of Object.values(t.zones)) if (Array.isArray(e)) for (let t of e) t.faceDown || i.add(t.instanceId);
 	for (let e of Object.values(t.players)) for (let t of Object.values(e.zones)) if (Array.isArray(t) && t.some((e) => !e.faceDown && !i.has(e.instanceId))) return !0;
-	if (n.move !== "resolveAdjustGig" && _i(e, t)) return !0;
+	if (n.move !== "resolveAdjustGig" && vi(e, t)) return !0;
 	for (let i of Object.keys(e.players)) {
 		let a = e.players[i], o = t.players[i];
-		if (a && o && bi(a.zones.deck) !== bi(o.zones.deck) && !$r(e, n, r, i)) return !0;
+		if (a && o && xi(a.zones.deck) !== xi(o.zones.deck) && !ei(e, n, r, i)) return !0;
 	}
 	return !1;
 }
-function $r(e, t, n, r) {
+function ei(e, t, n, r) {
 	if (t.move !== "resolveEffectTarget" || r === n) return !1;
 	let i = e.prompt;
 	if (i.status !== "choice" || i.choice?.type !== "chooseTarget") return !1;
@@ -2890,15 +2904,15 @@ function $r(e, t, n, r) {
 		return Array.isArray(a) && a.some((e) => e.instanceId === t && e.type === "unit" && !e.faceDown);
 	}));
 }
-function ei(e, t) {
+function ti(e, t) {
 	if (e.status === "choice") return e;
-	let n = ri(t);
+	let n = ii(t);
 	return {
 		...e,
-		availableMoves: e.availableMoves.filter((e) => Jn.has(e.moveId) && ti(e, n))
+		availableMoves: e.availableMoves.filter((e) => Yn.has(e.moveId) && ni(e, n))
 	};
 }
-function ti(e, t) {
+function ni(e, t) {
 	switch (e.inputSpec.type) {
 		case "none": return !0;
 		case "selectCard": return e.inputSpec.candidates.every((e) => t.has(e));
@@ -2907,8 +2921,8 @@ function ti(e, t) {
 		case "playCard": return !1;
 	}
 }
-function ni(e, t) {
-	let n = ri(t);
+function ri(e, t) {
+	let n = ii(t);
 	switch (e.type) {
 		case "scry":
 		case "revealDestination":
@@ -2926,38 +2940,38 @@ function ni(e, t) {
 		case "chooseFirstPlayer": return !0;
 	}
 }
-function ri(e) {
+function ii(e) {
 	let t = /* @__PURE__ */ new Set();
 	for (let n of Object.values(e.players)) for (let e of Object.values(n.zones)) if (Array.isArray(e)) for (let n of e) t.add(n.instanceId);
 	return t;
 }
-function ii(e, t) {
+function ai(e, t) {
 	let n = e.players[t];
-	return !n || e.gamePhase !== "main" || e.activePlayerId !== t ? !1 : bi(n.zones.hand) > 0 || xi(n.zones.legendArea) > 0;
+	return !n || e.gamePhase !== "main" || e.activePlayerId !== t ? !1 : xi(n.zones.hand) > 0 || Si(n.zones.legendArea) > 0;
 }
-function ai(e, t, n) {
+function oi(e, t, n) {
 	let r = e.players[n];
-	if (!r) return bn(e, t);
-	let i = Math.min(5, bi(r.zones.hand)), a = Math.min(6, r.availableEddies);
-	return bn(e, t) - 16 - i * 4 - a * 2;
+	if (!r) return xn(e, t);
+	let i = Math.min(5, xi(r.zones.hand)), a = Math.min(6, r.availableEddies);
+	return xn(e, t) - 16 - i * 4 - a * 2;
 }
-function oi(e, t, n, r, i, a, o) {
-	return i.cutoffReason = "hidden-information", bn(e, n) + (t.move === "passPhase" ? _n(e, n, !0) - _n(e, n) : 0) + (r === n ? 1 : -1) * ui(t, e, r, r === n ? a : void 0, o);
+function si(e, t, n, r, i, a, o) {
+	return i.cutoffReason = "hidden-information", xn(e, n) + (t.move === "passPhase" ? vn(e, n, !0) - vn(e, n) : 0) + (r === n ? 1 : -1) * di(t, e, r, r === n ? a : void 0, o);
 }
-var si = {
+var ci = {
 	preferred: 12,
 	typed: 6,
 	named: 2,
 	none: 0
 };
-function ci(e, t, n, r, i) {
+function li(e, t, n, r, i) {
 	if (!i || i.disabled.has("gear-power") || !t || t.faceDown) return 0;
 	let a = Math.max(0, e.effectivePower);
 	if (a === 0) return 0;
-	let o = Math.max(0, t.effectivePower), s = o + a, c = Math.floor(s / 10) > Math.floor(o / 10), l = li(n, r);
+	let o = Math.max(0, t.effectivePower), s = o + a, c = Math.floor(s / 10) > Math.floor(o / 10), l = ui(n, r);
 	return c || s > l && o <= l ? 60 : -10 - 12 * t.attachedGearIds.length;
 }
-function li(e, t) {
+function ui(e, t) {
 	let n = 0;
 	for (let [r, i] of Object.entries(e.players)) {
 		if (r === t) continue;
@@ -2966,7 +2980,7 @@ function li(e, t) {
 	}
 	return n;
 }
-function ui(e, t, n, r, i) {
+function di(e, t, n, r, i) {
 	switch (e.move) {
 		case "concede": return -9e5;
 		case "passPhase": return -12;
@@ -2975,67 +2989,67 @@ function ui(e, t, n, r, i) {
 			return Math.min(i, a > 0 ? 1 + Math.floor(a / 10) : 0) * 40;
 		}
 		case "attackUnit": return 12;
-		case "activateAbility": return $e(O(t, k(e.args?.cardId)), r) ? 50 : 8;
+		case "activateAbility": return et(O(t, k(e.args?.cardId)), r) ? 50 : 8;
 		case "playCard": {
 			let a = O(t, k(e.args?.cardId));
 			if (!a) return 0;
 			let o = Math.max(0, a.effectivePower) * 2 + (a.cost ?? 0);
-			Qe(a.cardName, r) && (o += 8), r?.pacing === "develop-first" && Qe(a.cardName, r) && (t.players[n]?.gigCount ?? 0) < 5 && (o += a.type === "unit" ? 150 : 40);
+			$e(a.cardName, r) && (o += 8), r?.pacing === "develop-first" && $e(a.cardName, r) && (t.players[n]?.gigCount ?? 0) < 5 && (o += a.type === "unit" ? 150 : 40);
 			let s = O(t, k(e.args?.attachToId));
-			return o += si[Ze(a.cardName, s, r)], o += ci(a, s, t, n, i), o;
+			return o += ci[Qe(a.cardName, s, r)], o += li(a, s, t, n, i), o;
 		}
-		case "sellCard": return Qe(O(t, k(e.args?.cardId))?.cardName, r) ? -20 : 4;
+		case "sellCard": return $e(O(t, k(e.args?.cardId))?.cardName, r) ? -20 : 4;
 		default: return 0;
 	}
 }
-function di(e, t, n, r) {
+function fi(e, t, n, r) {
 	if (!r.abilityAware) return 0;
 	if (e.move === "playCard") {
 		let r = O(t, k(e.args?.cardId));
 		return r ? te(r, t, n, { attachToId: k(e.args?.attachToId) || void 0 }) : 0;
 	}
 	if (e.move === "activateAbility") {
-		let r = k(e.args?.cardId), i = yi(e.args?.abilityIndex);
+		let r = k(e.args?.cardId), i = bi(e.args?.abilityIndex);
 		if (i === null) return 0;
-		let a = fi(t, r, i);
+		let a = pi(t, r, i);
 		return y(O(t, r), i, t, n) - (a?.eddieCost ?? 0) * 5 - (a?.spendsCard ? 3 : 0);
 	}
 	return 0;
 }
-function fi(e, t, n) {
+function pi(e, t, n) {
 	let r = e.prompt.availableMoves.find((e) => e.moveId === "activateAbility");
 	if (r?.inputSpec.type === "selectAbility") return r.inputSpec.candidates.find((e) => e.cardId === t && e.abilityIndex === n);
 }
-function pi(e) {
+function mi(e) {
 	return e === "scry" || e === "revealDestination" || e === "chooseCardType" || e === "gainGig";
 }
-function mi(e) {
-	return e.status === "choice" && e.choice !== null && pi(e.choice.type);
+function hi(e) {
+	return e.status === "choice" && e.choice !== null && mi(e.choice.type);
 }
-function hi(e, t) {
+function gi(e, t) {
 	if (t.move === "activateAbility") {
 		let n = e.availableMoves.find((e) => e.moveId === "activateAbility");
 		if (n?.inputSpec.type !== "selectAbility") return !0;
-		let r = k(t.args?.cardId), i = yi(t.args?.abilityIndex), a = n.inputSpec.candidates.find((e) => e.cardId === r && e.abilityIndex === i);
-		return !a || a.effectHints.some((e) => qn.has(e));
+		let r = k(t.args?.cardId), i = bi(t.args?.abilityIndex), a = n.inputSpec.candidates.find((e) => e.cardId === r && e.abilityIndex === i);
+		return !a || a.effectHints.some((e) => Jn.has(e));
 	}
-	return t.move === "resolveEffectTarget" && e.choice?.type === "chooseTarget" ? gi(e.choice.payload.effect) : t.move === "resolveCardTypeChoice";
+	return t.move === "resolveEffectTarget" && e.choice?.type === "chooseTarget" ? _i(e.choice.payload.effect) : t.move === "resolveCardTypeChoice";
 }
-function gi(e) {
-	if (Array.isArray(e)) return e.some(gi);
+function _i(e) {
+	if (Array.isArray(e)) return e.some(_i);
 	if (!e || typeof e != "object") return !1;
 	let t = e;
-	return typeof t.effect == "string" && qn.has(t.effect) ? !0 : Object.values(t).some(gi);
+	return typeof t.effect == "string" && Jn.has(t.effect) ? !0 : Object.values(t).some(_i);
 }
-function _i(e, t) {
-	let n = vi(e), r = vi(t);
+function vi(e, t) {
+	let n = yi(e), r = yi(t);
 	for (let [e, t] of n) {
 		let n = r.get(e);
 		if (n !== void 0 && n !== t) return !0;
 	}
 	return !1;
 }
-function vi(e) {
+function yi(e) {
 	let t = /* @__PURE__ */ new Map();
 	for (let n of Object.values(e.players)) {
 		let e = n.zones.gigArea;
@@ -3054,45 +3068,45 @@ function O(e, t) {
 function k(e) {
 	return typeof e == "string" ? e : "";
 }
-function yi(e) {
+function bi(e) {
 	return typeof e == "number" ? e : null;
 }
-function bi(e) {
+function xi(e) {
 	return Array.isArray(e) ? e.length : e ?? 0;
 }
-function xi(e) {
+function Si(e) {
 	return Array.isArray(e) ? e.filter((e) => e.faceDown).length : 0;
 }
-function Si(e, t) {
+function Ci(e, t) {
 	return {
 		commandID: t,
 		move: e.move,
 		input: e.args ? { args: e.args } : void 0
 	};
 }
-function Ci(e, t) {
+function wi(e, t) {
 	return {
 		...e,
 		diagnostics: t
 	};
 }
-function wi(e, t) {
-	return e.score === t.score ? e.abilityFit === t.abilityFit ? Ei(e.action).localeCompare(Ei(t.action)) : t.abilityFit - e.abilityFit : t.score - e.score;
-}
 function Ti(e, t) {
-	return e.score === t.score ? e.abilityFit === t.abilityFit ? Ei(e.action).localeCompare(Ei(t.action)) : t.abilityFit - e.abilityFit : e.score - t.score;
+	return e.score === t.score ? e.abilityFit === t.abilityFit ? Di(e.action).localeCompare(Di(t.action)) : t.abilityFit - e.abilityFit : t.score - e.score;
 }
-function Ei(e) {
-	return `${e.move}:${Di(e.args ?? {})}`;
+function Ei(e, t) {
+	return e.score === t.score ? e.abilityFit === t.abilityFit ? Di(e.action).localeCompare(Di(t.action)) : t.abilityFit - e.abilityFit : e.score - t.score;
 }
 function Di(e) {
+	return `${e.move}:${Oi(e.args ?? {})}`;
+}
+function Oi(e) {
 	if (typeof e != "object" || !e) return JSON.stringify(e);
-	if (Array.isArray(e)) return `[${e.map(Di).join(",")}]`;
+	if (Array.isArray(e)) return `[${e.map(Oi).join(",")}]`;
 	let t = e;
-	return `{${Object.keys(t).sort().map((e) => `${JSON.stringify(e)}:${Di(t[e])}`).join(",")}}`;
+	return `{${Object.keys(t).sort().map((e) => `${JSON.stringify(e)}:${Oi(t[e])}`).join(",")}}`;
 }
 // upstream/submodules/cyberpunk/packages/cards/src/card-metadata.ts
-var Oi = {
+var ki = {
 	"lucyna-kushinada": {
 		canonicalSetCode: "promo",
 		printings: [{
@@ -8095,33 +8109,33 @@ var Oi = {
 		],
 		selectedPrintingId: "79cdc9a5-d94d-4df4-9f88-aa02fb0357b3"
 	}
-}, ki = /* @__PURE__ */ new Set([
+}, Ai = /* @__PURE__ */ new Set([
 	"play",
 	"attack",
 	"flip",
 	"call",
 	"defeated"
 ]);
-function Ai(e) {
+function ji(e) {
 	let t = [];
 	for (let n of e) {
 		let e = n.trigger?.trigger;
-		if (e && ki.has(e)) {
+		if (e && Ai.has(e)) {
 			let n = e;
 			t.includes(n) || t.push(n);
 		}
 	}
 	return t;
 }
-function ji(e) {
+function Mi(e) {
 	let t = [];
 	for (let n of e) n.kind === "keyword" && n.keyword && !t.includes(n.keyword) && t.push(n.keyword);
 	return t;
 }
-function Mi(e) {
+function Ni(e) {
 	return e.slug;
 }
-function Ni(e) {
+function Pi(e) {
 	let t = e.artId ?? e.id;
 	return {
 		id: e.id,
@@ -8133,7 +8147,7 @@ function Ni(e) {
 	};
 }
 function A(e, t) {
-	let n = Oi[Mi(e)];
+	let n = ki[Ni(e)];
 	if (!n) throw Error(`Missing Cyberpunk card metadata for ${e.slug}`);
 	if (n.canonicalSetCode !== e.set.code) throw Error(`Cyberpunk card ${e.slug} is authored under set "${e.set.code}" but canonical metadata owns it under "${n.canonicalSetCode}". Only the canonical set may author the card file; other set versions are printings on the same card.`);
 	let r = e.abilities ?? [], i = t.en, a = e.selectedPrintingId ?? n.selectedPrintingId ?? n.printings[0]?.id;
@@ -8147,22 +8161,22 @@ function A(e, t) {
 		...i.description ? { description: i.description } : {},
 		...i.youtubeUrl ? { youtubeUrl: i.youtubeUrl } : {},
 		...i.sourceUrl ? { sourceUrl: i.sourceUrl } : {},
-		printings: (e.printings ?? n.printings).map(Ni),
+		printings: (e.printings ?? n.printings).map(Pi),
 		...a ? { selectedPrintingId: a } : {},
 		cost: e.cost ?? null,
 		power: e.power ?? null,
 		ram: e.ram ?? null,
 		rarity: e.rarity ?? null,
 		classifications: e.classifications ?? [],
-		timingTriggers: e.timingTriggers ?? Ai(r),
-		keywords: e.keywords ?? ji(r),
+		timingTriggers: e.timingTriggers ?? ji(r),
+		keywords: e.keywords ?? Mi(r),
 		abilities: r,
 		attachment: e.attachment ?? null,
 		reminderText: e.reminderText ?? []
 	};
 }
 // upstream/submodules/cyberpunk/packages/cards/src/cards/legends/lucyna-kushinada.ts
-var Pi = A({
+var Fi = A({
 	id: "3f2e5d58-dea3-4090-8fe7-0f5f4af2d333",
 	slug: "lucyna-kushinada",
 	canonicalId: "lucyna-kushinada",
@@ -8185,7 +8199,7 @@ var Pi = A({
 }, { en: {
 	name: "Lucyna Kushinada",
 	displayName: "Lucyna Kushinada"
-} }), Fi = A({
+} }), Ii = A({
 	id: "4acee220-f0ae-4bdc-85c9-f8e70ba99673",
 	canonicalId: "rebecca-having-a-moment",
 	slug: "rebecca-having-a-moment",
@@ -8208,7 +8222,7 @@ var Pi = A({
 	name: "Rebecca",
 	subname: "Having a Moment",
 	displayName: "Rebecca: Having a Moment"
-} }), Ii = A({
+} }), Li = A({
 	id: "40502c1f-78a2-426a-a706-c60ebd4b31e3",
 	slug: "jackie-welles-pour-one-out-for-me",
 	canonicalId: "jackie-welles-pour-one-out-for-me",
@@ -8289,7 +8303,7 @@ var Pi = A({
 	subname: "Pour One Out For Me",
 	displayName: "Jackie Welles: Pour One Out For Me",
 	rulesText: "The first time you play a Blue Unit or Blue Gear each turn, you may decrease a friendly Gig by up to 2. If it becomes a min Gig, draw 1."
-} }), Li = A({
+} }), Ri = A({
 	id: "627186b3-cffb-4228-aed4-b3ee35235fb6",
 	slug: "v-corporate-exile",
 	canonicalId: "v-corporate-exile",
@@ -8316,7 +8330,7 @@ var Pi = A({
 	subname: "Corporate Exile",
 	displayName: "V: Corporate Exile",
 	rulesText: "{Go Solo} (Pay this Legend's cost to play it as a ready Unit. It can attack this turn. When it leaves the field, remove it from the game.)"
-} }), Ri = A({
+} }), zi = A({
 	id: "f090dc44-d7f0-4aec-a19e-9213155a6611",
 	slug: "viktor-vektor-sit-down-and-relax",
 	canonicalId: "viktor-vektor-sit-down-and-relax",
@@ -8370,7 +8384,7 @@ var Pi = A({
 	subname: "Sit Down and Relax",
 	displayName: "Viktor Vektor: Sit Down and Relax",
 	rulesText: "{Call} Search the top 5 cards of your deck. Reveal up to 2 Gears with cost 2 or less and add them to your hand. Bottom-deck the rest in a random order."
-} }), zi = A({
+} }), Bi = A({
 	id: "72358c7d-9f29-4ef6-a682-f5bfc72c7714",
 	canonicalId: "goro-takemura-hands-unclean",
 	slug: "goro-takemura-hands-unclean",
@@ -8397,7 +8411,7 @@ var Pi = A({
 	subname: "Hands Unclean",
 	displayName: "Goro Takemura: Hands Unclean",
 	rulesText: "{Go Solo} (Pay this Legend's cost to play it as a ready Unit. It can attack this turn. If it leaves the field, remove it from the game.)\n{Blocker} (You may spend this Unit to redirect a rival Unit's attack to it instead.)"
-} }), Bi = A({
+} }), Vi = A({
 	id: "cf50fa24-bf94-4c35-bcc1-c6d56a6f68d8",
 	canonicalId: "saburo-arasaka-stubborn-patriarch",
 	slug: "saburo-arasaka-stubborn-patriarch",
@@ -8444,7 +8458,7 @@ var Pi = A({
 	subname: "Stubborn Patriarch",
 	displayName: "Saburo Arasaka: Stubborn Patriarch",
 	rulesText: "Friendly ARASAKA Units have +1 power while attacking.\n(Units steal an extra Gig for every 10 power.)"
-} }), Vi = A({
+} }), Hi = A({
 	id: "31fa5825-946a-4ca2-afa8-8f07b9898d6a",
 	canonicalId: "yorinobu-arasaka-embracing-destruction",
 	slug: "yorinobu-arasaka-embracing-destruction",
@@ -8504,7 +8518,7 @@ var Pi = A({
 	subname: "Embracing Destruction",
 	displayName: "Yorinobu Arasaka: Embracing Destruction",
 	rulesText: "The first time a friendly ARASAKA Unit attacks each turn, draw 1. Then, if you have less than 20 ☆ (Street Cred), discard 1."
-} }), Hi = A({
+} }), Ui = A({
 	id: "eff41c12-b872-4101-9779-00e691532893",
 	slug: "adam-smasher-ender-of-legends",
 	canonicalId: "adam-smasher-ender-of-legends",
@@ -8557,7 +8571,7 @@ var Pi = A({
 	subname: "Ender of Legends",
 	displayName: "Adam Smasher: Ender of Legends",
 	rulesText: "{Go Solo} (Pay this Legend's cost to play it as a ready Unit. It can attack this turn. If it leaves the field, remove it from the game.)\n{Play} Defeat a rival Unit."
-} }), Ui = A({
+} }), Wi = A({
 	id: "12475e77-0e16-420e-a935-65eb74290de8",
 	slug: "alt-cunningham-soulkiller-architect",
 	canonicalId: "alt-cunningham-soulkiller-architect",
@@ -8649,7 +8663,7 @@ var Pi = A({
 	subname: "Soulkiller Architect",
 	displayName: "Alt Cunningham: Soulkiller Architect",
 	rulesText: "{Spend} Your next Program this turn plays for -1 €$ for each friendly min Gig, to a minimum of 1 €$.\n1 €$, {Spend} Play a Program from your trash. Bottom-deck it after you play it. (You still pay its cost.)"
-} }), Wi = A({
+} }), Gi = A({
 	id: "91df478a-91d5-4d42-a624-4c20ec61121c",
 	canonicalId: "dexter-deshawn-off-the-grid",
 	slug: "dexter-deshawn-off-the-grid",
@@ -8741,7 +8755,7 @@ var Pi = A({
 	subname: "Off the Grid",
 	displayName: "Dexter DeShawn: Off the Grid",
 	rulesText: "{Call} Choose one effect.\nGive a friendly Unit +2 power this turn. // Draw 1.\n{Spend}: Increase a Gig by up to 2."
-} }), Gi = A({
+} }), Ki = A({
 	id: "3b3f941d-aa58-4337-99dc-4af3fd3ccd47",
 	slug: "dum-dum-maelstrom-triggerman",
 	canonicalId: "dum-dum-maelstrom-triggerman",
@@ -8854,7 +8868,7 @@ var Pi = A({
 	subname: "Maelstrom Triggerman",
 	displayName: "Dum Dum: Maelstrom Triggerman",
 	rulesText: "{Call} You may defeat a friendly Gear. If you do, draw 2. Otherwise, draw 1.\n{Quick} 1 €$, {Spend} Give a friendly Unit +1 power this turn for each of its equipped Gear."
-} }), Ki = A({
+} }), qi = A({
 	id: "55807eb7-8a8e-44a9-97a2-c8ac993e7b43",
 	slug: "evelyn-parker-beautiful-enigma",
 	canonicalId: "evelyn-parker-beautiful-enigma",
@@ -8942,7 +8956,7 @@ var Pi = A({
 	subname: "Beautiful Enigma",
 	displayName: "Evelyn Parker: Beautiful Enigma",
 	rulesText: "When a friendly CORPO or GANGER Unit steals 1 or more Gigs, ready 1 Eddie.\n1 €$, {Spend} A rival Unit must attack next turn if it can."
-} }), qi = A({
+} }), Ji = A({
 	id: "424c9c0f-cc01-40ec-8404-75957985c7f8",
 	slug: "goro-takemura-vengeful-bodyguard",
 	canonicalId: "goro-takemura-vengeful-bodyguard",
@@ -9052,7 +9066,7 @@ var Pi = A({
 	subname: "Vengeful Bodyguard",
 	displayName: "Goro Takemura: Vengeful Bodyguard",
 	rulesText: "{Quick} 1 €$, {Spend} Give a friendly Unit with cost 4 or less {Blocker} this turn. If you control a value-pair of Gigs, also give it +1 power this turn.\nWhen a friendly Unit uses {Blocker}, you may discard 1. If you do, draw 1."
-} }), Ji = A({
+} }), Yi = A({
 	id: "380b5e52-2651-4cde-8222-1db2ae6469e2",
 	canonicalId: "hanako-arasaka-daughter-of-the-emperor",
 	slug: "hanako-arasaka-daughter-of-the-emperor",
@@ -9144,7 +9158,7 @@ var Pi = A({
 	subname: "Daughter of the Emperor",
 	displayName: "Hanako Arasaka: Daughter of the Emperor",
 	rulesText: "{Spend} Swap a friendly Gig with a rival Gig.\nAt the start of your turn, draw 1 for each friendly value-pair of Gigs."
-} }), Yi = A({
+} }), Xi = A({
 	id: "04a82ebf-eba1-4888-a95d-f01b9bbd0167",
 	canonicalId: "jackie-welles-mama-s-favorite",
 	slug: "jackie-welles-mama-s-favorite",
@@ -9180,7 +9194,7 @@ var Pi = A({
 	subname: "Mama's Favorite",
 	displayName: "Jackie Welles: Mama's Favorite",
 	rulesText: "{Go Solo} (Pay this Legend's cost to play it as a ready Unit. It can attack this turn. If it leaves the field, remove it from the game.)\nIf a friendly Unit would be defeated, you may spend 1 €$ to defeat this Legend instead. (Remove it from the game.)"
-} }), Xi = A({
+} }), Zi = A({
 	id: "56947a14-0b1e-4c3d-89e0-17839bcf4280",
 	canonicalId: "johnny-silverhand-rocking-renegade",
 	slug: "johnny-silverhand-rocking-renegade",
@@ -9269,7 +9283,7 @@ var Pi = A({
 	subname: "Rocking Renegade",
 	displayName: "Johnny Silverhand: Rocking Renegade",
 	rulesText: "2 €$, {Spend} A friendly Unit can attack spent rival Units the turn it's played. If it's a ROCKER Unit, also give it +2 power this turn. This effect costs -1 €$ for each friendly Gig with 8+ value."
-} }), Zi = A({
+} }), Qi = A({
 	id: "4560f3d0-5f63-466b-93b7-fc9d822a556e",
 	canonicalId: "judy-alvarez-braindance-maestro",
 	slug: "judy-alvarez-braindance-maestro",
@@ -9354,7 +9368,7 @@ var Pi = A({
 	subname: "Braindance Maestro",
 	displayName: "Judy Álvarez: Braindance Maestro",
 	rulesText: "When you play a BRAINDANCE Program, give a friendly Unit +1 power this turn.\n{Spend} Trash the top card of your deck. If it's a Program, you may add it to your hand."
-} }), Qi = A({
+} }), $i = A({
 	id: "5a441989-2997-40a2-a72e-08ca1442a7f3",
 	canonicalId: "kerry-eurodyne-axe-attitude-audience",
 	slug: "kerry-eurodyne-axe-attitude-audience",
@@ -9498,7 +9512,7 @@ var Pi = A({
 	subname: "Axe, Attitude, Audience",
 	displayName: "Kerry Eurodyne: Axe, Attitude, Audience",
 	rulesText: "When you roll in a Gig from your fixer area, you may ignore the result and reroll it once.\nWhen you roll a min or max value on a Gig, draw 1. If it's a d20, draw 3 instead."
-} }), $i = A({
+} }), ea = A({
 	id: "fc516d53-5fd8-43dd-8349-9e60f0606efa",
 	canonicalId: "muamar-reyes-el-capitan",
 	slug: "muamar-reyes-el-capitan",
@@ -9589,7 +9603,7 @@ var Pi = A({
 	subname: "El Capitán",
 	displayName: "Muamar Reyes: El Capitán",
 	rulesText: "{Call} Choose one effect.\nA friendly Unit can't be defeated in a fight this turn. // Draw 1.\n{Spend} Adjust a Gig by 1."
-} }), ea = A({
+} }), ta = A({
 	id: "501a3796-9983-400f-86e4-97ffac5d5451",
 	canonicalId: "padre-man-of-the-cross",
 	slug: "padre-man-of-the-cross",
@@ -9687,12 +9701,12 @@ var Pi = A({
 	subname: "Man of the Cross",
 	displayName: "Padre: Man of the Cross",
 	rulesText: "{Call} Choose one effect.\nSpend a rival Unit. // Draw 1.\n{Spend} Set a player's Gig to the same value as another player's Gig."
-} }), ta = { en: {
+} }), na = { en: {
 	name: "Panam Palmer",
 	subname: "Nomad Cavalry",
 	displayName: "Panam Palmer: Nomad Cavalry",
 	rulesText: "2 €$, {Spend} Move a Gear from this Legend to an unequipped friendly Unit. If you do, ready that Unit.\nAt the end of your turn, if 5 or more friendly Units and/or Legends are equipped, ready them."
-} }, na = A({
+} }, ra = A({
 	id: "950f045c-f5a4-4318-9907-b630d64de754",
 	slug: "panam-palmer-nomad-cavalry",
 	canonicalId: "panam-palmer-nomad-cavalry",
@@ -9797,13 +9811,12 @@ var Pi = A({
 			}]
 		}]
 	}]
-}, ta), ra = { en: {
+}, na), ia = { en: {
 	name: "River Ward",
 	subname: "Detective on the Hunt",
 	displayName: "River Ward: Detective on the Hunt",
 	rulesText: "{Quick} {Spend} Play a Gear with cost 2 or less from your hand for free.\nWhen a friendly equipped Unit is defeated, search the top 2 cards of your deck and trash 1."
-} }, ia = [
-	Pi,
+} }, aa = [
 	Fi,
 	Ii,
 	Li,
@@ -9824,7 +9837,8 @@ var Pi = A({
 	Qi,
 	$i,
 	ea,
-	na,
+	ta,
+	ra,
 	A({
 		id: "e64e2978-695b-4fc5-b17b-62c710a11c47",
 		slug: "river-ward-detective-on-the-hunt",
@@ -9935,7 +9949,7 @@ var Pi = A({
 				}]
 			}
 		]
-	}, ra),
+	}, ia),
 	A({
 		id: "012b0300-6af1-417e-86a2-dc208a60ac15",
 		canonicalId: "rogue-amendiares-preem-solo",
@@ -10269,7 +10283,7 @@ var Pi = A({
 		displayName: "Wakako Okada: Peace and Harmony",
 		rulesText: "{Call} Choose one effect.\nGive a rival Unit -2 power this turn. // Draw 1.\n{Spend}: Decrease a Gig by up to 2."
 	} })
-], aa = A({
+], oa = A({
 	id: "f61b944a-32e3-4085-894b-7bd498325156",
 	canonicalId: "dexter-deshawn-one-last-chance",
 	slug: "dexter-deshawn-one-last-chance",
@@ -10375,7 +10389,7 @@ var Pi = A({
 	subname: "One Last Chance",
 	displayName: "Dexter DeShawn: One Last Chance",
 	rulesText: "{Play} {Attack} Adjust a Gig by up to 1.\n{Defeated} If your ☆ (Street Cred) differs from a Rival's by 10+, draw 2."
-} }), oa = { en: {
+} }), sa = { en: {
 	name: "MT0D12 Flathead",
 	displayName: "MT0D12 Flathead",
 	rulesText: "If you have less ☆ (Street Cred) than a Rival, this Unit can't be blocked."
@@ -10400,7 +10414,7 @@ var Pi = A({
 		amount: 1,
 		...e
 	})
-}, M = {
+}, ca = {
 	defeat: (e) => ({
 		effect: "defeat",
 		...e
@@ -10491,7 +10505,7 @@ var Pi = A({
 	})
 };
 // upstream/submodules/cyberpunk/packages/cards/src/helpers/builders/ability.ts
-function sa() {
+function la() {
 	return {
 		text: "",
 		conditions: [],
@@ -10499,7 +10513,7 @@ function sa() {
 		effects: []
 	};
 }
-function ca(e, t) {
+function ua(e, t) {
 	let n = {
 		kind: t.kind,
 		text: e.text,
@@ -10507,8 +10521,8 @@ function ca(e, t) {
 	};
 	return t.keyword !== void 0 && (n.keyword = t.keyword), e.source !== void 0 && (n.source = e.source), t.trigger !== void 0 && (n.trigger = t.trigger), t.limits && t.limits.length > 0 && (n.limits = t.limits), t.bindings && t.bindings.length > 0 && (n.bindings = t.bindings), e.conditions.length > 0 && (n.conditions = e.conditions), e.costs.length > 0 && (n.costs = e.costs), n;
 }
-var la = class {
-	state = sa();
+var da = class {
+	state = la();
 	text(e) {
 		return this.state.text = e, this;
 	}
@@ -10524,23 +10538,23 @@ var la = class {
 	cost(e) {
 		return this.state.costs.push(e), this;
 	}
-}, ua = class extends la {
+}, fa = class extends da {
 	kw;
 	keyword(e) {
 		return this.kw = e, this;
 	}
 	build() {
 		if (this.kw === void 0) throw Error("KeywordAbilityBuilder.build(): .keyword(...) is required");
-		return ca(this.state, {
+		return ua(this.state, {
 			kind: "keyword",
 			keyword: this.kw
 		});
 	}
-}, da = class extends la {
+}, pa = class extends da {
 	build() {
-		return ca(this.state, { kind: "static" });
+		return ua(this.state, { kind: "static" });
 	}
-}, fa = class extends la {
+}, ma = class extends da {
 	trig;
 	limits = [];
 	bindings = [];
@@ -10627,24 +10641,24 @@ var la = class {
 	}
 	build() {
 		if (this.trig === void 0) throw Error("TriggeredAbilityBuilder.build(): a trigger is required (e.g. .onPlay())");
-		return ca(this.state, {
+		return ua(this.state, {
 			kind: "triggered",
 			trigger: this.trig,
 			limits: this.limits,
 			bindings: this.bindings
 		});
 	}
-}, pa = {
+}, ha = {
 	keyword() {
-		return new ua();
+		return new fa();
 	},
 	static() {
-		return new da();
+		return new pa();
 	},
 	triggered() {
-		return new fa();
+		return new ma();
 	}
-}, ma = A({
+}, ga = A({
 	id: "619429c9-132f-496e-8aa0-414e850c87ec",
 	slug: "mt0d12-flathead",
 	canonicalId: "mt0d12-flathead",
@@ -10664,7 +10678,7 @@ var la = class {
 	type: "unit",
 	cost: 5,
 	power: 7,
-	abilities: [pa.static().text("If you have less ☆ (Street Cred) than a Rival, this Unit can't be blocked.").effect(M.grantRule({
+	abilities: [ha.static().text("If you have less ☆ (Street Cred) than a Rival, this Unit can't be blocked.").effect(ca.grantRule({
 		target: j.self(),
 		rule: "cantBeBlocked",
 		duration: "continuous",
@@ -10675,7 +10689,7 @@ var la = class {
 			other: "rival"
 		}]
 	})).build()]
-}, oa), ha = A({
+}, sa), _a = A({
 	id: "08e6a687-56b7-4ac1-982f-8a8d6d0c0bc5",
 	canonicalId: "goro-takemura-losing-his-way",
 	slug: "goro-takemura-losing-his-way",
@@ -10714,7 +10728,7 @@ var la = class {
 	subname: "Losing His Way",
 	displayName: "Goro Takemura: Losing His Way",
 	rulesText: "{Attack} If all friendly Legends are face-up, this Unit has +5 power this turn."
-} }), ga = A({
+} }), va = A({
 	id: "066641c5-acc2-45f4-ba67-16a8d20cce73",
 	slug: "minotaur",
 	canonicalId: "minotaur",
@@ -10770,7 +10784,7 @@ var la = class {
 	name: "Minotaur",
 	displayName: "Minotaur",
 	rulesText: "{Play} If you have more ☆ (Street Cred) than a Rival, defeat a rival Unit with power 5 or less."
-} }), _a = A({
+} }), ya = A({
 	id: "e48c9d39-ef27-4b8f-8690-d75c3a4807b0",
 	slug: "6th-street-recruits",
 	canonicalId: "6th-street-recruits",
@@ -10838,7 +10852,7 @@ var la = class {
 	name: "6th Street Recruits",
 	displayName: "6th Street Recruits",
 	rulesText: "When a friendly Unit steals a d6, increase a Gig by up to 6."
-} }), va = A({
+} }), ba = A({
 	id: "a2ad9c2f-bfb7-473b-9408-91af142d269d",
 	slug: "adam-smasher-metal-over-meat",
 	canonicalId: "adam-smasher-metal-over-meat",
@@ -10879,12 +10893,12 @@ var la = class {
 	subname: "Metal Over Meat",
 	displayName: "Adam Smasher: Metal Over Meat",
 	rulesText: "{Play} Defeat all other Units."
-} }), ya = { en: {
+} }), xa = { en: {
 	name: "Alt Cunningham",
 	subname: "Mother of Daemons",
 	displayName: "Alt Cunningham: Mother of Daemons",
 	rulesText: "When a friendly equipped Unit or Legend is spent, draw 1.\nWhen a rival Unit would steal a Gig, you may discard 1 with cost equal to that Gig's value. If you do, the Gig isn't stolen."
-} }, ba = A({
+} }, Sa = A({
 	id: "858e95f5-2efb-460e-b890-e8a5140e11c9",
 	canonicalId: "alt-cunningham-mother-of-daemons",
 	slug: "alt-cunningham-mother-of-daemons",
@@ -10934,7 +10948,7 @@ var la = class {
 	type: "unit",
 	cost: 7,
 	power: 8
-}, ya), xa = A({
+}, xa), Ca = A({
 	id: "e8aa7757-e5e3-4137-8970-4fa546b9bed9",
 	canonicalId: "animals-wrecker",
 	slug: "animals-wrecker",
@@ -10958,7 +10972,7 @@ var la = class {
 	name: "Animals Wrecker",
 	displayName: "Animals Wrecker",
 	rulesText: "[Flavour Text] Takes a lot of juice to break bones like they do."
-} }), Sa = A({
+} }), wa = A({
 	id: "ce45cb9d-430a-4ccf-bb4b-acf0b76120e0",
 	canonicalId: "augmented-negotiators",
 	slug: "augmented-negotiators",
@@ -11001,7 +11015,7 @@ var la = class {
 	name: "Augmented Negotiators",
 	displayName: "Augmented Negotiators",
 	rulesText: "{Blocker} (You may spend this Unit to redirect a rival Unit's attack to it instead.)\nWhen this Unit uses {Blocker}, a Rival discards 1."
-} }), Ca = A({
+} }), Ta = A({
 	id: "0273f402-94fb-4b59-90ec-a1057c2d1284",
 	slug: "caliber-totentanz-s-top-dog",
 	canonicalId: "caliber-totentanz-s-top-dog",
@@ -11071,7 +11085,7 @@ var la = class {
 	subname: "Totentanz's Top Dog",
 	displayName: "Caliber: Totentanz's Top Dog",
 	rulesText: "{Play} Defeat a rival Unit with cost 2 or less.\n{Defeated} A Rival discards 1. If the card's cost equals the value of a friendly Gig, that Rival discards 1 more."
-} }), wa = A({
+} }), Ea = A({
 	id: "3c4cf61f-c469-4ad6-a209-67e715f9d45b",
 	canonicalId: "chrome-fang",
 	slug: "chrome-fang",
@@ -11112,7 +11126,7 @@ var la = class {
 	name: "Chrome Fang",
 	displayName: "Chrome Fang",
 	rulesText: "{Play} Until your next turn, rival Units can't steal friendly Gigs with value higher than their power."
-} }), Ta = A({
+} }), Da = A({
 	id: "71652e73-984a-4630-be47-af947f87d5c1",
 	slug: "corpo-security",
 	canonicalId: "corpo-security",
@@ -11147,7 +11161,7 @@ var la = class {
 	name: "Corpo Security",
 	displayName: "Corpo Security",
 	rulesText: "This Unit can't attack.\n{Blocker} (You may spend this Unit to redirect a rival Unit's attack to it instead.)"
-} }), Ea = A({
+} }), Oa = A({
 	id: "a1e60653-5e28-49ee-9798-d16520b553c3",
 	canonicalId: "delamain-cab",
 	slug: "delamain-cab",
@@ -11192,7 +11206,7 @@ var la = class {
 	name: "Delamain Cab",
 	displayName: "Delamain Cab",
 	rulesText: "At the end of your turn, if this Unit stole a Gig this turn, ready 1 Eddie."
-} }), Da = A({
+} }), ka = A({
 	id: "3bb1f191-927e-45b3-86ca-cb30baabfe0d",
 	canonicalId: "delamain-rideshare-ai",
 	slug: "delamain-rideshare-ai",
@@ -11230,7 +11244,7 @@ var la = class {
 	subname: "Rideshare AI",
 	displayName: "Delamain: Rideshare AI",
 	rulesText: "{Play} Draw 2.\n(Units with power 0 don't steal Gigs.)"
-} }), Oa = A({
+} }), Aa = A({
 	id: "c688ca08-b3b7-441d-b161-78b9a63a8a9e",
 	slug: "el-sombreron-la-venganza-lenta",
 	canonicalId: "el-sombreron-la-venganza-lenta",
@@ -11292,7 +11306,7 @@ var la = class {
 	subname: "La Venganza Lenta",
 	displayName: "El Sombrerón: La Venganza Lenta",
 	rulesText: "{Attack} You may pay 2 €$. If you do, this Unit gains power equal to a friendly max Gig this turn."
-} }), ka = A({
+} }), ja = A({
 	id: "917e6515-ed23-4a1d-baaa-474d879bdabc",
 	slug: "emergency-atlus",
 	canonicalId: "emergency-atlus",
@@ -11320,7 +11334,7 @@ var la = class {
 	name: "Emergency Atlus",
 	displayName: "Emergency Atlus",
 	rulesText: "\"Grab the policyholder, leave the rest for the city meatwagon.\""
-} }), Aa = A({
+} }), Ma = A({
 	id: "a3cc3d15-8e6a-4684-b2ca-c843b4a854e2",
 	slug: "evelyn-parker-scheming-siren",
 	canonicalId: "evelyn-parker-scheming-siren",
@@ -11341,10 +11355,10 @@ var la = class {
 	type: "unit",
 	cost: 2,
 	power: 0,
-	abilities: [pa.triggered().text("ATTACK Draw 1. Then, if you have more ☆ (Street Cred) than a Rival, discard 1.").onAttack().source(j.self()).effect(M.draw({
+	abilities: [ha.triggered().text("ATTACK Draw 1. Then, if you have more ☆ (Street Cred) than a Rival, discard 1.").onAttack().source(j.self()).effect(ca.draw({
 		player: "friendly",
 		amount: 1
-	})).effect(M.discardFromHand({
+	})).effect(ca.discardFromHand({
 		player: "friendly",
 		amount: 1,
 		conditions: [{
@@ -11360,7 +11374,7 @@ var la = class {
 	subname: "Scheming Siren",
 	displayName: "Evelyn Parker: Scheming Siren",
 	rulesText: "{Attack} Draw 1. Then, if you have more ☆ (Street Cred) than a Rival, discard 1.\n(Units with power 0 don't steal Gigs.)"
-} }), ja = A({
+} }), Na = A({
 	id: "4a8dfe3f-980d-4370-ac10-6bd989042cdf",
 	canonicalId: "field-operator",
 	slug: "field-operator",
@@ -11405,7 +11419,7 @@ var la = class {
 	name: "Field Operator",
 	displayName: "Field Operator",
 	rulesText: "{Play} If your ☆ (Street Cred) is an even number, draw 1."
-} }), Ma = A({
+} }), Pa = A({
 	id: "0901652d-99c9-46c7-9821-ca3e8208fb4d",
 	slug: "gilded-maton",
 	canonicalId: "gilded-maton",
@@ -11465,7 +11479,7 @@ var la = class {
 	name: "Gilded Matón",
 	displayName: "Gilded Matón",
 	rulesText: "{Play} You may defeat a friendly Gear. If you do, defeat a rival Unit with cost 3 or less."
-} }), Na = A({
+} }), Fa = A({
 	id: "d2a9bcb0-a5e1-4413-8140-8b808258a753",
 	canonicalId: "hacked-corpo",
 	slug: "hacked-corpo",
@@ -11515,7 +11529,7 @@ var la = class {
 	name: "Hacked Corpo",
 	displayName: "Hacked Corpo",
 	rulesText: "{Play} Trash 3. Add a Program from among them to your hand."
-} }), Pa = A({
+} }), Ia = A({
 	id: "2902da45-ec28-4971-a731-ea1eda4c6ba1",
 	slug: "hanako-arasaka-in-a-gilded-cage",
 	canonicalId: "hanako-arasaka-in-a-gilded-cage",
@@ -11576,7 +11590,7 @@ var la = class {
 	subname: "In a Gilded Cage",
 	displayName: "Hanako Arasaka: In a Gilded Cage",
 	rulesText: "{Play} Search the top 4 cards of your deck. Reveal any number of cards with cost equal to any friendly Gig values and add them to your hand. Bottom-deck the rest."
-} }), Fa = A({
+} }), La = A({
 	id: "2a9deb43-bf9a-41db-9a05-bb0d357bb08e",
 	canonicalId: "heywood-ripperdoc",
 	slug: "heywood-ripperdoc",
@@ -11640,7 +11654,7 @@ var la = class {
 	name: "Heywood Ripperdoc",
 	displayName: "Heywood Ripperdoc",
 	rulesText: "{Play} You may defeat a Gear. If its cost equals the value of a friendly Gig, draw 1."
-} }), Ia = A({
+} }), Ra = A({
 	id: "b0453570-7ed8-4031-9562-cb73d7a979e5",
 	canonicalId: "jacked-in-voodoo-boy",
 	slug: "jacked-in-voodoo-boy",
@@ -11674,7 +11688,7 @@ var la = class {
 	name: "Jacked-In Voodoo Boy",
 	displayName: "Jacked-In Voodoo Boy",
 	rulesText: "This Unit can't attack unless you played a Program this turn."
-} }), La = A({
+} }), za = A({
 	id: "b665e103-456b-4c51-9551-95b0bc87212a",
 	slug: "jackie-welles-ride-or-die-choom",
 	canonicalId: "jackie-welles-ride-or-die-choom",
@@ -11694,7 +11708,7 @@ var la = class {
 	type: "unit",
 	cost: 6,
 	power: 8,
-	abilities: [pa.triggered().text("ATTACK Give this Unit +2 power this turn for each friendly Gig with an even value.").onAttack().source(j.self()).effect(M.modifyPower({
+	abilities: [ha.triggered().text("ATTACK Give this Unit +2 power this turn for each friendly Gig with an even value.").onAttack().source(j.self()).effect(ca.modifyPower({
 		target: j.self(),
 		value: {
 			type: "perCount",
@@ -11707,7 +11721,7 @@ var la = class {
 			}
 		},
 		duration: "turn"
-	})).build(), pa.triggered().text("DEFEATED Draw 1 for each friendly Gig with an odd value.").onDefeated().source(j.self()).effect(M.draw({
+	})).build(), ha.triggered().text("DEFEATED Draw 1 for each friendly Gig with an odd value.").onDefeated().source(j.self()).effect(ca.draw({
 		player: "friendly",
 		amount: {
 			type: "perCount",
@@ -11725,7 +11739,7 @@ var la = class {
 	subname: "Ride or Die Choom",
 	displayName: "Jackie Welles: Ride or Die Choom",
 	rulesText: "{Attack} Give this Unit +2 power this turn for each friendly Gig with an even value.\n{Defeated} Draw 1 for each friendly Gig with an odd value."
-} }), Ra = A({
+} }), Ba = A({
 	id: "e8b0432c-4d2d-4464-9a00-f3626917a7f0",
 	canonicalId: "japantown-jonin",
 	slug: "japantown-jonin",
@@ -11773,17 +11787,17 @@ var la = class {
 	name: "Japantown Jonin",
 	displayName: "Japantown Jonin",
 	rulesText: "{Play} Give a friendly Unit +2 power this turn.\n(Units with power 0 don't steal Gigs.)"
-} }), za = { en: {
+} }), Va = { en: {
 	name: "Johnny Silverhand",
 	subname: "Never Stop Fighting",
 	displayName: "Johnny Silverhand: Never Stop Fighting",
 	rulesText: "The first time this Unit wins a fight each turn, ready it.\nThis Unit wins all fights against CORPO Units."
-} }, Ba = pa.triggered().text("The first time this Unit wins a fight each turn, ready it.").onFightResolved({
+} }, Ha = ha.triggered().text("The first time this Unit wins a fight each turn, ready it.").onFightResolved({
 	player: "any",
 	winner: j.self()
-}).source(j.self()).effect(M.ready({ target: j.self() })).build();
-Ba.limits = ["firstTimeEachTurn"];
-var Va = A({
+}).source(j.self()).effect(ca.ready({ target: j.self() })).build();
+Ha.limits = ["firstTimeEachTurn"];
+var Ua = A({
 	id: "9a4002b0-0f0b-4c9a-a198-691d058b6dcc",
 	canonicalId: "johnny-silverhand-never-stop-fighting",
 	slug: "johnny-silverhand-never-stop-fighting",
@@ -11813,11 +11827,11 @@ var Va = A({
 			classifications: ["Corpo"],
 			duration: "continuous"
 		}]
-	}, Ba],
+	}, Ha],
 	type: "unit",
 	cost: 6,
 	power: 8
-}, za), Ha = A({
+}, Va), Wa = A({
 	id: "cb7f8d05-87cc-4606-ad71-a9283f2f4b20",
 	canonicalId: "judy-alvarez-nothing-to-doubt",
 	slug: "judy-alvarez-nothing-to-doubt",
@@ -11881,7 +11895,7 @@ var Va = A({
 	subname: "Nothing to Doubt",
 	displayName: "Judy Álvarez: Nothing to Doubt",
 	rulesText: "1 €$, {Spend} Reveal the top card of your deck. You may play it for free. Otherwise, add it to your hand."
-} }), Ua = A({
+} }), Ga = A({
 	id: "5c4d4058-9185-4305-9e8f-7eca41cf6674",
 	slug: "kerry-eurodyne-the-last-rockerboy",
 	canonicalId: "kerry-eurodyne-the-last-rockerboy",
@@ -11932,7 +11946,7 @@ var Va = A({
 	subname: "The Last Rockerboy",
 	displayName: "Kerry Eurodyne: The Last Rockerboy",
 	rulesText: "{Spend} If you control a Gig with 8+ value, draw 2."
-} }), Wa = A({
+} }), Ka = A({
 	id: "1b516742-cdf3-4597-8ba1-be787240ab3b",
 	canonicalId: "la-llorona-ghost-of-the-past",
 	slug: "la-llorona-ghost-of-the-past",
@@ -11986,7 +12000,7 @@ var Va = A({
 	subname: "Ghost of the Past",
 	displayName: "La Llorona: Ghost of the Past",
 	rulesText: "{Blocker} (You may spend this Unit to redirect a rival Unit's attack to it instead.)\nWhen this Unit uses {Blocker}, increase a Gig by up to 3."
-} }), Ga = A({
+} }), qa = A({
 	id: "6b078eff-4cef-4beb-a299-ed388a72ce45",
 	slug: "lizzy-wizzy-delicate-weapon",
 	canonicalId: "lizzy-wizzy-delicate-weapon",
@@ -12049,7 +12063,7 @@ var Va = A({
 	subname: "Delicate Weapon",
 	displayName: "Lizzy Wizzy: Delicate Weapon",
 	rulesText: "{Play} You may play a Program with cost 3 or less from your hand or trash for free. Bottom-deck it after you play it.\n{Blocker}"
-} }), Ka = A({
+} }), Ja = A({
 	id: "f57094f7-0720-4ba5-9a71-aafbc714d65a",
 	canonicalId: "maelstrom-goons",
 	slug: "maelstrom-goons",
@@ -12107,7 +12121,7 @@ var Va = A({
 	name: "Maelstrom Goons",
 	displayName: "Maelstrom Goons",
 	rulesText: "When this Unit steals a Gig, if it's equipped, a Rival discards 1."
-} }), qa = A({
+} }), Ya = A({
 	id: "35c1fda3-60f9-4779-b690-30b283d52297",
 	canonicalId: "maelstrom-zealots",
 	slug: "maelstrom-zealots",
@@ -12206,7 +12220,7 @@ var Va = A({
 	name: "Maelstrom Zealots",
 	displayName: "Maelstrom Zealots",
 	rulesText: "When this Unit loses a fight, defeat the opposing rival Unit.\n(Units with power 0 don't steal Gigs.)"
-} }), Ja = A({
+} }), Xa = A({
 	id: "5380dea3-4d21-445b-af02-487b45d40395",
 	slug: "maman-brigitte-spirit-of-death",
 	canonicalId: "maman-brigitte-spirit-of-death",
@@ -12273,7 +12287,7 @@ var Va = A({
 	subname: "Spirit of Death",
 	displayName: "Maman Brigitte: Spirit of Death",
 	rulesText: "{Play} You may discard 2 Programs. If you do, bottom-deck a rival unequipped Unit."
-} }), Ya = A({
+} }), Za = A({
 	id: "d6f16c44-6d56-48ff-8130-154eea5540ca",
 	canonicalId: "maxtac-av",
 	slug: "maxtac-av",
@@ -12341,7 +12355,7 @@ var Va = A({
 	name: "MaxTac AV",
 	displayName: "MaxTac AV",
 	rulesText: "{Play} You may swap a friendly Gig with a rival Gig."
-} }), Xa = A({
+} }), Qa = A({
 	id: "78fee308-5d4e-491c-9596-423dc20da5e3",
 	canonicalId: "maxtac-heavy",
 	slug: "maxtac-heavy",
@@ -12376,19 +12390,17 @@ var Va = A({
 	name: "MaxTac Heavy",
 	displayName: "MaxTac Heavy",
 	rulesText: "Play this Unit for -1 €$ for each of a Rival’s Units, to a minimum of 1 €$."
-} }), Za = { en: {
+} }), $a = { en: {
 	name: "MaxTac Squadron",
 	displayName: "MaxTac Squadron",
 	rulesText: "At the end of your turn, if this Unit is spent, ready a friendly face-up Legend."
-} }, Qa = [
-	aa,
-	ma,
-	ha,
+} }, eo = [
+	oa,
 	ga,
 	_a,
 	va,
+	ya,
 	ba,
-	xa,
 	Sa,
 	Ca,
 	wa,
@@ -12406,8 +12418,8 @@ var Va = A({
 	Ia,
 	La,
 	Ra,
-	Va,
-	Ha,
+	za,
+	Ba,
 	Ua,
 	Wa,
 	Ga,
@@ -12416,6 +12428,8 @@ var Va = A({
 	Ja,
 	Ya,
 	Xa,
+	Za,
+	Qa,
 	A({
 		id: "2a8802d3-598c-4ce3-9051-59ecf965ffbf",
 		canonicalId: "maxtac-squadron",
@@ -12465,7 +12479,7 @@ var Va = A({
 		type: "unit",
 		cost: 3,
 		power: 4
-	}, Za),
+	}, $a),
 	A({
 		id: "95840ebd-d00a-49ff-b4e5-e2064cfc13a9",
 		canonicalId: "maxtac-suppression-team",
@@ -12924,7 +12938,7 @@ var Va = A({
 		type: "unit",
 		cost: 4,
 		power: 5,
-		abilities: [pa.triggered().text("PLAY Spend this Unit and a rival Unit.").onPlay().source(j.self()).effect(M.spend({ target: j.self() })).effect(M.spend({ target: j.card({
+		abilities: [ha.triggered().text("PLAY Spend this Unit and a rival Unit.").onPlay().source(j.self()).effect(ca.spend({ target: j.self() })).effect(ca.spend({ target: j.card({
 			controller: "rival",
 			zones: ["field"],
 			cardTypes: ["unit"],
@@ -13846,7 +13860,7 @@ var Va = A({
 		type: "unit",
 		cost: 3,
 		power: 3,
-		abilities: [pa.triggered().text("{Attack} If this Unit has power 5+, draw 1.").onAttack().source(j.self()).effect(M.draw({
+		abilities: [ha.triggered().text("{Attack} If this Unit has power 5+, draw 1.").onAttack().source(j.self()).effect(ca.draw({
 			player: "friendly",
 			amount: 1,
 			conditions: [{
@@ -14494,7 +14508,7 @@ var Va = A({
 		displayName: "Yorinobu Arasaka: Steel Dragon",
 		rulesText: "{Play} You may play a Unit with cost 4 or less from your hand or trash for free. It can attack rival Units this turn.\nThe first time an ARASAKA Unit is defeated each turn, draw 1."
 	} })
-], $a = [
+], to = [
 	A({
 		id: "6a5a1e34-fdd3-42de-b6bd-4b2553d6df39",
 		canonicalId: "adrenaline-converter",
@@ -14702,19 +14716,19 @@ var Va = A({
 		type: "gear",
 		cost: 2,
 		power: 2,
-		abilities: [pa.triggered().text("ATTACK Decrease a Gig by up to 2.").onAttack().source(j.host()).bind("selectedGig", j.gig({
+		abilities: [ha.triggered().text("ATTACK Decrease a Gig by up to 2.").onAttack().source(j.host()).bind("selectedGig", j.gig({
 			amount: 1,
 			selection: {
 				mode: "choose",
 				min: 1,
 				max: 1
 			}
-		})).effect(M.adjustGig({
+		})).effect(ca.adjustGig({
 			target: j.bound("selectedGig"),
 			maxAmount: 2,
 			direction: "decrease",
 			chooseUpTo: !0
-		})).build(), pa.triggered().text("At the end of your turn, if this Unit is named \"V\", ready 2 Eddies.").onTurnEnded({ player: "friendly" }).source(j.host()).effect(M.readyEddies({
+		})).build(), ha.triggered().text("At the end of your turn, if this Unit is named \"V\", ready 2 Eddies.").onTurnEnded({ player: "friendly" }).source(j.host()).effect(ca.readyEddies({
 			player: "friendly",
 			amount: 2,
 			conditions: [{
@@ -14819,7 +14833,7 @@ var Va = A({
 		type: "gear",
 		cost: 1,
 		power: 1,
-		abilities: [pa.triggered().text("ATTACK Look at a friendly face-down Legend. (Don't reveal it.)").onAttack().source(j.host()).effect(M.lookAt({
+		abilities: [ha.triggered().text("ATTACK Look at a friendly face-down Legend. (Don't reveal it.)").onAttack().source(j.host()).effect(ca.lookAt({
 			target: j.card({
 				controller: "friendly",
 				zones: ["legendArea"],
@@ -15099,7 +15113,7 @@ var Va = A({
 		type: "gear",
 		cost: 3,
 		power: 2,
-		abilities: [pa.triggered().text("At the end of your turn, ready this Unit or Legend.").onTurnEnded({ player: "friendly" }).source(j.host()).effect(M.ready({ target: j.host() })).build()],
+		abilities: [ha.triggered().text("At the end of your turn, ready this Unit or Legend.").onTurnEnded({ player: "friendly" }).source(j.host()).effect(ca.ready({ target: j.host() })).build()],
 		attachment: {
 			text: "Equip to a unit or face-up legend.",
 			target: i("friendly", "faceUp")
@@ -15129,10 +15143,10 @@ var Va = A({
 		type: "gear",
 		cost: 2,
 		power: 2,
-		abilities: [pa.triggered().text("When this Unit wins a fight against a rival Unit, draw 1.").onFightResolved({
+		abilities: [ha.triggered().text("When this Unit wins a fight against a rival Unit, draw 1.").onFightResolved({
 			player: "any",
 			winner: j.host()
-		}).source(j.host()).effect(M.draw({
+		}).source(j.host()).effect(ca.draw({
 			player: "friendly",
 			amount: 1
 		})).build()],
@@ -15378,7 +15392,7 @@ var Va = A({
 		displayName: "Zetatech Faceplate",
 		rulesText: "(Equip to a friendly Unit or face-up Legend.)\nWhen this Unit or Legend is spent, adjust a Gig by up to 1. Then, if you control 3 or more Gigs with different values, draw 1."
 	} })
-], eo = A({
+], no = A({
 	id: "d039e4b3-9b83-40da-8d8f-b1dfb1f172f1",
 	slug: "afterparty-at-lizzie-s",
 	canonicalId: "afterparty-at-lizzie-s",
@@ -15441,7 +15455,7 @@ var Va = A({
 	name: "Afterparty at Lizzie's",
 	displayName: "Afterparty at Lizzie's",
 	rulesText: "Adjust a Gig by up to 1. If you control 2 or more Gigs with different values, draw 1."
-} }), to = A({
+} }), ro = A({
 	id: "1f969c27-dddb-4971-9ab5-bd728c3e3e52",
 	slug: "all-is-lost",
 	canonicalId: "all-is-lost",
@@ -15492,7 +15506,7 @@ var Va = A({
 	name: "All is Lost",
 	displayName: "All is Lost",
 	rulesText: "Trash 3. Add a Unit from among them to your hand."
-} }), no = A({
+} }), io = A({
 	id: "59ddecca-1501-492a-b8b1-d4b38d4486c9",
 	canonicalId: "appetite-for-destruction",
 	slug: "appetite-for-destruction",
@@ -15527,7 +15541,7 @@ var Va = A({
 	name: "Appetite for Destruction",
 	displayName: "Appetite for Destruction",
 	rulesText: "The next time a friendly Unit wins a fight by 3+ power this turn, it also steals a Gig."
-} }), ro = A({
+} }), ao = A({
 	id: "3eb0f8bf-afb9-42a7-a4fa-710e2eb5c89c",
 	slug: "bonnie-and-clyde",
 	canonicalId: "bonnie-and-clyde",
@@ -15602,7 +15616,7 @@ var Va = A({
 	name: "Bonnie and Clyde",
 	displayName: "Bonnie and Clyde",
 	rulesText: "Defeat a rival Unit with power 4 or less. You may defeat 2 instead if a Rival controls at least 2 Gigs more than you."
-} }), io = A({
+} }), oo = A({
 	id: "84561b4c-67f0-4b2e-80ac-6b9c0a2396e3",
 	slug: "bootleg-black-sapphire-show",
 	canonicalId: "bootleg-black-sapphire-show",
@@ -15647,7 +15661,7 @@ var Va = A({
 	name: "Bootleg Black Sapphire Show",
 	displayName: "Bootleg Black Sapphire Show",
 	rulesText: "Sell the top card of your deck.\nIf you control a Gig with an even value and a Gig with an odd value, draw 2."
-} }), ao = A({
+} }), so = A({
 	id: "81fb66ee-b054-4f78-b0c9-7d2c9ff53435",
 	slug: "carnage-at-the-colosseum",
 	canonicalId: "carnage-at-the-colosseum",
@@ -15710,7 +15724,7 @@ var Va = A({
 	name: "Carnage at the Colosseum",
 	displayName: "Carnage at the Colosseum",
 	rulesText: "Play this Program for -1 €$ for each friendly Gig with 8+ value, to a minimum of 1 €$.\nDefeat a rival Unit with less power than a friendly Unit."
-} }), oo = A({
+} }), co = A({
 	id: "a5e0cd15-861f-46ac-b6e9-db5e30acfc82",
 	slug: "chrome-reverie",
 	canonicalId: "chrome-reverie",
@@ -15779,7 +15793,7 @@ var Va = A({
 	name: "Chrome Reverie",
 	displayName: "Chrome Reverie",
 	rulesText: "A rival Unit can't attack until your next turn. If you control a min Gig, you may Call a Legend for free. (You can only Call a Legend once per turn.)"
-} }), so = A({
+} }), lo = A({
 	id: "71fb410b-b56e-42b2-a793-4c49e935b9f1",
 	slug: "corporate-surveillance",
 	canonicalId: "corporate-surveillance",
@@ -15826,7 +15840,7 @@ var Va = A({
 	name: "Corporate Surveillance",
 	displayName: "Corporate Surveillance",
 	rulesText: "Spend a rival Unit with cost 4 or less."
-} }), co = A({
+} }), uo = A({
 	id: "d0991502-57e5-42e2-b37b-64b425f4f1b5",
 	slug: "cyberpsychosis",
 	canonicalId: "cyberpsychosis",
@@ -15899,7 +15913,7 @@ var Va = A({
 	name: "Cyberpsychosis",
 	displayName: "Cyberpsychosis",
 	rulesText: "{Quick} Give an equipped Unit +3 power this turn for each of its equipped Gears. If that Unit steals or fights, defeat it at the end of this turn."
-} }), lo = A({
+} }), fo = A({
 	id: "2697ed9d-72fc-4658-9c94-977668911a67",
 	canonicalId: "detonate",
 	slug: "detonate",
@@ -15946,7 +15960,7 @@ var Va = A({
 	name: "Detonate",
 	displayName: "Detonate",
 	rulesText: "{Quick} Defeat a rival Gear with power 2 or less."
-} }), uo = A({
+} }), po = A({
 	id: "17a80b46-c583-4867-97ac-7855494363a9",
 	canonicalId: "don-t-fear-the-reaper",
 	slug: "don-t-fear-the-reaper",
@@ -15999,7 +16013,7 @@ var Va = A({
 	name: "(Don't Fear) The Reaper",
 	displayName: "(Don't Fear) The Reaper",
 	rulesText: "Spend all rival Units. Then, defeat a spent Unit."
-} }), fo = A({
+} }), mo = A({
 	id: "0cd37c43-e722-48eb-91ef-4c1bd1645215",
 	slug: "floor-it",
 	canonicalId: "floor-it",
@@ -16052,7 +16066,7 @@ var Va = A({
 	name: "Floor It",
 	displayName: "Floor It",
 	rulesText: "{Quick} Give a rival Unit -1 power this turn. Draw 1."
-} }), po = A({
+} }), ho = A({
 	id: "c5d2fed1-1470-4ac5-9f84-bf66705901ce",
 	slug: "fool-on-the-hill",
 	canonicalId: "fool-on-the-hill",
@@ -16095,7 +16109,7 @@ var Va = A({
 	name: "Fool on the Hill",
 	displayName: "Fool on the Hill",
 	rulesText: "Reveal the top 2 cards of your deck. A Rival chooses whether you add them to your hand or trash them. If you trash them, draw 2."
-} }), mo = A({
+} }), go = A({
 	id: "27c01b18-2a9c-4d66-ad21-b75869fba666",
 	canonicalId: "gunpoint-diplomacy",
 	slug: "gunpoint-diplomacy",
@@ -16216,7 +16230,7 @@ var Va = A({
 	name: "Gunpoint Diplomacy",
 	displayName: "Gunpoint Diplomacy",
 	rulesText: "Give a friendly Unit these effects. If you have less ☆ (Street Cred) than a Rival, they instead choose one effect for you.\nThe next time this Unit attacks this turn, it may attack ready Units. // Give this Unit +3 power this turn."
-} }), ho = A({
+} }), _o = A({
 	id: "a708461f-1f91-4789-bb0d-96e3de5fcf44",
 	canonicalId: "industrial-assembly",
 	slug: "industrial-assembly",
@@ -16282,7 +16296,7 @@ var Va = A({
 	name: "Industrial Assembly",
 	displayName: "Industrial Assembly",
 	rulesText: "Increase a Gig by up to 4. If you control a Gig with 8+ value, draw 1."
-} }), go = A({
+} }), vo = A({
 	id: "c29aefc5-c8dd-4188-95d9-e46c5ee289eb",
 	canonicalId: "les-elemens",
 	slug: "les-elemens",
@@ -16330,7 +16344,7 @@ var Va = A({
 	name: "Les Élémens",
 	displayName: "Les Élémens",
 	rulesText: "Bottom-deck a Rival's lowest-power Unit. (If there are multiple, choose 1.)"
-} }), _o = A({
+} }), yo = A({
 	id: "793d9650-0a59-4c89-9d85-05a9d6873d2e",
 	canonicalId: "live-with-the-aftermath",
 	slug: "live-with-the-aftermath",
@@ -16403,7 +16417,7 @@ var Va = A({
 	name: "Live with the Aftermath",
 	displayName: "Live with the Aftermath",
 	rulesText: "Each player defeats one of their Units."
-} }), vo = A({
+} }), bo = A({
 	id: "0f7c1c54-0e2e-44a5-ac7f-5263fbab21d3",
 	canonicalId: "memory-relapse",
 	slug: "memory-relapse",
@@ -16477,7 +16491,7 @@ var Va = A({
 	name: "Memory Relapse",
 	displayName: "Memory Relapse",
 	rulesText: "Spend a rival Unit. It can't ready until your next turn. If your ☆ (Street Cred) is an even number, draw 1."
-} }), yo = A({
+} }), xo = A({
 	id: "e4af26f0-e25d-4e30-8bac-6701f54f3e97",
 	canonicalId: "nocturne-op55-n1",
 	slug: "nocturne-op55-n1",
@@ -16572,7 +16586,7 @@ var Va = A({
 	name: "Nocturne OP55 N1",
 	displayName: "Nocturne OP55 N1",
 	rulesText: "If your fixer area is empty, play this Program for 1 €$. Choose one effect.\nDraw 2. // A Unit can't attack until your next turn. // A friendly Legend may use {Go Solo} for -2 €$ this turn, to a minimum of 1 €$."
-} }), bo = A({
+} }), So = A({
 	id: "144c3559-3518-4c01-b9e6-af42b7166661",
 	canonicalId: "over-the-edge",
 	slug: "over-the-edge",
@@ -16622,7 +16636,7 @@ var Va = A({
 	name: "Over the Edge",
 	displayName: "Over the Edge",
 	rulesText: "Defeat a Unit with power equal to or less than the value of a friendly d20."
-} }), xo = A({
+} }), Co = A({
 	id: "3b30f02d-84dd-402c-ab4b-87a2ec3badce",
 	slug: "peace-offering",
 	canonicalId: "peace-offering",
@@ -16690,11 +16704,11 @@ var Va = A({
 	name: "Peace Offering",
 	displayName: "Peace Offering",
 	rulesText: "You may set a Gig's value to the value of another Gig. Then, if you control a value-pair, draw 1."
-} }), So = { en: {
+} }), wo = { en: {
 	name: "Pyramid Song",
 	displayName: "Pyramid Song",
 	rulesText: "Choose one effect. If a friendly d4 is a min Gig, choose both instead.\nGive a rival Unit -4 power this turn. // Bottom-deck a rival Unit with power 0."
-} }, Co = {
+} }, To = {
 	effect: "modifyPower",
 	target: {
 		selector: "card",
@@ -16709,7 +16723,7 @@ var Va = A({
 	},
 	value: -4,
 	duration: "turn"
-}, wo = {
+}, Eo = {
 	effect: "moveCard",
 	target: {
 		selector: "card",
@@ -16724,7 +16738,7 @@ var Va = A({
 		}
 	},
 	destination: "deckBottom"
-}, To = {
+}, Do = {
 	condition: "targetExists",
 	target: {
 		selector: "gig",
@@ -16733,7 +16747,7 @@ var Va = A({
 		sides: "d4",
 		maxValue: 1
 	}
-}, Eo = A({
+}, Oo = A({
 	id: "7977a175-0516-478e-b166-3edb035849a4",
 	canonicalId: "pyramid-song",
 	slug: "pyramid-song",
@@ -16762,26 +16776,26 @@ var Va = A({
 				{
 					id: "both",
 					label: "Both effects (friendly d4 is a min Gig)",
-					conditions: [To],
-					effects: [Co, wo]
+					conditions: [Do],
+					effects: [To, Eo]
 				},
 				{
 					id: "power-down",
 					label: "Give a rival Unit -4 power this turn",
 					conditions: [{
 						condition: "not",
-						of: To
+						of: Do
 					}],
-					effects: [Co]
+					effects: [To]
 				},
 				{
 					id: "bottom-deck",
 					label: "Bottom-deck a rival Unit with power 0",
 					conditions: [{
 						condition: "not",
-						of: To
+						of: Do
 					}],
-					effects: [wo]
+					effects: [Eo]
 				}
 			]
 		}]
@@ -16789,7 +16803,7 @@ var Va = A({
 	reminderText: ["Discard programs after they resolve."],
 	type: "program",
 	cost: 3
-}, So), Do = A({
+}, wo), ko = A({
 	id: "ad13a7bc-c49d-4166-8a9c-965e7bfa9b8f",
 	canonicalId: "reboot-optics",
 	slug: "reboot-optics",
@@ -16826,7 +16840,7 @@ var Va = A({
 	name: "Reboot Optics",
 	displayName: "Reboot Optics",
 	rulesText: "{Quick} The next time a rival Unit fights this turn, it doesn't defeat the opposing friendly Unit."
-} }), Oo = A({
+} }), Ao = A({
 	id: "b4cba235-816d-4888-a308-1c397b9288e7",
 	canonicalId: "safety-override",
 	slug: "safety-override",
@@ -16861,7 +16875,7 @@ var Va = A({
 	name: "Safety Override",
 	displayName: "Safety Override",
 	rulesText: "{Quick} The next time a friendly Unit loses a fight this turn, defeat the opposing rival Unit."
-} }), ko = A({
+} }), jo = A({
 	id: "050d0502-94b0-4bee-a7e6-a9b00f31b4ae",
 	canonicalId: "shattered-memories",
 	slug: "shattered-memories",
@@ -16947,7 +16961,7 @@ var Va = A({
 	name: "Shattered Memories",
 	displayName: "Shattered Memories",
 	rulesText: "Each player discards their hand and may draw 5.\nIf the total number of discarded cards equals the value of a friendly Gig, draw 2."
-} }), Ao = A({
+} }), Mo = A({
 	id: "f3ba5ef7-5e91-4956-a887-b88a4b854867",
 	canonicalId: "synapse-burnout",
 	slug: "synapse-burnout",
@@ -17007,7 +17021,7 @@ var Va = A({
 	name: "Synapse Burnout",
 	displayName: "Synapse Burnout",
 	rulesText: "{Quick} A friendly Unit has +1 power for each friendly face-up Legend while fighting rival Units this turn."
-} }), jo = A({
+} }), No = A({
 	id: "1535c19d-54e5-4289-9cb7-15ab429c0092",
 	slug: "take-control",
 	canonicalId: "take-control",
@@ -17067,13 +17081,11 @@ var Va = A({
 	name: "Take Control",
 	displayName: "Take Control",
 	rulesText: "{Quick} A rival Unit steals 1 fewer Gig this turn. If that Unit is an AI, DRONE, or VEHICLE, draw 1."
-} }), Mo = { en: {
+} }), Po = { en: {
 	name: "The Heist",
 	displayName: "The Heist",
 	rulesText: "Trash 4. Add a Gear from among them to your hand. If that Gear's cost equals the value of a friendly Gig, you may play it for free instead."
-} }, No = [
-	eo,
-	to,
+} }, Fo = [
 	no,
 	ro,
 	io,
@@ -17093,12 +17105,14 @@ var Va = A({
 	yo,
 	bo,
 	xo,
-	Eo,
-	Do,
+	So,
+	Co,
 	Oo,
 	ko,
 	Ao,
 	jo,
+	Mo,
+	No,
 	A({
 		id: "5ea00b3a-7e85-4c7d-91ad-90e0cf370c27",
 		slug: "the-heist",
@@ -17175,7 +17189,7 @@ var Va = A({
 			]
 		}],
 		reminderText: ["Discard programs after they resolve."]
-	}, Mo),
+	}, Po),
 	A({
 		id: "2993d637-d44d-4add-8473-26d67c0d1bc0",
 		canonicalId: "three-mouths-one-desire",
@@ -17598,12 +17612,12 @@ var Va = A({
 		displayName: "Wild in the Streets",
 		rulesText: "Defeat a spent Unit."
 	} })
-], Po = [
-	...ia,
-	...Qa,
-	...$a,
-	...No
-], Fo = {
+], Io = [
+	...aa,
+	...eo,
+	...to,
+	...Fo
+], Lo = {
 	"lucyna-kushinada": {
 		freeArtId: "14dc2e38-a373-4b25-be12-e74b1f79e3b2",
 		artworks: [{
@@ -20074,37 +20088,37 @@ var Va = A({
 			printingIds: ["54f0308f-8fb2-4861-a414-c15ca24426c3", "bc78db9f-337e-437e-b247-f1aa798c48d0"]
 		}]
 	}
-}, Io = /* @__PURE__ */ new Map(), Lo = /* @__PURE__ */ new Map(), Ro = /* @__PURE__ */ new Map(), zo = {}, Bo = {};
-for (let [e, t] of Object.entries(Fo)) {
+}, Ro = /* @__PURE__ */ new Map(), zo = /* @__PURE__ */ new Map(), Bo = /* @__PURE__ */ new Map(), Vo = {}, Ho = {};
+for (let [e, t] of Object.entries(Lo)) {
 	let n = t.artworks.find((e) => e.artId === t.freeArtId);
 	if (!n || n.category !== "standard") throw Error(`Cyberpunk canonical ${e} must have a standard free art`);
-	Ro.set(e, t.freeArtId);
+	Bo.set(e, t.freeArtId);
 	for (let n of t.artworks) {
-		if (Lo.has(n.artId)) throw Error(`Cyberpunk art identity ${n.artId} is reused by multiple canonicals`);
-		Lo.set(n.artId, n.category);
+		if (zo.has(n.artId)) throw Error(`Cyberpunk art identity ${n.artId} is reused by multiple canonicals`);
+		zo.set(n.artId, n.category);
 		for (let t of n.printingIds) {
-			if (Io.has(t)) throw Error(`Cyberpunk printing ${t} appears more than once in the art manifest`);
-			Io.set(t, {
+			if (Ro.has(t)) throw Error(`Cyberpunk printing ${t} appears more than once in the art manifest`);
+			Ro.set(t, {
 				canonicalId: e,
 				artId: n.artId,
 				category: n.category
-			}), zo[t] = n.artId, Bo[t] = e;
+			}), Vo[t] = n.artId, Ho[t] = e;
 		}
 	}
 }
-Object.freeze(zo), Object.freeze(Bo);
-function Vo(e) {
-	return Io.get(e)?.artId ?? null;
+Object.freeze(Vo), Object.freeze(Ho);
+function Uo(e) {
+	return Ro.get(e)?.artId ?? null;
 }
 // upstream/submodules/cyberpunk/packages/cards/src/merged.ts
-var Ho = Po, Uo = h;
-function Wo(e) {
-	return e in Uo ? Uo[e] : 50;
+var Wo = Io, Go = h;
+function Ko(e) {
+	return e in Go ? Go[e] : 50;
 }
-function Go(e) {
+function qo(e) {
 	if (e.length === 1) return e[0];
 	let t = e.toSorted((e, t) => {
-		let n = Wo(t.set.code) - Wo(e.set.code);
+		let n = Ko(t.set.code) - Ko(e.set.code);
 		return n === 0 ? e.id.localeCompare(t.id) : n;
 	}), n = t[0], r = new Set(n.printings.map((e) => e.id)), i = [...n.printings];
 	for (let e of t.slice(1)) for (let t of e.printings) r.has(t.id) || (r.add(t.id), i.push(t));
@@ -20113,26 +20127,26 @@ function Go(e) {
 		printings: i
 	};
 }
-function Ko(e) {
+function Jo(e) {
 	let t = /* @__PURE__ */ new Map();
 	for (let n of e) {
 		let e = t.get(n.id) ?? [];
 		e.push(n), t.set(n.id, e);
 	}
-	let n = Array.from(t.values()).map(Go), r = /* @__PURE__ */ new Map();
+	let n = Array.from(t.values()).map(qo), r = /* @__PURE__ */ new Map();
 	for (let e of n) {
 		let t = r.get(e.slug) ?? [];
 		t.push(e), r.set(e.slug, t);
 	}
-	return Array.from(r.values()).map(Go);
+	return Array.from(r.values()).map(qo);
 }
-var qo = Ko(Ho).map((e) => {
-	if (!Object.entries(Fo).find(([t]) => t === e.slug)?.[1]) throw Error(`Missing Cyberpunk art manifest for ${e.slug}`);
+var Yo = Jo(Wo).map((e) => {
+	if (!Object.entries(Lo).find(([t]) => t === e.slug)?.[1]) throw Error(`Missing Cyberpunk art manifest for ${e.slug}`);
 	return {
 		...e,
 		canonicalId: e.slug,
 		printings: e.printings.map((e) => {
-			let t = Vo(e.id);
+			let t = Uo(e.id);
 			if (!t) throw Error(`Missing Cyberpunk art identity for printing ${e.id}`);
 			return {
 				...e,
@@ -20140,7 +20154,7 @@ var qo = Ko(Ho).map((e) => {
 			};
 		})
 	};
-}), Jo = {
+}), Xo = {
 	"gilded-mato-n": "gilded-maton",
 	"el-sombrero-n-la-venganza-lenta": "el-sombreron-la-venganza-lenta",
 	"judy-a-lvarez-braindance-maestro": "judy-alvarez-braindance-maestro",
@@ -20148,51 +20162,51 @@ var qo = Ko(Ho).map((e) => {
 	"les-e-le-mens": "les-elemens",
 	"muamar-reyes-el-capita-n": "muamar-reyes-el-capitan"
 };
-function Yo(e) {
+function Zo(e) {
 	return e.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_\u2014-]+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
 }
-function Xo(e, t) {
+function Qo(e, t) {
 	let n = /* @__PURE__ */ new Map(), r = /* @__PURE__ */ new Set();
 	for (let t of e) {
-		let e = Yo(t.displayName);
+		let e = Zo(t.displayName);
 		if (!e) continue;
 		let i = n.get(e);
 		i && i.canonicalId !== t.canonicalId ? (n.delete(e), r.add(e)) : r.has(e) || n.set(e, t);
 	}
 	for (let [e, r] of n) t.has(e) || t.set(e, r);
 }
-var Zo = (() => {
+var $o = (() => {
 	let e = /* @__PURE__ */ new Map();
-	for (let t of qo) e.set(t.slug, t);
+	for (let t of Yo) e.set(t.slug, t);
 	let t = /* @__PURE__ */ new Map();
-	for (let e of qo) t.set(e.canonicalId, e), t.set(e.id, e);
-	for (let e of qo) for (let n of e.printings) t.has(n.id) || t.set(n.id, e);
-	for (let n of Ho) {
+	for (let e of Yo) t.set(e.canonicalId, e), t.set(e.id, e);
+	for (let e of Yo) for (let n of e.printings) t.has(n.id) || t.set(n.id, e);
+	for (let n of Wo) {
 		let r = e.get(n.slug);
 		r && t.set(n.id, r);
 	}
-	Xo(qo, t);
-	for (let [n, r] of Object.entries(Jo)) {
+	Qo(Yo, t);
+	for (let [n, r] of Object.entries(Xo)) {
 		let i = e.get(r);
 		i && !t.has(n) && t.set(n, i);
 	}
 	return t;
 })();
-function Qo() {
-	return qo;
+function es() {
+	return Yo;
 }
-function $o() {
-	return Zo;
+function ts() {
+	return $o;
 }
 // upstream/submodules/cyberpunk/packages/cards/src/atelier.ts
-var es = "https://cdn.tcg.online/public/cyberpunk/cards";
-function ts(e) {
+var ns = "https://cdn.tcg.online/public/cyberpunk/cards";
+function rs(e) {
 	return e.toLowerCase().replace(/^\u03b1/, "a").replace(/^\u03b2/, "b");
 }
-function ns(e, t) {
-	return `${es}/${e}/${ts(t)}.webp`;
+function is(e, t) {
+	return `${ns}/${e}/${rs(t)}.webp`;
 }
-function rs(e, t) {
+function as(e, t) {
 	return {
 		printingId: t.id,
 		artId: t.artId,
@@ -20201,17 +20215,17 @@ function rs(e, t) {
 		cardNumber: t.collectorNumber,
 		rarity: t.rarity,
 		specialRarity: null,
-		sortNumber: Wo(t.setCode),
-		imageUrl: ns(t.setCode, t.collectorNumber)
+		sortNumber: Ko(t.setCode),
+		imageUrl: is(t.setCode, t.collectorNumber)
 	};
 }
 (() => {
 	let e = /* @__PURE__ */ new Map();
-	for (let t of Qo()) for (let n of t.printings) e.has(n.id) || e.set(n.id, rs(t.canonicalId, n));
+	for (let t of es()) for (let n of t.printings) e.has(n.id) || e.set(n.id, as(t.canonicalId, n));
 	return e;
-})(), Object.freeze(Object.fromEntries(Po.map((e) => [e.id, e])));
-function is() {
-	let e = Qo(), t = $o();
+})(), Object.freeze(Object.fromEntries(Io.map((e) => [e.id, e])));
+function os() {
+	let e = es(), t = ts();
 	return {
 		get(e) {
 			return t.get(e);
@@ -20225,35 +20239,35 @@ function is() {
 	};
 }
 // upstream/submodules/cyberpunk/packages/cards/src/runtime-fingerprint.ts
-var as = Po;
-as.length, os(as);
-function os(e) {
-	let t = ss(e), n = 2166136261;
+var ss = Io;
+ss.length, cs(ss);
+function cs(e) {
+	let t = ls(e), n = 2166136261;
 	for (let e = 0; e < t.length; e++) n ^= t.charCodeAt(e), n = Math.imul(n, 16777619);
 	return (n >>> 0).toString(16).padStart(8, "0");
 }
-function ss(e) {
-	return typeof e == "function" ? e.toString() : Array.isArray(e) ? `[${e.map(ss).join(",")}]` : e && typeof e == "object" ? `{${Object.entries(e).sort(([e], [t]) => e.localeCompare(t)).map(([e, t]) => `${JSON.stringify(e)}:${ss(t)}`).join(",")}}` : JSON.stringify(e) ?? "undefined";
+function ls(e) {
+	return typeof e == "function" ? e.toString() : Array.isArray(e) ? `[${e.map(ls).join(",")}]` : e && typeof e == "object" ? `{${Object.entries(e).sort(([e], [t]) => e.localeCompare(t)).map(([e, t]) => `${JSON.stringify(e)}:${ls(t)}`).join(",")}}` : JSON.stringify(e) ?? "undefined";
 }
 // upstream/submodules/cyberpunk/packages/engine/src/types/branded.ts
-function cs(e) {
+function us(e) {
 	if (!e) throw Error("CardInstanceId cannot be empty");
 	return e;
 }
-function ls(e) {
+function ds(e) {
 	if (!e) throw Error("GigDieId cannot be empty");
 	return e;
 }
-function us(e) {
+function fs(e) {
 	if (!e) throw Error("PlayerId cannot be empty");
 	return e;
 }
-function ds(e) {
+function ps(e) {
 	if (!e) throw Error("MatchId cannot be empty");
 	return e;
 }
 // upstream/submodules/cyberpunk/packages/engine/src/types/card-instance.ts
-function fs(e, t, n, r, i) {
+function ms(e, t, n, r, i) {
 	return {
 		instanceId: e,
 		definitionId: t.id,
@@ -20277,7 +20291,7 @@ function fs(e, t, n, r, i) {
 		}
 	};
 }
-function ps(e) {
+function hs(e) {
 	return {
 		spent: !1,
 		faceDown: !1,
@@ -20294,45 +20308,45 @@ function ps(e) {
 		...e
 	};
 }
-function ms(e, t) {
-	return ps({
+function gs(e, t) {
+	return hs({
 		faceDown: e === "legendArea",
 		...t
 	});
 }
 // upstream/submodules/cyberpunk/packages/engine/src/types/gig-die.ts
-function hs(e) {
+function _s(e) {
 	return e.reduce((e, t) => e + t.faceValue, 0);
 }
 // upstream/submodules/cyberpunk/packages/engine/src/animation/types.ts
-var gs = Object.freeze({
+var vs = Object.freeze({
 	steps: [],
 	totalDurationMs: 0
 });
 // upstream/submodules/cyberpunk/packages/engine/src/types/exhaustive.ts
-function _s(e) {
+function ys(e) {
 	throw Error(`Unhandled discriminated-union member: ${JSON.stringify(e)}`);
 }
 // upstream/submodules/cyberpunk/packages/engine/src/state/card-registry.ts
-var vs = null, ys = /* @__PURE__ */ new Map();
-function bs(e) {
-	vs = e, ys.clear();
-}
-function xs(e) {
-	return ys.get(e) ?? vs?.get(e);
-}
+var bs = null, xs = /* @__PURE__ */ new Map();
 function Ss(e) {
-	let t = xs(e);
+	bs = e, xs.clear();
+}
+function Cs(e) {
+	return xs.get(e) ?? bs?.get(e);
+}
+function ws(e) {
+	let t = Cs(e);
 	if (!t) throw Error(`Card definition not found in registry: ${e}`);
 	return t;
 }
 // upstream/submodules/cyberpunk/packages/engine/src/state/initial-state.ts
-var Cs = 6, ws = 3, Ts = "viewer:";
-function Es(e) {
-	return e.length === 0 || e.startsWith(Ts);
+var Ts = 6, Es = 3, Ds = "viewer:";
+function Os(e) {
+	return e.length === 0 || e.startsWith(Ds);
 }
-var Ds = 2;
-function Os(e, t) {
+var ks = 2;
+function As(e, t) {
 	return {
 		zones: {
 			legendArea: [],
@@ -20358,7 +20372,7 @@ function Os(e, t) {
 		eddieCardIds: []
 	};
 }
-function ks() {
+function js() {
 	return {
 		eventLogVersion: 2,
 		players: {},
@@ -20367,7 +20381,7 @@ function ks() {
 		overtime: !1,
 		turnMetadata: {
 			turnNumber: 1,
-			activePlayerId: us("p1"),
+			activePlayerId: fs("p1"),
 			previousTurnBeganWithEmptyFixer: !1,
 			turnBeganWithEmptyFixer: !1,
 			gigTakenThisTurn: !1,
@@ -20388,7 +20402,7 @@ function ks() {
 		winReason: null
 	};
 }
-function As(e) {
+function Ms(e) {
 	let t = /* @__PURE__ */ new Set();
 	return { next(n) {
 		let r;
@@ -20398,24 +20412,24 @@ function As(e) {
 		return t.add(r), r;
 	} };
 }
-function js(e, t, n, r, i, a) {
+function Ns(e, t, n, r, i, a) {
 	let o = e.G.players[t];
 	if (!o) throw Error(`Player ${t} not found in state`);
 	i.shuffle([...n.legends]);
 	for (let i of n.legends) {
 		let n = r.get(i);
 		if (!n) throw Error(`Legend card not found: ${i}`);
-		let s = cs(a.next("ci")), c = fs(s, n, t, "legendArea", { faceDown: !1 });
+		let s = us(a.next("ci")), c = ms(s, n, t, "legendArea", { faceDown: !1 });
 		e.G.cardIndex[s] = c, o.zones.legendArea.push(s);
 	}
 	for (let s of i.shuffle([...n.mainDeck])) {
 		let n = r.get(s);
 		if (!n) throw Error(`Card not found: ${s}`);
-		let i = cs(a.next("ci")), c = fs(i, n, t, "deck");
+		let i = us(a.next("ci")), c = ms(i, n, t, "deck");
 		e.G.cardIndex[i] = c, o.zones.deck.push(i);
 	}
 	for (let n of f) {
-		let r = ls(a.next("gd")), i = {
+		let r = ds(a.next("gd")), i = {
 			id: r,
 			dieType: n,
 			faceValue: 0,
@@ -20426,10 +20440,10 @@ function js(e, t, n, r, i, a) {
 	}
 	return o;
 }
-function Ms(e, t) {
+function Ps(e, t) {
 	return e[t.nextInt(0, e.length - 1)];
 }
-function Ns(e) {
+function Fs(e) {
 	let t = [];
 	for (let n of e.ctx.playerIds) {
 		let r = e.G.players[n];
@@ -20442,7 +20456,7 @@ function Ns(e) {
 		r.zones.legendArea = i.shuffle(r.zones.legendArea).map((t, r) => {
 			let i = e.G.cardIndex[t];
 			if (!i) throw Error("Missing presented Legend");
-			let a = cs(`hidden-crew:${n}:${r}`);
+			let a = us(`hidden-crew:${n}:${r}`);
 			return delete e.G.cardIndex[t], e.G.cardIndex[a] = {
 				...i,
 				instanceId: a
@@ -20454,9 +20468,9 @@ function Ns(e) {
 	}
 	return t;
 }
-function Ps(e, t) {
+function Is(e, t) {
 	if (e.G.turnMetadata.pendingChoice?.type !== "chooseFirstPlayer" || !e.ctx.playerIds.includes(t)) throw Error("Invalid first-player choice for this game");
-	let n = Ns(e);
+	let n = Fs(e);
 	for (let n of e.ctx.playerIds) {
 		let r = e.G.players[n];
 		r && (r.firstPlayer = n === t);
@@ -20464,13 +20478,13 @@ function Ps(e, t) {
 	if (e.G.turnMetadata.activePlayerId = t, e.G.turnMetadata.pendingChoice = void 0, e.ctx.clockState) for (let [n, r] of Object.entries(e.ctx.clockState)) r.isOnClock = n === t;
 	return {
 		events: n,
-		...Is(e, t)
+		...Rs(e, t)
 	};
 }
-function Fs(e, t) {
+function Ls(e, t) {
 	let n = e.G.players[t];
 	if (!n) return 0;
-	let r = Math.max(0, ws - n.zones.legendArea.length), i = 0;
+	let r = Math.max(0, Es - n.zones.legendArea.length), i = 0;
 	for (let t = 0; t < r; t += 1) {
 		let t = n.zones.deck[0];
 		if (!t) break;
@@ -20480,42 +20494,42 @@ function Fs(e, t) {
 	}
 	return i;
 }
-function Is(e, t) {
+function Rs(e, t) {
 	let n = {};
 	if (e.G.blankEddiesForMissingLegends && !e.G.blankEddiesPlaced) {
 		e.G.blankEddiesPlaced = !0;
-		for (let t of e.ctx.playerIds) n[t] = Fs(e, t);
+		for (let t of e.ctx.playerIds) n[t] = Ls(e, t);
 	}
 	for (let n of e.ctx.playerIds) {
-		let r = e.G.players[n], i = n === t, a = e.G.blankEddiesForMissingLegends ? Math.min(Ds, r.zones.legendArea.length) : r.zones.legendArea.length >= Ds ? Ds : 0;
+		let r = e.G.players[n], i = n === t, a = e.G.blankEddiesForMissingLegends ? Math.min(ks, r.zones.legendArea.length) : r.zones.legendArea.length >= ks ? ks : 0;
 		if (i && a > 0) for (let t = 0; t < a; t++) {
 			let n = r.zones.legendArea[t];
 			e.G.cardIndex[n].meta.spent = !0;
 		}
 		if (r.zones.hand.length > 0) continue;
 		let o = [];
-		for (let t = 0; t < Cs; t++) {
+		for (let t = 0; t < Ts; t++) {
 			let t = r.zones.deck[0];
 			if (!t) break;
 			let n = e.G.cardIndex[t];
-			if (!n || Es(n.definitionId)) break;
+			if (!n || Os(n.definitionId)) break;
 			r.zones.deck.shift(), n.zone = "hand", n.meta.faceDown = !1, o.push(t);
 		}
 		o.length > 0 && (r.zones.hand = o);
 	}
 	return { blankEddieCounts: n };
 }
-function Ls(e) {
+function zs(e) {
 	if (e.players.length !== 2) throw Error(`createMatchState expects exactly 2 players, got ${e.players.length}`);
 	if (e.deckLists.length !== e.players.length) throw Error(`createMatchState expects one deck list per player (got ${e.deckLists.length} for ${e.players.length} players)`);
-	bs(e.catalog);
-	let t = e.seed ?? "default", n = new Ue(t), r = As(n), i = e.players.map((e) => us(e.id)), a = ds(e.matchId ?? `match_${t}`), o = e.firstPlayerChooserId ? us(e.firstPlayerChooserId) : void 0;
+	Ss(e.catalog);
+	let t = e.seed ?? "default", n = new Ue(t), r = Ms(n), i = e.players.map((e) => fs(e.id)), a = ps(e.matchId ?? `match_${t}`), o = e.firstPlayerChooserId ? fs(e.firstPlayerChooserId) : void 0;
 	if (o && !i.includes(o)) throw Error(`First-player chooser ${o} is not seated in this game`);
-	let s = o ?? Ms(i, n), c = ks();
-	c.turnMetadata.activePlayerId = s, e.manualPaymentPlayerId && (c.manualPaymentPlayerId = us(e.manualPaymentPlayerId)), e.setup?.blankEddiesForMissingLegends && (c.blankEddiesForMissingLegends = !0);
+	let s = o ?? Ps(i, n), c = js();
+	c.turnMetadata.activePlayerId = s, e.manualPaymentPlayerId && (c.manualPaymentPlayerId = fs(e.manualPaymentPlayerId)), e.setup?.blankEddiesForMissingLegends && (c.blankEddiesForMissingLegends = !0);
 	for (let e = 0; e < i.length; e++) {
 		let t = i[e];
-		c.players[t] = Os(t, !1);
+		c.players[t] = As(t, !1);
 	}
 	let l = {
 		matchId: a,
@@ -20527,7 +20541,7 @@ function Ls(e) {
 	if (u && u.mode !== "none") {
 		let e = Date.now();
 		l.timeControl = u, l.clockState = Object.fromEntries(i.map((t) => [t, {
-			reserveMsRemaining: Rs(u),
+			reserveMsRemaining: Bs(u),
 			totalConsumedMs: 0,
 			movesMade: 0,
 			lastUpdatedAtMs: e,
@@ -20538,15 +20552,15 @@ function Ls(e) {
 		G: c,
 		ctx: l
 	};
-	for (let t = 0; t < i.length; t++) js(d, i[t], e.deckLists[t], e.catalog, n, r);
+	for (let t = 0; t < i.length; t++) Ns(d, i[t], e.deckLists[t], e.catalog, n, r);
 	return c.turnMetadata.pendingChoice = {
 		type: "chooseFirstPlayer",
 		chooserId: s,
 		effectId: "",
 		payload: {}
-	}, e.firstTurnPlayerId && Ps(d, us(e.firstTurnPlayerId)), l.rngState = n.getState(), d;
+	}, e.firstTurnPlayerId && Is(d, fs(e.firstTurnPlayerId)), l.rngState = n.getState(), d;
 }
-function Rs(e) {
+function Bs(e) {
 	switch (e.mode) {
 		case "none": return 0;
 		case "chess":
@@ -20554,43 +20568,43 @@ function Rs(e) {
 		case "priority": return e.config.reserveMs;
 	}
 }
-function zs(e, t) {
+function Vs(e, t) {
 	return e.ctx.playerIds.find((e) => e !== t);
 }
 // upstream/submodules/cyberpunk/packages/engine/src/state/lookups.ts
-function Bs(e, t) {
+function Hs(e, t) {
 	return e.cardIndex[t];
 }
-function Vs(e, t) {
-	let n = Bs(e, t);
+function Us(e, t) {
+	let n = Hs(e, t);
 	if (!n) throw Error(`Card instance not found: ${t}`);
 	return n;
 }
-function N(e, t) {
-	return Ss(Vs(e, t).definitionId);
+function M(e, t) {
+	return ws(Us(e, t).definitionId);
 }
-function P(e) {
-	return Ss(e.definitionId);
+function N(e) {
+	return ws(e.definitionId);
 }
-function Hs(e) {
-	return xs(e.definitionId);
+function Ws(e) {
+	return Cs(e.definitionId);
 }
-function Us(e, t) {
-	let n = P(e).type;
+function Gs(e, t) {
+	let n = N(e).type;
 	return n === t || t === "unit" && n === "legend" && e.zone === "field";
 }
-function Ws(e, t) {
-	return t.some((t) => Us(e, t));
+function Ks(e, t) {
+	return t.some((t) => Gs(e, t));
 }
 // upstream/submodules/cyberpunk/packages/engine/src/state/turn-info.ts
-function Gs(e, t) {
+function qs(e, t) {
 	let n = e.G.players[t];
 	if (!n) return !1;
 	if (n.firstPlayer) return !0;
 	let r = e.ctx.playerIds.find((t) => e.G.players[t]?.firstPlayer === !0);
 	return r ? e.G.players[r]?.mulliganDone === !0 : !1;
 }
-function Ks(e) {
+function Js(e) {
 	if (e.G.gameEnded) return;
 	if (e.G.turnMetadata.pendingChoice) return e.G.turnMetadata.pendingChoice.chooserId;
 	if (e.G.attackState?.step === "react") return e.G.attackState.rivalId;
@@ -20600,44 +20614,44 @@ function Ks(e) {
 	return n && !n.mulliganDone ? t : e.ctx.playerIds.find((t) => !e.G.players[t]?.mulliganDone) ?? t;
 }
 // upstream/submodules/cyberpunk/packages/engine/src/triggers/index.ts
-var qs = {
+var Ys = {
 	attackDeclared: "cardAttacks",
 	attackResolved: "fightResolved",
 	gigDieRolled: "gigRolled"
 };
-function Js(e, t) {
+function Xs(e, t) {
 	let n = [];
 	switch (e.type) {
 		case "cardPlayed":
-			Ys(t, e.cardId, (e) => e.trigger?.trigger === "play", n);
+			Zs(t, e.cardId, (e) => e.trigger?.trigger === "play", n);
 			break;
 		case "attackDeclared":
-			Ys(t, e.attackerId, (e) => e.trigger?.trigger === "attack", n);
+			Zs(t, e.attackerId, (e) => e.trigger?.trigger === "attack", n);
 			break;
 		case "legendFlipped":
-			Ys(t, e.cardId, (e) => e.trigger?.trigger === "flip", n);
+			Zs(t, e.cardId, (e) => e.trigger?.trigger === "flip", n);
 			break;
 		case "legendCalled":
-			Ys(t, e.cardId, (e) => e.trigger?.trigger === "call", n);
+			Zs(t, e.cardId, (e) => e.trigger?.trigger === "call", n);
 			break;
-		case "cardDefeated": Ys(t, e.cardId, (e) => e.trigger?.trigger === "defeated" || e.trigger?.trigger === "event" && e.trigger.event.event === "cardDefeated", n);
+		case "cardDefeated": Zs(t, e.cardId, (e) => e.trigger?.trigger === "defeated" || e.trigger?.trigger === "event" && e.trigger.event.event === "cardDefeated", n);
 	}
 	if (e.type === "attackResolved") {
 		let r = [e.attackerId, e.defenderId].filter((e) => e != null);
-		for (let e of r) Ys(t, e, (e) => e.trigger?.trigger === "event" && e.trigger.event.event === "fightResolved", n);
+		for (let e of r) Zs(t, e, (e) => e.trigger?.trigger === "event" && e.trigger.event.event === "fightResolved", n);
 	}
-	let r = new Set(n.map((e) => `${e.cardId}:${e.abilityIndex}`)), i = qs[e.type] ?? e.type, a = [];
-	Xs(t, (e) => !e.trigger || e.trigger.trigger !== "event" ? !1 : e.trigger.event.event === i, a);
+	let r = new Set(n.map((e) => `${e.cardId}:${e.abilityIndex}`)), i = Ys[e.type] ?? e.type, a = [];
+	Qs(t, (e) => !e.trigger || e.trigger.trigger !== "event" ? !1 : e.trigger.event.event === i, a);
 	for (let e of a) {
 		let t = `${e.cardId}:${e.abilityIndex}`;
 		r.has(t) || (r.add(t), n.push(e));
 	}
 	return n;
 }
-function Ys(e, t, n, r) {
+function Zs(e, t, n, r) {
 	let i = e.G.cardIndex[t];
 	if (!i) return;
-	let a = P(i)?.abilities ?? [];
+	let a = N(i)?.abilities ?? [];
 	for (let e = 0; e < a.length; e++) n(a[e]) && r.push({
 		cardId: i.instanceId,
 		playerId: i.controllerId,
@@ -20647,7 +20661,7 @@ function Ys(e, t, n, r) {
 	for (let a of i.meta.attachedGearIds) {
 		let i = e.G.cardIndex[a];
 		if (!i || i.meta.attachedToId !== t) continue;
-		let o = P(i)?.abilities ?? [];
+		let o = N(i)?.abilities ?? [];
 		for (let e = 0; e < o.length; e++) {
 			let t = o[e];
 			t.source?.selector === "host" && n(t) && r.push({
@@ -20674,27 +20688,27 @@ function Ys(e, t, n, r) {
 		});
 	}
 }
-function Xs(e, t, n) {
+function Qs(e, t, n) {
 	for (let r of Object.values(e.G.players)) if (r) {
 		for (let i of ["field", "legendArea"]) for (let a of r.zones[i] ?? []) {
 			let r = e.G.cardIndex[a];
-			r && (P(r).type === "legend" && r.meta.faceDown || Ys(e, r.instanceId, t, n));
+			r && (N(r).type === "legend" && r.meta.faceDown || Zs(e, r.instanceId, t, n));
 		}
 		for (let i of r.zones.hand ?? []) {
 			let r = e.G.cardIndex[i];
 			if (!r) continue;
-			let a = P(r);
-			a.type === "program" && a.abilities?.some((e) => e.kind === "triggered" && e.trigger?.trigger === "event" && e.costs?.some((e) => e.cost === "payCardCost")) && Ys(e, r.instanceId, t, n);
+			let a = N(r);
+			a.type === "program" && a.abilities?.some((e) => e.kind === "triggered" && e.trigger?.trigger === "event" && e.costs?.some((e) => e.cost === "payCardCost")) && Zs(e, r.instanceId, t, n);
 		}
 	}
 }
 // upstream/submodules/cyberpunk/packages/engine/src/active-effects/index.ts
-function Zs(e) {
+function $s(e) {
 	let t = e.G;
 	for (let n of t.activeEffects) {
 		if (n.origin !== "imperative" || n.kind !== "powerModifier") continue;
 		let t = n.powerModifierFormula;
-		t && (n.powerModifier = Cc(t.value, {
+		t && (n.powerModifier = Tc(t.value, {
 			state: e,
 			sourceCardId: n.sourceCardId,
 			sourcePlayerId: t.sourcePlayerId,
@@ -20706,14 +20720,14 @@ function Zs(e) {
 	let n = [];
 	for (let e of Object.values(t.players)) if (e) for (let r of ["field", "legendArea"]) for (let i of e.zones[r] ?? []) {
 		let e = t.cardIndex[i];
-		e && (P(e).type === "legend" && e.meta.faceDown || n.push(e));
+		e && (N(e).type === "legend" && e.meta.faceDown || n.push(e));
 	}
 	let r = "";
 	t.activeEffects = t.activeEffects.filter((e) => e.origin === "imperative");
 	for (let i = 0; i < 5; i++) {
 		let i = [];
 		for (let r of n) {
-			let n = P(r);
+			let n = N(r);
 			if (n.abilities?.length) for (let a = 0; a < n.abilities.length; a++) {
 				let o = n.abilities[a];
 				if (o.kind !== "static") continue;
@@ -20725,9 +20739,9 @@ function Zs(e) {
 					contextTargets: {},
 					boundTargets: {}
 				};
-				if (!o.conditions?.length || o.conditions.every((e) => e.condition === "attacking" || e.condition === "fightKind" || z(e, s))) for (let e of o.effects) {
+				if (!o.conditions?.length || o.conditions.every((e) => e.condition === "attacking" || e.condition === "fightKind" || R(e, s))) for (let e of o.effects) {
 					if (e.effect === "grantCostModifier") {
-						let n = !o.conditions?.length || o.conditions.every((e) => z(e, s)), c = !e.conditions?.length || e.conditions.every((e) => z(e, s));
+						let n = !o.conditions?.length || o.conditions.every((e) => R(e, s)), c = !e.conditions?.length || e.conditions.every((e) => R(e, s));
 						if (!n || !c || o.limits?.includes("firstTimeEachTurn") && t.turnMetadata.abilityFiredThisTurn.some((e) => e.cardId === r.instanceId && e.abilityIndex === a)) continue;
 						let l = e;
 						i.push({
@@ -20746,17 +20760,17 @@ function Zs(e) {
 					}
 					if (e.effect !== "modifyPower" && e.effect !== "multiplyPower" && e.effect !== "grantRule" && e.effect !== "grantFightWinAgainst" && e.effect !== "grantRivalGoSoloCostIncrease") continue;
 					let n = e.conditions;
-					if (n?.length && !n.every((e) => e.condition === "attacking" || e.condition === "fightKind" || z(e, s))) continue;
-					let c = L(e.target, s), l = o.conditions?.some((e) => e.condition === "attacking" || e.condition === "fightKind") || e.conditions?.some((e) => e.condition === "attacking" || e.condition === "fightKind");
+					if (n?.length && !n.every((e) => e.condition === "attacking" || e.condition === "fightKind" || R(e, s))) continue;
+					let c = I(e.target, s), l = o.conditions?.some((e) => e.condition === "attacking" || e.condition === "fightKind") || e.conditions?.some((e) => e.condition === "attacking" || e.condition === "fightKind");
 					for (let n of c) {
 						if (l) {
 							let r = t.attackState;
 							if (!r) continue;
 							let i = r.attackerId === n, a = r.defenderId === n;
-							if ([...o.conditions ?? [], ...e.conditions ?? []].filter((e) => e.condition === "attacking").length > 0 && !i || !i && !a || ![...o.conditions ?? [], ...e.conditions ?? []].filter((e) => e.condition === "fightKind").every((e) => z(e, s))) continue;
+							if ([...o.conditions ?? [], ...e.conditions ?? []].filter((e) => e.condition === "attacking").length > 0 && !i || !i && !a || ![...o.conditions ?? [], ...e.conditions ?? []].filter((e) => e.condition === "fightKind").every((e) => R(e, s))) continue;
 						}
 						if (e.effect === "modifyPower") {
-							let t = Cc(e.value, s);
+							let t = Tc(e.value, s);
 							i.push({
 								id: `static-${r.instanceId}-${n}-${i.length}`,
 								sourceCardId: r.instanceId,
@@ -20826,25 +20840,25 @@ function Zs(e) {
 		r = a;
 	}
 }
-function F(e, t) {
-	return Qs(e, t, Ss);
+function P(e, t) {
+	return ec(e, t, ws);
 }
-function Qs(e, t, n) {
+function ec(e, t, n) {
 	let r = e.G.cardIndex[t];
 	if (!r) return 0;
 	let i = n(r.definitionId), a = i.power ?? 0, o = r.meta.powerModifier, s = r.meta.attachedGearIds.reduce((a, o) => {
 		let s = e.G.cardIndex[o];
 		return !s || s.meta.attachedToId !== t || s.zone !== r.zone && (i.type !== "legend" || s.zone !== "field") ? a : a + (n(s.definitionId).power ?? 0);
-	}, 0), c = e.G.activeEffects.filter((e) => e.targetCardId === t && e.kind === "powerModifier").filter((n) => cc(e, t, n)).reduce((e, t) => e + (t.powerModifier ?? 0), 0), l = e.G.activeEffects.filter((e) => e.targetCardId === t && e.kind === "powerMultiplier").reduce((e, t) => e * (t.powerMultiplier ?? 1), 1), u = (a + o + s + c) * ((r.meta.powerMultiplier ?? 1) * l);
+	}, 0), c = e.G.activeEffects.filter((e) => e.targetCardId === t && e.kind === "powerModifier").filter((n) => uc(e, t, n)).reduce((e, t) => e + (t.powerModifier ?? 0), 0), l = e.G.activeEffects.filter((e) => e.targetCardId === t && e.kind === "powerMultiplier").reduce((e, t) => e * (t.powerMultiplier ?? 1), 1), u = (a + o + s + c) * ((r.meta.powerMultiplier ?? 1) * l);
 	return Math.max(u, 0);
 }
-function I(e, t) {
+function F(e, t) {
 	let n = e.G.cardIndex[t];
 	if (!n) return [];
-	let r = P(n), i = r.keywords, a = e.G.activeEffects.filter((e) => e.targetCardId === t && e.kind === "grantRule").map((e) => e.rule).filter(Boolean), o = n.meta.attachedGearIds.reduce((i, a) => {
+	let r = N(n), i = r.keywords, a = e.G.activeEffects.filter((e) => e.targetCardId === t && e.kind === "grantRule").map((e) => e.rule).filter(Boolean), o = n.meta.attachedGearIds.reduce((i, a) => {
 		let o = e.G.cardIndex[a];
 		if (!o || o.meta.attachedToId !== t || o.zone !== n.zone && (r.type !== "legend" || o.zone !== "field")) return i;
-		for (let e of P(o).abilities ?? []) e.kind === "keyword" && e.source?.selector === "host" && i.push(e.keyword);
+		for (let e of N(o).abilities ?? []) e.kind === "keyword" && e.source?.selector === "host" && i.push(e.keyword);
 		return i;
 	}, []);
 	return [.../* @__PURE__ */ new Set([
@@ -20853,60 +20867,60 @@ function I(e, t) {
 		...o
 	])];
 }
-function $s(e, t, n) {
+function tc(e, t, n) {
 	let r = e.G.activeEffects.find((e) => e.origin === "imperative" && e.kind === "grantRule" && e.rule === n && e.targetCardId === t && e.remainingUses !== void 0);
 	r && r.remainingUses !== void 0 && (--r.remainingUses, r.remainingUses <= 0 && (e.G.activeEffects = e.G.activeEffects.filter((e) => e.id !== r.id)));
 }
-function ec(e, t) {
+function nc(e, t) {
 	let n = e.G.cardIndex[t];
 	if (!n || n.zone !== "field" || n.meta.spent) return !1;
-	let r = P(n);
-	return (r.type === "unit" || r.keywords.includes("goSolo")) && I(e, t).includes("blocker");
+	let r = N(n);
+	return (r.type === "unit" || r.keywords.includes("goSolo")) && F(e, t).includes("blocker");
 }
-function tc(e, t) {
+function rc(e, t) {
 	for (let n of e.G.activeEffects) n.kind === "defeatAtEndOfTurnIfAttacked" && n.targetCardId === t && (n.triggered = !0);
 }
-function nc(e, t) {
+function ic(e, t) {
 	let n = e.G.cardIndex[t];
 	if (!n) return [];
 	let r = [];
-	for (let t of n.meta.attachedGearIds) I(e, t).includes("sacrificeInsteadOfHostDefeat") && r.push(t);
+	for (let t of n.meta.attachedGearIds) F(e, t).includes("sacrificeInsteadOfHostDefeat") && r.push(t);
 	return r;
 }
-function rc(e, t) {
-	return nc(e, t)[0] ?? null;
+function ac(e, t) {
+	return ic(e, t)[0] ?? null;
 }
-function ic(e, t, n = /* @__PURE__ */ new Set()) {
+function oc(e, t, n = /* @__PURE__ */ new Set()) {
 	let r = e.G.cardIndex[t];
-	if (!r || !Us(r, "unit")) return null;
+	if (!r || !Gs(r, "unit")) return null;
 	let i = r.controllerId, a = e.G.players[i];
 	if (!a) return null;
 	for (let t of ["field", "legendArea"]) for (let r of a.zones[t] ?? []) {
 		if (n.has(r)) continue;
 		let t = e.G.cardIndex[r];
-		if (t && !t.meta.faceDown && I(e, r).includes("redirectFriendlyDefeatToSelf")) return r;
+		if (t && !t.meta.faceDown && F(e, r).includes("redirectFriendlyDefeatToSelf")) return r;
 	}
 	return null;
 }
-function ac(e, t) {
+function sc(e, t) {
 	let n = e.G.players[t];
 	if (!n) return !1;
-	for (let t of ["field", "legendArea"]) for (let r of n.zones[t] ?? []) if (I(e, r).includes("callLegendFree")) return !0;
+	for (let t of ["field", "legendArea"]) for (let r of n.zones[t] ?? []) if (F(e, r).includes("callLegendFree")) return !0;
 	return !1;
 }
-function oc(e, t) {
+function cc(e, t) {
 	return e.G.activeEffects.some((n) => n.kind === "grantRule" && n.rule === "cantStealGigAbovePower" && e.G.cardIndex[n.sourceCardId]?.controllerId === t);
 }
-function sc(e, t, n, r) {
-	let i = oc(e, n), a = e.G.activeEffects.some((t) => t.kind === "grantRule" && t.rule === "cantStealGigBelowPower" && e.G.cardIndex[t.sourceCardId]?.controllerId === n);
+function lc(e, t, n, r) {
+	let i = cc(e, n), a = e.G.activeEffects.some((t) => t.kind === "grantRule" && t.rule === "cantStealGigBelowPower" && e.G.cardIndex[t.sourceCardId]?.controllerId === n);
 	if (!i && !a) return [...r];
-	let o = F(e, t), s = e.G.cardIndex[t], c = s ? P(s).type === "legend" : !1;
+	let o = P(e, t), s = e.G.cardIndex[t], c = s ? N(s).type === "legend" : !1;
 	return r.filter((t) => {
 		let n = e.G.gigDice[t];
 		return !!(n && (!i || n.faceValue <= o) && (!a || !c || n.faceValue >= o));
 	});
 }
-function cc(e, t, n) {
+function uc(e, t, n) {
 	let r = n.conditions ?? [];
 	if (r.length === 0) return !0;
 	let i = e.G.attackState;
@@ -20916,7 +20930,7 @@ function cc(e, t, n) {
 	return !0;
 }
 // upstream/submodules/cyberpunk/packages/engine/src/effects/target-resolver.ts
-function L(e, t) {
+function I(e, t) {
 	switch (e.selector) {
 		case "self": return !e.zone || t.state.G.cardIndex[t.sourceCardId]?.zone === e.zone ? [t.sourceCardId] : [];
 		case "host": {
@@ -20927,67 +20941,67 @@ function L(e, t) {
 			let n = t.boundTargets[e.id] ?? [];
 			if (e.cardTypes && e.cardTypes.length > 0 && (n = n.filter((n) => {
 				let r = t.state.G.cardIndex[n];
-				return r ? Ws(r, e.cardTypes) : !1;
+				return r ? Ks(r, e.cardTypes) : !1;
 			})), e.classifications && e.classifications.length > 0 && (n = n.filter((n) => {
 				let r = t.state.G.cardIndex[n];
 				if (!r) return !1;
-				let i = P(r).classifications ?? [];
+				let i = N(r).classifications ?? [];
 				return e.classifications.some((e) => i.includes(e));
 			})), e.keywords && e.keywords.length > 0 && (n = n.filter((n) => {
 				let r = t.state.G.cardIndex[n];
 				if (!r) return !1;
-				let i = P(r).keywords ?? [];
+				let i = N(r).keywords ?? [];
 				return e.keywords.some((e) => i.includes(e));
 			})), e.index === void 0) return n;
 			let r = n[e.index];
 			return r === void 0 ? [] : [r];
 		}
 		case "context": return t.contextTargets[e.key] ?? [];
-		case "card": return lc(e, t);
-		case "gig": return _c(e, t);
+		case "card": return dc(e, t);
+		case "gig": return yc(e, t);
 		case "attacker": {
 			let n = t.contextTargets.fightAttacker?.[0] ?? t.state.G.attackState?.attackerId;
 			if (!n) return [];
 			let r = t.state.G.cardIndex[n];
 			if (!r) return [];
-			let i = P(r);
-			return e.cardTypes && !Ws(r, e.cardTypes) || e.classifications && !e.classifications.some((e) => i.classifications.includes(e)) ? [] : [n];
+			let i = N(r);
+			return e.cardTypes && !Ks(r, e.cardTypes) || e.classifications && !e.classifications.some((e) => i.classifications.includes(e)) ? [] : [n];
 		}
 		case "defender": {
 			let n = t.contextTargets.fightDefender?.[0] ?? t.state.G.attackState?.defenderId;
 			if (!n) return [];
 			let r = t.state.G.cardIndex[n];
 			if (!r) return [];
-			let i = P(r);
-			return e.cardTypes && !Ws(r, e.cardTypes) || e.classifications && !e.classifications.some((e) => i.classifications.includes(e)) ? [] : [n];
+			let i = N(r);
+			return e.cardTypes && !Ks(r, e.cardTypes) || e.classifications && !e.classifications.some((e) => i.classifications.includes(e)) ? [] : [n];
 		}
-		default: return _s(e);
+		default: return ys(e);
 	}
 }
-function lc(e, t) {
-	return gc(e.controller ? R(e.controller, t) : void 0, e, t).map((e) => e.instanceId);
+function dc(e, t) {
+	return vc(e.controller ? L(e.controller, t) : void 0, e, t).map((e) => e.instanceId);
 }
-function uc(e, t, n) {
+function fc(e, t, n) {
 	switch (t) {
 		case void 0: return !0;
 		case "friendly":
 		case "owner": return e === n;
 		case "rival": return e !== n;
-		default: return _s(t);
+		default: return ys(t);
 	}
 }
-var dc = {
+var pc = {
 	selector: () => !0,
-	controller: (e, t, n) => uc(e.controllerId, t.controller, n.sourcePlayerId),
+	controller: (e, t, n) => fc(e.controllerId, t.controller, n.sourcePlayerId),
 	zones: (e, t) => !t.zones || t.zones.includes(e.zone),
-	cardTypes: (e, t) => !t.cardTypes || Ws(e, t.cardTypes),
-	colors: (e, t) => !t.colors || t.colors.includes(P(e).color),
-	classifications: (e, t) => !t.classifications || P(e).classifications.some((e) => t.classifications.includes(e)),
-	keywords: (e, t) => !t.keywords?.length || P(e).keywords.some((e) => t.keywords.includes(e)),
+	cardTypes: (e, t) => !t.cardTypes || Ks(e, t.cardTypes),
+	colors: (e, t) => !t.colors || t.colors.includes(N(e).color),
+	classifications: (e, t) => !t.classifications || N(e).classifications.some((e) => t.classifications.includes(e)),
+	keywords: (e, t) => !t.keywords?.length || N(e).keywords.some((e) => t.keywords.includes(e)),
 	state: (e, t) => !t.state || e.meta.spent === (t.state === "spent"),
 	face: (e, t) => !t.face || e.meta.faceDown === (t.face === "faceDown"),
-	minCost: (e, t) => t.minCost === void 0 || (P(e).cost ?? 0) >= t.minCost,
-	maxCost: (e, t) => t.maxCost === void 0 || (P(e).cost ?? 0) <= t.maxCost,
+	minCost: (e, t) => t.minCost === void 0 || (N(e).cost ?? 0) >= t.minCost,
+	maxCost: (e, t) => t.maxCost === void 0 || (N(e).cost ?? 0) <= t.maxCost,
 	maxCostOf: "selection",
 	minPower: "selection",
 	maxPower: "selection",
@@ -21004,17 +21018,17 @@ var dc = {
 	powerLessThanAnyOf: "selection",
 	selection: "choice"
 };
-function fc(e, t, n) {
-	for (let r of Object.keys(dc)) {
-		let i = dc[r];
+function mc(e, t, n) {
+	for (let r of Object.keys(pc)) {
+		let i = pc[r];
 		if (typeof i == "function" && !i(e, t, n)) return !1;
 	}
 	return !0;
 }
-function pc(e) {
-	return Object.keys(e).some((e) => dc[e] === "selection");
+function hc(e) {
+	return Object.keys(e).some((e) => pc[e] === "selection");
 }
-var mc = {
+var gc = {
 	selector: "snapshot",
 	controller: "snapshot",
 	zones: "snapshot",
@@ -21042,71 +21056,71 @@ var mc = {
 	powerLessThanAnyOf: "selection",
 	selection: "selection"
 };
-function hc(e, t, n, r, i) {
-	if (!uc(e.controllerId, t.controller, r) || t.zones && !t.zones.includes(e.zone) || t.cardTypes && !t.cardTypes.some((t) => e.cardTypes.includes(t)) || t.colors && !t.colors.includes(e.color) || t.classifications && !t.classifications.some((t) => e.classifications.includes(t)) || t.keywords?.length && !t.keywords.some((t) => e.keywords.includes(t)) || t.state && e.spent !== (t.state === "spent") || t.face && e.faceDown !== (t.face === "faceDown") || t.minCost !== void 0 && e.cost < t.minCost || t.maxCost !== void 0 && e.cost > t.maxCost || t.minPower !== void 0 && e.effectivePower < t.minPower || t.maxPower !== void 0 && e.effectivePower > t.maxPower || t.excludeSelf && i === n || t.hasAttachedCards !== void 0 && e.attachedGearIds.length > 0 !== t.hasAttachedCards || t.hasLag !== void 0 && e.hasLag !== t.hasLag || t.playedThisTurn !== void 0 && (e.playedThisTurn ?? e.hasLag) !== t.playedThisTurn) return !1;
-	for (let e of Object.keys(t)) if (mc[e] === "selection") throw Error(`Unsupported defeated-card event selection predicate: ${e}`);
+function _c(e, t, n, r, i) {
+	if (!fc(e.controllerId, t.controller, r) || t.zones && !t.zones.includes(e.zone) || t.cardTypes && !t.cardTypes.some((t) => e.cardTypes.includes(t)) || t.colors && !t.colors.includes(e.color) || t.classifications && !t.classifications.some((t) => e.classifications.includes(t)) || t.keywords?.length && !t.keywords.some((t) => e.keywords.includes(t)) || t.state && e.spent !== (t.state === "spent") || t.face && e.faceDown !== (t.face === "faceDown") || t.minCost !== void 0 && e.cost < t.minCost || t.maxCost !== void 0 && e.cost > t.maxCost || t.minPower !== void 0 && e.effectivePower < t.minPower || t.maxPower !== void 0 && e.effectivePower > t.maxPower || t.excludeSelf && i === n || t.hasAttachedCards !== void 0 && e.attachedGearIds.length > 0 !== t.hasAttachedCards || t.hasLag !== void 0 && e.hasLag !== t.hasLag || t.playedThisTurn !== void 0 && (e.playedThisTurn ?? e.hasLag) !== t.playedThisTurn) return !1;
+	for (let e of Object.keys(t)) if (gc[e] === "selection") throw Error(`Unsupported defeated-card event selection predicate: ${e}`);
 	return !0;
 }
-function gc(e, t, n) {
-	let r = Object.values(n.state.G.cardIndex).filter((r) => (e === void 0 || r.controllerId === e) && fc(r, t, n));
+function vc(e, t, n) {
+	let r = Object.values(n.state.G.cardIndex).filter((r) => (e === void 0 || r.controllerId === e) && mc(r, t, n));
 	if (t.maxCostOf) {
-		let e = L(t.maxCostOf, n).map((e) => {
+		let e = I(t.maxCostOf, n).map((e) => {
 			let t = n.state.G.cardIndex[e];
-			return t ? P(t).cost ?? 0 : 0;
+			return t ? N(t).cost ?? 0 : 0;
 		}), i = e.length > 0 ? Math.max(...e) : Infinity;
-		r = r.filter((e) => (P(e).cost ?? 0) <= i);
+		r = r.filter((e) => (N(e).cost ?? 0) <= i);
 	}
-	if (t.minPower !== void 0 && (r = r.filter((e) => F(n.state, e.instanceId) >= t.minPower)), t.maxPower !== void 0 && (r = r.filter((e) => F(n.state, e.instanceId) <= t.maxPower)), t.lowestPower) {
-		let e = Math.min(...r.map((e) => F(n.state, e.instanceId)));
-		r = r.filter((t) => F(n.state, t.instanceId) === e);
+	if (t.minPower !== void 0 && (r = r.filter((e) => P(n.state, e.instanceId) >= t.minPower)), t.maxPower !== void 0 && (r = r.filter((e) => P(n.state, e.instanceId) <= t.maxPower)), t.lowestPower) {
+		let e = Math.min(...r.map((e) => P(n.state, e.instanceId)));
+		r = r.filter((t) => P(n.state, t.instanceId) === e);
 	}
 	if (t.maxPowerOfGigValueOf) {
-		let e = L(t.maxPowerOfGigValueOf.selector === "gig" ? {
+		let e = I(t.maxPowerOfGigValueOf.selector === "gig" ? {
 			...t.maxPowerOfGigValueOf,
 			amount: "all"
 		} : t.maxPowerOfGigValueOf, n).map((e) => n.state.G.gigDice[e]).filter(Boolean).map((e) => e.faceValue), i = e.length > 0 ? Math.max(...e) : -Infinity;
-		r = r.filter((e) => F(n.state, e.instanceId) <= i);
+		r = r.filter((e) => P(n.state, e.instanceId) <= i);
 	}
 	if (t.excludeOf) {
-		let e = new Set(L(t.excludeOf, n));
+		let e = new Set(I(t.excludeOf, n));
 		r = r.filter((t) => !e.has(t.instanceId));
 	}
 	if (t.attachedTo) {
-		let e = L(t.attachedTo, n);
+		let e = I(t.attachedTo, n);
 		r = r.filter((t) => t.meta.attachedToId && e.includes(t.meta.attachedToId));
 	}
 	if (t.costEqualsGigValueOf) {
-		let e = L(t.costEqualsGigValueOf, n).map((e) => n.state.G.gigDice[e]).filter(Boolean).map((e) => e.faceValue);
+		let e = I(t.costEqualsGigValueOf, n).map((e) => n.state.G.gigDice[e]).filter(Boolean).map((e) => e.faceValue);
 		r = r.filter((t) => {
-			let n = P(t).cost ?? 0;
+			let n = N(t).cost ?? 0;
 			return e.includes(n);
 		});
 	}
 	if (t.powerLessThanAnyOf) {
-		let e = L(t.powerLessThanAnyOf, n).map((e) => F(n.state, e)).filter((e) => typeof e == "number"), i = e.length > 0 ? Math.max(...e) : -Infinity;
-		r = r.filter((e) => F(n.state, e.instanceId) < i);
+		let e = I(t.powerLessThanAnyOf, n).map((e) => P(n.state, e)).filter((e) => typeof e == "number"), i = e.length > 0 ? Math.max(...e) : -Infinity;
+		r = r.filter((e) => P(n.state, e.instanceId) < i);
 	}
 	if (t.powerEqualsGigValueOf) {
-		let e = L(t.powerEqualsGigValueOf, n).map((e) => n.state.G.gigDice[e]).filter(Boolean).map((e) => e.faceValue);
-		r = r.filter((t) => e.includes(F(n.state, t.instanceId)));
+		let e = I(t.powerEqualsGigValueOf, n).map((e) => n.state.G.gigDice[e]).filter(Boolean).map((e) => e.faceValue);
+		r = r.filter((t) => e.includes(P(n.state, t.instanceId)));
 	}
 	return r;
 }
-function _c(e, t) {
-	let n = (e.controller ? [R(e.controller, t)] : t.state.ctx.playerIds).flatMap((e) => {
+function yc(e, t) {
+	let n = (e.controller ? [L(e.controller, t)] : t.state.ctx.playerIds).flatMap((e) => {
 		let n = t.state.G.players[e];
 		return n ? n.gigArea.map((e) => t.state.G.gigDice[e]).filter(Boolean) : [];
 	});
 	if (e.sameValueAs) {
-		let r = L(e.sameValueAs, t).map((e) => t.state.G.gigDice[e]).filter(Boolean).map((e) => e.faceValue);
+		let r = I(e.sameValueAs, t).map((e) => t.state.G.gigDice[e]).filter(Boolean).map((e) => e.faceValue);
 		n = n.filter((e) => r.includes(e.faceValue));
 	}
 	if (e.valueNotSharedBy) {
-		let r = L(e.valueNotSharedBy, t).map((e) => t.state.G.gigDice[e]).filter(Boolean).map((e) => e.faceValue);
+		let r = I(e.valueNotSharedBy, t).map((e) => t.state.G.gigDice[e]).filter(Boolean).map((e) => e.faceValue);
 		n = n.filter((e) => !r.includes(e.faceValue));
 	}
 	if (e.sameSidesAs) {
-		let r = L(e.sameSidesAs, t).map((e) => t.state.G.gigDice[e]).filter(Boolean).map((e) => e.dieType);
+		let r = I(e.sameSidesAs, t).map((e) => t.state.G.gigDice[e]).filter(Boolean).map((e) => e.dieType);
 		n = n.filter((e) => r.includes(e.dieType));
 	}
 	if (e.sides !== void 0) {
@@ -21120,21 +21134,21 @@ function _c(e, t) {
 	let r = n.map((e) => e.id);
 	return e.selection || e.amount === "all" ? r : r.slice(0, e.amount ?? 1);
 }
-function R(e, t) {
+function L(e, t) {
 	return !e || e === "friendly" ? t.sourcePlayerId : e === "rival" ? t.state.ctx.playerIds.find((e) => e !== t.sourcePlayerId) : t.sourcePlayerId;
 }
-function vc(e, t) {
-	let n = R(e, t), r = t.state.G.players[n];
+function bc(e, t) {
+	let n = L(e, t), r = t.state.G.players[n];
 	return r ? r.gigArea.map((e) => t.state.G.gigDice[e]).filter(Boolean).reduce((e, t) => e + t.faceValue, 0) : 0;
 }
-function yc(e, t) {
-	let n = R(e, t);
+function xc(e, t) {
+	let n = L(e, t);
 	return t.state.G.players[n]?.gigArea.length ?? 0;
 }
-function bc(e, t) {
-	return yc(e, t) === 0 ? -Infinity : vc(e, t);
+function Sc(e, t) {
+	return xc(e, t) === 0 ? -Infinity : bc(e, t);
 }
-function xc(e) {
+function Cc(e) {
 	let t = e.state.G.players[e.sourcePlayerId];
 	if (!t) return 0;
 	let n = t.gigArea.map((t) => e.state.G.gigDice[t]).filter(Boolean), r = /* @__PURE__ */ new Map();
@@ -21143,34 +21157,34 @@ function xc(e) {
 	for (let e of r.values()) i += Math.floor(e / 2);
 	return i;
 }
-function z(e, t) {
+function R(e, t) {
 	switch (e.condition) {
-		case "streetCred": return Sc(bc(e.controller, t), e.comparison, e.value);
+		case "streetCred": return wc(Sc(e.controller, t), e.comparison, e.value);
 		case "streetCredComparison": {
-			let n = bc(e.controller, t), r = bc(e.other, t);
-			return Sc(n, e.comparison, r);
+			let n = Sc(e.controller, t), r = Sc(e.other, t);
+			return wc(n, e.comparison, r);
 		}
 		case "gigCountComparison": {
-			let n = yc(e.controller, t), r = yc(e.other, t);
-			return Sc(n, e.comparison, r);
+			let n = xc(e.controller, t), r = xc(e.other, t);
+			return wc(n, e.comparison, r);
 		}
 		case "streetCredDifference": {
-			if (yc(e.controller, t) === 0 || yc(e.other, t) === 0) return !1;
-			let n = vc(e.controller, t), r = vc(e.other, t);
-			return Sc(Math.abs(n - r), e.comparison, e.value);
+			if (xc(e.controller, t) === 0 || xc(e.other, t) === 0) return !1;
+			let n = bc(e.controller, t), r = bc(e.other, t);
+			return wc(Math.abs(n - r), e.comparison, e.value);
 		}
-		case "gigCountDifference": return Sc(yc(e.controller, t) - yc(e.other, t), e.comparison, e.value);
+		case "gigCountDifference": return wc(xc(e.controller, t) - xc(e.other, t), e.comparison, e.value);
 		case "streetCredParity": {
-			if (yc(e.controller, t) === 0) return !1;
-			let n = vc(e.controller, t);
+			if (xc(e.controller, t) === 0) return !1;
+			let n = bc(e.controller, t);
 			return e.parity === "even" ? n % 2 == 0 : n % 2 != 0;
 		}
 		case "allFriendlyLegendsFaceUp": {
-			let e = L(r("friendly"), t), n = L(r("friendly", "faceUp"), t);
+			let e = I(r("friendly"), t), n = I(r("friendly", "faceUp"), t);
 			return e.length > 0 && n.length === e.length;
 		}
 		case "cardState": {
-			let n = L(e.target, t);
+			let n = I(e.target, t);
 			if (n.length === 0) return !1;
 			let r = t.state.G.cardIndex[n[0]];
 			if (!r) return !1;
@@ -21191,69 +21205,69 @@ function z(e, t) {
 		}
 		case "overtime": return t.state.G.overtime === (e.active ?? !0);
 		case "targetValue": {
-			let n = L(e.target, t);
+			let n = I(e.target, t);
 			if (n.length === 0) return !1;
 			let r = t.state.G.gigDice[n[0]];
 			if (!r) return !1;
 			let i = e.property === "gigValue" ? r.faceValue : 0, a = e.value === "max" ? d[r.dieType] : e.value === "min" ? 1 : e.value;
-			return Sc(i, e.comparison, a);
+			return wc(i, e.comparison, a);
 		}
 		case "attacking": {
-			let n = L(e.target, t);
+			let n = I(e.target, t);
 			if (n.length === 0) return !1;
 			let r = t.state.G.attackState;
 			return r ? r.attackerId === n[0] : !1;
 		}
 		case "hasLag": {
-			let n = L(e.target, t);
+			let n = I(e.target, t);
 			return n.length === 0 ? !1 : t.state.G.cardIndex[n[0]]?.meta.hasLag ?? !1;
 		}
 		case "hasStolenGigThisTurn": {
-			let n = L(e.target, t);
+			let n = I(e.target, t);
 			return n.length === 0 ? !1 : t.state.G.cardIndex[n[0]]?.meta.hasStolenGigThisTurn ?? !1;
 		}
 		case "hasGigAtMaxValue": {
-			let n = R(e.controller, t), r = t.state.G.players[n];
+			let n = L(e.controller, t), r = t.state.G.players[n];
 			return r ? r.gigArea.map((e) => t.state.G.gigDice[e]).filter(Boolean).some((e) => e.faceValue === d[e.dieType]) : !1;
 		}
 		case "hasGigPair": {
-			let n = R(e.controller, t), r = t.state.G.players[n];
+			let n = L(e.controller, t), r = t.state.G.players[n];
 			if (!r) return !1;
 			let i = r.gigArea.map((e) => t.state.G.gigDice[e]).filter(Boolean).map((e) => e.faceValue);
 			return new Set(i).size < i.length;
 		}
 		case "hasDistinctGigValues": {
-			let n = R(e.controller, t), r = t.state.G.players[n];
+			let n = L(e.controller, t), r = t.state.G.players[n];
 			if (!r) return !1;
 			let i = r.gigArea.map((e) => t.state.G.gigDice[e]).filter(Boolean);
 			return new Set(i.map((e) => e.faceValue)).size >= e.minCount;
 		}
 		case "hasMinGig": {
-			let n = R(e.controller, t), r = t.state.G.players[n];
+			let n = L(e.controller, t), r = t.state.G.players[n];
 			return r ? r.gigArea.map((e) => t.state.G.gigDice[e]).filter(Boolean).some((e) => e.faceValue === 1) : !1;
 		}
 		case "hasEvenAndOddGigValues": {
-			let n = R(e.controller, t), r = t.state.G.players[n];
+			let n = L(e.controller, t), r = t.state.G.players[n];
 			if (!r) return !1;
 			let i = r.gigArea.map((e) => t.state.G.gigDice[e]).filter(Boolean);
 			return i.some((e) => e.faceValue % 2 == 0) && i.some((e) => e.faceValue % 2 != 0);
 		}
 		case "hasGigCount": {
-			let n = R(e.controller, t), r = t.state.G.players[n];
-			return r ? Sc(r.gigArea.map((e) => t.state.G.gigDice[e]).filter((t) => t && (e.minValue === void 0 || t.faceValue >= e.minValue)).length, e.comparison, e.value) : !1;
+			let n = L(e.controller, t), r = t.state.G.players[n];
+			return r ? wc(r.gigArea.map((e) => t.state.G.gigDice[e]).filter((t) => t && (e.minValue === void 0 || t.faceValue >= e.minValue)).length, e.comparison, e.value) : !1;
 		}
-		case "hasEquippedUnitsOrLegends": return L({
+		case "hasEquippedUnitsOrLegends": return I({
 			...i(e.controller),
 			hasAttachedCards: !0
 		}, t).length >= e.minCount;
 		case "matchingGig": {
-			let n = R(e.controller, t), r = t.state.G.players[n];
+			let n = L(e.controller, t), r = t.state.G.players[n];
 			if (!r) return !1;
-			let i = L(e.target, t).map((e) => t.state.G.gigDice[e]).filter(Boolean), a = r.gigArea.map((e) => t.state.G.gigDice[e]).filter(Boolean);
+			let i = I(e.target, t).map((e) => t.state.G.gigDice[e]).filter(Boolean), a = r.gigArea.map((e) => t.state.G.gigDice[e]).filter(Boolean);
 			return i.some((t) => a.some((n) => e.property === "value" ? n.faceValue === t.faceValue : n.dieType === t.dieType));
 		}
 		case "fightKind": {
-			let n = L(e.target, t);
+			let n = I(e.target, t);
 			if (n.length === 0) return !1;
 			let r = t.state.G.attackState;
 			if (!r) return !1;
@@ -21261,29 +21275,29 @@ function z(e, t) {
 			if (r.attackerId !== i && r.defenderId !== i || r.kind !== e.kind) return !1;
 			if (!e.opponent) return !0;
 			let a = r.attackerId === i ? r.defenderId : r.attackerId;
-			return a ? L(e.opponent, t).includes(a) : !1;
+			return a ? I(e.opponent, t).includes(a) : !1;
 		}
 		case "costMatchesGig": {
-			let n = L(e.target, t);
+			let n = I(e.target, t);
 			if (n.length === 0) return !1;
 			let r = t.state.G.cardIndex[n[0]];
 			if (!r) return !1;
-			let i = P(r).cost ?? 0, a = R(e.controller, t), o = t.state.G.players[a];
+			let i = N(r).cost ?? 0, a = L(e.controller, t), o = t.state.G.players[a];
 			return o ? o.gigArea.map((e) => t.state.G.gigDice[e]).filter(Boolean).map((e) => e.faceValue).includes(i) : !1;
 		}
 		case "cardStat": {
-			let n = L(e.target, t);
+			let n = I(e.target, t);
 			if (n.length === 0) return !1;
 			let r = t.state.G.cardIndex[n[0]];
-			return r ? Sc(e.property === "power" ? F(t.state, n[0]) : P(r).cost ?? 0, e.comparison, e.value) : !1;
+			return r ? wc(e.property === "power" ? P(t.state, n[0]) : N(r).cost ?? 0, e.comparison, e.value) : !1;
 		}
-		case "cardName": return L(e.target, t).some((n) => {
+		case "cardName": return I(e.target, t).some((n) => {
 			let r = t.state.G.cardIndex[n];
-			return r ? P(r).name === e.name : !1;
+			return r ? N(r).name === e.name : !1;
 		});
-		case "targetExists": return L(e.target, t).length > 0;
+		case "targetExists": return I(e.target, t).length > 0;
 		case "targetBecameValue": {
-			let n = L(e.target, t), r = t.state.G.turnMetadata.currentTrigger?.lastGigAdjustment;
+			let n = I(e.target, t), r = t.state.G.turnMetadata.currentTrigger?.lastGigAdjustment;
 			if (!r || !n.includes(r.dieId) || r.previousValue === r.newValue) return !1;
 			let i = t.state.G.gigDice[r.dieId];
 			if (!i) return !1;
@@ -21291,16 +21305,16 @@ function z(e, t) {
 			return r.newValue === a;
 		}
 		case "gigSides": {
-			let n = L(e.target, t), r = Array.isArray(e.sides) ? e.sides : [e.sides];
+			let n = I(e.target, t), r = Array.isArray(e.sides) ? e.sides : [e.sides];
 			return n.some((e) => {
 				let n = t.state.G.gigDice[e];
 				return n ? r.includes(n.dieType) : !1;
 			});
 		}
-		case "any": return e.of.some((e) => z(e, t));
-		case "not": return !z(e.of, t);
+		case "any": return e.of.some((e) => R(e, t));
+		case "not": return !R(e.of, t);
 		case "targetParity": {
-			let n = L(e.target, t)[0];
+			let n = I(e.target, t)[0];
 			if (!n) return !1;
 			if (e.property === "gigValue") {
 				let r = t.state.G.gigDice[n];
@@ -21311,50 +21325,50 @@ function z(e, t) {
 			return !1;
 		}
 		case "discardedCountMatchesGig": {
-			let n = t.contextTargets.discardedCards?.length ?? 0, r = R(e.controller, t), i = t.state.G.players[r];
+			let n = t.contextTargets.discardedCards?.length ?? 0, r = L(e.controller, t), i = t.state.G.players[r];
 			return i ? i.gigArea.some((e) => t.state.G.gigDice[e]?.faceValue === n) : !1;
 		}
 		case "fixerAreaCount": {
-			let n = R(e.controller, t);
-			return Sc(t.state.G.players[n]?.fixerArea.length ?? 0, e.comparison, e.value);
+			let n = L(e.controller, t);
+			return wc(t.state.G.players[n]?.fixerArea.length ?? 0, e.comparison, e.value);
 		}
-		default: return _s(e);
+		default: return ys(e);
 	}
 }
-function Sc(e, t, n) {
+function wc(e, t, n) {
 	switch (t) {
 		case "eq": return e === n;
 		case "gt": return e > n;
 		case "gte": return e >= n;
 		case "lt": return e < n;
 		case "lte": return e <= n;
-		default: return _s(t);
+		default: return ys(t);
 	}
 }
-function Cc(e, t) {
+function Tc(e, t) {
 	if (typeof e == "number") return e;
-	if (e.type === "perCount") return L(e.target, t).length * e.multiplier;
+	if (e.type === "perCount") return I(e.target, t).length * e.multiplier;
 	if (e.type === "maxGigValue") {
-		let n = R(e.controller, t), r = t.state.G.players[n];
+		let n = L(e.controller, t), r = t.state.G.players[n];
 		if (!r) return 0;
 		let i = r.gigArea.map((e) => t.state.G.gigDice[e]).filter(Boolean).map((e) => e.faceValue);
 		return i.length > 0 ? Math.max(...i) : 0;
 	}
 	if (e.type === "gigValue") {
-		let n = L(e.target, t);
+		let n = I(e.target, t);
 		return t.state.G.gigDice[n[0]]?.faceValue ?? 0;
 	}
-	return e.type === "sourcePower" ? F(t.state, t.sourceCardId) * (e.multiplier ?? 1) : e.type === "basePlusPerCount" ? e.base + L(e.target, t).length * e.multiplier : _s(e);
+	return e.type === "sourcePower" ? P(t.state, t.sourceCardId) * (e.multiplier ?? 1) : e.type === "basePlusPerCount" ? e.base + I(e.target, t).length * e.multiplier : ys(e);
 }
 // upstream/submodules/cyberpunk/packages/engine/src/moves/is-react-step.ts
-function B(e, t) {
+function z(e, t) {
 	return e.G.gamePhase === "main" && e.G.attackState !== null && e.G.attackState.step === "react" && e.G.attackState.rivalId === t;
 }
 // upstream/submodules/cyberpunk/packages/engine/src/state/gear-attachment.ts
-function wc(e, t, n, r) {
+function Ec(e, t, n, r) {
 	let a = e.G.cardIndex[t];
-	if (!a || P(a).type !== "gear") return [];
-	let o = L(P(a).attachment?.target ?? i("friendly", "faceUp"), {
+	if (!a || N(a).type !== "gear") return [];
+	let o = I(N(a).attachment?.target ?? i("friendly", "faceUp"), {
 		state: e,
 		sourceCardId: t,
 		sourcePlayerId: n,
@@ -21363,20 +21377,20 @@ function wc(e, t, n, r) {
 		boundTargets: {}
 	});
 	if (!r) return o;
-	let s = new Set(L(r.target, r.context));
+	let s = new Set(I(r.target, r.context));
 	return o.filter((e) => s.has(e));
 }
 // upstream/submodules/cyberpunk/packages/engine/src/moves/remove-from-game.ts
-function Tc(e, t, n) {
+function Dc(e, t, n) {
 	let r = e.G.cardIndex[n];
 	r && r.zone !== "removedFromGame" && t.zone.moveCard(n, "removedFromGame", r.ownerId);
 }
-function Ec(e, t, n) {
+function Oc(e, t, n) {
 	let r = e.G.cardIndex[n];
-	r && r.zone !== "field" && r.zone !== "legendArea" && Hs(r)?.type === "legend" && Tc(e, t, n);
+	r && r.zone !== "field" && r.zone !== "legendArea" && Ws(r)?.type === "legend" && Dc(e, t, n);
 }
 // upstream/submodules/cyberpunk/packages/engine/src/effects/bottom-deck.ts
-function Dc(e, t, n) {
+function kc(e, t, n) {
 	let r = new Set(e.map((e) => e));
 	for (let i of e) {
 		let e = t.G.cardIndex[i];
@@ -21400,14 +21414,14 @@ function Dc(e, t, n) {
 	}
 	let s = new Ue(t.ctx.seed);
 	t.ctx.rngState && s.setState(t.ctx.rngState);
-	for (let [e, r] of o) Oc(e, s.shuffle(r), t, n);
+	for (let [e, r] of o) Ac(e, s.shuffle(r), t, n);
 	for (let e of a) {
 		let r = e[0];
-		r && Ec(t, n, r);
+		r && Oc(t, n, r);
 	}
 	t.ctx.rngState = s.getState();
 }
-function Oc(e, t, n, r) {
+function Ac(e, t, n, r) {
 	let i = n.G.players[e], a = /* @__PURE__ */ new Map();
 	if (i) for (let e of t) {
 		let t = n.G.cardIndex[e];
@@ -21421,7 +21435,7 @@ function Oc(e, t, n, r) {
 		let t = n.G.cardIndex[i];
 		if (!t) continue;
 		let o = a.get(i) ?? t.zone;
-		t.zone = "deck", t.meta = ms("deck"), r.event.emit({
+		t.zone = "deck", t.meta = gs("deck"), r.event.emit({
 			type: "cardMoved",
 			cardId: i,
 			fromZone: o,
@@ -21432,7 +21446,7 @@ function Oc(e, t, n, r) {
 	}
 }
 // upstream/submodules/cyberpunk/packages/engine/src/logging/private-field.ts
-function V(e, t) {
+function B(e, t) {
 	return {
 		__private: !0,
 		value: e,
@@ -21440,24 +21454,24 @@ function V(e, t) {
 	};
 }
 // upstream/submodules/cyberpunk/packages/engine/src/logging/stolen-gig-summary.ts
-function kc(e) {
+function jc(e) {
 	let t = e.length;
 	if (t === 0) return "0 Gigs";
 	let n = e.map(({ dieType: e, faceValue: t }) => `${e.toUpperCase()} with value ${t}`).join("; ");
 	return `${t} Gig${t === 1 ? "" : "s"} (${n})`;
 }
 // upstream/submodules/cyberpunk/packages/engine/src/moves/compute-effective-cost.ts
-function Ac(e, t, n) {
-	return jc(e, t, n).effectiveCost;
+function Mc(e, t, n) {
+	return Nc(e, t, n).effectiveCost;
 }
-function jc(e, t, n) {
+function Nc(e, t, n) {
 	let r = e.G.cardIndex[t];
 	if (!r) return {
 		printedCost: 0,
 		effectiveCost: 0,
 		modifiers: []
 	};
-	let i = P(r), a = i.cost ?? 0, o = {
+	let i = N(r), a = i.cost ?? 0, o = {
 		state: e,
 		sourceCardId: t,
 		sourcePlayerId: n,
@@ -21468,7 +21482,7 @@ function jc(e, t, n) {
 		id: `${t}:costModifier`,
 		sourceCardId: t,
 		modifier: i.costModifier
-	}] : [], ...e.G.activeEffects.filter((e) => e.kind === "costModifier" && e.playerId === n && e.costModifier && e.appliesTo && L(e.appliesTo, o).includes(t)).map((e) => ({
+	}] : [], ...e.G.activeEffects.filter((e) => e.kind === "costModifier" && e.playerId === n && e.costModifier && e.appliesTo && I(e.appliesTo, o).includes(t)).map((e) => ({
 		id: e.id,
 		sourceCardId: e.sourceCardId,
 		modifier: e.costModifier
@@ -21480,18 +21494,18 @@ function jc(e, t, n) {
 	};
 	let c = a, l = [];
 	for (let t of s) {
-		let n = t.modifier, r = c, a = Nc(o, n, r);
+		let n = t.modifier, r = c, a = Fc(o, n, r);
 		c = a.effectiveCost;
 		let s = c - r;
 		if (s === 0) continue;
-		let u = e.G.cardIndex[t.sourceCardId], d = u ? P(u).displayName : i.displayName;
+		let u = e.G.cardIndex[t.sourceCardId], d = u ? N(u).displayName : i.displayName;
 		l.push({
 			id: t.id,
 			sourceCardId: t.sourceCardId,
 			sourceName: d,
-			label: `${Rc(s)} COST`,
-			detail: Pc(d, n, a.matchedCount, s),
-			modifierLabel: Rc(s),
+			label: `${Bc(s)} COST`,
+			detail: Ic(d, n, a.matchedCount, s),
+			modifierLabel: Bc(s),
 			delta: s,
 			matchedCount: a.matchedCount
 		});
@@ -21502,7 +21516,7 @@ function jc(e, t, n) {
 		modifiers: l
 	};
 }
-function Mc(e, t, n) {
+function Pc(e, t, n) {
 	let r = {
 		state: e,
 		sourceCardId: t,
@@ -21511,21 +21525,21 @@ function Mc(e, t, n) {
 		contextTargets: {},
 		boundTargets: {}
 	};
-	for (let i of e.G.activeEffects) i.kind === "costModifier" && i.playerId === n && i.costModifier && i.appliesTo && L(i.appliesTo, r).includes(t) && i.remainingUses !== void 0 && --i.remainingUses;
+	for (let i of e.G.activeEffects) i.kind === "costModifier" && i.playerId === n && i.costModifier && i.appliesTo && I(i.appliesTo, r).includes(t) && i.remainingUses !== void 0 && --i.remainingUses;
 	e.G.activeEffects = e.G.activeEffects.filter((e) => e.kind !== "costModifier" || e.remainingUses === void 0 || e.remainingUses > 0);
 	for (let i of e.G.activeEffects) {
-		if (i.kind !== "costModifier" || i.origin !== "static" || i.playerId !== n || !i.appliesTo || !L(i.appliesTo, r).includes(t)) continue;
+		if (i.kind !== "costModifier" || i.origin !== "static" || i.playerId !== n || !i.appliesTo || !I(i.appliesTo, r).includes(t)) continue;
 		let a = e.G.cardIndex[i.sourceCardId];
-		(a ? P(a).abilities[i.abilityIndex] : void 0)?.limits?.includes("firstTimeEachTurn") && (e.G.turnMetadata.abilityFiredThisTurn.some((e) => e.cardId === i.sourceCardId && e.abilityIndex === i.abilityIndex) || e.G.turnMetadata.abilityFiredThisTurn.push({
+		(a ? N(a).abilities[i.abilityIndex] : void 0)?.limits?.includes("firstTimeEachTurn") && (e.G.turnMetadata.abilityFiredThisTurn.some((e) => e.cardId === i.sourceCardId && e.abilityIndex === i.abilityIndex) || e.G.turnMetadata.abilityFiredThisTurn.push({
 			cardId: i.sourceCardId,
 			abilityIndex: i.abilityIndex
 		}));
 	}
-	Zs(e);
+	$s(e);
 }
-function Nc(e, t, n) {
+function Fc(e, t, n) {
 	if (t.reducer === "perTargetCount") {
-		let r = L(t.target, e).length, i = n - r * t.reductionPerCount;
+		let r = I(t.target, e).length, i = n - r * t.reductionPerCount;
 		return {
 			effectiveCost: Math.max(Math.min(n, Math.max(1, t.min)), i),
 			matchedCount: r
@@ -21538,7 +21552,7 @@ function Nc(e, t, n) {
 			matchedCount: +(t.amount > 0)
 		};
 	}
-	return t.reducer === "replace" && t.conditions.every((t) => z(t, e)) ? {
+	return t.reducer === "replace" && t.conditions.every((t) => R(t, e)) ? {
 		effectiveCost: t.amount,
 		matchedCount: 1
 	} : {
@@ -21546,39 +21560,39 @@ function Nc(e, t, n) {
 		matchedCount: 0
 	};
 }
-function Pc(e, t, n, r) {
+function Ic(e, t, n, r) {
 	if (t.reducer === "perTargetCount") {
-		let i = Fc(t.target, n), a = t.reductionPerCount, o = a === 1 ? "cost" : "cost each", s = t.min > 0 ? ` Minimum cost ${t.min}.` : "";
-		return `${e}: ${Rc(r)} cost from ${n} ${i} (-${a} ${o}).${s}`;
+		let i = Lc(t.target, n), a = t.reductionPerCount, o = a === 1 ? "cost" : "cost each", s = t.min > 0 ? ` Minimum cost ${t.min}.` : "";
+		return `${e}: ${Bc(r)} cost from ${n} ${i} (-${a} ${o}).${s}`;
 	}
 	if (t.reducer === "flat") {
 		let n = t.min > 0 ? ` Minimum cost ${t.min}.` : "";
-		return `${e}: ${Rc(r)} cost (-${t.amount}).${n}`;
+		return `${e}: ${Bc(r)} cost (-${t.amount}).${n}`;
 	}
-	return t.reducer === "replace" ? `${e}: play for ${t.amount} instead.` : `${e}: ${Rc(r)} cost.`;
-}
-function Fc(e, t) {
-	if (e.selector === "gig") {
-		let n = Ic(e.controller), r = e.minValue === void 0 ? e.maxValue === void 0 ? "" : ` with value ${e.maxValue} or less` : ` with value ${e.minValue}+`;
-		return `${n}${Lc("Gig", t)}${r}`;
-	}
-	return e.selector === "card" ? `${Ic(e.controller)}${Lc(e.cardTypes && e.cardTypes.length === 1 ? e.cardTypes[0].charAt(0).toUpperCase() + e.cardTypes[0].slice(1) : "card", t)}` : Lc("matched target", t);
-}
-function Ic(e) {
-	return !e || e === "owner" ? "" : `${e} `;
+	return t.reducer === "replace" ? `${e}: play for ${t.amount} instead.` : `${e}: ${Bc(r)} cost.`;
 }
 function Lc(e, t) {
-	return t === 1 ? e : `${e}s`;
+	if (e.selector === "gig") {
+		let n = Rc(e.controller), r = e.minValue === void 0 ? e.maxValue === void 0 ? "" : ` with value ${e.maxValue} or less` : ` with value ${e.minValue}+`;
+		return `${n}${zc("Gig", t)}${r}`;
+	}
+	return e.selector === "card" ? `${Rc(e.controller)}${zc(e.cardTypes && e.cardTypes.length === 1 ? e.cardTypes[0].charAt(0).toUpperCase() + e.cardTypes[0].slice(1) : "card", t)}` : zc("matched target", t);
 }
 function Rc(e) {
+	return !e || e === "owner" ? "" : `${e} `;
+}
+function zc(e, t) {
+	return t === 1 ? e : `${e}s`;
+}
+function Bc(e) {
 	return e > 0 ? `+${e}` : `${e}`;
 }
 // upstream/submodules/cyberpunk/packages/engine/src/moves/play-selected-card.ts
-function zc({ state: e, operations: t, playerId: n, cardId: r, free: i, programDestination: a, resolvedAttachToId: o, paymentSourceIds: s }) {
+function Vc({ state: e, operations: t, playerId: n, cardId: r, free: i, programDestination: a, resolvedAttachToId: o, paymentSourceIds: s }) {
 	let c = e.G.cardIndex[r];
 	if (!c) return null;
-	let l = P(c), u = t.event.getEmittedEvents().length, d = i ? 0 : Ac(e, r, n);
-	i || (t.game.spendEddies(n, d, "playCard", s === void 0 ? void 0 : { sourceIds: s }), zu(u, e, t), Mc(e, r, n)), l.type === "gear" && o ? (t.zone.moveCard(r, "field", n), t.card.attachGear(r, o)) : l.type === "program" ? t.zone.moveCard(r, "resolvingProgram", n) : (t.zone.moveCard(r, "field", n), t.card.moveAttachedGear(r, "field"), l.type === "unit" && t.card.setHasLag(r, !0));
+	let l = N(c), u = t.event.getEmittedEvents().length, d = i ? 0 : Mc(e, r, n);
+	i || (t.game.spendEddies(n, d, "playCard", s === void 0 ? void 0 : { sourceIds: s }), Bu(u, e, t), Pc(e, r, n)), l.type === "gear" && o ? (t.zone.moveCard(r, "field", n), t.card.attachGear(r, o)) : l.type === "program" ? t.zone.moveCard(r, "resolvingProgram", n) : (t.zone.moveCard(r, "field", n), t.card.moveAttachedGear(r, "field"), l.type === "unit" && t.card.setHasLag(r, !0));
 	let f = {
 		type: "cardPlayed",
 		cardId: r,
@@ -21597,47 +21611,47 @@ function zc({ state: e, operations: t, playerId: n, cardId: r, free: i, programD
 	}), { cardPlayedEvent: f };
 }
 // upstream/submodules/cyberpunk/packages/engine/src/moves/eddie-resources.ts
-function Bc(e) {
-	return P(e).type !== "legend" || e.meta.spent || P(e).type !== "legend" ? !1 : e.meta.faceDown ? !0 : P(e).hasSellTag === !0;
+function Hc(e) {
+	return N(e).type !== "legend" || e.meta.spent || N(e).type !== "legend" ? !1 : e.meta.faceDown ? !0 : N(e).hasSellTag === !0;
 }
-function Vc(e, t) {
+function Uc(e, t) {
 	let n = e.G.players[t];
 	return n ? n.zones.legendArea.filter((t) => {
 		let n = e.G.cardIndex[t];
-		return n !== void 0 && Bc(n);
+		return n !== void 0 && Hc(n);
 	}).length : 0;
 }
-function Hc(e, t) {
+function V(e, t) {
 	let n = e.G.players[t];
-	return n ? n.eddies + Vc(e, t) : 0;
+	return n ? n.eddies + Uc(e, t) : 0;
 }
-function Uc(e, t, n, r) {
+function Wc(e, t, n, r) {
 	if (n < 0 || r.length > n || new Set(r.map(String)).size !== r.length) return !1;
 	let i = e.players[t];
 	if (!i) return !1;
 	let a = 0;
 	if (!r.every((n) => {
 		let r = e.cardIndex[n];
-		return !r || r.controllerId !== t || r.meta.spent ? !1 : r.zone === "eddieArea" ? i.eddieCardIds.includes(n) ? (a++, !0) : !1 : r.zone === "legendArea" && Bc(r);
+		return !r || r.controllerId !== t || r.meta.spent ? !1 : r.zone === "eddieArea" ? i.eddieCardIds.includes(n) ? (a++, !0) : !1 : r.zone === "legendArea" && Hc(r);
 	})) return !1;
 	let o = n - r.length;
 	return i.eddies >= a + o;
 }
-function Wc(e, t, n, r, i = {}) {
-	let a = Jc(e, t, n, r, i);
-	return Math.max(0, Hc(t, r) - a.eddiesToPay - a.reservedLegendIds.size - a.unboundSelectableLegendCount);
-}
 function Gc(e, t, n, r, i = {}) {
-	let a = Jc(e, t, n, r, i);
-	return Hc(t, r) >= a.eddiesToPay + a.reservedLegendIds.size + a.unboundSelectableLegendCount;
+	let a = Yc(e, t, n, r, i);
+	return Math.max(0, V(t, r) - a.eddiesToPay - a.reservedLegendIds.size - a.unboundSelectableLegendCount);
 }
 function Kc(e, t, n, r, i = {}) {
-	return Jc(e, t, n, r, i).eddiesToPay;
+	let a = Yc(e, t, n, r, i);
+	return V(t, r) >= a.eddiesToPay + a.reservedLegendIds.size + a.unboundSelectableLegendCount;
 }
 function qc(e, t, n, r, i = {}) {
-	return [...Jc(e, t, n, r, i).reservedLegendIds].map((e) => e);
+	return Yc(e, t, n, r, i).eddiesToPay;
 }
-function Jc(e, t, n, r, i) {
+function Jc(e, t, n, r, i = {}) {
+	return [...Yc(e, t, n, r, i).reservedLegendIds].map((e) => e);
+}
+function Yc(e, t, n, r, i) {
 	let a = 0, o = {
 		state: t,
 		sourceCardId: n,
@@ -21651,26 +21665,26 @@ function Jc(e, t, n, r, i) {
 		if (u.cost === "payEddies") {
 			let e = u.amount;
 			if (u.reduction) {
-				let t = L(u.reduction.target, o).length;
+				let t = I(u.reduction.target, o).length;
 				e = Math.max(e - t * u.reduction.reductionPerCount, u.reduction.min ?? 0);
 			}
 			a += e;
 		} else if (u.cost === "payCardCost") {
 			let e = t.G.cardIndex[n];
-			a += e ? P(e).cost ?? 0 : 0;
+			a += e ? N(e).cost ?? 0 : 0;
 		} else if (u.cost === "spend") {
-			let e = Xc(u.target), n = e ? i[Yc(l)] : void 0;
+			let e = Zc(u.target), n = e ? i[Xc(l)] : void 0;
 			if (e && !n) {
-				let n = L(u.target, o).filter((e) => {
+				let n = I(u.target, o).filter((e) => {
 					let n = t.G.cardIndex[e];
 					return n !== void 0 && !n.meta.spent;
-				}).filter((e) => !Zc(t, e, r)).length, i = e.min ?? 1;
+				}).filter((e) => !Qc(t, e, r)).length, i = e.min ?? 1;
 				c += Math.max(0, i - n);
 				continue;
 			}
-			for (let e of n ?? L(u.target, o)) {
+			for (let e of n ?? I(u.target, o)) {
 				let n = t.G.cardIndex[e];
-				n && n.controllerId === r && n.zone === "legendArea" && Bc(n) && s.add(e);
+				n && n.controllerId === r && n.zone === "legendArea" && Hc(n) && s.add(e);
 			}
 		}
 	}
@@ -21680,32 +21694,32 @@ function Jc(e, t, n, r, i) {
 		unboundSelectableLegendCount: c
 	};
 }
-function Yc(e) {
+function Xc(e) {
 	return `__cost:${e}`;
 }
-function Xc(e) {
+function Zc(e) {
 	if (e.selector === "card" || e.selector === "gig" || e.selector === "context") return e.selection;
 }
-function Zc(e, t, n) {
+function Qc(e, t, n) {
 	let r = e.G.cardIndex[t];
-	return r !== void 0 && r.controllerId === n && r.zone === "legendArea" && Bc(r);
+	return r !== void 0 && r.controllerId === n && r.zone === "legendArea" && Hc(r);
 }
-function Qc(e) {
-	return P(e).abilities.some((e) => (e.costs ?? []).some((e) => e.cost === "spend" && e.target.selector === "self"));
+function $c(e) {
+	return N(e).abilities.some((e) => (e.costs ?? []).some((e) => e.cost === "spend" && e.target.selector === "self"));
 }
-function $c(e, t, n, r = []) {
+function el(e, t, n, r = []) {
 	if (n <= 0) return [];
 	let i = e.players[t];
 	if (!i) return [];
 	let a = new Set(r.map((e) => e)), o = i.zones.legendArea.filter((t) => {
 		let n = e.cardIndex[t];
-		return !a.has(t) && n !== void 0 && Bc(n);
+		return !a.has(t) && n !== void 0 && Hc(n);
 	}), s = o.filter((t) => {
 		let n = e.cardIndex[t];
-		return n !== void 0 && !n.meta.faceDown && !Qc(n);
+		return n !== void 0 && !n.meta.faceDown && !$c(n);
 	}), c = o.filter((t) => e.cardIndex[t]?.meta.faceDown), l = o.filter((t) => {
 		let n = e.cardIndex[t];
-		return n !== void 0 && !n.meta.faceDown && Qc(n);
+		return n !== void 0 && !n.meta.faceDown && $c(n);
 	}), u = [];
 	for (let e of [
 		...s,
@@ -21718,17 +21732,17 @@ function $c(e, t, n, r = []) {
 	return u;
 }
 // upstream/submodules/cyberpunk/packages/engine/src/moves/end-attack.ts
-function el(e, t) {
+function tl(e, t) {
 	return t ? e.G.cardIndex[t]?.zone === "field" : !1;
 }
-function tl(e, t) {
-	return !el(e, t.attackerId) || t.kind === "fight" && !el(e, t.defenderId);
-}
 function nl(e, t) {
+	return !tl(e, t.attackerId) || t.kind === "fight" && !tl(e, t.defenderId);
+}
+function rl(e, t) {
 	if (e.G.turnMetadata.pendingChoice || e.G.turnMetadata.currentTrigger || e.G.turnMetadata.triggerQueue.length > 0) return !1;
 	let n = e.G.attackState;
-	if (!n || n.step === "fight" || n.step === "fightResult" || n.step === "steal" || !tl(e, n)) return !1;
-	let r = e.G.cardIndex[n.attackerId] ? N(e.G, n.attackerId).displayName : "";
+	if (!n || n.step === "fight" || n.step === "fightResult" || n.step === "steal" || !nl(e, n)) return !1;
+	let r = e.G.cardIndex[n.attackerId] ? M(e.G, n.attackerId).displayName : "";
 	return t.event.emit({
 		type: "actionLog",
 		messageKey: "move.resolveAttack.ended",
@@ -21737,10 +21751,10 @@ function nl(e, t) {
 	}), t.game.setAttackState(null), !0;
 }
 // upstream/submodules/cyberpunk/packages/engine/src/state/defeated-card-snapshot.ts
-function rl(e, t) {
+function il(e, t) {
 	let n = e.G.cardIndex[t];
 	if (!n) throw Error(`Cannot snapshot missing defeated card: ${t}`);
-	let r = P(n);
+	let r = N(n);
 	return {
 		controllerId: n.controllerId,
 		zone: n.zone,
@@ -21753,13 +21767,13 @@ function rl(e, t) {
 		hasLag: n.meta.hasLag,
 		playedThisTurn: n.meta.playedThisTurn,
 		cost: r.cost ?? 0,
-		effectivePower: F(e, t),
+		effectivePower: P(e, t),
 		attachedGearIds: [...n.meta.attachedGearIds],
 		attachedToId: n.meta.attachedToId
 	};
 }
 // upstream/submodules/cyberpunk/packages/engine/src/moves/resolve-attack.ts
-var il = {
+var al = {
 	available({ state: e, playerId: t }) {
 		let n = e.G.attackState;
 		return n ? n.step === "react" && n.rivalId === t || n.step === "attack" && e.G.turnMetadata.activePlayerId === t || (n.step === "fight" || n.step === "fightResult" || n.step === "steal") && e.G.turnMetadata.activePlayerId === t : !1;
@@ -21778,14 +21792,14 @@ var il = {
 	},
 	execute({ state: e, playerId: t, input: n, operations: r }) {
 		let i = e.G.attackState;
-		if (i && !nl(e, r)) {
+		if (i && !rl(e, r)) {
 			if (i.step === "attack") r.game.setAttackState({
 				...i,
 				step: "react"
 			});
 			else if (i.step === "react") {
 				if (n.args.pass) {
-					let n = i.kind === "fight" ? "fight" : "steal", a = e.G.cardIndex[i.attackerId] ? N(e.G, i.attackerId).displayName : "";
+					let n = i.kind === "fight" ? "fight" : "steal", a = e.G.cardIndex[i.attackerId] ? M(e.G, i.attackerId).displayName : "";
 					r.log.emit({
 						type: "reactPass",
 						playerId: t,
@@ -21798,27 +21812,27 @@ var il = {
 						step: n
 					});
 				}
-			} else i.step === "fight" ? al(e, t, r, i) : i.step === "fightResult" ? ol(e, r, i) : i.step === "steal" && xl(e, t, n, r, i);
+			} else i.step === "fight" ? ol(e, t, r, i) : i.step === "fightResult" ? sl(e, r, i) : i.step === "steal" && Sl(e, t, n, r, i);
 		}
 	}
 };
-function al(e, t, n, r) {
+function ol(e, t, n, r) {
 	if (!r.defenderId) return;
-	tc(e, r.attackerId), tc(e, r.defenderId);
-	let i = F(e, r.attackerId), a = F(e, r.defenderId), o = bl(e, r), s;
+	rc(e, r.attackerId), rc(e, r.defenderId);
+	let i = P(e, r.attackerId), a = P(e, r.defenderId), o = xl(e, r), s;
 	s = o === "attacker" ? "attackerWins" : o === "defender" ? "defenderWins" : i > a ? "attackerWins" : a > i ? "defenderWins" : "mutual";
 	let c = i > 0, l = a > 0, u = (s === "mutual" ? [r.attackerId, r.defenderId] : s === "attackerWins" ? [r.defenderId] : [r.attackerId]).filter((t) => {
 		if (!t || (t === r.attackerId ? !l : !c)) return !1;
 		let n = e.G.cardIndex[t];
-		return !n || n.zone !== "field" ? !1 : rc(e, t) !== null;
-	}), d = u.map((t) => N(e.G, rc(e, t)).displayName), f = [];
+		return !n || n.zone !== "field" ? !1 : ac(e, t) !== null;
+	}), d = u.map((t) => M(e.G, ac(e, t)).displayName), f = [];
 	for (let t of e.G.activeEffects.filter((e) => e.kind === "preventNextRivalFightDefeat")) {
 		let i = e.G.cardIndex[r.attackerId], a = e.G.cardIndex[r.defenderId], o = t.playerId === i?.controllerId ? r.attackerId : t.playerId === a?.controllerId ? r.defenderId : null;
 		if (!o) continue;
 		f.push(o);
 		let s = e.G.cardIndex[t.sourceCardId];
 		if (s) {
-			let t = N(e.G, s.instanceId);
+			let t = M(e.G, s.instanceId);
 			d.push(t.displayName || t.name);
 		}
 		n.game.removeActiveEffect(t.id);
@@ -21849,17 +21863,17 @@ function al(e, t, n, r) {
 	};
 	n.event.emit(m);
 	let h = e.G.turnMetadata.triggerQueue, g = h.length;
-	U(m, e, n), yl(e, n, p, m), e.G.turnMetadata.pendingFightTriggers = h.splice(g);
+	U(m, e, n), bl(e, n, p, m), e.G.turnMetadata.pendingFightTriggers = h.splice(g);
 }
-function ol(e, t, n) {
+function sl(e, t, n) {
 	let r = n.fightResolution;
 	if (e.G.turnMetadata.pendingChoice || e.G.turnMetadata.currentTrigger || e.G.turnMetadata.triggerQueue.length > 0) return;
 	let i = n.defenderId;
 	if (!i) throw Error("Fight result requires a defender");
-	let a = N(e.G, n.attackerId).displayName, o = N(e.G, i).displayName;
+	let a = M(e.G, n.attackerId).displayName, o = M(e.G, i).displayName;
 	t.event.emit({
 		type: "actionLog",
-		messageKey: sl(r.result, r.protectedCardIds, n),
+		messageKey: cl(r.result, r.protectedCardIds, n),
 		params: {
 			attackerName: a,
 			defenderName: o,
@@ -21870,9 +21884,9 @@ function ol(e, t, n) {
 		playerId: e.G.turnMetadata.activePlayerId,
 		category: "combat",
 		cardIds: [n.attackerId, i]
-	}), hl(e, t, n);
+	}), gl(e, t, n);
 }
-function sl(e, t, n) {
+function cl(e, t, n) {
 	let r = n.fightResolution?.preventedCardIds ?? [], i = t.includes(n.attackerId) || r.includes(n.attackerId), a = n.defenderId !== null && (t.includes(n.defenderId) || r.includes(n.defenderId));
 	if (a && e === "attackerWins") return "move.resolveAttack.fight.attackerWins.prevented";
 	if (i && e === "defenderWins") return "move.resolveAttack.fight.defenderWins.prevented";
@@ -21885,8 +21899,8 @@ function sl(e, t, n) {
 		case "mutual": return "move.resolveAttack.fight.mutual";
 	}
 }
-function cl(e, t, n, r, i, a, o = "immediate") {
-	let s = rl(e, r);
+function ll(e, t, n, r, i, a, o = "immediate") {
+	let s = il(e, r);
 	t.card.detachGear(r), t.zone.moveCard(r, "trash", a);
 	let c = {
 		type: "cardDefeated",
@@ -21896,17 +21910,17 @@ function cl(e, t, n, r, i, a, o = "immediate") {
 		hostId: n,
 		snapshot: s
 	};
-	t.event.emit(c), o === "immediate" ? Lu(c, e, t) : o === "queued" && U(c, e, t);
+	t.event.emit(c), o === "immediate" ? Ru(c, e, t) : o === "queued" && U(c, e, t);
 }
-function ll(e, t, n, r, i, a = "immediate") {
-	let o = rc(e, n);
+function ul(e, t, n, r, i, a = "immediate") {
+	let o = ac(e, n);
 	if (o) {
-		cl(e, t, n, o, r, i, a);
+		ll(e, t, n, o, r, i, a);
 		return;
 	}
-	let s = e.G.cardIndex[n], c = rl(e, n), l = [...s?.meta.attachedGearIds ?? []].map((t) => ({
+	let s = e.G.cardIndex[n], c = il(e, n), l = [...s?.meta.attachedGearIds ?? []].map((t) => ({
 		gearId: t,
-		snapshot: rl(e, t)
+		snapshot: il(e, t)
 	})), u = s?.meta.attachedToId;
 	u && t.card.detachGear(n), t.card.moveAttachedGear(n, "trash", { detachAfterMove: !0 }), t.zone.moveCard(n, "trash", i);
 	let d = {
@@ -21917,7 +21931,7 @@ function ll(e, t, n, r, i, a = "immediate") {
 		snapshot: c,
 		...u ? { hostId: u } : {}
 	};
-	t.event.emit(d), a !== "deferred" && U(d, e, t), Ec(e, t, n), a === "immediate" && W(e, t);
+	t.event.emit(d), a !== "deferred" && U(d, e, t), Oc(e, t, n), a === "immediate" && W(e, t);
 	for (let { gearId: i, snapshot: o } of l) {
 		let s = e.G.cardIndex[i];
 		if (!s) continue;
@@ -21929,13 +21943,13 @@ function ll(e, t, n, r, i, a = "immediate") {
 			hostId: n,
 			snapshot: o
 		};
-		t.event.emit(c), a === "immediate" ? Lu(c, e, t) : a === "queued" && U(c, e, t);
+		t.event.emit(c), a === "immediate" ? Ru(c, e, t) : a === "queued" && U(c, e, t);
 	}
 }
-function ul(e, t, n, r, i = /* @__PURE__ */ new Set()) {
+function dl(e, t, n, r, i = /* @__PURE__ */ new Set()) {
 	let a = n.flatMap((t) => {
-		let n = ic(e, t, i), r = n && e.G.cardIndex[n];
-		return n && r && Hc(e, r.controllerId) >= 1 ? [{
+		let n = oc(e, t, i), r = n && e.G.cardIndex[n];
+		return n && r && V(e, r.controllerId) >= 1 ? [{
 			cardId: t,
 			replacement: n
 		}] : [];
@@ -21959,7 +21973,7 @@ function ul(e, t, n, r, i = /* @__PURE__ */ new Set()) {
 		}
 	}), !0;
 }
-function dl(e, t, n, r, i, a, o) {
+function fl(e, t, n, r, i, a, o) {
 	let s = e.G.cardIndex[n];
 	return !s || r.length < 2 ? !1 : (t.game.setPendingChoice({
 		type: "chooseSacrificialGear",
@@ -21976,52 +21990,52 @@ function dl(e, t, n, r, i, a, o) {
 		}
 	}), !0);
 }
-function fl(e, t, n, r, i, a = /* @__PURE__ */ new Set(), o = !1) {
+function pl(e, t, n, r, i, a = /* @__PURE__ */ new Set(), o = !1) {
 	let s = r.kind === "fight" ? "queued" : r.kind === "effect" && !o ? "deferred" : "immediate", c = [];
 	for (let a = 0; a < n.length; a++) {
 		let o = n[a];
 		if (!e.G.cardIndex[o] || r.kind === "fight" && e.G.cardIndex[o]?.zone !== "field") continue;
-		let l = nc(e, o);
+		let l = ic(e, o);
 		if (l.length >= 2) {
-			dl(e, t, o, l, [...c, ...n.slice(a + 1)], r, pl(o, r, i));
+			fl(e, t, o, l, [...c, ...n.slice(a + 1)], r, ml(o, r, i));
 			return;
 		}
 		if (l.length === 1) {
 			let n = e.G.cardIndex[o];
-			ll(e, t, o, pl(o, r, i), n.controllerId, s);
+			ul(e, t, o, ml(o, r, i), n.controllerId, s);
 		} else c.push(o);
 	}
-	if (!ul(e, t, c, r, a)) {
+	if (!dl(e, t, c, r, a)) {
 		for (let n of c) {
 			let a = e.G.cardIndex[n];
-			a && (r.kind !== "fight" || a.zone === "field") && ll(e, t, n, pl(n, r, i), a.controllerId, s);
+			a && (r.kind !== "fight" || a.zone === "field") && ul(e, t, n, ml(n, r, i), a.controllerId, s);
 		}
 		if (r.kind === "fight" && i) {
 			t.game.setAttackState(null);
 			let n = e.G.turnMetadata;
-			n.triggerQueue.push(...n.pendingFightTriggers ?? []), delete n.pendingFightTriggers, Zs(e), W(e, t);
+			n.triggerQueue.push(...n.pendingFightTriggers ?? []), delete n.pendingFightTriggers, $s(e), W(e, t);
 		}
 	}
 }
-function pl(e, t, n) {
+function ml(e, t, n) {
 	return t.kind === "effect" ? t.defeatedBy : t.kind === "endOfTurn" || !n ? null : e === n.attackerId ? n.defenderId ?? null : n.attackerId;
 }
-function ml(e, t, n, r) {
-	fl(e, t, n, {
+function hl(e, t, n, r) {
+	pl(e, t, n, {
 		kind: "effect",
 		remainingCardIds: [],
 		defeatedBy: r
 	});
 }
-function hl(e, t, n) {
+function gl(e, t, n) {
 	let r = n.fightResolution, { result: i, protectedCardIds: a } = r, o = n.defenderId, { attackerPower: s, defenderPower: c } = r, l = s > 0, u = c > 0, d = [];
-	(i === "attackerWins" || i === "mutual") && o && e.G.cardIndex[o]?.zone === "field" && l && !a.includes(o) && !I(e, o).includes("cantBeDefeatedInFight") && d.push(o), i !== "defenderWins" && i !== "mutual" || e.G.cardIndex[n.attackerId]?.zone !== "field" || !u || a.includes(n.attackerId) || I(e, n.attackerId).includes("cantBeDefeatedInFight") || d.push(n.attackerId), fl(e, t, d, {
+	(i === "attackerWins" || i === "mutual") && o && e.G.cardIndex[o]?.zone === "field" && l && !a.includes(o) && !F(e, o).includes("cantBeDefeatedInFight") && d.push(o), i !== "defenderWins" && i !== "mutual" || e.G.cardIndex[n.attackerId]?.zone !== "field" || !u || a.includes(n.attackerId) || F(e, n.attackerId).includes("cantBeDefeatedInFight") || d.push(n.attackerId), pl(e, t, d, {
 		kind: "fight",
 		remainingCardIds: [],
 		fightPlayerId: e.G.turnMetadata.activePlayerId
 	}, n);
 }
-var gl = {
+var _l = {
 	handlesPendingChoice: !0,
 	available({ state: e, playerId: t }) {
 		let n = e.G.turnMetadata.pendingChoice;
@@ -22041,7 +22055,7 @@ var gl = {
 			valid: !1,
 			error: "Invalid Unit to protect",
 			errorCode: "INVALID_CHOICE"
-		} : !n.args.pass && n.args.paymentSourceIds !== void 0 && !Uc(e.G, t, r.payload.cost, n.args.paymentSourceIds) ? {
+		} : !n.args.pass && n.args.paymentSourceIds !== void 0 && !Wc(e.G, t, r.payload.cost, n.args.paymentSourceIds) ? {
 			valid: !1,
 			error: "Invalid payment sources",
 			errorCode: "INVALID_PAYMENT"
@@ -22059,10 +22073,10 @@ var gl = {
 		let { protectedCardId: o, replacementCardId: s, continuation: c, skippedReplacementIds: l } = i.payload, u = n.args.protectedCardId ?? o;
 		if (n.args.pass) {
 			let t = /* @__PURE__ */ new Set([...(l ?? []).map((e) => e), s]);
-			fl(e, r, [o, ...c.remainingCardIds], {
+			pl(e, r, [o, ...c.remainingCardIds], {
 				...c,
 				remainingCardIds: []
-			}, a, t, !0), _l(c, e, r);
+			}, a, t, !0), vl(c, e, r);
 		} else {
 			{
 				let o = e.G.cardIndex[s], l = e.G.cardIndex[u];
@@ -22070,26 +22084,26 @@ var gl = {
 					type: "actionLog",
 					messageKey: "move.resolveRedirectDefeat",
 					params: {
-						replacementCardName: o ? N(e.G, s).displayName : "The replacement card",
-						protectedCardName: l ? N(e.G, u).displayName : "the friendly Unit",
+						replacementCardName: o ? M(e.G, s).displayName : "The replacement card",
+						protectedCardName: l ? M(e.G, u).displayName : "the friendly Unit",
 						cost: i.payload.cost
 					},
 					playerId: t,
 					category: "replacement",
 					cardIds: [s, u]
-				}), r.game.spendEddies(t, i.payload.cost, "redirectDefeat", n.args.paymentSourceIds === void 0 ? void 0 : { sourceIds: n.args.paymentSourceIds }), ll(e, r, s, pl(u, c, a), o?.controllerId ?? t, c.kind === "fight" ? "queued" : "immediate");
+				}), r.game.spendEddies(t, i.payload.cost, "redirectDefeat", n.args.paymentSourceIds === void 0 ? void 0 : { sourceIds: n.args.paymentSourceIds }), ul(e, r, s, ml(u, c, a), o?.controllerId ?? t, c.kind === "fight" ? "queued" : "immediate");
 			}
-			fl(e, r, [o, ...c.remainingCardIds].filter((e) => e !== u && e !== s), {
+			pl(e, r, [o, ...c.remainingCardIds].filter((e) => e !== u && e !== s), {
 				...c,
 				remainingCardIds: []
-			}, a, /* @__PURE__ */ new Set(), !0), _l(c, e, r);
+			}, a, /* @__PURE__ */ new Set(), !0), vl(c, e, r);
 		}
 	}
 };
-function _l(e, t, n) {
+function vl(e, t, n) {
 	e.kind === "fight" || t.G.turnMetadata.pendingChoice || (e.kind === "effect" && G(t, n), J(t, n));
 }
-var vl = {
+var yl = {
 	handlesPendingChoice: !0,
 	available({ state: e, playerId: t }) {
 		let n = e.G.turnMetadata.pendingChoice;
@@ -22125,10 +22139,10 @@ var vl = {
 		let a = e.G.attackState ?? void 0;
 		r.game.setPendingChoice(void 0);
 		let { hostId: o, continuation: s, defeatedBy: c } = i.payload, l = n.args.cardId, u = e.G.cardIndex[o];
-		cl(e, r, o, l, c, u?.controllerId ?? t, s.kind === "fight" ? "queued" : "immediate"), fl(e, r, s.remainingCardIds, s, a, /* @__PURE__ */ new Set(), !0), _l(s, e, r);
+		ll(e, r, o, l, c, u?.controllerId ?? t, s.kind === "fight" ? "queued" : "immediate"), pl(e, r, s.remainingCardIds, s, a, /* @__PURE__ */ new Set(), !0), vl(s, e, r);
 	}
 };
-function yl(e, t, n, r) {
+function bl(e, t, n, r) {
 	let i = n.defenderId;
 	if (!i) throw Error("Fight result requires a defender");
 	let a = e.G.cardIndex[n.attackerId], o = e.G.cardIndex[i];
@@ -22195,9 +22209,9 @@ function yl(e, t, n, r) {
 		});
 	}
 }
-function bl(e, t) {
+function xl(e, t) {
 	if (!t.defenderId) return null;
-	let n = N(e.G, t.attackerId), r = N(e.G, t.defenderId), i = new Set(n?.classifications ?? []), a = new Set(r?.classifications ?? []);
+	let n = M(e.G, t.attackerId), r = M(e.G, t.defenderId), i = new Set(n?.classifications ?? []), a = new Set(r?.classifications ?? []);
 	for (let n of e.G.activeEffects) {
 		if (n.kind !== "winsFightsAgainst") continue;
 		let e = n.winsFightsAgainst?.classifications ?? [];
@@ -22208,8 +22222,8 @@ function bl(e, t) {
 	}
 	return null;
 }
-function xl(e, t, n, r, i) {
-	let a = e.G.cardIndex[i.attackerId] ? N(e.G, i.attackerId).displayName : "", o = F(e, i.attackerId), s = e.G.players[i.rivalId];
+function Sl(e, t, n, r, i) {
+	let a = e.G.cardIndex[i.attackerId] ? M(e.G, i.attackerId).displayName : "", o = P(e, i.attackerId), s = e.G.players[i.rivalId];
 	if (!s || s.gigArea.length === 0) {
 		r.event.emit({
 			type: "attackResolved",
@@ -22227,13 +22241,13 @@ function xl(e, t, n, r, i) {
 				attackerName: a,
 				attackerPower: o,
 				count: 0,
-				stolenGigs: kc([])
+				stolenGigs: jc([])
 			},
 			playerId: t
 		}), r.game.setAttackState(null);
 		return;
 	}
-	let c = s.gigArea, l = Math.min(Tl(e, i) ?? 0, c.length);
+	let c = s.gigArea, l = Math.min(El(e, i) ?? 0, c.length);
 	if (n.args.gigIdsToSteal === void 0 && l > 0 && c.length > l) {
 		r.game.setPendingChoice({
 			type: "chooseGigsToSteal",
@@ -22248,8 +22262,8 @@ function xl(e, t, n, r, i) {
 		});
 		return;
 	}
-	let u = (n.args.gigIdsToSteal ?? c.slice(0, l)).slice(0, l).map((e) => e), d = sc(e, i.attackerId, i.rivalId, u), f = Cl(e, i, d, a, o);
-	f ? r.game.setPendingChoice(f) : (Sl({
+	let u = (n.args.gigIdsToSteal ?? c.slice(0, l)).slice(0, l).map((e) => e), d = lc(e, i.attackerId, i.rivalId, u), f = wl(e, i, d, a, o);
+	f ? r.game.setPendingChoice(f) : (Cl({
 		state: e,
 		operations: r,
 		attack: i,
@@ -22259,7 +22273,7 @@ function xl(e, t, n, r, i) {
 		attackerPower: o
 	}), r.game.setAttackState(null));
 }
-function Sl(e) {
+function Cl(e) {
 	let { state: t, operations: n, attack: r, gigIds: i, playerId: a, attackerName: o, attackerPower: s } = e, c = i.flatMap((e) => {
 		let n = t.G.gigDice[e];
 		return n ? [{
@@ -22267,9 +22281,9 @@ function Sl(e) {
 			faceValue: n.faceValue
 		}] : [];
 	});
-	i.length > 0 && tc(t, r.attackerId);
+	i.length > 0 && rc(t, r.attackerId);
 	for (let e of i) n.gig.moveGig(e, a, r.attackerId);
-	i[0] && Lu({
+	i[0] && Ru({
 		type: "gigStolen",
 		dieId: i[0],
 		dieIds: [...i],
@@ -22295,18 +22309,18 @@ function Sl(e) {
 			attackerName: o,
 			attackerPower: s,
 			count: l,
-			stolenGigs: kc(c)
+			stolenGigs: jc(c)
 		},
 		playerId: a
 	}), c;
 }
-function Cl(e, t, n, r, i) {
+function wl(e, t, n, r, i) {
 	if (n.length === 0) return null;
 	let a = t.rivalId, o = e.G.players[a];
 	if (!o) return null;
 	let s;
 	for (let t of ["field", "legendArea"]) {
-		for (let n of o.zones[t] ?? []) if (I(e, n).includes("preventsGigStealByDiscard")) {
+		for (let n of o.zones[t] ?? []) if (F(e, n).includes("preventsGigStealByDiscard")) {
 			s = n;
 			break;
 		}
@@ -22321,7 +22335,7 @@ function Cl(e, t, n, r, i) {
 		} : null;
 	}).filter((e) => e !== null), l = [];
 	for (let t of o.zones.hand ?? []) {
-		let n = N(e.G, t);
+		let n = M(e.G, t);
 		n && typeof n.cost == "number" && l.push({
 			cardId: t,
 			cost: n.cost
@@ -22342,51 +22356,51 @@ function Cl(e, t, n, r, i) {
 		}
 	} : null;
 }
-function wl(e) {
-	let t = e.state.G.cardIndex[e.thiefId], n = N(e.state.G, e.thiefId);
+function Tl(e) {
+	let t = e.state.G.cardIndex[e.thiefId], n = M(e.state.G, e.thiefId);
 	if (!t || n.type !== "unit") return null;
-	let r = Cl(e.state, {
+	let r = wl(e.state, {
 		attackerId: e.thiefId,
 		rivalId: e.defenderId
-	}, e.gigIds, n.displayName, F(e.state, e.thiefId));
+	}, e.gigIds, n.displayName, P(e.state, e.thiefId));
 	return r ? (r.payload.effectSteal = {
 		sourcePlayerId: e.sourcePlayerId,
 		sourceCardId: e.sourceCardId,
-		sourceCardName: N(e.state.G, e.sourceCardId).displayName
+		sourceCardName: M(e.state.G, e.sourceCardId).displayName
 	}, r) : null;
 }
-function Tl(e, t = e.G.attackState) {
+function El(e, t = e.G.attackState) {
 	if (!t || t.kind !== "direct" || t.redirectedByBlocker) return null;
 	let n = e.G.players[t.rivalId];
 	if (!n || n.gigArea.length === 0) return 0;
-	let r = F(e, t.attackerId);
+	let r = P(e, t.attackerId);
 	if (r <= 0) return 0;
-	let i = 1 + Math.floor(r / 10), a = +!!I(e, t.attackerId).includes("stealsOneFewerGig");
+	let i = 1 + Math.floor(r / 10), a = +!!F(e, t.attackerId).includes("stealsOneFewerGig");
 	return Math.min(Math.max(0, i - a), n.gigArea.length);
 }
 // upstream/submodules/cyberpunk/packages/engine/src/logging/effect-name.ts
-function El(e) {
+function Dl(e) {
 	return e.effect.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
 }
 // upstream/submodules/cyberpunk/packages/engine/src/logging/effect-target.ts
-function Dl(e, t, n, r) {
-	let i = e.G.cardIndex[t], a = i ? P(i).displayName : "that effect", o = n.map((t) => jl(e, t)), s = o.map((e) => e.name).join(", "), c = o.some((e) => e.privateToChooser) ? V(s, [r]) : s;
+function Ol(e, t, n, r) {
+	let i = e.G.cardIndex[t], a = i ? N(i).displayName : "that effect", o = n.map((t) => Ml(e, t)), s = o.map((e) => e.name).join(", "), c = o.some((e) => e.privateToChooser) ? B(s, [r]) : s;
 	return {
 		params: {
 			count: n.length,
 			sourceCardName: a,
 			targetNames: c,
-			...n.length === 1 ? o[0].privateToChooser ? { targetId: V(n[0], [r]) } : { targetId: n[0] } : {},
+			...n.length === 1 ? o[0].privateToChooser ? { targetId: B(n[0], [r]) } : { targetId: n[0] } : {},
 			...o.length === 1 ? o[0].publicLocation : {}
 		},
 		cardIds: [t, ...n.filter((t) => e.G.cardIndex[t])]
 	};
 }
-function Ol(e) {
+function kl(e) {
 	return e?.effect === "moveCard" && e.destination === "deckBottom" ? "trigger.targetResolved.deckBottom" : e?.effect === "rerollGig" ? "trigger.targetResolved.rerollGig" : "trigger.targetResolved";
 }
-function kl(e, t, n, r) {
-	let i = Ol(e);
+function Al(e, t, n, r) {
+	let i = kl(e);
 	if (i !== "trigger.targetResolved.rerollGig") return {
 		messageKey: i,
 		params: t.params
@@ -22405,7 +22419,7 @@ function kl(e, t, n, r) {
 		}
 	};
 }
-function Al(e, t) {
+function jl(e, t) {
 	let n = [], r = new Set(e.ctx.playerIds.map((e) => e));
 	for (let i of t) e.G.cardIndex[i] ? n.push({
 		kind: "card",
@@ -22419,10 +22433,10 @@ function Al(e, t) {
 	});
 	return n;
 }
-function jl(e, t) {
+function Ml(e, t) {
 	let n = e.G.cardIndex[t];
 	if (n) {
-		let r = P(n), i = Ml(e, t), a = r.type === "legend" && n.meta.faceDown === !0;
+		let r = N(n), i = Nl(e, t), a = r.type === "legend" && n.meta.faceDown === !0;
 		return {
 			name: r.displayName,
 			privateToChooser: a,
@@ -22447,7 +22461,7 @@ function jl(e, t) {
 		publicLocation: {}
 	};
 }
-function Ml(e, t) {
+function Nl(e, t) {
 	for (let [n, r] of Object.entries(e.G.players)) for (let [e, i] of Object.entries(r.zones)) {
 		let r = i.findIndex((e) => String(e) === t);
 		if (r >= 0) return {
@@ -22459,7 +22473,7 @@ function Ml(e, t) {
 	return null;
 }
 // upstream/submodules/cyberpunk/packages/engine/src/effects/handlers/index.ts
-function Nl(e, t, n) {
+function Pl(e, t, n) {
 	console.warn("[cyberpunk-engine] effect handler skipped missing player state", {
 		handler: e,
 		playerId: t,
@@ -22468,19 +22482,19 @@ function Nl(e, t, n) {
 		abilityIndex: n.abilityIndex
 	});
 }
-function Pl(e, t, n) {
-	let r = L(e.target, t);
+function Fl(e, t, n) {
+	let r = I(e.target, t);
 	if (r.length === 0) return { status: "noAction" };
 	let i = n.event.getEmittedEvents().length;
-	ml(t.state, n, r, t.sourceCardId);
+	hl(t.state, n, r, t.sourceCardId);
 	let a = t.state.G.turnMetadata.pendingChoice;
 	return a?.type === "redirectDefeat" || a?.type === "chooseSacrificialGear" ? {
 		status: "suspended",
 		pendingChoice: a
 	} : n.event.getEmittedEvents().slice(i).some((e) => e.type === "cardDefeated" && r.includes(e.cardId)) ? { status: "resolved" } : { status: "noAction" };
 }
-function Fl(e, t, n) {
-	let r = L(e.target, t), i = t.state.G.cardIndex[t.sourceCardId], a = i ? P(i).displayName : "That effect";
+function Il(e, t, n) {
+	let r = I(e.target, t), i = t.state.G.cardIndex[t.sourceCardId], a = i ? N(i).displayName : "That effect";
 	for (let e of r) {
 		let r = t.state.G.cardIndex[e];
 		r?.meta.spent ? n.event.emit({
@@ -22488,7 +22502,7 @@ function Fl(e, t, n) {
 			messageKey: "effect.spend.skippedAlreadySpent",
 			params: {
 				sourceCardName: a,
-				targetName: P(r).displayName ?? P(r).name
+				targetName: N(r).displayName ?? N(r).name
 			},
 			playerId: r.controllerId,
 			category: "effect",
@@ -22497,27 +22511,27 @@ function Fl(e, t, n) {
 	}
 	return { status: "resolved" };
 }
-function Il(e, t, n) {
-	let r = L(e.target, t);
+function Ll(e, t, n) {
+	let r = I(e.target, t);
 	for (let e of r) {
 		let r = t.state.G.cardIndex[e];
-		r && (r.meta.attachedToId ? n.card.detachGear(e) : n.card.moveAttachedGear(e, "hand"), n.zone.moveCard(e, "hand", r.ownerId), Ec(t.state, n, e));
+		r && (r.meta.attachedToId ? n.card.detachGear(e) : n.card.moveAttachedGear(e, "hand"), n.zone.moveCard(e, "hand", r.ownerId), Oc(t.state, n, e));
 	}
 	return { status: "resolved" };
 }
 function H(e, t) {
 	return !e || e === "friendly" || e === "owner" ? t.sourcePlayerId : e === "rival" ? t.state.ctx.playerIds.find((e) => e !== t.sourcePlayerId) : t.sourcePlayerId;
 }
-function Ll(e, t, n) {
-	let r = H(e.player, t), i = Cc(e.amount, t);
+function Rl(e, t, n) {
+	let r = H(e.player, t), i = Tc(e.amount, t);
 	return n.zone.drawCards(r, i), { status: "resolved" };
 }
-function Rl(e, t, n) {
+function zl(e, t, n) {
 	let r = H(e.player, t), i = t.state.G.players[r]?.zones.deck[0];
 	if (!i) return { status: "noAction" };
 	let a = t.state.G.cardIndex[i];
 	if (!a) return { status: "noAction" };
-	let o = P(a);
+	let o = N(a);
 	n.event.emit({
 		type: "actionLog",
 		messageKey: "move.searchDeck.revealNamed",
@@ -22539,7 +22553,7 @@ function Rl(e, t, n) {
 	}), n.zone.moveCard(i, "hand", r);
 	let s = o.cost ?? 0;
 	if (s <= 0) return { status: "resolved" };
-	for (let r of L(e.target, t)) n.game.addActiveEffect({
+	for (let r of I(e.target, t)) n.game.addActiveEffect({
 		id: `e${t.state.G.nextEffectId}`,
 		sourceCardId: t.sourceCardId,
 		targetCardId: r,
@@ -22551,8 +22565,8 @@ function Rl(e, t, n) {
 	});
 	return { status: "resolved" };
 }
-function zl(e, t, n) {
-	let r = L(e.target, t);
+function Bl(e, t, n) {
+	let r = I(e.target, t);
 	for (let i of r) {
 		let r = t.state.G.gigDice[i];
 		if (!r) continue;
@@ -22563,8 +22577,8 @@ function zl(e, t, n) {
 	}
 	return { status: "resolved" };
 }
-function Bl(e, t, n) {
-	let r = L(e.target, t);
+function Vl(e, t, n) {
+	let r = I(e.target, t);
 	for (let i of r) if (t.state.G.gigDice[i]) return n.game.setPendingChoice({
 		type: "chooseTarget",
 		chooserId: t.sourcePlayerId,
@@ -22587,8 +22601,8 @@ function Bl(e, t, n) {
 	};
 	return { status: "resolved" };
 }
-function Vl(e, t, n) {
-	let r = L(e.target, t), i = Cc(e.value, t);
+function Hl(e, t, n) {
+	let r = I(e.target, t), i = Tc(e.value, t);
 	if (r.length === 0) return { status: "noAction" };
 	for (let a of r) e.duration === "permanent" ? n.card.setMeta(a, { powerModifier: (t.state.G.cardIndex[a]?.meta.powerModifier ?? 0) + i }) : n.game.addActiveEffect({
 		id: `e${t.state.G.nextEffectId}`,
@@ -22616,10 +22630,10 @@ function Vl(e, t, n) {
 		type: "actionLog",
 		messageKey: "effect.modifyPower.resolved",
 		params: {
-			sourceCardName: a ? P(a).displayName : "Unknown card",
+			sourceCardName: a ? N(a).displayName : "Unknown card",
 			targetNames: r.map((e) => {
 				let n = t.state.G.cardIndex[e];
-				return n ? P(n).displayName : "Unknown card";
+				return n ? N(n).displayName : "Unknown card";
 			}).join(", "),
 			powerChange: i >= 0 ? `+${i}` : String(i)
 		},
@@ -22628,8 +22642,8 @@ function Vl(e, t, n) {
 		cardIds: [t.sourceCardId, ...r]
 	}), { status: "resolved" };
 }
-function Hl(e, t, n) {
-	let r = L(e.target, t);
+function Ul(e, t, n) {
+	let r = I(e.target, t);
 	for (let i of r) if (e.duration === "permanent") {
 		let r = t.state.G.cardIndex[i]?.meta.powerMultiplier ?? 1;
 		n.card.setMeta(i, { powerMultiplier: r * e.multiplier });
@@ -22645,10 +22659,10 @@ function Hl(e, t, n) {
 	});
 	return { status: "resolved" };
 }
-function Ul(e, t, n) {
-	let r = L(e.target, t), i = t.state.G.cardIndex[t.sourceCardId], a = i ? P(i).displayName : "That effect", o = r.map((e) => {
+function Wl(e, t, n) {
+	let r = I(e.target, t), i = t.state.G.cardIndex[t.sourceCardId], a = i ? N(i).displayName : "That effect", o = r.map((e) => {
 		let n = t.state.G.cardIndex[e];
-		return n ? P(n).displayName : null;
+		return n ? N(n).displayName : null;
 	}).filter((e) => !!e).join(", ");
 	for (let i of r) n.game.addActiveEffect({
 		id: `e${t.state.G.nextEffectId}`,
@@ -22678,8 +22692,8 @@ function Ul(e, t, n) {
 		cardIds: [t.sourceCardId, ...r.map((e) => e)]
 	}), { status: "resolved" };
 }
-function Wl(e, t, n) {
-	let r = L(e.target, t);
+function Gl(e, t, n) {
+	let r = I(e.target, t);
 	for (let i of r) n.game.addActiveEffect({
 		id: `e${t.state.G.nextEffectId}`,
 		sourceCardId: t.sourceCardId,
@@ -22692,7 +22706,7 @@ function Wl(e, t, n) {
 	});
 	return { status: "resolved" };
 }
-function Gl(e, t, n) {
+function Kl(e, t, n) {
 	return n.game.addActiveEffect({
 		id: `e${t.state.G.nextEffectId}`,
 		sourceCardId: t.sourceCardId,
@@ -22704,7 +22718,7 @@ function Gl(e, t, n) {
 		abilityIndex: t.abilityIndex
 	}), { status: "resolved" };
 }
-function Kl(e, t, n) {
+function ql(e, t, n) {
 	return n.game.addActiveEffect({
 		id: `e${t.state.G.nextEffectId}`,
 		sourceCardId: t.sourceCardId,
@@ -22717,8 +22731,8 @@ function Kl(e, t, n) {
 		abilityIndex: t.abilityIndex
 	}), { status: "resolved" };
 }
-function ql(e, t, n) {
-	let r = e.options.filter((e) => !e.conditions || e.conditions.length === 0 || e.conditions.every((e) => z(e, t)));
+function Jl(e, t, n) {
+	let r = e.options.filter((e) => !e.conditions || e.conditions.length === 0 || e.conditions.every((e) => R(e, t)));
 	return r.length === 0 ? { status: "resolved" } : r.length === 1 ? {
 		status: "partial",
 		remaining: [...r[0].effects]
@@ -22743,10 +22757,10 @@ function ql(e, t, n) {
 		pendingChoice: e
 	});
 }
-function Jl(e, t, n) {
+function Yl(e, t, n) {
 	let r = H(e.player, t), i = e.modifier.reducer === "perTargetCount" ? {
 		reducer: "flat",
-		amount: L(e.modifier.target, t).length * e.modifier.reductionPerCount,
+		amount: I(e.modifier.target, t).length * e.modifier.reductionPerCount,
 		min: e.modifier.min
 	} : e.modifier;
 	return n.game.addActiveEffect({
@@ -22763,8 +22777,8 @@ function Jl(e, t, n) {
 		abilityIndex: t.abilityIndex
 	}), { status: "resolved" };
 }
-function Yl(e, t, n) {
-	let r = L(e.target, t), i = new Ue(t.state.ctx.seed);
+function Xl(e, t, n) {
+	let r = I(e.target, t), i = new Ue(t.state.ctx.seed);
 	t.state.ctx.rngState && i.setState(t.state.ctx.rngState);
 	for (let e of r) {
 		let r = t.state.G.gigDice[e];
@@ -22789,7 +22803,7 @@ function Yl(e, t, n) {
 	}
 	return t.state.ctx.rngState = i.getState(), r.length > 0 ? { status: "resolved" } : { status: "noAction" };
 }
-function Xl(e, t, n) {
+function Zl(e, t, n) {
 	let r = H(e.player, t), i = t.state.G.players[r];
 	return !i || i.zones.deck.length === 0 ? { status: "noAction" } : (n.game.setPendingChoice({
 		type: "chooseCardType",
@@ -22806,8 +22820,8 @@ function Xl(e, t, n) {
 		pendingChoice: e
 	});
 }
-function Zl(e, t, n) {
-	let r = L(e.target, t);
+function Ql(e, t, n) {
+	let r = I(e.target, t);
 	for (let e of r) n.game.addActiveEffect({
 		id: `e${t.state.G.nextEffectId}`,
 		sourceCardId: t.sourceCardId,
@@ -22821,7 +22835,7 @@ function Zl(e, t, n) {
 	});
 	return r.length > 0 ? { status: "resolved" } : { status: "noAction" };
 }
-function Ql(e, t, n) {
+function $l(e, t, n) {
 	return n.game.addActiveEffect({
 		id: `e${t.state.G.nextEffectId}`,
 		sourceCardId: t.sourceCardId,
@@ -22833,17 +22847,17 @@ function Ql(e, t, n) {
 		abilityIndex: t.abilityIndex
 	}), { status: "resolved" };
 }
-function $l(e, t, n) {
-	let r = L(e.target, t);
-	for (let e of r) I(t.state, e).includes("cantReady") || n.card.ready(e);
+function eu(e, t, n) {
+	let r = I(e.target, t);
+	for (let e of r) F(t.state, e).includes("cantReady") || n.card.ready(e);
 	return { status: "resolved" };
 }
-function eu(e, t, n) {
+function tu(e, t, n) {
 	let r = H(e.player, t);
 	return n.game.readyEddies(r, e.amount), { status: "resolved" };
 }
-function tu(e, t, n) {
-	let r = L(e.target, t);
+function nu(e, t, n) {
+	let r = I(e.target, t);
 	if (r.length === 0) return { status: "noAction" };
 	let i = r.length > 0 ? t.state.G.cardIndex[r[0]] : void 0, a = /* @__PURE__ */ new Map();
 	for (let e of r) {
@@ -22872,16 +22886,16 @@ function tu(e, t, n) {
 		zone: i.zone,
 		timestamp: Date.now(),
 		turnNumber: t.state.G.turnMetadata.turnNumber,
-		cardIds: V(r, [t.sourcePlayerId])
+		cardIds: B(r, [t.sourcePlayerId])
 	}), { status: "resolved" };
 }
-function nu(e) {
+function ru(e) {
 	return e.remainder ? !1 : e.min !== void 0 || e.max !== void 0;
 }
-function ru(e, t, n) {
-	return !t.target || L(t.target, n).includes(e);
+function iu(e, t, n) {
+	return !t.target || I(t.target, n).includes(e);
 }
-function iu(e, t, n, r, i) {
+function au(e, t, n, r, i) {
 	let a = t === "deckBottom" || t === "deckTop" ? "deck" : t;
 	if (t === "deckBottom") {
 		let t = r.state.G.players[n], i = t?.zones.deck.indexOf(e);
@@ -22891,11 +22905,11 @@ function iu(e, t, n, r, i) {
 		i !== void 0 && i !== -1 && t?.zones.deck.splice(i, 1), t?.zones.deck.unshift(e);
 	} else i.zone.moveCard(e, a, n);
 }
-function au(e, t, n) {
+function ou(e, t, n) {
 	let r = H(e.player, t), i = t.state.G.players[r], a = Math.min(e.amount, i?.zones.deck.length ?? 0), o = i?.zones.deck.slice(0, a) ?? [], s = o.map((e) => {
 		let n = t.state.G.cardIndex[e];
 		if (!n) throw Error(`Searched card missing from index: ${e}`);
-		let r = P(n);
+		let r = N(n);
 		return r.displayName ?? r.name;
 	});
 	if (n.event.emit({
@@ -22911,8 +22925,8 @@ function au(e, t, n) {
 		timestamp: Date.now(),
 		turnNumber: t.state.G.turnMetadata.turnNumber,
 		revealedCount: o.length,
-		revealed: V(o, [r]),
-		revealedCardNames: V(s, [r])
+		revealed: B(o, [r]),
+		revealedCardNames: B(s, [r])
 	}), o.length === 0) return n.event.emit({
 		type: "searchPerformed",
 		playerId: r,
@@ -22930,20 +22944,20 @@ function au(e, t, n) {
 		cardIds: []
 	}), { status: "resolved" };
 	let c = e.destinations;
-	if (!c.some(nu)) {
+	if (!c.some(ru)) {
 		let e = /* @__PURE__ */ new Set(), i = [], a = [], s = c.find((e) => e.remainder) ?? {
 			zone: "deckBottom",
 			remainder: !0
 		};
 		for (let n of c) {
 			if (n.remainder) continue;
-			let r = o.filter((r) => !e.has(r) && ru(r, n, t));
+			let r = o.filter((r) => !e.has(r) && iu(r, n, t));
 			for (let t of r) e.add(t), i.push(t), a.push({
 				cardId: t,
 				zone: n.zone
 			});
 		}
-		let l = o.filter((t) => !e.has(t)), u = c.find((e) => !e.remainder), d = u?.zone ?? "hand", f = u?.reveal === !0, p = i.map((e) => t.state.G.cardIndex[e]).filter((e) => e !== void 0).map((e) => P(e).displayName ?? P(e).name);
+		let l = o.filter((t) => !e.has(t)), u = c.find((e) => !e.remainder), d = u?.zone ?? "hand", f = u?.reveal === !0, p = i.map((e) => t.state.G.cardIndex[e]).filter((e) => e !== void 0).map((e) => N(e).displayName ?? N(e).name);
 		i.length > 0 && f && (n.event.emit({
 			type: "cardsRevealed",
 			cardIds: i.map((e) => e),
@@ -22963,12 +22977,12 @@ function au(e, t, n) {
 			category: "search",
 			cardIds: i
 		}));
-		for (let { cardId: e, zone: i } of a) iu(e, i, r, t, n);
+		for (let { cardId: e, zone: i } of a) au(e, i, r, t, n);
 		if (s.order === "random") {
 			let e = new Ue(t.state.ctx.seed).shuffle(l);
 			l.splice(0, l.length, ...e);
 		}
-		for (let e of l) iu(e, s.zone, r, t, n);
+		for (let e of l) au(e, s.zone, r, t, n);
 		return n.event.emit({
 			type: "searchPerformed",
 			playerId: r,
@@ -22999,7 +23013,7 @@ function au(e, t, n) {
 			cardIds: i
 		}), { status: "resolved" };
 	}
-	let l = c.map((e) => ou(e, o, t));
+	let l = c.map((e) => su(e, o, t));
 	return n.game.setPendingChoice({
 		type: "scry",
 		chooserId: r,
@@ -23019,21 +23033,21 @@ function au(e, t, n) {
 		pendingChoice: e
 	};
 }
-function ou(e, t, n) {
+function su(e, t, n) {
 	if (e.remainder) return e;
-	let r = t.filter((t) => ru(t, e, n)).length;
+	let r = t.filter((t) => iu(t, e, n)).length;
 	return {
 		...e,
 		min: Math.min(e.min ?? 0, r),
 		...e.max === void 0 ? {} : { max: Math.min(e.max, r) }
 	};
 }
-function su(e, t, n) {
+function cu(e, t, n) {
 	let r = e.select.kind === "upTo" && typeof e.select.max != "number" && e.select.max.type === "basePlusPerCount" ? {
 		kind: "basePlusPerCount",
 		base: e.select.max.base,
 		multiplier: e.select.max.multiplier,
-		matchCount: L(e.select.max.target, t).length,
+		matchCount: I(e.select.max.target, t).length,
 		countedTarget: e.select.max.target.selector === "gig" ? {
 			selector: "gig",
 			controller: e.select.max.target.controller ?? "friendly",
@@ -23045,8 +23059,8 @@ function su(e, t, n) {
 		target: e.target,
 		reveal: e.reveal,
 		...e.select.kind === "upTo" ? {
-			min: e.select.min === void 0 ? 0 : Cc(e.select.min, t),
-			max: Cc(e.select.max, t),
+			min: e.select.min === void 0 ? 0 : Tc(e.select.min, t),
+			max: Tc(e.select.max, t),
 			...r === void 0 ? {} : { selectionLimitContext: r }
 		} : {}
 	}, {
@@ -23054,7 +23068,7 @@ function su(e, t, n) {
 		remainder: !0,
 		order: e.remainder?.order
 	}];
-	return au({
+	return ou({
 		effect: "scry",
 		player: e.player,
 		amount: e.lookCount,
@@ -23063,12 +23077,12 @@ function su(e, t, n) {
 		optional: e.optional
 	}, t, n);
 }
-function cu(e, t, n) {
+function lu(e, t, n) {
 	let r = H(e.player, t), i = H("rival", {
 		...t,
 		sourcePlayerId: r
 	}), a = t.state.G.players[r], o = Math.min(e.lookCount, a?.zones.deck.length ?? 0), s = a?.zones.deck.slice(0, o) ?? [], c = s.map((e) => t.state.G.cardIndex[e]).filter((e) => e !== void 0).map((e) => {
-		let t = P(e);
+		let t = N(e);
 		return t.displayName ?? t.name;
 	});
 	return n.event.emit({
@@ -23076,7 +23090,7 @@ function cu(e, t, n) {
 		messageKey: c.length > 0 ? "move.searchDeck.revealNamed" : "move.searchDeck.reveal",
 		params: c.length > 0 ? {
 			count: o,
-			revealedCardNames: V(c.join(", "), [r, i])
+			revealedCardNames: B(c.join(", "), [r, i])
 		} : { count: o },
 		playerId: r,
 		category: "search",
@@ -23087,8 +23101,8 @@ function cu(e, t, n) {
 		timestamp: Date.now(),
 		turnNumber: t.state.G.turnMetadata.turnNumber,
 		revealedCount: s.length,
-		revealed: V(s, [r, i]),
-		revealedCardNames: V(c, [r, i])
+		revealed: B(s, [r, i]),
+		revealedCardNames: B(c, [r, i])
 	}), s.length > 0 && n.event.emit({
 		type: "cardsRevealed",
 		cardIds: s,
@@ -23119,20 +23133,20 @@ function cu(e, t, n) {
 		pendingChoice: e
 	};
 }
-function lu(e, t) {
-	let n = H(e.player, t), r = t.state.G.players[n];
-	return r ? e.target ? L(e.target, t).filter((e) => r.zones.hand.includes(e)) : r.zones.hand.map((e) => e) : [];
-}
 function uu(e, t) {
-	return e.amount === "all" ? t : Math.min(e.amount, t);
+	let n = H(e.player, t), r = t.state.G.players[n];
+	return r ? e.target ? I(e.target, t).filter((e) => r.zones.hand.includes(e)) : r.zones.hand.map((e) => e) : [];
 }
 function du(e, t) {
+	return e.amount === "all" ? t : Math.min(e.amount, t);
+}
+function fu(e, t) {
 	return e.amount === "all" || t >= e.amount;
 }
-function fu(e, t, n) {
+function pu(e, t, n) {
 	let r = H(e.player, t);
-	if (!t.state.G.players[r]) return Nl("handleDiscardFromHand", r, t), { status: "resolved" };
-	let i = lu(e, t), a = uu(e, i.length);
+	if (!t.state.G.players[r]) return Pl("handleDiscardFromHand", r, t), { status: "resolved" };
+	let i = uu(e, t), a = du(e, i.length);
 	if (a === 0) return { status: "noAction" };
 	if (e.amount === "all") {
 		for (let e of i) n.zone.moveCard(e, "trash", r);
@@ -23174,13 +23188,13 @@ function fu(e, t, n) {
 		discardedCards: [...o.contextTargets.discardedCards ?? [], ...s]
 	}), t.contextTargets.discardedCards = [...t.contextTargets.discardedCards ?? [], ...s], { status: "resolved" };
 }
-function pu(e, t, n) {
-	let r = L(e.target, t);
+function mu(e, t, n) {
+	let r = I(e.target, t);
 	if (e.optional && e.attachTo) {
 		if (r.length === 0) return { status: "noAction" };
-		let i = L(e.attachTo, t)[0];
+		let i = I(e.attachTo, t)[0];
 		if (!i) return { status: "noAction" };
-		let a = r.filter((n) => hu(n, t, e.attachTo).includes(i));
+		let a = r.filter((n) => gu(n, t, e.attachTo).includes(i));
 		return a.length === 0 ? { status: "noAction" } : (n.game.setPendingChoice({
 			type: "chooseCardToMove",
 			chooserId: t.sourcePlayerId,
@@ -23224,20 +23238,20 @@ function pu(e, t, n) {
 	if (e.destination === "deckBottom") {
 		let e = [];
 		for (let n of r) t.state.G.cardIndex[n] && e.push(n);
-		return Dc(e, t.state, n), { status: "resolved" };
+		return kc(e, t.state, n), { status: "resolved" };
 	}
 	for (let i of r) {
 		let r = t.state.G.cardIndex[i];
 		if (!r) continue;
-		let a = e.attachTo ? hu(i, t, e.attachTo)[0] : void 0;
+		let a = e.attachTo ? gu(i, t, e.attachTo)[0] : void 0;
 		if (e.attachTo && !a) continue;
 		r.meta.attachedToId ? n.card.detachGear(i) : n.card.moveAttachedGear(i, e.destination);
-		let o = r.zone, s = P(r), c = t.state.G.cardIndex[t.sourceCardId];
-		n.zone.moveCard(i, e.destination, r.ownerId), Ec(t.state, n, i), o === "hand" && e.destination === "trash" && n.event.emit({
+		let o = r.zone, s = N(r), c = t.state.G.cardIndex[t.sourceCardId];
+		n.zone.moveCard(i, e.destination, r.ownerId), Oc(t.state, n, i), o === "hand" && e.destination === "trash" && n.event.emit({
 			type: "actionLog",
 			messageKey: "effect.discard.resolved",
 			params: {
-				sourceCardName: c ? P(c).displayName : "The effect",
+				sourceCardName: c ? N(c).displayName : "The effect",
 				discardedCardName: s.displayName,
 				discardedCost: s.cost ?? 0
 			},
@@ -23248,15 +23262,15 @@ function pu(e, t, n) {
 	}
 	return { status: "resolved" };
 }
-function mu(e, t, n) {
-	let r = L(e.target, t);
+function hu(e, t, n) {
+	let r = I(e.target, t);
 	if (r.length === 0) return { status: "resolved" };
 	let i = e.attachTo && "selection" in e.attachTo ? e.attachTo.selection : void 0;
-	if (e.free === !0 && e.optional === !0 && _u(e.target) && r.length === 1) {
+	if (e.free === !0 && e.optional === !0 && vu(e.target) && r.length === 1) {
 		let i = r[0], a = t.state.G.cardIndex[i];
-		if (a && P(a).type === "gear") {
+		if (a && N(a).type === "gear") {
 			let r = e.attachTo;
-			return hu(i, t, r).length === 0 ? e.elseEffects && e.elseEffects.length > 0 ? {
+			return gu(i, t, r).length === 0 ? e.elseEffects && e.elseEffects.length > 0 ? {
 				status: "partial",
 				remaining: [...e.elseEffects]
 			} : { status: "resolved" } : (n.game.setPendingChoice({
@@ -23282,10 +23296,10 @@ function mu(e, t, n) {
 			});
 		}
 	}
-	if (e.free === !0 && _u(e.target) && r.length === 1 && e.attachTo && i?.mode === "choose") {
+	if (e.free === !0 && vu(e.target) && r.length === 1 && e.attachTo && i?.mode === "choose") {
 		let a = t.state.G.cardIndex[r[0]];
-		if (!a || P(a).type !== "gear") return { status: "noAction" };
-		let o = hu(r[0], t, e.attachTo);
+		if (!a || N(a).type !== "gear") return { status: "noAction" };
+		let o = gu(r[0], t, e.attachTo);
 		return o.length < i.min ? { status: "noAction" } : (n.game.setPendingChoice({
 			type: "chooseTarget",
 			chooserId: i.chooser ? H(i.chooser, t) : t.sourcePlayerId,
@@ -23313,13 +23327,13 @@ function mu(e, t, n) {
 	}
 	let a;
 	if (e.attachTo) {
-		let n = L(e.attachTo, t);
+		let n = I(e.attachTo, t);
 		n.length === 1 && (a = n[0]);
 	}
-	if (_u(e.target) && r.length === 1 && !e.optional) {
+	if (vu(e.target) && r.length === 1 && !e.optional) {
 		let i = r[0], o = t.state.G.cardIndex[i];
-		if (o && P(o).type === "gear") {
-			let r = hu(i, t, e.attachTo);
+		if (o && N(o).type === "gear") {
+			let r = gu(i, t, e.attachTo);
 			if (r.length === 0 || a && !r.includes(a)) return { status: "noAction" };
 			if (!a && r.length > 1) return n.game.setPendingChoice({
 				type: "chooseCardToPlay",
@@ -23335,7 +23349,7 @@ function mu(e, t, n) {
 					abilityIndex: t.abilityIndex,
 					ifEffects: [],
 					elseEffects: e.elseEffects ? [...e.elseEffects] : [],
-					canDecline: vu(e)
+					canDecline: yu(e)
 				}
 			}), {
 				status: "suspended",
@@ -23343,8 +23357,8 @@ function mu(e, t, n) {
 			};
 			a ??= r[0];
 		}
-		let s = e.free ? 0 : Ac(t.state, i, t.sourcePlayerId);
-		return !e.free && (Hc(t.state, t.sourcePlayerId) < s || s > 0 && t.state.G.manualPaymentPlayerId === t.sourcePlayerId) ? (n.game.setPendingChoice({
+		let s = e.free ? 0 : Mc(t.state, i, t.sourcePlayerId);
+		return !e.free && (V(t.state, t.sourcePlayerId) < s || s > 0 && t.state.G.manualPaymentPlayerId === t.sourcePlayerId) ? (n.game.setPendingChoice({
 			type: "chooseCardToPlay",
 			chooserId: t.sourcePlayerId,
 			effectId: "",
@@ -23365,7 +23379,7 @@ function mu(e, t, n) {
 		}), {
 			status: "suspended",
 			pendingChoice: e
-		}) : (zc({
+		}) : (Vc({
 			state: t.state,
 			operations: n,
 			playerId: t.sourcePlayerId,
@@ -23378,8 +23392,8 @@ function mu(e, t, n) {
 	let o = r.filter((n) => {
 		let r = t.state.G.cardIndex[n];
 		if (!r) return !1;
-		if (P(r).type !== "gear") return !0;
-		let i = hu(n, t, e.attachTo);
+		if (N(r).type !== "gear") return !0;
+		let i = gu(n, t, e.attachTo);
 		return a ? i.includes(a) : i.length > 0;
 	});
 	return o.length === 0 ? e.optional && e.elseEffects && e.elseEffects.length > 0 ? {
@@ -23401,50 +23415,50 @@ function mu(e, t, n) {
 			abilityIndex: t.abilityIndex,
 			ifEffects: [],
 			elseEffects: e.elseEffects ? [...e.elseEffects] : [],
-			canDecline: vu(e)
+			canDecline: yu(e)
 		}
 	}), {
 		status: "suspended",
 		pendingChoice: e
 	});
 }
-function hu(e, t, n) {
-	return wc(t.state, e, t.sourcePlayerId, n ? {
+function gu(e, t, n) {
+	return Ec(t.state, e, t.sourcePlayerId, n ? {
 		target: n,
 		context: t
 	} : void 0);
 }
-function gu(e, t, n) {
-	return mu({
+function _u(e, t, n) {
+	return hu({
 		...e,
 		effect: "playCard"
 	}, t, n);
 }
-function _u(e) {
+function vu(e) {
 	return e.selector === "bound";
 }
-function vu(e) {
+function yu(e) {
 	return e.optional === !0 || e.free !== !0;
 }
-function yu(e, t, n) {
-	let r = L(e.target, t);
-	for (let e of r) Tc(t.state, n, e);
+function bu(e, t, n) {
+	let r = I(e.target, t);
+	for (let e of r) Dc(t.state, n, e);
 	return { status: "resolved" };
 }
-function bu(e, t) {
-	let n = L(e.target, t), r = t.state.G.cardIndex[t.sourceCardId], i = (e.source ? L(e.source, t)[0] : void 0) ?? (r?.meta.attachedToId ? r.meta.attachedToId : t.sourceCardId), a = n.length > 0 ? t.state.G.gigDice[n[0]]?.ownerId : void 0;
-	return a ? sc(t.state, i, a, n) : n;
+function xu(e, t) {
+	let n = I(e.target, t), r = t.state.G.cardIndex[t.sourceCardId], i = (e.source ? I(e.source, t)[0] : void 0) ?? (r?.meta.attachedToId ? r.meta.attachedToId : t.sourceCardId), a = n.length > 0 ? t.state.G.gigDice[n[0]]?.ownerId : void 0;
+	return a ? lc(t.state, i, a, n) : n;
 }
-function xu(e, t, n) {
-	let r = bu(e, t), i = t.state.G.cardIndex[t.sourceCardId], a = (e.source ? L(e.source, t)[0] : void 0) ?? (i && i.meta.attachedToId ? i.meta.attachedToId : t.sourceCardId);
-	I(t.state, a).includes("stealsOneFewerGig") && (r = r.slice(0, Math.max(0, r.length - 1)));
+function Su(e, t, n) {
+	let r = xu(e, t), i = t.state.G.cardIndex[t.sourceCardId], a = (e.source ? I(e.source, t)[0] : void 0) ?? (i && i.meta.attachedToId ? i.meta.attachedToId : t.sourceCardId);
+	F(t.state, a).includes("stealsOneFewerGig") && (r = r.slice(0, Math.max(0, r.length - 1)));
 	let o = r.flatMap((e) => {
 		let n = t.state.G.gigDice[e];
 		return n ? [{
 			dieType: n.dieType,
 			faceValue: n.faceValue
 		}] : [];
-	}), s = r.length > 0 ? t.state.G.gigDice[r[0]]?.ownerId : void 0, c = s && wl({
+	}), s = r.length > 0 ? t.state.G.gigDice[r[0]]?.ownerId : void 0, c = s && Tl({
 		state: t.state,
 		thiefId: a,
 		defenderId: s,
@@ -23458,14 +23472,14 @@ function xu(e, t, n) {
 	};
 	for (let e of r) n.gig.moveGig(e, t.sourcePlayerId, a);
 	if (r.length > 0) {
-		let e = i ? P(i).displayName : "Unknown card";
+		let e = i ? N(i).displayName : "Unknown card";
 		n.event.emit({
 			type: "actionLog",
 			messageKey: "trigger.stealGig",
 			params: {
 				cardName: e,
 				count: r.length,
-				stolenGigs: kc(o)
+				stolenGigs: jc(o)
 			},
 			playerId: t.sourcePlayerId,
 			category: "trigger",
@@ -23474,8 +23488,8 @@ function xu(e, t, n) {
 	}
 	return { status: "resolved" };
 }
-function Su(e, t, n) {
-	let r = L(e.friendly, t)[0], i = L(e.rival, t)[0];
+function Cu(e, t, n) {
+	let r = I(e.friendly, t)[0], i = I(e.rival, t)[0];
 	if (!r || !i) return { status: "noAction" };
 	let a = t.state.G.gigDice[r], o = t.state.G.gigDice[i];
 	if (!a || !o) return { status: "noAction" };
@@ -23509,7 +23523,7 @@ function Su(e, t, n) {
 		fromPlayerIds: [l, u]
 	}), { status: "resolved" };
 }
-function Cu(e, t, n) {
+function wu(e, t, n) {
 	return n.game.addActiveEffect({
 		id: `e${t.state.G.nextEffectId}`,
 		sourceCardId: t.sourceCardId,
@@ -23522,15 +23536,15 @@ function Cu(e, t, n) {
 		abilityIndex: t.abilityIndex
 	}), { status: "resolved" };
 }
-function wu(e, t, n) {
+function Tu(e, t, n) {
 	let r = H(e.player, t), i = t.state.G.players[r];
-	if (!i) return Nl("handleTrashFromDeck", r, t), { status: "resolved" };
+	if (!i) return Pl("handleTrashFromDeck", r, t), { status: "resolved" };
 	let a = Math.min(e.amount, i.zones.deck.length), o = [], s = [];
 	for (let e = 0; e < a; e++) {
 		let e = i.zones.deck.shift();
 		if (!e) break;
 		let a = t.state.G.cardIndex[e];
-		a && s.push(P(a).displayName), n.zone.moveCard(e, "trash", r), o.push(e);
+		a && s.push(N(a).displayName), n.zone.moveCard(e, "trash", r), o.push(e);
 	}
 	if (e.outputBinding && (t.boundTargets[e.outputBinding] = o), o.length > 0) {
 		let e = t.state.G.cardIndex[t.sourceCardId];
@@ -23538,10 +23552,10 @@ function wu(e, t, n) {
 			type: "actionLog",
 			messageKey: "effect.trashFromDeck.resolved",
 			params: {
-				sourceCardName: e ? P(e).displayName : "Unknown card",
+				sourceCardName: e ? N(e).displayName : "Unknown card",
 				trashedCount: o.length,
-				trashedCardIds: V(o, [r]),
-				trashedCardNames: V(s.join(", "), [r])
+				trashedCardIds: B(o, [r]),
+				trashedCardNames: B(s.join(", "), [r])
 			},
 			playerId: t.sourcePlayerId,
 			category: "effect",
@@ -23550,15 +23564,15 @@ function wu(e, t, n) {
 	}
 	return { status: "resolved" };
 }
-function Tu(e, t, n) {
+function Eu(e, t, n) {
 	let r = H(e.player, t), i = t.state.G.players[r];
-	if (!i) return Nl("handleSellFromDeck", r, t), { status: "resolved" };
+	if (!i) return Pl("handleSellFromDeck", r, t), { status: "resolved" };
 	let a = Math.min(e.amount, i.zones.deck.length), o = [], s = [];
 	for (let e = 0; e < a; e += 1) {
 		let e = i.zones.deck[0];
 		if (!e) break;
 		let a = t.state.G.cardIndex[e];
-		a && (o.push(e), s.push(P(a).displayName), n.event.emit({
+		a && (o.push(e), s.push(N(a).displayName), n.event.emit({
 			type: "cardsRevealed",
 			cardIds: [e],
 			playerId: t.sourcePlayerId,
@@ -23578,7 +23592,7 @@ function Tu(e, t, n) {
 			type: "actionLog",
 			messageKey: "effect.sellFromDeck.resolved",
 			params: {
-				sourceCardName: e ? P(e).displayName : "Unknown card",
+				sourceCardName: e ? N(e).displayName : "Unknown card",
 				soldCount: o.length,
 				soldCardIds: o.join(", "),
 				soldCardNames: s.join(", "),
@@ -23592,10 +23606,10 @@ function Tu(e, t, n) {
 	}
 	return { status: "resolved" };
 }
-function Eu(e, t, n) {
+function Du(e, t, n) {
 	let r = e.doEffect;
 	if (r.optional && r.effect === "moveCard" && !("attachTo" in r && r.attachTo)) {
-		let i = "target" in r && r.target ? L(r.target, t) : [];
+		let i = "target" in r && r.target ? I(r.target, t) : [];
 		if (i.length === 0) {
 			let t = e.elseEffects ? [...e.elseEffects] : [];
 			return t.length > 0 ? {
@@ -23624,7 +23638,7 @@ function Eu(e, t, n) {
 		};
 	}
 	if (r.optional && r.effect === "defeat") {
-		let i = L(r.target, t);
+		let i = I(r.target, t);
 		if (i.length === 0) {
 			let t = e.elseEffects ? [...e.elseEffects] : [];
 			return t.length > 0 ? {
@@ -23656,7 +23670,7 @@ function Eu(e, t, n) {
 	if (r.optional && r.effect === "discardFromHand") {
 		let i = H(r.player, t);
 		if (!t.state.G.players[i]) return { status: "resolved" };
-		let a = lu(r, t), o = uu(r, a.length);
+		let a = uu(r, t), o = du(r, a.length);
 		if (o === 0 || typeof r.amount == "number" && a.length < r.amount) {
 			let t = e.elseEffects ? [...e.elseEffects] : [];
 			return t.length > 0 ? {
@@ -23678,14 +23692,14 @@ function Eu(e, t, n) {
 				sourceCardId: t.sourceCardId,
 				sourcePlayerId: t.sourcePlayerId,
 				abilityIndex: t.abilityIndex,
-				ifEffects: du(r, a.length) ? [...e.ifEffects] : e.elseEffects ? [...e.elseEffects] : [],
+				ifEffects: fu(r, a.length) ? [...e.ifEffects] : e.elseEffects ? [...e.elseEffects] : [],
 				elseEffects: e.elseEffects ? [...e.elseEffects] : [],
 				contextTargets: t.contextTargets,
 				boundTargets: t.boundTargets
 			}
 		}), { status: "resolved" };
 	}
-	let i = r.effect !== "discardFromHand" || du(r, lu(r, t).length), a = Nu(e.doEffect, t, n);
+	let i = r.effect !== "discardFromHand" || fu(r, uu(r, t).length), a = Pu(e.doEffect, t, n);
 	if (a.status === "resolved" && i) return e.ifEffects.length > 0 ? {
 		status: "partial",
 		remaining: [...e.ifEffects]
@@ -23703,12 +23717,12 @@ function Eu(e, t, n) {
 	}
 	return a;
 }
-function Du(e, t, n) {
-	let r = L(e.source, t), i = L(e.target, t);
+function Ou(e, t, n) {
+	let r = I(e.source, t), i = I(e.target, t);
 	if (r.length === 0 || i.length === 0) return { status: "noAction" };
 	let a = t.state.G.gigDice[r[0]];
 	if (!a) return { status: "noAction" };
-	let o = t.state.G.cardIndex[t.sourceCardId], s = o ? P(o).displayName : "That effect", c = a.dieType.toUpperCase();
+	let o = t.state.G.cardIndex[t.sourceCardId], s = o ? N(o).displayName : "That effect", c = a.dieType.toUpperCase();
 	for (let e of i) {
 		let r = t.state.G.gigDice[e];
 		if (!r) continue;
@@ -23733,10 +23747,10 @@ function Du(e, t, n) {
 	}
 	return { status: "resolved" };
 }
-function Ou(e, t, n) {
-	let r = xc(t);
+function ku(e, t, n) {
+	let r = Cc(t);
 	if (r <= 0 || e.effects.length === 0) return { status: "noAction" };
-	let i = Au(e.effects, t, r);
+	let i = ju(e.effects, t, r);
 	if (i) return {
 		status: "partial",
 		remaining: [i]
@@ -23748,10 +23762,10 @@ function Ou(e, t, n) {
 		remaining: a
 	};
 }
-function ku(e, t, n) {
+function Au(e, t, n) {
 	let r = H(e.player, t), i = t.state.G.players[r];
-	if (!i) return Nl("handleCallLegend", r, t), { status: "noAction" };
-	let a = t.state.G.cardIndex[t.sourceCardId], o = a ? P(a).displayName : "That effect", s = B(t.state, r);
+	if (!i) return Pl("handleCallLegend", r, t), { status: "noAction" };
+	let a = t.state.G.cardIndex[t.sourceCardId], o = a ? N(a).displayName : "That effect", s = z(t.state, r);
 	if (s ? i.calledLegendThisRivalTurn : i.calledLegendThisTurn) return n.event.emit({
 		type: "actionLog",
 		messageKey: "effect.callLegend.skippedAlreadyCalled",
@@ -23760,12 +23774,12 @@ function ku(e, t, n) {
 		category: "trigger",
 		cardIds: [t.sourceCardId]
 	}), { status: "noAction" };
-	let c = L(e.target, t).filter((e) => {
+	let c = I(e.target, t).filter((e) => {
 		let n = t.state.G.cardIndex[e];
 		return n?.meta.faceDown && n.controllerId === r;
 	})[0];
 	if (!c) return { status: "noAction" };
-	let l = t.state.G.cardIndex[c], u = l ? P(l).displayName : "a Legend";
+	let l = t.state.G.cardIndex[c], u = l ? N(l).displayName : "a Legend";
 	return n.card.setMeta(c, { faceDown: !1 }), s ? n.game.markCalledLegendThisRivalTurn(r) : n.game.markCalledLegendThisTurn(r), n.event.emit({
 		type: "actionLog",
 		messageKey: e.free ? "effect.callLegend.free" : "move.callLegend",
@@ -23786,13 +23800,13 @@ function ku(e, t, n) {
 		playerId: r
 	}), { status: "resolved" };
 }
-function Au(e, t, n) {
+function ju(e, t, n) {
 	if (e.length !== 1) return null;
 	let r = e[0];
 	if (!("target" in r) || !r.target) return null;
 	let i = r.target;
 	if (i.selector !== "card" && i.selector !== "gig" || i.selection?.mode !== "choose") return null;
-	let a = Math.min(n, L(i, t).length);
+	let a = Math.min(n, I(i, t).length);
 	return a <= 0 ? null : {
 		...r,
 		target: {
@@ -23805,7 +23819,7 @@ function Au(e, t, n) {
 		}
 	};
 }
-function ju(e, t, n) {
+function Mu(e, t, n) {
 	let r = {};
 	if (t.boundTargets) for (let [e, n] of Object.entries(t.boundTargets)) r[e] = [...n];
 	return n.game.addBagEntry({
@@ -23820,55 +23834,55 @@ function ju(e, t, n) {
 		resolvedBindings: r
 	}), { status: "resolved" };
 }
-var Mu = {
-	defeat: Pl,
-	spend: Fl,
-	returnToHand: Il,
-	draw: Ll,
-	revealTopCardAndModifyPowerByCost: Rl,
-	modifyGig: zl,
-	adjustGig: Bl,
-	modifyPower: Vl,
-	multiplyPower: Hl,
-	grantRule: Ul,
-	grantFightWinAgainst: Wl,
-	grantNextFriendlyFightLossDefeat: Gl,
-	grantRivalGoSoloCostIncrease: Kl,
-	ready: $l,
-	readyEddies: eu,
-	lookAt: tu,
-	scry: au,
-	searchDeck: su,
-	rivalRevealChoice: cu,
-	discardFromHand: fu,
-	moveCard: pu,
-	playCard: mu,
-	attachCard: gu,
-	removeFromGame: yu,
-	stealGig: xu,
-	swapGigs: Su,
-	grantNextFightWinGigSteal: Cu,
-	trashFromDeck: wu,
-	sellFromDeck: Tu,
-	ifYouDo: Eu,
-	delayed: ju,
-	defeatAtEndOfTurnIfAttacks: Zl,
-	preventNextRivalFightDefeat: Ql,
-	copyGigValue: Du,
-	forEachFriendlyGigPair: Ou,
-	callLegend: ku,
-	grantCostModifier: Jl,
-	rerollGig: Yl,
-	revealTopCardType: Xl,
-	chooseEffect: ql
+var Nu = {
+	defeat: Fl,
+	spend: Il,
+	returnToHand: Ll,
+	draw: Rl,
+	revealTopCardAndModifyPowerByCost: zl,
+	modifyGig: Bl,
+	adjustGig: Vl,
+	modifyPower: Hl,
+	multiplyPower: Ul,
+	grantRule: Wl,
+	grantFightWinAgainst: Gl,
+	grantNextFriendlyFightLossDefeat: Kl,
+	grantRivalGoSoloCostIncrease: ql,
+	ready: eu,
+	readyEddies: tu,
+	lookAt: nu,
+	scry: ou,
+	searchDeck: cu,
+	rivalRevealChoice: lu,
+	discardFromHand: pu,
+	moveCard: mu,
+	playCard: hu,
+	attachCard: _u,
+	removeFromGame: bu,
+	stealGig: Su,
+	swapGigs: Cu,
+	grantNextFightWinGigSteal: wu,
+	trashFromDeck: Tu,
+	sellFromDeck: Eu,
+	ifYouDo: Du,
+	delayed: Mu,
+	defeatAtEndOfTurnIfAttacks: Ql,
+	preventNextRivalFightDefeat: $l,
+	copyGigValue: Ou,
+	forEachFriendlyGigPair: ku,
+	callLegend: Au,
+	grantCostModifier: Yl,
+	rerollGig: Xl,
+	revealTopCardType: Zl,
+	chooseEffect: Jl
 };
-function Nu(e, t, n) {
+function Pu(e, t, n) {
 	let r;
 	if (e.effect === "callLegend") {
 		let r = H(e.player, t), i = t.state.G.players[r];
-		if (!i) return Nl("resolveEffect.callLegend", r, t), { status: "noAction" };
-		if (B(t.state, r) ? i.calledLegendThisRivalTurn : i.calledLegendThisTurn) {
-			let e = t.state.G.cardIndex[t.sourceCardId], i = e ? P(e).displayName : "That effect";
+		if (!i) return Pl("resolveEffect.callLegend", r, t), { status: "noAction" };
+		if (z(t.state, r) ? i.calledLegendThisRivalTurn : i.calledLegendThisTurn) {
+			let e = t.state.G.cardIndex[t.sourceCardId], i = e ? N(e).displayName : "That effect";
 			return n.event.emit({
 				type: "actionLog",
 				messageKey: "effect.callLegend.skippedAlreadyCalled",
@@ -23882,15 +23896,15 @@ function Nu(e, t, n) {
 	if ("target" in e && e.target) {
 		let i = e.target, a = i.selector === "card" || i.selector === "gig" || i.selector === "bound" || i.selector === "context" ? i.selection : void 0;
 		if (a) {
-			let o = L(i, t), { min: s, max: c } = a;
+			let o = I(i, t), { min: s, max: c } = a;
 			if (o.length < s) {
 				let r = t.state.G.cardIndex[t.sourceCardId];
 				return n.event.emit({
 					type: "actionLog",
 					messageKey: "effect.insufficientTargets",
 					params: {
-						sourceCardName: r ? P(r).displayName : "Unknown card",
-						effectName: El(e),
+						sourceCardName: r ? N(r).displayName : "Unknown card",
+						effectName: Dl(e),
 						requiredCount: s,
 						availableCount: o.length
 					},
@@ -23901,7 +23915,7 @@ function Nu(e, t, n) {
 			}
 			let l = a.chooser ? H(a.chooser, t) : t.sourcePlayerId;
 			if (a.autoSelectSingle === !0 && o.length === 1 && s === 1 && c === 1 && a.canDecline !== !0 && e.optional !== !0) {
-				let e = Dl(t.state, t.sourceCardId, o, l), i = Al(t.state, o);
+				let e = Ol(t.state, t.sourceCardId, o, l), i = jl(t.state, o);
 				i.length > 0 && n.event.emit({
 					type: "effectTargeted",
 					sourceCardId: t.sourceCardId,
@@ -23937,9 +23951,9 @@ function Nu(e, t, n) {
 			};
 		}
 	}
-	let i = Mu[e.effect], a = n.event.getEmittedEvents().length, o = i(e, t, n);
+	let i = Nu[e.effect], a = n.event.getEmittedEvents().length, o = i(e, t, n);
 	if (r) {
-		let t = kl(e, r.details, n.event.getEmittedEvents().slice(a), r.targetIds);
+		let t = Al(e, r.details, n.event.getEmittedEvents().slice(a), r.targetIds);
 		n.event.emit({
 			type: "actionLog",
 			messageKey: t.messageKey,
@@ -23952,7 +23966,7 @@ function Nu(e, t, n) {
 	return o;
 }
 // upstream/submodules/cyberpunk/packages/engine/src/effects/gig-copy-selection.ts
-function Pu(e, t, n) {
+function Fu(e, t, n) {
 	if (t.length !== 2) return {
 		valid: !1,
 		reason: "wrong-count"
@@ -23970,26 +23984,26 @@ function Pu(e, t, n) {
 		reason: "same-player"
 	};
 }
-function Fu(e, t, n) {
-	return Pu(e, t, n).valid;
-}
 function Iu(e, t, n) {
-	return t.some((r) => t.some((t) => Fu(e, [r, t], n)));
+	return Fu(e, t, n).valid;
+}
+function Lu(e, t, n) {
+	return t.some((r) => t.some((t) => Iu(e, [r, t], n)));
 }
 // upstream/submodules/cyberpunk/packages/engine/src/ability-executor.ts
-function Lu(e, t, n) {
+function Ru(e, t, n) {
 	U(e, t, n), W(t, n);
 }
-function Ru(e, t, n) {
-	zu(e, t, n), W(t, n);
+function zu(e, t, n) {
+	Bu(e, t, n), W(t, n);
 }
-function zu(e, t, n, r = !0) {
+function Bu(e, t, n, r = !0) {
 	for (let i of n.event.getEmittedEvents().slice(e)) i.type === "cardSpent" && U(i, t, n, !1, r);
 }
-function Bu(e, t, n, r) {
-	zu(e, n, r, !0), U(t, n, r, !1, !0), W(n, r);
+function Vu(e, t, n, r) {
+	Bu(e, n, r, !0), U(t, n, r, !1, !0), W(n, r);
 }
-function Vu(e, t, n) {
+function Hu(e, t, n) {
 	for (let r of n.event.getEmittedEvents().slice(e)) (r.type === "gigStolen" || r.type === "gigDieRolled" || r.type === "gigValueChanged" || r.type === "gigsSwapped" || r.type === "legendFlipped" || r.type === "legendCalled" || r.type === "cardPlayed" || r.type === "cardSpent" || r.type === "cardDefeated") && U(r, t, n);
 }
 function U(e, t, n, r = !1, i = !0) {
@@ -23998,14 +24012,14 @@ function U(e, t, n, r = !1, i = !0) {
 		let n = e.dieIds ?? [e.dieId];
 		e = {
 			...e,
-			sourcePower: e.sourcePower ?? (e.sourceCardId ? F(t, e.sourceCardId) : void 0),
+			sourcePower: e.sourcePower ?? (e.sourceCardId ? P(t, e.sourceCardId) : void 0),
 			dieValues: e.dieValues ?? Object.fromEntries(n.flatMap((e) => {
 				let n = t.G.gigDice[e];
 				return n ? [[e, n.faceValue]] : [];
 			}))
 		};
 	}
-	let a = t.G.turnMetadata.triggerQueue, o = a.length, s = Js(e, t), c = e.type === "gigDieRolled" && e.origin === "gainGig" && s.some((n) => n.ability.timing === "gigRollReplacement" && qu(e, n.ability, t, n.playerId, n.cardId));
+	let a = t.G.turnMetadata.triggerQueue, o = a.length, s = Xs(e, t), c = e.type === "gigDieRolled" && e.origin === "gainGig" && s.some((n) => n.ability.timing === "gigRollReplacement" && Ju(e, n.ability, t, n.playerId, n.cardId));
 	for (let a of s) {
 		let { cardId: o, playerId: s, ability: l, abilityIndex: u } = a;
 		if (c && r === (l.timing === "gigRollReplacement")) continue;
@@ -24015,8 +24029,8 @@ function U(e, t, n, r = !1, i = !0) {
 			dieIds: [t]
 		})) : [e];
 		for (let e of d) {
-			let r = Xu(e);
-			if (!qu(e, l, t, s, o) || l.trigger?.trigger === "event" && l.limits?.includes("firstTimeEachTurn") && t.G.turnMetadata.firstTimeEventsThisTurn.some(({ event: n, card: r }) => {
+			let r = Zu(e);
+			if (!Ju(e, l, t, s, o) || l.trigger?.trigger === "event" && l.limits?.includes("firstTimeEachTurn") && t.G.turnMetadata.firstTimeEventsThisTurn.some(({ event: n, card: r }) => {
 				if (n.type !== e.type) return !1;
 				let i = r ? {
 					...t,
@@ -24028,24 +24042,24 @@ function U(e, t, n, r = !1, i = !0) {
 						}
 					}
 				} : t;
-				return qu(n, l, i, s, o);
+				return Ju(n, l, i, s, o);
 			})) continue;
-			let a = Zu(l, t, o, s, r);
+			let a = Qu(l, t, o, s, r);
 			if (l.bindings && !l.bindings.every((e) => {
-				if (Od(e)) {
-					let n = L(e.target, {
+				if (kd(e)) {
+					let n = I(e.target, {
 						state: t,
 						sourceCardId: o,
 						sourcePlayerId: s,
 						abilityIndex: u,
 						contextTargets: r,
 						boundTargets: a
-					}), i = Dd(e.target)?.min ?? 1;
-					return n.length < i ? l.allowEmptyTargets === !0 || !yd(t, o, l) : !0;
+					}), i = Od(e.target)?.min ?? 1;
+					return n.length < i ? l.allowEmptyTargets === !0 || !bd(t, o, l) : !0;
 				}
 				return (a[e.id]?.length ?? 0) > 0;
 			})) {
-				hd(o, s, l, {
+				gd(o, s, l, {
 					state: t,
 					sourceCardId: o,
 					sourcePlayerId: s,
@@ -24063,8 +24077,8 @@ function U(e, t, n, r = !1, i = !0) {
 				contextTargets: r,
 				boundTargets: a
 			};
-			if (!i && l.conditions?.length && !l.conditions.every((e) => z(e, c)) || !md(l, c, i) || !ad(l, c)) continue;
-			ld(l, c);
+			if (!i && l.conditions?.length && !l.conditions.every((e) => R(e, c)) || !hd(l, c, i) || !od(l, c)) continue;
+			ud(l, c);
 			let d = t.G.turnMetadata.nextTriggerId++, f = `trigger-${d}`;
 			t.G.turnMetadata.triggerQueue.push({
 				kind: "authored",
@@ -24073,7 +24087,7 @@ function U(e, t, n, r = !1, i = !0) {
 				sourcePlayerId: s,
 				abilityIndex: u,
 				abilityText: l.text,
-				optional: yd(t, o, l),
+				optional: bd(t, o, l),
 				event: e,
 				contextTargets: r,
 				boundTargets: a,
@@ -24118,24 +24132,24 @@ function W(e, t) {
 			continue;
 		}
 		if (n.length === 0) {
-			if (Hu(e, t)) continue;
-			nl(e, t);
+			if (Uu(e, t)) continue;
+			rl(e, t);
 			return;
 		}
 		let o = new Set(n.map((e) => e.id)), s = (a ?? n).filter((e) => !e.waitForTriggerIds?.some((e) => o.has(e))), c = s.some((e) => e.event.type === "turnEnded"), l = e.G.turnMetadata.activePlayerId, u = c ? s.filter((e) => e.sourcePlayerId === l) : [], d = [...u.length ? u : s].sort((e, t) => e.order - t.order)[0];
 		if (!d) throw Error("Trigger dependencies cannot form a cycle");
 		let f = d.sourcePlayerId, p = s.filter((e) => e.sourcePlayerId === f).sort((e, t) => e.order - t.order), m = p.filter((t) => {
 			let n = e.G.cardIndex[t.sourceCardId];
-			return t.kind === "authored" && n && Pd(n, t.abilityIndex)?.timing === "gigRollReplacement";
+			return t.kind === "authored" && n && Fd(n, t.abilityIndex)?.timing === "gigRollReplacement";
 		});
 		if (m.length === 1) {
-			Wu(m[0].id, e, t, { auto: !0 });
+			Gu(m[0].id, e, t, { auto: !0 });
 			continue;
 		}
-		let h = p.length === 1 ? p[0] : void 0, g = h ? e.G.cardIndex[h.sourceCardId] : void 0, _ = h?.kind === "authored" && g ? Pd(g, h.abilityIndex) : void 0;
+		let h = p.length === 1 ? p[0] : void 0, g = h ? e.G.cardIndex[h.sourceCardId] : void 0, _ = h?.kind === "authored" && g ? Fd(g, h.abilityIndex) : void 0;
 		if (p.length > 1 || p.some((e) => e.optional) && _?.timing !== "gigRollReplacement") {
 			let n = p.map((t) => {
-				let n = e.G.cardIndex[t.sourceCardId], r = n ? P(n).displayName : "Unknown card";
+				let n = e.G.cardIndex[t.sourceCardId], r = n ? N(n).displayName : "Unknown card";
 				return {
 					triggerId: t.id,
 					sourceCardId: t.sourceCardId,
@@ -24170,10 +24184,10 @@ function W(e, t) {
 			});
 			return;
 		}
-		Wu(p[0].id, e, t, { auto: !0 });
+		Gu(p[0].id, e, t, { auto: !0 });
 	}
 }
-function Hu(e, t) {
+function Uu(e, t) {
 	let n = e.G.effectBag.filter((e) => e.delayedTiming === "afterTriggerResolution");
 	if (n.length === 0) return !1;
 	for (let r of n) {
@@ -24193,17 +24207,17 @@ function Hu(e, t) {
 	}
 	return !0;
 }
-function Uu(e, t, n) {
+function Wu(e, t, n) {
 	let { pendingChoice: r, triggerQueue: i } = e.G.turnMetadata, a = r?.type === "chooseTrigger" ? r.payload.options : [], o = new Set(a.filter((e) => e.optional).map(({ triggerId: e }) => e)), s = i.length;
 	e.G.turnMetadata.triggerQueue = i.filter((e) => e.sourcePlayerId !== n || !o.has(e.id)), t.game.setPendingChoice(void 0), e.G.turnMetadata.triggerQueue.length !== s && W(e, t);
 }
-function Wu(e, t, n, r = {}) {
+function Gu(e, t, n, r = {}) {
 	if (t.G.turnMetadata.currentTrigger) return;
 	let i = t.G.turnMetadata.triggerQueue.findIndex((t) => t.id === e);
 	if (i === -1) return;
 	let a = t.G.turnMetadata.pendingChoice, o = !r.auto && a?.type === "chooseTrigger" && a.payload.options.length > 1 ? a.payload.options : void 0, [s] = t.G.turnMetadata.triggerQueue.splice(i, 1);
 	if (!s) return;
-	let c = t.G.cardIndex[s.sourceCardId], l = s.kind === "authored" && c ? Pd(c, s.abilityIndex) : void 0;
+	let c = t.G.cardIndex[s.sourceCardId], l = s.kind === "authored" && c ? Fd(c, s.abilityIndex) : void 0;
 	if (s.kind === "authored" && l?.limits?.includes("firstTimeEachTurn")) {
 		if (t.G.turnMetadata.abilityFiredThisTurn.some((e) => e.cardId === s.sourceCardId && e.abilityIndex === s.abilityIndex)) {
 			n.game.setPendingChoice(void 0), W(t, n);
@@ -24218,7 +24232,7 @@ function Wu(e, t, n, r = {}) {
 		...s,
 		nextEffectIndex: 0
 	}, n.game.setPendingChoice(void 0);
-	let u = c ? P(c).displayName : "Unknown card";
+	let u = c ? N(c).displayName : "Unknown card";
 	if (o) {
 		let t = o.filter((t) => t.triggerId !== e);
 		n.event.emit({
@@ -24247,17 +24261,17 @@ function Wu(e, t, n, r = {}) {
 		params: {
 			cardName: u,
 			abilityText: s.abilityText,
-			hasDrawEffect: l && Fd(l.effects) ? 1 : 0
+			hasDrawEffect: l && Id(l.effects) ? 1 : 0
 		},
 		playerId: s.sourcePlayerId,
 		category: "trigger",
 		cardIds: [s.sourceCardId]
 	}), G(t, n);
 }
-function Gu(e) {
+function Ku(e) {
 	return e.event.type === "actionLog" && (e.event.messageKey === "move.activateAbility" || e.event.messageKey === "move.activateAbility.attached");
 }
-function Ku(e, t) {
+function qu(e, t) {
 	t.game.setPendingChoice(void 0), e.G.turnMetadata.currentTrigger = void 0, W(e, t);
 }
 function G(e, t) {
@@ -24272,7 +24286,7 @@ function G(e, t) {
 			if (t?.step === "fightResult") {
 				t.fightResolution.protectedCardIds.includes(n.resolution.protectedCardId) || t.fightResolution.protectedCardIds.push(n.resolution.protectedCardId);
 				let r = e.G.cardIndex[n.sourceCardId];
-				t.fightResolution.preventionSourceCardNames.push(r ? P(r).displayName || P(r).name : "Unknown card");
+				t.fightResolution.preventionSourceCardNames.push(r ? N(r).displayName || N(r).name : "Unknown card");
 			}
 		} else {
 			let r = {
@@ -24294,12 +24308,12 @@ function G(e, t) {
 	}
 	let r = e.G.cardIndex[n.sourceCardId];
 	if (!r) {
-		gd(e, n, "the source card is no longer available", t), e.G.turnMetadata.currentTrigger = void 0, W(e, t);
+		_d(e, n, "the source card is no longer available", t), e.G.turnMetadata.currentTrigger = void 0, W(e, t);
 		return;
 	}
-	let i = Pd(r, n.abilityIndex);
+	let i = Fd(r, n.abilityIndex);
 	if (!i) {
-		gd(e, n, "the ability is no longer available", t), e.G.turnMetadata.currentTrigger = void 0, W(e, t);
+		_d(e, n, "the ability is no longer available", t), e.G.turnMetadata.currentTrigger = void 0, W(e, t);
 		return;
 	}
 	let a = {
@@ -24310,28 +24324,28 @@ function G(e, t) {
 		contextTargets: n.contextTargets,
 		boundTargets: n.boundTargets
 	};
-	if (!n.costsPaid && i.conditions?.some((e) => !z(e, a))) {
+	if (!n.costsPaid && i.conditions?.some((e) => !R(e, a))) {
 		e.G.turnMetadata.currentTrigger = void 0, W(e, t);
 		return;
 	}
-	if (!n.costsPaid && !ad(i, a)) {
-		gd(e, n, "its activation costs could not be paid", t), e.G.turnMetadata.currentTrigger = void 0, W(e, t);
+	if (!n.costsPaid && !od(i, a)) {
+		_d(e, n, "its activation costs could not be paid", t), e.G.turnMetadata.currentTrigger = void 0, W(e, t);
 		return;
 	}
 	if (!n.costsPaid && n.paymentSourceIds !== void 0) {
-		let r = Kc(i, e, n.sourceCardId, n.sourcePlayerId, n.boundTargets), a = new Set(qc(i, e, n.sourceCardId, n.sourcePlayerId, n.boundTargets).map(String));
-		if (!Uc(e.G, n.sourcePlayerId, r, n.paymentSourceIds) || n.paymentSourceIds.some((e) => a.has(String(e)))) {
-			gd(e, n, "the selected payment is no longer valid", t), e.G.turnMetadata.currentTrigger = void 0, W(e, t);
+		let r = qc(i, e, n.sourceCardId, n.sourcePlayerId, n.boundTargets), a = new Set(Jc(i, e, n.sourceCardId, n.sourcePlayerId, n.boundTargets).map(String));
+		if (!Wc(e.G, n.sourcePlayerId, r, n.paymentSourceIds) || n.paymentSourceIds.some((e) => a.has(String(e)))) {
+			_d(e, n, "the selected payment is no longer valid", t), e.G.turnMetadata.currentTrigger = void 0, W(e, t);
 			return;
 		}
 	}
-	if (!ld(i, a, n.nextEffectIndex)) {
-		hd(n.sourceCardId, n.sourcePlayerId, i, a, t), e.G.turnMetadata.currentTrigger = void 0, W(e, t);
+	if (!ud(i, a, n.nextEffectIndex)) {
+		gd(n.sourceCardId, n.sourcePlayerId, i, a, t), e.G.turnMetadata.currentTrigger = void 0, W(e, t);
 		return;
 	}
-	let o = kd(i, n.boundTargets);
+	let o = Ad(i, n.boundTargets);
 	if (o) {
-		let r = Dd(o.target), s = L(o.target, a), c = r?.min ?? 1, l = r?.max ?? 1, u = r?.chooser === "rival" ? e.ctx.playerIds.find((e) => e !== n.sourcePlayerId) : n.sourcePlayerId, d = r?.canDecline === !0 || c === 0 || Cd(i, o.id), f = r?.pairConstraint !== void 0 && !Iu(e, s, r.pairConstraint);
+		let r = Od(o.target), s = I(o.target, a), c = r?.min ?? 1, l = r?.max ?? 1, u = r?.chooser === "rival" ? e.ctx.playerIds.find((e) => e !== n.sourcePlayerId) : n.sourcePlayerId, d = r?.canDecline === !0 || c === 0 || wd(i, o.id), f = r?.pairConstraint !== void 0 && !Lu(e, s, r.pairConstraint);
 		if (s.length === 0 || s.length < c || f) {
 			if (c > 0) {
 				let r = e.G.cardIndex[n.sourceCardId], i = s.length > 0 && s.length < c;
@@ -24339,8 +24353,8 @@ function G(e, t) {
 					type: "actionLog",
 					messageKey: i ? "trigger.insufficientTargets" : "trigger.requiredTargetUnavailable",
 					params: {
-						cardName: r ? P(r).displayName : "Unknown card",
-						targetDescription: vd(o.target),
+						cardName: r ? N(r).displayName : "Unknown card",
+						targetDescription: yd(o.target),
 						...i ? {
 							requiredCount: c,
 							availableCount: s.length
@@ -24354,10 +24368,10 @@ function G(e, t) {
 			n.boundTargets[o.id] = [], G(e, t);
 			return;
 		}
-		if (s.length === 1 && c === 1 && l === 1 && !d && (r?.autoSelectSingle === !0 || !Sd(n.sourceCardId, i, e)) && !Td(i, o.id)) {
+		if (s.length === 1 && c === 1 && l === 1 && !d && (r?.autoSelectSingle === !0 || !Cd(n.sourceCardId, i, e)) && !Ed(i, o.id)) {
 			let i = s[0];
 			if (n.boundTargets[o.id] = [i], r?.autoSelectSingle === !0) {
-				let r = Dl(e, n.sourceCardId, [i], u);
+				let r = Ol(e, n.sourceCardId, [i], u);
 				t.event.emit({
 					type: "actionLog",
 					messageKey: "trigger.targetResolved",
@@ -24370,7 +24384,7 @@ function G(e, t) {
 			G(e, t);
 			return;
 		}
-		let p = wd(i, o.id);
+		let p = Td(i, o.id);
 		t.game.setPendingChoice({
 			type: "chooseTarget",
 			chooserId: u,
@@ -24379,7 +24393,7 @@ function G(e, t) {
 				type: "effectTarget",
 				targetKind: o.target.selector === "gig" ? "gig" : "card",
 				eligibleIds: s,
-				adjustGig: Ad(i, o.id),
+				adjustGig: jd(i, o.id),
 				min: c,
 				max: l,
 				pairConstraint: r?.pairConstraint,
@@ -24390,24 +24404,24 @@ function G(e, t) {
 				contextTargets: n.contextTargets,
 				boundTargets: n.boundTargets,
 				selectedBindingId: o.id,
-				...p ? { targetPurpose: p } : Cd(i, o.id) ? {
+				...p ? { targetPurpose: p } : wd(i, o.id) ? {
 					targetPurpose: "playCard",
-					availableEddiesAfterCosts: Wc(i, e, n.sourceCardId, n.sourcePlayerId, n.boundTargets),
-					effectiveCostsByCardId: Object.fromEntries(s.map((t) => [t, Ac(e, t, n.sourcePlayerId)]))
+					availableEddiesAfterCosts: Gc(i, e, n.sourceCardId, n.sourcePlayerId, n.boundTargets),
+					effectiveCostsByCardId: Object.fromEntries(s.map((t) => [t, Mc(e, t, n.sourcePlayerId)]))
 				} : {}
 			}
 		});
 	} else {
 		if (!n.costsPaid) {
-			if (!ad(i, a)) {
-				gd(e, n, "its activation costs could not be paid", t), e.G.turnMetadata.currentTrigger = void 0, W(e, t);
+			if (!od(i, a)) {
+				_d(e, n, "its activation costs could not be paid", t), e.G.turnMetadata.currentTrigger = void 0, W(e, t);
 				return;
 			}
-			let r = jd(i, n.boundTargets, a);
+			let r = Md(i, n.boundTargets, a);
 			if (r) {
-				let o = Dd(r.cost.target), s = Nd(r.cost, a), c = o?.min ?? 1, l = o?.max ?? 1;
+				let o = Od(r.cost.target), s = Pd(r.cost, a), c = o?.min ?? 1, l = o?.max ?? 1;
 				if (s.length < c) {
-					hd(n.sourceCardId, n.sourcePlayerId, i, a, t), e.G.turnMetadata.currentTrigger = void 0, W(e, t);
+					gd(n.sourceCardId, n.sourcePlayerId, i, a, t), e.G.turnMetadata.currentTrigger = void 0, W(e, t);
 					return;
 				}
 				t.game.setPendingChoice({
@@ -24432,7 +24446,7 @@ function G(e, t) {
 				return;
 			}
 			let o = t.event.getEmittedEvents().length;
-			sd(i, a, t, n.paymentSourceIds), Vu(o, e, t), n.costsPaid = !0;
+			cd(i, a, t, n.paymentSourceIds), Hu(o, e, t), n.costsPaid = !0;
 		}
 		if (n.continuation) {
 			let e = n.continuation;
@@ -24442,7 +24456,7 @@ function G(e, t) {
 		K(i.effects, a, t, n.nextEffectIndex) !== "suspended" && (e.G.turnMetadata.currentTrigger = void 0, W(e, t));
 	}
 }
-function qu(e, t, n, r, i) {
+function Ju(e, t, n, r, i) {
 	if (!t.trigger) return !1;
 	if (t.trigger.trigger !== "event") return !0;
 	if (t.trigger.event.event === "cardPlayed" && e.type === "cardPlayed") {
@@ -24452,7 +24466,7 @@ function qu(e, t, n, r, i) {
 			let e = o.controllerId;
 			if (a.player === "friendly" && e !== r || a.player === "rival" && e === r) return !1;
 		}
-		if (!Yu(a.target, o, i, n, r)) return !1;
+		if (!Xu(a.target, o, i, n, r)) return !1;
 	}
 	if (t.trigger.event.event === "cardAttacks" && e.type === "attackDeclared") {
 		let a = t.trigger.event, o = n.G.cardIndex[e.attackerId];
@@ -24461,7 +24475,7 @@ function qu(e, t, n, r, i) {
 			let e = o.controllerId;
 			if (a.player === "friendly" && e !== r || a.player === "rival" && e === r) return !1;
 		}
-		if (!Yu(a.target, o, i, n, r)) return !1;
+		if (!Xu(a.target, o, i, n, r)) return !1;
 	}
 	if (t.trigger.event.event === "cardSpent" && e.type === "cardSpent") {
 		let a = t.trigger.event, o = n.G.cardIndex[e.cardId];
@@ -24470,7 +24484,7 @@ function qu(e, t, n, r, i) {
 			let e = o.controllerId;
 			if (a.player === "friendly" && e !== r || a.player === "rival" && e === r) return !1;
 		}
-		if (!Yu(a.target, o, i, n, r)) return !1;
+		if (!Xu(a.target, o, i, n, r)) return !1;
 	}
 	if (t.trigger.event.event === "cardDefeated" && e.type === "cardDefeated") {
 		let a = t.trigger.event;
@@ -24478,7 +24492,7 @@ function qu(e, t, n, r, i) {
 			let t = e.snapshot.controllerId;
 			if (a.player === "friendly" && t !== r || a.player === "rival" && t === r) return !1;
 		}
-		if (!Ju(a.target, e, i, n, r)) return !1;
+		if (!Yu(a.target, e, i, n, r)) return !1;
 	}
 	if (t.trigger.event.event === "blockerActivated" && e.type === "blockerActivated") {
 		let a = t.trigger.event, o = n.G.cardIndex[e.blockerId];
@@ -24487,7 +24501,7 @@ function qu(e, t, n, r, i) {
 			let e = o.controllerId;
 			if (a.player === "friendly" && e !== r || a.player === "rival" && e === r) return !1;
 		}
-		if (!Yu(a.target, o, i, n, r)) return !1;
+		if (!Xu(a.target, o, i, n, r)) return !1;
 	}
 	if (t.trigger.event.event === "gigValueChanged" && e.type === "gigValueChanged") {
 		let n = t.trigger.event;
@@ -24529,10 +24543,10 @@ function qu(e, t, n, r, i) {
 			let e = o.controllerId;
 			if (a.player === "friendly" && e !== r || a.player === "rival" && e === r) return !1;
 		}
-		if (a.attacker && !Yu(a.attacker, o, i, n, r) || a.defender && (!s || !Yu(a.defender, s, i, n, r))) return !1;
+		if (a.attacker && !Xu(a.attacker, o, i, n, r) || a.defender && (!s || !Xu(a.defender, s, i, n, r))) return !1;
 		if (a.winner) {
 			let t = e.result === "attackerWins" ? o : e.result === "defenderWins" ? s : void 0;
-			if (!t || !Yu(a.winner, t, i, n, r)) return !1;
+			if (!t || !Xu(a.winner, t, i, n, r)) return !1;
 		}
 	}
 	if (t.trigger.event.event === "gigStolen" && e.type === "gigStolen") {
@@ -24546,7 +24560,7 @@ function qu(e, t, n, r, i) {
 		if (a.source?.selector === "card") {
 			if (!e.sourceCardId) return !1;
 			let t = n.G.cardIndex[e.sourceCardId];
-			if (!t || !Yu(a.source, t, i, n, r)) return !1;
+			if (!t || !Xu(a.source, t, i, n, r)) return !1;
 		}
 		if (a.target && (a.target.controller === "friendly" && e.fromPlayerId !== r || a.target.controller === "rival" && e.fromPlayerId === r || !o.some((t) => {
 			let r = n.G.gigDice[t];
@@ -24561,7 +24575,7 @@ function qu(e, t, n, r, i) {
 		}))) return !1;
 		if (a.valueLessThanSourcePower) {
 			if (!e.sourceCardId) return !1;
-			let t = e.sourcePower ?? F(n, e.sourceCardId);
+			let t = e.sourcePower ?? P(n, e.sourceCardId);
 			if (!o.some((r) => {
 				let i = n.G.gigDice[r], a = e.dieValues?.[r] ?? i?.faceValue;
 				return a !== void 0 && a < t;
@@ -24570,20 +24584,20 @@ function qu(e, t, n, r, i) {
 	}
 	return !0;
 }
-function Ju(e, t, n, r, i) {
-	return e.selector === "self" ? n === t.cardId : e.selector === "host" ? (n && r.G.cardIndex[n])?.meta.attachedToId === t.cardId || n !== void 0 && t.snapshot.attachedGearIds.includes(n) : e.selector === "card" && hc(t.snapshot, e, n, i, t.cardId);
-}
 function Yu(e, t, n, r, i) {
+	return e.selector === "self" ? n === t.cardId : e.selector === "host" ? (n && r.G.cardIndex[n])?.meta.attachedToId === t.cardId || n !== void 0 && t.snapshot.attachedGearIds.includes(n) : e.selector === "card" && _c(t.snapshot, e, n, i, t.cardId);
+}
+function Xu(e, t, n, r, i) {
 	if (e.selector === "self") return n !== void 0 && t.instanceId === n;
 	if (e.selector === "host") {
 		if (!n) return !1;
 		let e = r.G.cardIndex[n];
 		return e?.meta.attachedToId ? t.instanceId === e.meta.attachedToId : !1;
 	}
-	return e.selector === "card" && fc(t, e, {
+	return e.selector === "card" && mc(t, e, {
 		sourceCardId: n,
 		sourcePlayerId: i
-	}) ? pc(e) ? n ? L(e, {
+	}) ? hc(e) ? n ? I(e, {
 		state: r,
 		sourceCardId: n,
 		sourcePlayerId: i,
@@ -24592,11 +24606,11 @@ function Yu(e, t, n, r, i) {
 		boundTargets: {}
 	}).includes(t.instanceId) : !1 : !0 : !1;
 }
-function Xu(e) {
+function Zu(e) {
 	let t = {};
 	return e.type === "attackDeclared" && e.attackerId && (t.triggerCard = [e.attackerId]), e.type === "cardPlayed" && e.cardId && (t.triggerCard = [e.cardId]), e.type === "cardSpent" && e.cardId && (t.triggerCard = [e.cardId]), e.type === "cardDefeated" && e.cardId && (t.triggerCard = [e.cardId], e.hostId && (t.host = [e.hostId])), e.type === "blockerActivated" && e.blockerId && (t.triggerCard = [e.blockerId]), e.type === "gigStolen" && e.dieId && (t.triggeredGigs = (e.dieIds?.length ? e.dieIds : [e.dieId]).map(String), e.sourceCardId && (t.triggerCard = [e.sourceCardId])), e.type === "gigDieRolled" && e.dieId && (t.triggeredGigs = [e.dieId]), e.type === "attackResolved" && e.attackKind === "fight" && (t.fightAttacker = [e.attackerId], e.defenderId && (t.fightDefender = [e.defenderId])), t;
 }
-function Zu(e, t, n, r, i = {}) {
+function Qu(e, t, n, r, i = {}) {
 	let a = {};
 	if (!e.bindings) return a;
 	let o = {
@@ -24608,8 +24622,8 @@ function Zu(e, t, n, r, i = {}) {
 		boundTargets: {}
 	};
 	for (let t of e.bindings) {
-		if (Od(t)) continue;
-		let e = L(t.target, o);
+		if (kd(t)) continue;
+		let e = I(t.target, o);
 		e.length > 0 && (a[t.id] = [e[0]]);
 	}
 	return a;
@@ -24619,17 +24633,17 @@ function K(e, t, n, r = 0, i = {}) {
 	for (let a = r; a < e.length && !t.state.G.gameEnded; a++) {
 		let r = e[a];
 		if (r.conditions && r.conditions.length > 0) {
-			let e = r.conditions.filter((e) => !z(e, t));
+			let e = r.conditions.filter((e) => !R(e, t));
 			if (e.length > 0) {
-				$u(r, e, t, n);
+				ed(r, e, t, n);
 				continue;
 			}
 		}
-		if ("target" in r && r.target && !cd(r, t)) {
-			td(r, t, n);
+		if ("target" in r && r.target && !ld(r, t)) {
+			nd(r, t, n);
 			continue;
 		}
-		let o = n.event.getEmittedEvents().length, s = Nu(r, t, n);
+		let o = n.event.getEmittedEvents().length, s = Pu(r, t, n);
 		if (s.status === "suspended") {
 			let n = t.state.G.turnMetadata.currentTrigger;
 			return n && (i.nested ? n.continuation = {
@@ -24638,7 +24652,7 @@ function K(e, t, n, r = 0, i = {}) {
 			} : (n.nextEffectIndex = a + 1, n.continuation = void 0)), "suspended";
 		}
 		let c = n.event.getEmittedEvents().slice(o);
-		if (Qu(r, c, t, n), s.status === "noAction" && !c.some((e) => e.type === "actionLog") && ed(r, t, n), Vu(o, t.state, n), s.status === "partial" && s.remaining.length > 0) {
+		if ($u(r, c, t, n), s.status === "noAction" && !c.some((e) => e.type === "actionLog") && td(r, t, n), Hu(o, t.state, n), s.status === "partial" && s.remaining.length > 0) {
 			if (K(s.remaining, t, n, 0, { nested: !0 }) === "suspended") {
 				let e = t.state.G.turnMetadata.currentTrigger;
 				return e && !i.nested && (e.nextEffectIndex = a + 1), "suspended";
@@ -24648,75 +24662,75 @@ function K(e, t, n, r = 0, i = {}) {
 	}
 	return "resolved";
 }
-function Qu(e, t, n, r) {
+function $u(e, t, n, r) {
 	if (e.effect !== "draw") return;
 	let i = t.filter((e) => e.type === "cardsDrawn" && e.count > 0);
 	if (i.length === 0) return;
 	let a = i.reduce((e, t) => e + t.count, 0), o = i.flatMap((e) => e.cardIds), s = o.map((e) => n.state.G.cardIndex[e]).filter((e) => e !== void 0).map((e) => {
-		let t = P(e);
+		let t = N(e);
 		return t.displayName ?? t.name;
-	}), c = n.state.G.cardIndex[n.sourceCardId], l = c ? P(c).displayName : "Unknown card", u = i[0]?.playerId ?? n.sourcePlayerId;
+	}), c = n.state.G.cardIndex[n.sourceCardId], l = c ? N(c).displayName : "Unknown card", u = i[0]?.playerId ?? n.sourcePlayerId;
 	r.event.emit({
 		type: "actionLog",
 		messageKey: "effect.draw.resolved",
 		params: {
 			sourceCardName: l,
 			drawnCount: a,
-			drawnCardIds: V(o, [u]),
-			drawnCardNames: V(s.join(", "), [u])
+			drawnCardIds: B(o, [u]),
+			drawnCardNames: B(s.join(", "), [u])
 		},
 		playerId: n.sourcePlayerId,
 		category: "effect",
 		cardIds: [n.sourceCardId]
 	});
 }
-function $u(e, t, n, r) {
-	let i = n.state.G.cardIndex[n.sourceCardId], a = i ? P(i).displayName : "Unknown card";
+function ed(e, t, n, r) {
+	let i = n.state.G.cardIndex[n.sourceCardId], a = i ? N(i).displayName : "Unknown card";
 	r.event.emit({
 		type: "actionLog",
 		messageKey: e.effect === "draw" ? "effect.draw.skipped" : "effect.skipped",
 		params: {
 			sourceCardName: a,
-			...e.effect === "draw" ? {} : { effectName: El(e) },
-			reason: nd(t)
+			...e.effect === "draw" ? {} : { effectName: Dl(e) },
+			reason: rd(t)
 		},
 		playerId: n.sourcePlayerId,
 		category: "effect",
 		cardIds: [n.sourceCardId]
-	});
-}
-function ed(e, t, n) {
-	let r = t.state.G.cardIndex[t.sourceCardId];
-	n.event.emit({
-		type: "actionLog",
-		messageKey: "effect.noAction",
-		params: {
-			sourceCardName: r ? P(r).displayName : "Unknown card",
-			effectName: El(e)
-		},
-		playerId: t.sourcePlayerId,
-		category: "effect",
-		cardIds: [t.sourceCardId]
 	});
 }
 function td(e, t, n) {
 	let r = t.state.G.cardIndex[t.sourceCardId];
 	n.event.emit({
 		type: "actionLog",
-		messageKey: "effect.noValidTargets",
+		messageKey: "effect.noAction",
 		params: {
-			sourceCardName: r ? P(r).displayName : "Unknown card",
-			effectName: El(e)
+			sourceCardName: r ? N(r).displayName : "Unknown card",
+			effectName: Dl(e)
 		},
 		playerId: t.sourcePlayerId,
 		category: "effect",
 		cardIds: [t.sourceCardId]
 	});
 }
-function nd(e) {
-	return e.length === 1 ? rd(e[0]) : "conditions were not met";
+function nd(e, t, n) {
+	let r = t.state.G.cardIndex[t.sourceCardId];
+	n.event.emit({
+		type: "actionLog",
+		messageKey: "effect.noValidTargets",
+		params: {
+			sourceCardName: r ? N(r).displayName : "Unknown card",
+			effectName: Dl(e)
+		},
+		playerId: t.sourcePlayerId,
+		category: "effect",
+		cardIds: [t.sourceCardId]
+	});
 }
 function rd(e) {
+	return e.length === 1 ? id(e[0]) : "conditions were not met";
+}
+function id(e) {
 	switch (e.condition) {
 		case "hasGigAtMaxValue": return `no ${q(e.controller)} Gig is at max value`;
 		case "hasGigPair": return `${q(e.controller)} does not control a value-pair`;
@@ -24725,15 +24739,15 @@ function rd(e) {
 		case "hasEvenAndOddGigValues": return `${q(e.controller)} does not control both even and odd Gig values`;
 		case "hasGigCount": {
 			let t = e.minValue === void 0 ? "matching Gigs" : `Gigs with value ${e.minValue} or higher`;
-			return `${q(e.controller)} does not control ${id(e.comparison)} ${e.value} ${t}`;
+			return `${q(e.controller)} does not control ${ad(e.comparison)} ${e.value} ${t}`;
 		}
 		case "hasEquippedUnitsOrLegends": return `${q(e.controller)} does not control ${e.minCount} equipped Units and/or Legends`;
 		case "matchingGig": return `no ${q(e.controller)} Gig matches the target`;
-		case "streetCred": return `${q(e.controller)} Street Cred is not ${id(e.comparison)} ${e.value}`;
-		case "streetCredComparison": return `${q(e.controller)} Street Cred is not ${id(e.comparison)} ${q(e.other)} Street Cred`;
-		case "gigCountComparison": return `${q(e.controller)} Gig count is not ${id(e.comparison)} ${q(e.other)} Gig count`;
-		case "streetCredDifference": return `${q(e.controller)} Street Cred does not differ from ${q(e.other)} Street Cred by ${id(e.comparison)} ${e.value}`;
-		case "gigCountDifference": return `${q(e.controller)} Gig count is not ${id(e.comparison)} ${q(e.other)} Gig count plus ${e.value}`;
+		case "streetCred": return `${q(e.controller)} Street Cred is not ${ad(e.comparison)} ${e.value}`;
+		case "streetCredComparison": return `${q(e.controller)} Street Cred is not ${ad(e.comparison)} ${q(e.other)} Street Cred`;
+		case "gigCountComparison": return `${q(e.controller)} Gig count is not ${ad(e.comparison)} ${q(e.other)} Gig count`;
+		case "streetCredDifference": return `${q(e.controller)} Street Cred does not differ from ${q(e.other)} Street Cred by ${ad(e.comparison)} ${e.value}`;
+		case "gigCountDifference": return `${q(e.controller)} Gig count is not ${ad(e.comparison)} ${q(e.other)} Gig count plus ${e.value}`;
 		case "streetCredParity": return `${q(e.controller)} Street Cred is not ${e.parity}`;
 		case "allFriendlyLegendsFaceUp": return "not all friendly Legends are face-up";
 		case "cardState": return "the required card state is not true";
@@ -24746,7 +24760,7 @@ function rd(e) {
 		case "hasStolenGigThisTurn": return "the required card did not steal a Gig this turn";
 		case "fightKind": return "the attack type condition is not true";
 		case "costMatchesGig": return `no ${q(e.controller)} Gig matches the card cost`;
-		case "cardStat": return `${q(void 0)} card ${e.property} is not ${id(e.comparison)} ${e.value}`;
+		case "cardStat": return `${q(void 0)} card ${e.property} is not ${ad(e.comparison)} ${e.value}`;
 		case "cardName": return `target card is not named "${e.name}"`;
 		case "targetExists": return "the required target does not exist";
 		case "gigSides": return "the required gig die sides are not present";
@@ -24754,14 +24768,14 @@ function rd(e) {
 		case "not": return "negated condition is true";
 		case "targetParity": return `the target gig value is not ${e.parity}`;
 		case "discardedCountMatchesGig": return `discarded card count does not match a ${q(e.controller)} Gig value`;
-		case "fixerAreaCount": return `${q(e.controller)} fixer area count is not ${id(e.comparison)} ${e.value}`;
-		default: return _s(e);
+		case "fixerAreaCount": return `${q(e.controller)} fixer area count is not ${ad(e.comparison)} ${e.value}`;
+		default: return ys(e);
 	}
 }
 function q(e) {
 	return e === "rival" ? "rival" : "friendly";
 }
-function id(e) {
+function ad(e) {
 	switch (e) {
 		case "eq": return "equal to";
 		case "lt": return "less than";
@@ -24771,39 +24785,39 @@ function id(e) {
 		default: return e;
 	}
 }
-function ad(e, t) {
+function od(e, t) {
 	if (!e.costs) return !0;
 	for (let n = 0; n < e.costs.length; n++) {
 		let r = e.costs[n];
 		switch (r.cost) {
 			case "spend": {
-				let e = Dd(r.target);
-				if (e && !t.boundTargets[Yc(n)]) break;
-				let i = Md(r, n, t);
+				let e = Od(r.target);
+				if (e && !t.boundTargets[Xc(n)]) break;
+				let i = Nd(r, n, t);
 				if (i.length < (e?.min ?? 0)) return !1;
 				for (let e of i) if (t.state.G.cardIndex[e]?.meta.spent) return !1;
 				break;
 			}
 			case "payCardCost":
 			case "payEddies": break;
-			default: return _s(r);
+			default: return ys(r);
 		}
 	}
-	return Gc(e, t.state, t.sourceCardId, t.sourcePlayerId, t.boundTargets);
+	return Kc(e, t.state, t.sourceCardId, t.sourcePlayerId, t.boundTargets);
 }
-function od(e, t) {
+function sd(e, t) {
 	let n = e.amount;
 	if (e.reduction) {
-		let r = L(e.reduction.target, t).length;
+		let r = I(e.reduction.target, t).length;
 		n -= r * e.reduction.reductionPerCount;
 		let i = e.reduction.min ?? 0;
 		n = Math.max(n, i);
 	}
 	return n;
 }
-function sd(e, t, n, r) {
+function cd(e, t, n, r) {
 	if (!e.costs) return;
-	let i = qc(e, t.state, t.sourceCardId, t.sourcePlayerId, t.boundTargets), a = 0, o = (e) => {
+	let i = Jc(e, t.state, t.sourceCardId, t.sourcePlayerId, t.boundTargets), a = 0, o = (e) => {
 		let o = r?.slice(a, a + e);
 		a += e, n.game.spendEddies(t.sourcePlayerId, e, "abilityCost", {
 			excludedLegendIds: i,
@@ -24814,102 +24828,102 @@ function sd(e, t, n, r) {
 		let i = e.costs[r];
 		switch (i.cost) {
 			case "spend": {
-				let e = Md(i, r, t);
+				let e = Nd(i, r, t);
 				for (let t of e) n.card.spend(t);
 				break;
 			}
 			case "payCardCost": {
 				let e = t.state.G.cardIndex[t.sourceCardId];
-				e && (o(P(e).cost ?? 0), e.zone === "hand" && P(e).type === "program" && n.zone.moveCard(t.sourceCardId, "trash", t.sourcePlayerId));
+				e && (o(N(e).cost ?? 0), e.zone === "hand" && N(e).type === "program" && n.zone.moveCard(t.sourceCardId, "trash", t.sourcePlayerId));
 				break;
 			}
 			case "payEddies":
-				o(od(i, t));
+				o(sd(i, t));
 				break;
-			default: _s(i);
+			default: ys(i);
 		}
 	}
 }
-function cd(e, t) {
-	return "target" in e && e.target ? L(e.target, t).length > 0 : !0;
+function ld(e, t) {
+	return "target" in e && e.target ? I(e.target, t).length > 0 : !0;
 }
-function ld(e, t, n = 0) {
+function ud(e, t, n = 0) {
 	let r = e.effects.slice(n), i = !1;
-	for (let n of r) if ((!n.conditions?.length || n.conditions.every((e) => z(e, t))) && (ud(n, e, t) || cd(n, t))) {
+	for (let n of r) if ((!n.conditions?.length || n.conditions.every((e) => R(e, t))) && (dd(n, e, t) || ld(n, t))) {
 		i = !0;
 		break;
 	}
 	return r.every((n) => {
-		if (n.conditions?.length && !n.conditions.every((e) => z(e, t)) || ud(n, e, t)) return !0;
+		if (n.conditions?.length && !n.conditions.every((e) => R(e, t)) || dd(n, e, t)) return !0;
 		let r = n.target;
 		if (r.selector === "bound") {
 			let n = e.bindings?.find((e) => e.id === r.id);
-			return !n || Od(n) ? !0 : L(r, t).length > 0;
+			return !n || kd(n) ? !0 : I(r, t).length > 0;
 		}
-		let a = L(r, t).length > 0;
+		let a = I(r, t).length > 0;
 		return !a && i ? !0 : a;
 	});
 }
-function ud(e, t, n) {
-	if (e.conditions?.length && !e.conditions.every((e) => z(e, n))) return !1;
+function dd(e, t, n) {
+	if (e.conditions?.length && !e.conditions.every((e) => R(e, n))) return !1;
 	if (e.optional || e.effect === "scry") return !0;
 	if (e.effect === "ifYouDo") {
 		let t = e.doEffect;
-		return t.optional && "attachTo" in t && t.attachTo ? !("target" in t) || !t.target || L(t.target, n).length > 0 : !0;
+		return t.optional && "attachTo" in t && t.attachTo ? !("target" in t) || !t.target || I(t.target, n).length > 0 : !0;
 	}
 	if (!("target" in e) || !e.target) return !0;
 	let r = e.target;
 	if (r.selector === "bound") {
 		let e = t.bindings?.find((e) => e.id === r.id);
-		if (!e || Od(e)) return !0;
+		if (!e || kd(e)) return !0;
 	}
 	return !1;
 }
-function dd(e, t, n) {
-	let r = [fd(e), pd(e)];
+function fd(e, t, n) {
+	let r = [pd(e), md(e)];
 	for (let e of r) {
 		if (!e || e.selector !== "bound") continue;
 		let r = t.bindings?.find((t) => t.id === e.id);
-		if (r && Od(r) && n.boundTargets[r.id] === void 0) return !0;
+		if (r && kd(r) && n.boundTargets[r.id] === void 0) return !0;
 	}
 	return !1;
 }
-function fd(e) {
+function pd(e) {
 	return "target" in e ? e.target : void 0;
 }
-function pd(e) {
+function md(e) {
 	return "source" in e ? e.source : void 0;
 }
-function md(e, t, n) {
+function hd(e, t, n) {
 	return e.effects.some((r) => {
 		if (r.conditions?.length) {
 			if (n) return !0;
-			if (!r.conditions.every((e) => z(e, t))) return !1;
+			if (!r.conditions.every((e) => R(e, t))) return !1;
 		}
-		return !r.optional || cd(r, t) || dd(r, e, t);
+		return !r.optional || ld(r, t) || fd(r, e, t);
 	});
 }
-function hd(e, t, n, r, i) {
-	let a = r.state.G.cardIndex[e], o = a ? P(a).displayName : "Unknown card";
+function gd(e, t, n, r, i) {
+	let a = r.state.G.cardIndex[e], o = a ? N(a).displayName : "Unknown card";
 	i.event.emit({
 		type: "actionLog",
 		messageKey: "trigger.noValidTargets",
 		params: {
 			cardName: o,
-			reason: _d(n, r)
+			reason: vd(n, r)
 		},
 		playerId: t,
 		category: "trigger",
 		cardIds: [e]
 	});
 }
-function gd(e, t, n, r) {
+function _d(e, t, n, r) {
 	let i = e.G.cardIndex[t.sourceCardId];
 	r.event.emit({
 		type: "actionLog",
 		messageKey: "trigger.resolutionFailed",
 		params: {
-			cardName: i ? P(i).displayName : "Unknown card",
+			cardName: i ? N(i).displayName : "Unknown card",
 			reason: n
 		},
 		playerId: t.sourcePlayerId,
@@ -24917,14 +24931,14 @@ function gd(e, t, n, r) {
 		cardIds: [t.sourceCardId]
 	});
 }
-function _d(e, t) {
+function vd(e, t) {
 	for (let n of e.effects) {
 		if (!("target" in n) || !n.target || n.target.selector !== "card") continue;
 		let e = n.target;
-		if (L(e, t).length > 0) continue;
+		if (I(e, t).length > 0) continue;
 		let r = e.cardTypes?.length === 1 ? e.cardTypes[0] : "card";
 		if (e.maxPowerOfGigValueOf) {
-			let n = L(e.maxPowerOfGigValueOf.selector === "gig" ? {
+			let n = I(e.maxPowerOfGigValueOf.selector === "gig" ? {
 				...e.maxPowerOfGigValueOf,
 				amount: "all"
 			} : e.maxPowerOfGigValueOf, t).flatMap((e) => {
@@ -24937,7 +24951,7 @@ function _d(e, t) {
 	}
 	return "the required target or choice is unavailable";
 }
-function vd(e) {
+function yd(e) {
 	if (e.selector !== "card") return "required target";
 	let t = e.cardTypes?.length === 1 ? e.cardTypes[0] : void 0;
 	return t ? [
@@ -24946,52 +24960,52 @@ function vd(e) {
 		t === "unit" ? "Unit" : t
 	].filter(Boolean).join(" ") : "required card";
 }
-function yd(e, t, n) {
+function bd(e, t, n) {
 	let r = e.G.cardIndex[t];
 	if (!r) return !1;
-	let i = P(r), a = n.costs?.some((e) => e.cost === "payCardCost" || e.cost === "payEddies") === !0;
-	return n.trigger && a && /\bmay pay\b/i.test(n.text) || bd(n) ? !0 : r.zone === "hand" && i.type === "program" && n.costs?.some((e) => e.cost === "payCardCost") === !0;
-}
-function bd(e) {
-	if (e.effects.length === 0 || !e.effects.every((e) => e.optional === !0)) return !1;
-	let t = new Set((e.bindings ?? []).filter((e) => Od(e)).map((e) => e.id));
-	return e.effects.some((e) => xd(e).some((e) => t.has(e)));
+	let i = N(r), a = n.costs?.some((e) => e.cost === "payCardCost" || e.cost === "payEddies") === !0;
+	return n.trigger && a && /\bmay pay\b/i.test(n.text) || xd(n) ? !0 : r.zone === "hand" && i.type === "program" && n.costs?.some((e) => e.cost === "payCardCost") === !0;
 }
 function xd(e) {
-	if (Array.isArray(e)) return e.flatMap(xd);
+	if (e.effects.length === 0 || !e.effects.every((e) => e.optional === !0)) return !1;
+	let t = new Set((e.bindings ?? []).filter((e) => kd(e)).map((e) => e.id));
+	return e.effects.some((e) => Sd(e).some((e) => t.has(e)));
+}
+function Sd(e) {
+	if (Array.isArray(e)) return e.flatMap(Sd);
 	if (typeof e != "object" || !e) return [];
 	let t = e;
-	return [...t.selector === "bound" && typeof t.id == "string" ? [t.id] : [], ...Object.values(t).flatMap(xd)];
+	return [...t.selector === "bound" && typeof t.id == "string" ? [t.id] : [], ...Object.values(t).flatMap(Sd)];
 }
-function Sd(e, t, n) {
+function Cd(e, t, n) {
 	let r = n.G.cardIndex[e];
-	return r ? P(r).type === "program" : !1;
-}
-function Cd(e, t) {
-	return e.effects.some((e) => e.optional || e.effect !== "playCard" || e.free === !0 ? !1 : Ed(e.target) === t);
+	return r ? N(r).type === "program" : !1;
 }
 function wd(e, t) {
-	for (let n of e.effects) if (n.effect === "attachCard") {
-		if (Ed(n.attachTo) === t) return "attachHost";
-		if (Ed(n.target) === t) return "gearToPlay";
-	}
+	return e.effects.some((e) => e.optional || e.effect !== "playCard" || e.free === !0 ? !1 : Dd(e.target) === t);
 }
 function Td(e, t) {
-	return e.effects.some((e) => e.effect === "adjustGig" && "target" in e && Ed(e.target) === t ? !0 : e.effect !== "playCard" && e.effect !== "attachCard" ? !1 : Ed(e.target) === t || "attachTo" in e && Ed(e.attachTo) === t);
+	for (let n of e.effects) if (n.effect === "attachCard") {
+		if (Dd(n.attachTo) === t) return "attachHost";
+		if (Dd(n.target) === t) return "gearToPlay";
+	}
 }
-function Ed(e) {
-	return e && typeof e == "object" && "selector" in e && e.selector === "bound" && "id" in e && typeof e.id == "string" ? e.id : null;
+function Ed(e, t) {
+	return e.effects.some((e) => e.effect === "adjustGig" && "target" in e && Dd(e.target) === t ? !0 : e.effect !== "playCard" && e.effect !== "attachCard" ? !1 : Dd(e.target) === t || "attachTo" in e && Dd(e.attachTo) === t);
 }
 function Dd(e) {
-	if (e.selector === "card" || e.selector === "gig" || e.selector === "context") return e.selection;
+	return e && typeof e == "object" && "selector" in e && e.selector === "bound" && "id" in e && typeof e.id == "string" ? e.id : null;
 }
 function Od(e) {
-	return Dd(e.target)?.mode === "choose";
+	if (e.selector === "card" || e.selector === "gig" || e.selector === "context") return e.selection;
 }
-function kd(e, t) {
-	return e.bindings?.find((e) => Od(e) && t[e.id] === void 0);
+function kd(e) {
+	return Od(e.target)?.mode === "choose";
 }
 function Ad(e, t) {
+	return e.bindings?.find((e) => kd(e) && t[e.id] === void 0);
+}
+function jd(e, t) {
 	let n = e.effects.findIndex((e) => e.effect === "adjustGig" && "target" in e && e.target?.selector === "bound" && e.target.id === t), r = e.effects[n];
 	if (r && r.effect === "adjustGig") return {
 		direction: r.direction,
@@ -25000,36 +25014,36 @@ function Ad(e, t) {
 		effectIndex: n
 	};
 }
-function jd(e, t, n) {
+function Md(e, t, n) {
 	let r = e.costs ?? [];
 	for (let e = 0; e < r.length; e++) {
 		let i = r[e];
-		if (i.cost !== "spend" || !Dd(i.target)) continue;
-		let a = Yc(e);
-		if (!((t[a]?.length ?? 0) > 0) && Nd(i, n).length !== 0) return {
+		if (i.cost !== "spend" || !Od(i.target)) continue;
+		let a = Xc(e);
+		if (!((t[a]?.length ?? 0) > 0) && Pd(i, n).length !== 0) return {
 			cost: i,
 			bindingId: a
 		};
 	}
 }
-function Md(e, t, n) {
-	return Dd(e.target) ? n.boundTargets[Yc(t)] ?? [] : L(e.target, n);
+function Nd(e, t, n) {
+	return Od(e.target) ? n.boundTargets[Xc(t)] ?? [] : I(e.target, n);
 }
-function Nd(e, t) {
-	return L(e.target, t).filter((e) => {
+function Pd(e, t) {
+	return I(e.target, t).filter((e) => {
 		let n = t.state.G.cardIndex[e];
 		return n !== void 0 && !n.meta.spent;
 	});
 }
-function Pd(e, t) {
-	return P(e).abilities?.[t];
+function Fd(e, t) {
+	return N(e).abilities?.[t];
 }
-function Fd(e) {
-	for (let t of e) if (t.effect === "draw" || t.effect === "ifYouDo" && (Fd([t.doEffect]) || Fd(t.ifEffects) || Fd(t.elseEffects ?? [])) || (t.effect === "delayed" || t.effect === "forEachFriendlyGigPair") && Fd(t.effects)) return !0;
+function Id(e) {
+	for (let t of e) if (t.effect === "draw" || t.effect === "ifYouDo" && (Id([t.doEffect]) || Id(t.ifEffects) || Id(t.elseEffects ?? [])) || (t.effect === "delayed" || t.effect === "forEachFriendlyGigPair") && Id(t.effects)) return !0;
 	return !1;
 }
 // upstream/submodules/cyberpunk/packages/engine/src/moves/gain-gig.ts
-var Id = {
+var Ld = {
 	handlesPendingChoice: !0,
 	available({ state: e, playerId: t }) {
 		let n = e.G.turnMetadata.pendingChoice;
@@ -25059,24 +25073,24 @@ var Id = {
 		};
 	},
 	execute({ state: e, playerId: t, input: n, operations: r }) {
-		Rd(e, t, n.args.dieId, r);
+		zd(e, t, n.args.dieId, r);
 	}
 };
-function Ld(e, t, n) {
-	let r = Bd(e, t), i = r.length === 1 ? r[0] : void 0;
-	i ? Rd(e, t, i, n) : r.length > 1 ? n.game.setPendingChoice({
+function Rd(e, t, n) {
+	let r = Vd(e, t), i = r.length === 1 ? r[0] : void 0;
+	i ? zd(e, t, i, n) : r.length > 1 ? n.game.setPendingChoice({
 		type: "gainGig",
 		chooserId: t,
 		effectId: "start-phase",
 		payload: { allowedDieIds: r }
 	}) : n.game.setPhase("main");
 }
-function Rd(e, t, n, r) {
+function zd(e, t, n, r) {
 	let i = new Ue(e.ctx.seed);
 	e.ctx.rngState && i.setState(e.ctx.rngState);
 	let a = r.event.getEmittedEvents().length;
 	r.gig.takeFromFixer(t, n, (e) => i.rollDie(e)), e.ctx.rngState = i.getState(), e.G.turnMetadata.gigTakenThisTurn = !0, r.game.setPendingChoice(void 0);
-	for (let t of r.event.getEmittedEvents().slice(a)) t.type === "gigDieRolled" && Lu(t, e, r);
+	for (let t of r.event.getEmittedEvents().slice(a)) t.type === "gigDieRolled" && Ru(t, e, r);
 	let o = e.G.gigDice[n];
 	r.log.emit({
 		type: "gainGig",
@@ -25088,7 +25102,7 @@ function Rd(e, t, n, r) {
 		faceValue: o?.faceValue ?? 0
 	}), r.game.setPhase("main");
 }
-function zd(e, t, n) {
+function Bd(e, t, n) {
 	let r = e.G.players[n];
 	if (!r) return 0;
 	let i = 0, a = [
@@ -25099,13 +25113,13 @@ function zd(e, t, n) {
 	for (let r of a) {
 		let a = e.G.cardIndex[r];
 		if (a?.meta.spent) {
-			if (I(e, r).includes("cantReady")) {
-				let i = e.G.activeEffects.find((e) => e.kind === "grantRule" && e.rule === "cantReady" && e.targetCardId === r), o = i ? e.G.cardIndex[i.sourceCardId] : void 0, s = o ? P(o).displayName : void 0;
+			if (F(e, r).includes("cantReady")) {
+				let i = e.G.activeEffects.find((e) => e.kind === "grantRule" && e.rule === "cantReady" && e.targetCardId === r), o = i ? e.G.cardIndex[i.sourceCardId] : void 0, s = o ? N(o).displayName : void 0;
 				t.event.emit({
 					type: "actionLog",
 					messageKey: "move.readyStep.cantReady",
 					params: {
-						cardName: P(a).displayName,
+						cardName: N(a).displayName,
 						sourceDescription: s ? `${s}'s effect` : "an effect"
 					},
 					playerId: n,
@@ -25117,7 +25131,7 @@ function zd(e, t, n) {
 	}
 	return (r.spentEddies ?? 0) > 0 && (t.game.gainEddies(n, r.spentEddies), r.spentEddies = 0), i;
 }
-function Bd(e, t) {
+function Vd(e, t) {
 	let n = e.G.players[t];
 	if (!n) return [];
 	let r = n.fixerArea;
@@ -25126,15 +25140,15 @@ function Bd(e, t) {
 	return i.length > 0 ? i : r.filter((t) => e.G.gigDice[t]?.dieType === "d20");
 }
 // upstream/submodules/cyberpunk/packages/engine/src/moves/overtime.ts
-function Vd(e) {
+function Hd(e) {
 	return e.ctx.playerIds.every((t) => e.G.players[t]?.fixerArea.length === 0);
 }
 // upstream/submodules/cyberpunk/packages/engine/src/moves/keep-hand.ts
-var Hd = {
+var Ud = {
 	available({ state: e, playerId: t }) {
 		if (e.G.gamePhase !== "setup") return !1;
 		let n = e.G.players[t];
-		return !n || n.mulliganDone ? !1 : Gs(e, t);
+		return !n || n.mulliganDone ? !1 : qs(e, t);
 	},
 	validate({ state: e, playerId: t }) {
 		if (e.G.gamePhase !== "setup") return {
@@ -25147,7 +25161,7 @@ var Hd = {
 			valid: !1,
 			error: "Already decided",
 			errorCode: "ALREADY_DECIDED"
-		} : Gs(e, t) ? { valid: !0 } : {
+		} : qs(e, t) ? { valid: !0 } : {
 			valid: !1,
 			error: "The player going first must decide whether to mulligan first",
 			errorCode: "NOT_YOUR_TURN"
@@ -25164,48 +25178,48 @@ var Hd = {
 			playerId: t,
 			timestamp: Date.now(),
 			turnNumber: e.G.turnMetadata.turnNumber
-		}), Ud(e, n));
+		}), Wd(e, n));
 	}
 };
-function Ud(e, t) {
-	e.G.gamePhase === "setup" && e.ctx.playerIds.every((t) => e.G.players[t]?.mulliganDone === !0) && Wd(e, t);
-}
 function Wd(e, t) {
+	e.G.gamePhase === "setup" && e.ctx.playerIds.every((t) => e.G.players[t]?.mulliganDone === !0) && Gd(e, t);
+}
+function Gd(e, t) {
 	let n = e.ctx.playerIds.find((t) => e.G.players[t]?.firstPlayer === !0);
-	n ? (t.game.setPhase("start"), e.G.turnMetadata.turnBeganWithEmptyFixer = Vd(e), e.G.turnMetadata.turnBeganWithEmptyFixer && t.event.emit({
+	n ? (t.game.setPhase("start"), e.G.turnMetadata.turnBeganWithEmptyFixer = Hd(e), e.G.turnMetadata.turnBeganWithEmptyFixer && t.event.emit({
 		type: "actionLog",
 		messageKey: "game.overtimeFirstEmptyTurn",
 		params: {},
 		playerId: n,
 		category: "system"
-	}), e.G.turnMetadata.turnNumber !== 1 && zd(e, t, n), t.zone.drawCards(n, 1), e.G.gameEnded || Ld(e, n, t)) : t.game.setPhase("main");
+	}), e.G.turnMetadata.turnNumber !== 1 && Bd(e, t, n), t.zone.drawCards(n, 1), e.G.gameEnded || Rd(e, n, t)) : t.game.setPhase("main");
 }
 // upstream/submodules/cyberpunk/packages/engine/src/moves/attack-requirements.ts
-function Gd(e, t) {
+function Kd(e, t) {
 	return e.G.turnMetadata.playedCardTypesThisTurn[t]?.includes("program") === !0;
 }
-function Kd(e, t) {
+function qd(e, t) {
 	let n = e.G.players[t];
 	return n ? n.zones.field.filter((n) => {
 		let r = e.G.cardIndex[n];
 		if (!r || r.meta.spent) return !1;
-		let i = I(e, n);
-		if (!i.includes("mustAttack") || i.includes("cantAttack") || i.includes("requiresProgramPlayedThisTurn") && !Gd(e, t)) return !1;
-		let a = P(r), o = e.ctx.playerIds.find((e) => e !== t), s = o !== void 0 && !!e.G.players[o]?.gigArea.length && !i.includes("cantAttackRival") && (!r.meta.hasLag || i.includes("adrenaline") || i.includes("canAttackRivalOnPlayedTurn")), c = (!r.meta.hasLag || i.includes("adrenaline") || i.includes("canAttackOnPlayedTurnAgainstUnits")) && o !== void 0 && e.G.players[o]?.zones.field.some((t) => {
+		let i = F(e, n);
+		if (!i.includes("mustAttack") || i.includes("cantAttack") || i.includes("requiresProgramPlayedThisTurn") && !Kd(e, t)) return !1;
+		let a = N(r), o = e.ctx.playerIds.find((e) => e !== t), s = o !== void 0 && !!e.G.players[o]?.gigArea.length && !i.includes("cantAttackRival") && (!r.meta.hasLag || i.includes("adrenaline") || i.includes("canAttackRivalOnPlayedTurn")), c = (!r.meta.hasLag || i.includes("adrenaline") || i.includes("canAttackOnPlayedTurnAgainstUnits")) && o !== void 0 && e.G.players[o]?.zones.field.some((t) => {
 			let n = e.G.cardIndex[t];
-			return !n || P(n).type !== "unit" && P(n).type !== "legend" ? !1 : n.meta.spent || i.includes("canAttackReadyUnits") || i.includes("canAttackReadyBlockers") && I(e, t).includes("blocker");
+			return !n || N(n).type !== "unit" && N(n).type !== "legend" ? !1 : n.meta.spent || i.includes("canAttackReadyUnits") || i.includes("canAttackReadyBlockers") && F(e, t).includes("blocker");
 		});
 		return !s && !c ? !1 : a.type === "unit" || a.keywords.includes("goSolo");
 	}) : [];
 }
-function qd(e, t, n) {
-	let r = Kd(e, t);
+function Jd(e, t, n) {
+	let r = qd(e, t);
 	return r.length === 0 || r.includes(n);
 }
 // upstream/submodules/cyberpunk/packages/engine/src/moves/pass-phase.ts
-var Jd = {
+var Yd = {
 	available({ state: e, playerId: t }) {
-		return e.G.gamePhase === "setup" || e.G.turnMetadata.activePlayerId !== t ? !1 : e.G.gamePhase === "main" && !e.G.attackState && Kd(e, t).length === 0;
+		return e.G.gamePhase === "setup" || e.G.turnMetadata.activePlayerId !== t ? !1 : e.G.gamePhase === "main" && !e.G.attackState && qd(e, t).length === 0;
 	},
 	validate({ state: e, playerId: t }) {
 		return e.G.gamePhase === "end" ? {
@@ -25220,21 +25234,21 @@ var Jd = {
 			valid: !1,
 			error: "Attack in progress",
 			errorCode: "ATTACK_IN_PROGRESS"
-		} : e.G.gamePhase === "main" && Kd(e, t).length > 0 ? {
+		} : e.G.gamePhase === "main" && qd(e, t).length > 0 ? {
 			valid: !1,
 			error: "A unit must attack if it can",
 			errorCode: "MUST_ATTACK"
 		} : { valid: !0 };
 	},
 	execute({ state: e, playerId: t, operations: n }) {
-		e.G.gamePhase === "setup" ? (Wd(e, n), n.log.emit({
+		e.G.gamePhase === "setup" ? (Gd(e, n), n.log.emit({
 			type: "passPhase",
 			playerId: t,
 			timestamp: Date.now(),
 			turnNumber: e.G.turnMetadata.turnNumber,
 			fromPhase: "setup",
 			toPhase: e.G.gamePhase
-		})) : e.G.gamePhase === "main" && (Yd(e, t, n), n.log.emit({
+		})) : e.G.gamePhase === "main" && (Xd(e, t, n), n.log.emit({
 			type: "passPhase",
 			playerId: t,
 			timestamp: Date.now(),
@@ -25244,7 +25258,7 @@ var Jd = {
 		}));
 	}
 };
-function Yd(e, t, n) {
+function Xd(e, t, n) {
 	let r = e.G.turnMetadata.turnNumber;
 	n.event.emit({
 		type: "actionLog",
@@ -25257,19 +25271,19 @@ function Yd(e, t, n) {
 		playerId: t,
 		turnNumber: r
 	};
-	n.event.emit(i), U(i, e, n), $d(i, e, n), W(e, n), Xd(e) ? e.G.turnMetadata.suspendedEndTurn = {
+	n.event.emit(i), U(i, e, n), ef(i, e, n), W(e, n), Zd(e) ? e.G.turnMetadata.suspendedEndTurn = {
 		playerId: t,
 		turnNumber: r
-	} : Zd(e, t, n, r);
+	} : Qd(e, t, n, r);
 }
-function Xd(e) {
+function Zd(e) {
 	return e.G.turnMetadata.pendingChoice !== void 0 || e.G.turnMetadata.currentTrigger !== void 0 || e.G.turnMetadata.triggerQueue.length > 0;
 }
 function J(e, t) {
 	let n = e.G.turnMetadata.suspendedEndTurn;
-	n && (Xd(e) || (e.G.turnMetadata.suspendedEndTurn = void 0, Zd(e, n.playerId, t, n.turnNumber)));
+	n && (Zd(e) || (e.G.turnMetadata.suspendedEndTurn = void 0, Qd(e, n.playerId, t, n.turnNumber)));
 }
-function Zd(e, t, n, r) {
+function Qd(e, t, n, r) {
 	let i = [...e.G.effectBag];
 	for (let t of i) if (t.delayedTiming === "endOfTurn") {
 		if (t.delayedEffects) {
@@ -25281,11 +25295,11 @@ function Zd(e, t, n, r) {
 				contextTargets: {},
 				boundTargets: t.resolvedBindings ?? {}
 			};
-			tf(t.sourceCardId, t.delayedEffects, r, n), K(t.delayedEffects, r, n);
+			nf(t.sourceCardId, t.delayedEffects, r, n), K(t.delayedEffects, r, n);
 		}
 		n.game.removeBagEntry(t.id);
 	}
-	if (Xd(e)) {
+	if (Zd(e)) {
 		e.G.turnMetadata.suspendedEndTurn = {
 			playerId: t,
 			turnNumber: r
@@ -25294,7 +25308,7 @@ function Zd(e, t, n, r) {
 	}
 	let a = e.ctx.playerIds.find((e) => e !== t);
 	n.game.cleanupTurnEffects(), n.game.resetTurnFlags(t), n.game.resetTurnFlags(a), e.G.turnMetadata.suspendedEndTurn = void 0;
-	let o = r + 1, s = e.G.turnMetadata.previousTurnBeganWithEmptyFixer && e.G.turnMetadata.turnBeganWithEmptyFixer, c = Vd(e);
+	let o = r + 1, s = e.G.turnMetadata.previousTurnBeganWithEmptyFixer && e.G.turnMetadata.turnBeganWithEmptyFixer, c = Hd(e);
 	if (s && !e.G.overtime && (e.G.overtime = !0, e.G.turnMetadata.overtimeActive = !0, n.event.emit({
 		type: "actionLog",
 		messageKey: "game.overtimeStarted",
@@ -25308,7 +25322,7 @@ function Zd(e, t, n, r) {
 		turnBeganWithEmptyFixer: c,
 		gigTakenThisTurn: !1,
 		overtimeActive: e.G.overtime
-	}), n.game.setPhase("start"), n.game.cleanupEffectsExpiringAtTurnStart(a), ef(e, a, n, e.G.overtime)) return;
+	}), n.game.setPhase("start"), n.game.cleanupEffectsExpiringAtTurnStart(a), tf(e, a, n, e.G.overtime)) return;
 	let l = {
 		type: "turnStarted",
 		playerId: a,
@@ -25320,16 +25334,16 @@ function Zd(e, t, n, r) {
 		params: {},
 		playerId: a,
 		category: "system"
-	}), e.G.turnMetadata.awaitingStartEffects = !0, Lu(l, e, n), Qd(e, n);
+	}), e.G.turnMetadata.awaitingStartEffects = !0, Ru(l, e, n), $d(e, n);
 }
-function Qd(e, t) {
+function $d(e, t) {
 	let n = e.G.turnMetadata;
 	if (e.G.gameEnded || !n.awaitingStartEffects || n.pendingChoice || n.currentTrigger || n.triggerQueue.length) return;
 	delete n.awaitingStartEffects;
 	let r = n.activePlayerId;
-	zd(e, t, r), t.zone.drawCards(r, 1), e.G.gameEnded || Ld(e, r, t);
+	Bd(e, t, r), t.zone.drawCards(r, 1), e.G.gameEnded || Rd(e, r, t);
 }
-function $d(e, t, n) {
+function ef(e, t, n) {
 	for (let r of [...t.G.activeEffects]) {
 		if (r.kind !== "defeatAtEndOfTurnIfAttacked" || !r.triggered) continue;
 		n.game.removeActiveEffect(r.id);
@@ -25343,7 +25357,7 @@ function $d(e, t, n) {
 			sourcePlayerId: r.playerId ?? a.controllerId,
 			activeEffectId: r.id,
 			sourceAbilityIndex: r.abilityIndex,
-			abilityText: `Defeat ${P(i).displayName ?? P(i).name}.`,
+			abilityText: `Defeat ${N(i).displayName ?? N(i).name}.`,
 			event: e,
 			contextTargets: {},
 			boundTargets: { target: [r.targetCardId] },
@@ -25362,7 +25376,7 @@ function $d(e, t, n) {
 		});
 	}
 }
-function ef(e, t, n, r) {
+function tf(e, t, n, r) {
 	let i = e.G.players[t];
 	if (!i) return !1;
 	if (r) {
@@ -25374,12 +25388,12 @@ function ef(e, t, n, r) {
 	} else if (i.gigArea.length >= 7) return n.game.endGame(t, "gig_victory"), !0;
 	return !1;
 }
-function tf(e, t, n, r) {
-	let i = n.state.G.cardIndex[e], a = i ? P(i).displayName : "A delayed effect", o = t.flatMap((e) => e.effect === "defeat" ? L(e.target, n).filter((e) => n.state.G.cardIndex[e]) : []);
+function nf(e, t, n, r) {
+	let i = n.state.G.cardIndex[e], a = i ? N(i).displayName : "A delayed effect", o = t.flatMap((e) => e.effect === "defeat" ? I(e.target, n).filter((e) => n.state.G.cardIndex[e]) : []);
 	if (o.length === 0) return;
 	let s = o.map((e) => {
 		let t = n.state.G.cardIndex[e];
-		return P(t).displayName;
+		return N(t).displayName;
 	}).join(", ");
 	r.event.emit({
 		type: "actionLog",
@@ -25404,7 +25418,7 @@ function tf(e, t, n, r) {
 	});
 }
 // upstream/submodules/cyberpunk/packages/engine/src/moves/set-combat-priority.ts
-var nf = {
+var rf = {
 	undoable: !1,
 	handlesPendingChoice: !0,
 	available: ({ state: e, playerId: t }) => !e.G.gameEnded && e.ctx.playerIds.includes(t),
@@ -25425,17 +25439,17 @@ var nf = {
 		let r = n.args;
 		r && typeof r == "object" && "mode" in r && (r.mode === "automatic" || r.mode === "hold") && (e.G.players[t].combatPriority = r.mode);
 	}
-}, rf = {
+}, af = {
 	available({ state: e, playerId: t }) {
 		let n = e.G.players[t];
 		if (!n || e.G.gamePhase !== "main") return !1;
-		let r = B(e, t);
+		let r = z(e, t);
 		return e.G.attackState && !r || !r && e.G.turnMetadata.activePlayerId !== t ? !1 : r ? n.zones.hand.some((t) => {
 			let n = e.G.cardIndex[t];
-			return n && P(n).keywords.includes("quick");
+			return n && N(n).keywords.includes("quick");
 		}) : n.zones.hand.length > 0 || n.zones.legendArea.some((t) => {
 			let n = e.G.cardIndex[t];
-			return n && !n.meta.faceDown && P(n).type === "legend" && P(n).cost !== null;
+			return n && !n.meta.faceDown && N(n).type === "legend" && N(n).cost !== null;
 		});
 	},
 	validate({ state: e, playerId: t, input: n }) {
@@ -25450,7 +25464,7 @@ var nf = {
 			error: "Not in main phase",
 			errorCode: "WRONG_PHASE"
 		};
-		let o = B(e, t);
+		let o = z(e, t);
 		if (e.G.attackState && !o) return {
 			valid: !1,
 			error: "Attack in progress",
@@ -25462,12 +25476,12 @@ var nf = {
 			errorCode: "NOT_YOUR_TURN"
 		};
 		let s = e.G.cardIndex[r];
-		if (s && o && !P(s).keywords.includes("quick")) return {
+		if (s && o && !N(s).keywords.includes("quick")) return {
 			valid: !1,
 			error: "Can only play QUICK cards as a reaction",
 			errorCode: "NOT_QUICK"
 		};
-		let c = s && !s.meta.faceDown && P(s).type === "legend" && P(s).cost !== null && a.zones.legendArea.includes(r);
+		let c = s && !s.meta.faceDown && N(s).type === "legend" && N(s).cost !== null && a.zones.legendArea.includes(r);
 		if (!a.zones.hand.includes(r) && !c) return {
 			valid: !1,
 			error: "Card not in hand",
@@ -25478,13 +25492,13 @@ var nf = {
 			error: "Card instance not found",
 			errorCode: "CARD_NOT_FOUND"
 		};
-		if (P(s).type === "gear") {
+		if (N(s).type === "gear") {
 			if (!i) return {
 				valid: !1,
 				error: "Gear must be played attached to a friendly Unit or face-up Legend",
 				errorCode: "INVALID_ATTACH_TARGET"
 			};
-			if (!wc(e, r, t).includes(i)) return {
+			if (!Ec(e, r, t).includes(i)) return {
 				valid: !1,
 				error: `Entity "${i}" is not a legal Gear attach target`,
 				errorCode: "INVALID_ATTACH_TARGET"
@@ -25494,12 +25508,12 @@ var nf = {
 			error: "Only Gear can have an attachment host",
 			errorCode: "INVALID_ARGS"
 		};
-		let l = Ac(e, r, t);
-		return Hc(e, t) < l ? {
+		let l = Mc(e, r, t);
+		return V(e, t) < l ? {
 			valid: !1,
 			error: "Not enough eddies",
 			errorCode: "INSUFFICIENT_EDDIES"
-		} : n.args.paymentSourceIds !== void 0 && !Uc(e.G, t, l, n.args.paymentSourceIds) ? {
+		} : n.args.paymentSourceIds !== void 0 && !Wc(e.G, t, l, n.args.paymentSourceIds) ? {
 			valid: !1,
 			error: "Invalid payment sources",
 			errorCode: "INVALID_PAYMENT"
@@ -25508,12 +25522,12 @@ var nf = {
 	execute({ state: e, playerId: t, input: n, operations: r }) {
 		let { cardId: i, attachToId: a, paymentSourceIds: o } = n.args, s = e.G.players[t], c = e.G.cardIndex[i];
 		if (!s || !c) return;
-		let l = P(c), u = Ac(e, i, t), d = r.event.getEmittedEvents().length;
+		let l = N(c), u = Mc(e, i, t), d = r.event.getEmittedEvents().length;
 		r.game.spendEddies(t, u, "playCard", o === void 0 ? {} : { sourceIds: o });
 		let f = new Set(e.G.turnMetadata.triggerQueue.map((e) => e.id));
-		zu(d, e, r);
+		Bu(d, e, r);
 		let p = e.G.turnMetadata.triggerQueue.filter((e) => !f.has(e.id));
-		if (Mc(e, i, t), l.type === "program") r.zone.moveCard(i, "resolvingProgram", t);
+		if (Pc(e, i, t), l.type === "program") r.zone.moveCard(i, "resolvingProgram", t);
 		else if (l.type === "gear" && a) r.zone.moveCard(i, "field", t), r.card.attachGear(i, a);
 		else if (l.type === "unit" || l.type === "legend") {
 			let e = l.type === "legend" && c.meta.spent;
@@ -25533,7 +25547,7 @@ var nf = {
 			params: {
 				cardName: l.displayName,
 				cost: u,
-				...h && g ? { attachedToName: P(g).displayName } : {}
+				...h && g ? { attachedToName: N(g).displayName } : {}
 			},
 			playerId: t
 		});
@@ -25543,12 +25557,12 @@ var nf = {
 		for (let e of p) e.waitForTriggerIds = ee;
 		W(e, r);
 	}
-}, af = {
+}, of = {
 	available({ state: e, playerId: t }) {
 		let n = e.G.players[t];
 		return !n || e.G.gamePhase !== "main" || e.G.attackState || e.G.turnMetadata.activePlayerId !== t || n.soldThisTurn ? !1 : n.zones.hand.some((t) => {
 			let n = e.G.cardIndex[t];
-			return n && P(n).hasSellTag;
+			return n && N(n).hasSellTag;
 		});
 	},
 	validate({ state: e, playerId: t, input: n }) {
@@ -25584,7 +25598,7 @@ var nf = {
 			errorCode: "CARD_NOT_IN_HAND"
 		};
 		let a = e.G.cardIndex[r];
-		return a ? P(a).hasSellTag ? { valid: !0 } : {
+		return a ? N(a).hasSellTag ? { valid: !0 } : {
 			valid: !1,
 			error: "Card does not have sell tag",
 			errorCode: "NO_SELL_TAG"
@@ -25602,7 +25616,7 @@ var nf = {
 			revealed: !0,
 			spent: !1
 		}), r.game.markSoldThisTurn(t), r.game.gainEddies(t, 1);
-		let a = e.G.cardIndex[i] ? N(e.G, i) : void 0;
+		let a = e.G.cardIndex[i] ? M(e.G, i) : void 0;
 		r.event.emit({
 			type: "cardSold",
 			cardId: i,
@@ -25622,15 +25636,15 @@ var nf = {
 		});
 	}
 };
-function of(e, t) {
-	return +!ac(e, t);
+function sf(e, t) {
+	return +!sc(e, t);
 }
-var sf = {
+var cf = {
 	available({ state: e, playerId: t }) {
 		let n = e.G.players[t];
-		if (!n || e.G.gamePhase !== "main" && !B(e, t) || e.G.attackState && !B(e, t) || !B(e, t) && e.G.turnMetadata.activePlayerId !== t || !B(e, t) && n.calledLegendThisTurn || B(e, t) && n.calledLegendThisRivalTurn) return !1;
-		let r = e, i = of(r, t);
-		return Hc(r, t) < i ? !1 : n.zones.legendArea.some((t) => {
+		if (!n || e.G.gamePhase !== "main" && !z(e, t) || e.G.attackState && !z(e, t) || !z(e, t) && e.G.turnMetadata.activePlayerId !== t || !z(e, t) && n.calledLegendThisTurn || z(e, t) && n.calledLegendThisRivalTurn) return !1;
+		let r = e, i = sf(r, t);
+		return V(r, t) < i ? !1 : n.zones.legendArea.some((t) => {
 			let n = e.G.cardIndex[t];
 			return n && n.meta.faceDown;
 		});
@@ -25642,12 +25656,12 @@ var sf = {
 			error: "Player not found",
 			errorCode: "PLAYER_NOT_FOUND"
 		};
-		if (e.G.gamePhase !== "main" && !B(e, t)) return {
+		if (e.G.gamePhase !== "main" && !z(e, t)) return {
 			valid: !1,
 			error: "Not in a call legend step",
 			errorCode: "WRONG_PHASE"
 		};
-		let i = B(e, t);
+		let i = z(e, t);
 		if (e.G.attackState && !i) return {
 			valid: !1,
 			error: "Attack in progress",
@@ -25658,8 +25672,8 @@ var sf = {
 			error: "Not your turn",
 			errorCode: "NOT_YOUR_TURN"
 		};
-		let a = e, o = of(a, t);
-		if (Hc(a, t) < o) return {
+		let a = e, o = sf(a, t);
+		if (V(a, t) < o) return {
 			valid: !1,
 			error: o === 0 ? "Not enough eddies" : "Not enough eddies (need 1)",
 			errorCode: "INSUFFICIENT_EDDIES"
@@ -25683,7 +25697,7 @@ var sf = {
 			errorCode: "NO_FACE_DOWN_LEGENDS"
 		};
 		let s = n.args.legendId;
-		return s ? r.zones.legendArea.includes(s) ? e.G.cardIndex[s]?.meta.faceDown ? n.args.paymentSourceIds !== void 0 && !Uc(e.G, t, o, n.args.paymentSourceIds) ? {
+		return s ? r.zones.legendArea.includes(s) ? e.G.cardIndex[s]?.meta.faceDown ? n.args.paymentSourceIds !== void 0 && !Wc(e.G, t, o, n.args.paymentSourceIds) ? {
 			valid: !1,
 			error: "Invalid payment sources",
 			errorCode: "INVALID_PAYMENT"
@@ -25703,39 +25717,39 @@ var sf = {
 	},
 	execute({ state: e, playerId: t, input: n, operations: r }) {
 		if (!e.G.players[t]) return;
-		let i = n.args.legendId, a = r.event.getEmittedEvents().length, o = of(e, t);
-		o > 0 && r.game.spendEddies(t, o, "callLegend", n.args.paymentSourceIds === void 0 ? {} : { sourceIds: n.args.paymentSourceIds }), r.card.setMeta(i, { faceDown: !1 }), B(e, t) ? r.game.markCalledLegendThisRivalTurn(t) : r.game.markCalledLegendThisTurn(t);
-		let s = e.G.cardIndex[i] ? N(e.G, i).displayName : "";
+		let i = n.args.legendId, a = r.event.getEmittedEvents().length, o = sf(e, t);
+		o > 0 && r.game.spendEddies(t, o, "callLegend", n.args.paymentSourceIds === void 0 ? {} : { sourceIds: n.args.paymentSourceIds }), r.card.setMeta(i, { faceDown: !1 }), z(e, t) ? r.game.markCalledLegendThisRivalTurn(t) : r.game.markCalledLegendThisTurn(t);
+		let s = e.G.cardIndex[i] ? M(e.G, i).displayName : "";
 		r.event.emit({
 			type: "actionLog",
 			messageKey: "move.callLegend",
 			params: { legendName: s },
 			playerId: t
-		}), Ru(a, e, r);
+		}), zu(a, e, r);
 		let c = {
 			type: "legendFlipped",
 			cardId: i,
 			playerId: t
 		};
-		r.event.emit(c), Lu(c, e, r);
+		r.event.emit(c), Ru(c, e, r);
 		let l = {
 			type: "legendCalled",
 			cardId: i,
 			playerId: t
 		};
-		r.event.emit(l), Lu(l, e, r);
+		r.event.emit(l), Ru(l, e, r);
 	}
-}, cf = {
+}, lf = {
 	available({ state: e, playerId: t }) {
 		if (e.G.gamePhase !== "main" || e.G.turnMetadata.activePlayerId !== t || e.G.attackState) return !1;
 		let n = e.G.players[t];
 		return n ? n.zones.field.some((n) => {
 			let r = e.G.cardIndex[n];
 			if (!r || r.meta.spent) return !1;
-			let i = I(e, n);
-			if (i.includes("cantAttack") || i.includes("requiresProgramPlayedThisTurn") && !Gd(e, t)) return !1;
+			let i = F(e, n);
+			if (i.includes("cantAttack") || i.includes("requiresProgramPlayedThisTurn") && !Kd(e, t)) return !1;
 			if (r.meta.hasLag) return i.includes("canAttackOnPlayedTurnAgainstUnits") || i.includes("adrenaline");
-			let a = P(r);
+			let a = N(r);
 			return a.type === "unit" || a.keywords.includes("goSolo");
 		}) : !1;
 	},
@@ -25772,7 +25786,7 @@ var sf = {
 			error: "Attacker not on your field",
 			errorCode: "NOT_ON_FIELD"
 		};
-		if (!Us(o, "unit")) return {
+		if (!Gs(o, "unit")) return {
 			valid: !1,
 			error: "Only Units can attack",
 			errorCode: "NOT_UNIT"
@@ -25782,18 +25796,18 @@ var sf = {
 			error: "Attacker is spent",
 			errorCode: "CARD_SPENT"
 		};
-		let s = I(e, r);
+		let s = F(e, r);
 		if (s.includes("cantAttack")) return {
 			valid: !1,
 			error: "Attacker can't attack",
 			errorCode: "CANT_ATTACK"
 		};
-		if (s.includes("requiresProgramPlayedThisTurn") && !Gd(e, t)) return {
+		if (s.includes("requiresProgramPlayedThisTurn") && !Kd(e, t)) return {
 			valid: !1,
 			error: "Attacker requires a Program played this turn",
 			errorCode: "PROGRAM_NOT_PLAYED_THIS_TURN"
 		};
-		if (!qd(e, t, r)) return {
+		if (!Jd(e, t, r)) return {
 			valid: !1,
 			error: "A different unit must attack if it can",
 			errorCode: "MUST_ATTACK"
@@ -25815,12 +25829,12 @@ var sf = {
 			error: "Defender not on opponent's field",
 			errorCode: "NOT_ON_FIELD"
 		};
-		if (!Us(c, "unit")) return {
+		if (!Gs(c, "unit")) return {
 			valid: !1,
 			error: "Only Units can be attacked",
 			errorCode: "TARGET_NOT_UNIT"
 		};
-		let u = I(e, i);
+		let u = F(e, i);
 		return !c.meta.spent && !s.includes("canAttackReadyUnits") && !(s.includes("canAttackReadyBlockers") && u.includes("blocker")) ? {
 			valid: !1,
 			error: "Can only attack spent units",
@@ -25829,15 +25843,15 @@ var sf = {
 	},
 	execute({ state: e, playerId: t, input: n, operations: r }) {
 		let { attackerId: i, defenderId: a } = n.args, o = e.ctx.playerIds.find((e) => e !== t), s = r.event.getEmittedEvents().length;
-		r.card.spend(i), r.card.setAttackedThisTurn(i, !0), $s(e, i, "canAttackReadyUnits"), r.game.setAttackState({
+		r.card.spend(i), r.card.setAttackedThisTurn(i, !0), tc(e, i, "canAttackReadyUnits"), r.game.setAttackState({
 			attackerId: i,
 			defenderId: a,
 			rivalId: o,
 			kind: "fight",
 			step: "attack",
-			unblockableAtDeclaration: I(e, i).includes("cantBeBlocked")
+			unblockableAtDeclaration: F(e, i).includes("cantBeBlocked")
 		});
-		let c = e.G.cardIndex[i] ? N(e.G, i).displayName : "", l = e.G.cardIndex[a] ? N(e.G, a).displayName : "", u = {
+		let c = e.G.cardIndex[i] ? M(e.G, i).displayName : "", l = e.G.cardIndex[a] ? M(e.G, a).displayName : "", u = {
 			type: "attackDeclared",
 			attackerId: i,
 			defenderId: a,
@@ -25853,18 +25867,18 @@ var sf = {
 				defenderName: l
 			},
 			playerId: t
-		}), Bu(s, u, e, r);
+		}), Vu(s, u, e, r);
 	}
-}, lf = {
+}, uf = {
 	available({ state: e, playerId: t }) {
-		if (e.G.gamePhase !== "main" || e.G.turnMetadata.activePlayerId !== t || e.G.attackState || !e.G.players[zs(e, t)]?.gigArea.length) return !1;
+		if (e.G.gamePhase !== "main" || e.G.turnMetadata.activePlayerId !== t || e.G.attackState || !e.G.players[Vs(e, t)]?.gigArea.length) return !1;
 		let n = e.G.players[t];
 		return n ? n.zones.field.some((n) => {
 			let r = e.G.cardIndex[n];
 			if (!r || r.meta.spent) return !1;
-			let i = I(e, n);
-			if (i.includes("cantAttack") || i.includes("cantAttackRival") || i.includes("requiresProgramPlayedThisTurn") && !Gd(e, t) || r.meta.hasLag && !i.includes("adrenaline") && !i.includes("canAttackRivalOnPlayedTurn")) return !1;
-			let a = P(r);
+			let i = F(e, n);
+			if (i.includes("cantAttack") || i.includes("cantAttackRival") || i.includes("requiresProgramPlayedThisTurn") && !Kd(e, t) || r.meta.hasLag && !i.includes("adrenaline") && !i.includes("canAttackRivalOnPlayedTurn")) return !1;
+			let a = N(r);
 			return a.type === "unit" || a.keywords.includes("goSolo");
 		}) : !1;
 	},
@@ -25901,7 +25915,7 @@ var sf = {
 			error: "Attacker not on your field",
 			errorCode: "NOT_ON_FIELD"
 		};
-		if (!Us(a, "unit")) return {
+		if (!Gs(a, "unit")) return {
 			valid: !1,
 			error: "Only Units can attack",
 			errorCode: "NOT_UNIT"
@@ -25912,14 +25926,14 @@ var sf = {
 			errorCode: "CARD_SPENT"
 		};
 		if (a.meta.hasLag) {
-			let t = I(e, r);
+			let t = F(e, r);
 			if (!t.includes("adrenaline") && !t.includes("canAttackRivalOnPlayedTurn")) return {
 				valid: !1,
 				error: "Can't attack while this Unit has Lag",
 				errorCode: "LAG"
 			};
 		}
-		let o = I(e, r);
+		let o = F(e, r);
 		return o.includes("cantAttack") ? {
 			valid: !1,
 			error: "Attacker can't attack",
@@ -25928,11 +25942,11 @@ var sf = {
 			valid: !1,
 			error: "Attacker can only attack rival Units",
 			errorCode: "CANT_ATTACK_RIVAL"
-		} : o.includes("requiresProgramPlayedThisTurn") && !Gd(e, t) ? {
+		} : o.includes("requiresProgramPlayedThisTurn") && !Kd(e, t) ? {
 			valid: !1,
 			error: "Attacker requires a Program played this turn",
 			errorCode: "PROGRAM_NOT_PLAYED_THIS_TURN"
-		} : qd(e, t, r) ? e.G.players[zs(e, t)]?.gigArea.length ? { valid: !0 } : {
+		} : Jd(e, t, r) ? e.G.players[Vs(e, t)]?.gigArea.length ? { valid: !0 } : {
 			valid: !1,
 			error: "The rival has no Gigs to attack",
 			errorCode: "NO_TARGET_GIGS"
@@ -25944,15 +25958,15 @@ var sf = {
 	},
 	execute({ state: e, playerId: t, input: n, operations: r }) {
 		let { attackerId: i } = n.args, a = e.ctx.playerIds.find((e) => e !== t), o = r.event.getEmittedEvents().length;
-		r.card.spend(i), r.card.setAttackedThisTurn(i, !0), $s(e, i, "canAttackReadyUnits"), r.game.setAttackState({
+		r.card.spend(i), r.card.setAttackedThisTurn(i, !0), tc(e, i, "canAttackReadyUnits"), r.game.setAttackState({
 			attackerId: i,
 			defenderId: null,
 			rivalId: a,
 			kind: "direct",
 			step: "attack",
-			unblockableAtDeclaration: I(e, i).includes("cantBeBlocked")
+			unblockableAtDeclaration: F(e, i).includes("cantBeBlocked")
 		});
-		let s = e.G.cardIndex[i] ? N(e.G, i).displayName : "", c = {
+		let s = e.G.cardIndex[i] ? M(e.G, i).displayName : "", c = {
 			type: "attackDeclared",
 			attackerId: i,
 			defenderId: null,
@@ -25965,17 +25979,17 @@ var sf = {
 			messageKey: "move.attackRival",
 			params: { attackerName: s },
 			playerId: t
-		}), Bu(o, c, e, r);
+		}), Vu(o, c, e, r);
 	}
-}, uf = {
+}, df = {
 	available({ state: e, playerId: t }) {
 		if (e.G.gamePhase !== "main") return !1;
 		let n = e.G.attackState;
 		if (!n || n.step !== "react" || n.rivalId !== t) return !1;
-		let r = I(e, n.attackerId);
+		let r = F(e, n.attackerId);
 		if (n.unblockableAtDeclaration || r.includes("cantBeBlocked")) return !1;
 		let i = e.G.players[t];
-		return i ? i.zones.field.some((t) => t !== n.defenderId && ec(e, t)) : !1;
+		return i ? i.zones.field.some((t) => t !== n.defenderId && nc(e, t)) : !1;
 	},
 	validate({ state: e, playerId: t, input: n }) {
 		let { blockerId: r } = n.args, i = e.G.attackState;
@@ -26010,12 +26024,12 @@ var sf = {
 			error: "Blocker is spent",
 			errorCode: "CARD_SPENT"
 		};
-		if (!ec(e, r)) return {
+		if (!nc(e, r)) return {
 			valid: !1,
 			error: "Card does not have blocker",
 			errorCode: "NO_BLOCKER"
 		};
-		let o = I(e, i.attackerId);
+		let o = F(e, i.attackerId);
 		return i.unblockableAtDeclaration || o.includes("cantBeBlocked") ? {
 			valid: !1,
 			error: "Attacker can't be blocked",
@@ -26025,8 +26039,8 @@ var sf = {
 	execute({ state: e, playerId: t, input: n, operations: r }) {
 		let { blockerId: i } = n.args, a = e.G.attackState;
 		if (!a || a.step !== "react") return;
-		let o = e.G.cardIndex[i] ? N(e.G, i).displayName : "", s = e.G.cardIndex[a.attackerId] ? N(e.G, a.attackerId).displayName : "", c = F(e, i), l = F(e, a.attackerId), u = r.event.getEmittedEvents().length;
-		r.card.spend(i), Ru(u, e, r), r.game.setAttackState({
+		let o = e.G.cardIndex[i] ? M(e.G, i).displayName : "", s = e.G.cardIndex[a.attackerId] ? M(e.G, a.attackerId).displayName : "", c = P(e, i), l = P(e, a.attackerId), u = r.event.getEmittedEvents().length;
+		r.card.spend(i), zu(u, e, r), r.game.setAttackState({
 			...a,
 			defenderId: i,
 			kind: "fight",
@@ -26052,14 +26066,14 @@ var sf = {
 			originalTarget: a.defenderId,
 			playerId: t
 		};
-		r.event.emit(d), Lu(d, e, r);
+		r.event.emit(d), Ru(d, e, r);
 	}
-}, df = {
+}, ff = {
 	available({ state: e, playerId: t }) {
 		let n = e.G.players[t];
 		return !n || e.G.gamePhase !== "main" || e.G.attackState || e.G.turnMetadata.activePlayerId !== t ? !1 : n.zones.legendArea.some((n) => {
 			let r = e.G.cardIndex[n];
-			return !r || r.meta.faceDown ? !1 : P(r).keywords.includes("goSolo") && Hc(e, t) >= ff(e, n, t);
+			return !r || r.meta.faceDown ? !1 : N(r).keywords.includes("goSolo") && V(e, t) >= pf(e, n, t);
 		});
 	},
 	validate({ state: e, playerId: t, input: n }) {
@@ -26100,17 +26114,17 @@ var sf = {
 			error: "Legend is face-down",
 			errorCode: "CARD_FACE_DOWN"
 		};
-		if (!P(a).keywords.includes("goSolo")) return {
+		if (!N(a).keywords.includes("goSolo")) return {
 			valid: !1,
 			error: "Card does not have GO SOLO",
 			errorCode: "NO_GO_SOLO"
 		};
-		let o = ff(e, r, t);
-		return Hc(e, t) < o ? {
+		let o = pf(e, r, t);
+		return V(e, t) < o ? {
 			valid: !1,
 			error: "Not enough eddies",
 			errorCode: "INSUFFICIENT_EDDIES"
-		} : n.args.paymentSourceIds !== void 0 && !Uc(e.G, t, o, n.args.paymentSourceIds) ? {
+		} : n.args.paymentSourceIds !== void 0 && !Wc(e.G, t, o, n.args.paymentSourceIds) ? {
 			valid: !1,
 			error: "Invalid payment sources",
 			errorCode: "INVALID_PAYMENT"
@@ -26119,8 +26133,8 @@ var sf = {
 	execute({ state: e, playerId: t, input: n, operations: r }) {
 		let { cardId: i } = n.args, a = e.G.cardIndex[i];
 		if (!a) return;
-		let o = P(a), s = ff(e, i, t), c = r.event.getEmittedEvents().length;
-		r.game.spendEddies(t, s, "goSolo", n.args.paymentSourceIds === void 0 ? { preferredLegendIds: [i] } : { sourceIds: n.args.paymentSourceIds }), Mc(e, i, t), r.zone.moveCard(i, "field", t), r.card.moveAttachedGear(i, "field"), r.card.ready(i), r.card.setHasLag(i, !1);
+		let o = N(a), s = pf(e, i, t), c = r.event.getEmittedEvents().length;
+		r.game.spendEddies(t, s, "goSolo", n.args.paymentSourceIds === void 0 ? { preferredLegendIds: [i] } : { sourceIds: n.args.paymentSourceIds }), Pc(e, i, t), r.zone.moveCard(i, "field", t), r.card.moveAttachedGear(i, "field"), r.card.ready(i), r.card.setHasLag(i, !1);
 		let l = {
 			type: "cardPlayed",
 			cardId: i,
@@ -26135,17 +26149,17 @@ var sf = {
 				cost: s
 			},
 			playerId: t
-		}), Ru(c, e, r), Lu(l, e, r);
+		}), zu(c, e, r), Ru(l, e, r);
 	}
 };
-function ff(e, t, n) {
-	return Ac(e, t, n) + pf(e, n);
+function pf(e, t, n) {
+	return Mc(e, t, n) + mf(e, n);
 }
-function pf(e, t) {
+function mf(e, t) {
 	return e.G.activeEffects.filter((e) => e.kind === "rivalGoSoloCostIncrease" && e.playerId !== t).reduce((e, t) => e + (t.amount ?? 0), 0);
 }
 // upstream/submodules/cyberpunk/packages/engine/src/moves/concede.ts
-var mf = {
+var hf = {
 	handlesPendingChoice: !0,
 	available({ state: e, playerId: t }) {
 		return !e.G.gameEnded;
@@ -26166,11 +26180,11 @@ var mf = {
 			playerId: t
 		});
 	}
-}, hf = {
+}, gf = {
 	available({ state: e, playerId: t }) {
 		if (e.G.gamePhase !== "setup") return !1;
 		let n = e.G.players[t];
-		return !n || n.mulliganDone ? !1 : Gs(e, t);
+		return !n || n.mulliganDone ? !1 : qs(e, t);
 	},
 	validate({ state: e, playerId: t }) {
 		if (e.G.gamePhase !== "setup") return {
@@ -26183,7 +26197,7 @@ var mf = {
 			valid: !1,
 			error: "Already mulliganed",
 			errorCode: "ALREADY_MULLIGANED"
-		} : Gs(e, t) ? { valid: !0 } : {
+		} : qs(e, t) ? { valid: !0 } : {
 			valid: !1,
 			error: "The player going first must decide whether to mulligan first",
 			errorCode: "NOT_YOUR_TURN"
@@ -26199,7 +26213,7 @@ var mf = {
 		let i = [...r.zones.hand];
 		for (let t of i) {
 			let n = e.G.cardIndex[t];
-			n && (n.zone = "deck", n.meta = ms("deck")), r.zones.deck.push(t);
+			n && (n.zone = "deck", n.meta = gs("deck")), r.zones.deck.push(t);
 		}
 		r.zones.hand = [];
 		let a = new Ue(e.ctx.seed + "_mulligan_" + t);
@@ -26211,10 +26225,10 @@ var mf = {
 			timestamp: Date.now(),
 			turnNumber: e.G.turnMetadata.turnNumber,
 			drawnCount: o.length,
-			drawn: V(o, [t])
-		}), Ud(e, n);
+			drawn: B(o, [t])
+		}), Wd(e, n);
 	}
-}, gf = "__chosenCardToPlay", _f = {
+}, _f = "__chosenCardToPlay", vf = {
 	handlesPendingChoice: !0,
 	available({ state: e, playerId: t }) {
 		let n = e.G.turnMetadata.pendingChoice;
@@ -26250,26 +26264,26 @@ var mf = {
 			errorCode: "INVALID_CHOICE"
 		};
 		if (!i.payload.free) {
-			let r = Ac(e, a, t);
-			if (Hc(e, t) < r) return {
+			let r = Mc(e, a, t);
+			if (V(e, t) < r) return {
 				valid: !1,
 				error: "Not enough eddies",
 				errorCode: "INSUFFICIENT_EDDIES"
 			};
-			if (n.args.paymentSourceIds !== void 0 && !Uc(e.G, t, r, n.args.paymentSourceIds)) return {
+			if (n.args.paymentSourceIds !== void 0 && !Wc(e.G, t, r, n.args.paymentSourceIds)) return {
 				valid: !1,
 				error: "Invalid payment sources",
 				errorCode: "INVALID_PAYMENT"
 			};
 		}
 		let s = e.G.cardIndex[a];
-		if (o && s && P(s).type !== "gear") return {
+		if (o && s && N(s).type !== "gear") return {
 			valid: !1,
 			error: "Only Gear can have an attach host",
 			errorCode: "INVALID_ARGS"
 		};
-		if (s && P(s).type === "gear") {
-			let n = o ?? i.payload.resolvedAttachToId, r = yf(e, i, a, t);
+		if (s && N(s).type === "gear") {
+			let n = o ?? i.payload.resolvedAttachToId, r = bf(e, i, a, t);
 			if (!n && r.length === 0) return {
 				valid: !1,
 				error: "Gear has no legal attach host",
@@ -26302,18 +26316,18 @@ var mf = {
 				G(e, r);
 				return;
 			}
-			Ku(e, r);
+			qu(e, r);
 			return;
 		}
 		let { cardId: m, attachToId: h, paymentSourceIds: g } = n.args;
 		if (!m) return;
 		let _ = e.G.cardIndex[m], ee = s ?? h;
-		if (_ && P(_).type === "gear" && !ee) {
-			let n = yf(e, i, m, t);
+		if (_ && N(_).type === "gear" && !ee) {
+			let n = bf(e, i, m, t);
 			if (n.length === 0) return;
 			r.game.setPendingChoice({
 				type: "chooseTarget",
-				chooserId: vf(e, i, t),
+				chooserId: yf(e, i, t),
 				effectId: i.effectId,
 				payload: {
 					type: "effectTarget",
@@ -26327,7 +26341,7 @@ var mf = {
 						free: a,
 						target: {
 							selector: "bound",
-							id: gf
+							id: _f
 						},
 						attachTo: {
 							selector: "bound",
@@ -26340,7 +26354,7 @@ var mf = {
 					contextTargets: {},
 					boundTargets: {
 						...c,
-						[gf]: [m]
+						[_f]: [m]
 					},
 					ifEffects: f,
 					targetPurpose: "attachHost"
@@ -26348,7 +26362,7 @@ var mf = {
 			});
 			return;
 		}
-		let te = zc({
+		let te = Vc({
 			state: e,
 			operations: r,
 			playerId: t,
@@ -26368,13 +26382,13 @@ var mf = {
 		}, r, 0, { nested: !0 }) === "suspended" || G(e, r));
 	}
 };
-function vf(e, t, n) {
+function yf(e, t, n) {
 	let r = t.payload.sourcePlayerId ?? n, i = t.payload.attachTo;
 	return (i && "selection" in i ? i.selection : void 0)?.chooser === "rival" ? e.ctx.playerIds.find((e) => e !== r) ?? n : r;
 }
-function yf(e, t, n, r) {
+function bf(e, t, n, r) {
 	let i = t.payload.attachTo;
-	return i ? wc(e, n, r, {
+	return i ? Ec(e, n, r, {
 		target: i,
 		context: {
 			state: e,
@@ -26384,10 +26398,10 @@ function yf(e, t, n, r) {
 			contextTargets: {},
 			boundTargets: t.payload.boundTargets ?? {}
 		}
-	}) : wc(e, n, r);
+	}) : Ec(e, n, r);
 }
 // upstream/submodules/cyberpunk/packages/engine/src/moves/resolve-card-to-move.ts
-var bf = {
+var xf = {
 	handlesPendingChoice: !0,
 	available({ state: e, playerId: t }) {
 		let n = e.G.turnMetadata.pendingChoice;
@@ -26419,7 +26433,7 @@ var bf = {
 			errorCode: "INVALID_CHOICE"
 		};
 		let o = a.payload.resolvedAttachToId;
-		return o && !wc(e, i, a.payload.sourcePlayerId).includes(o) ? {
+		return o && !Ec(e, i, a.payload.sourcePlayerId).includes(o) ? {
 			valid: !1,
 			error: "Invalid gear attach host",
 			errorCode: "INVALID_CHOICE"
@@ -26452,11 +26466,11 @@ var bf = {
 		if (!m) return;
 		let h = e.G.cardIndex[m];
 		if (!h) return;
-		let g = Hs(h), _ = g?.displayName ?? g?.name;
+		let g = Ws(h), _ = g?.displayName ?? g?.name;
 		if (a) h.meta.attachedToId && r.card.detachGear(m), r.zone.moveCard(m, "field", t), r.card.attachGear(m, a);
-		else if (o === "deckBottom") Dc([m], e, r);
+		else if (o === "deckBottom") kc([m], e, r);
 		else if (i.payload.defeat) {
-			let t = [...h.meta.attachedGearIds ?? []], n = rl(e, m), i = new Map(t.map((t) => [t, rl(e, t)])), a = n.attachedToId ?? void 0;
+			let t = [...h.meta.attachedGearIds ?? []], n = il(e, m), i = new Map(t.map((t) => [t, il(e, t)])), a = n.attachedToId ?? void 0;
 			h.meta.attachedToId && r.card.detachGear(m), r.card.moveAttachedGear(m, "trash"), r.zone.moveCard(m, "trash", h.ownerId);
 			let o = {
 				type: "cardDefeated",
@@ -26480,10 +26494,10 @@ var bf = {
 				};
 				r.event.emit(o), U(o, e, r);
 			}
-			Ec(e, r, m);
+			Oc(e, r, m);
 		} else {
 			let t = o ?? "trash";
-			h.meta.attachedToId && r.card.detachGear(m), r.card.moveAttachedGear(m, t), r.zone.moveCard(m, t, h.ownerId), Ec(e, r, m);
+			h.meta.attachedToId && r.card.detachGear(m), r.card.moveAttachedGear(m, t), r.zone.moveCard(m, t, h.ownerId), Oc(e, r, m);
 		}
 		let ee = K(d, p, r, 0, { nested: !0 });
 		r.log.emit({
@@ -26495,22 +26509,22 @@ var bf = {
 			cardName: _
 		}), ee !== "suspended" && G(e, r);
 	}
-}, xf = {
+}, Sf = {
 	available({ state: e, playerId: t }) {
 		if (e.G.gamePhase !== "main") return !1;
-		let n = B(e, t);
+		let n = z(e, t);
 		if (e.G.attackState && !n || !n && e.G.turnMetadata.activePlayerId !== t) return !1;
 		let r = e.G.players[t];
 		if (!r) return !1;
 		for (let i of ["field", "legendArea"]) for (let a of r.zones[i]) {
 			let r = e.G.cardIndex[a];
 			if (!r) continue;
-			let o = P(r);
-			if (!Sf(r, o, i)) continue;
+			let o = N(r);
+			if (!Cf(r, o, i)) continue;
 			let s = o?.abilities ?? [];
 			for (let r of s) if (r.trigger?.trigger === "activated") {
 				if (e.G.attackState && n && !(r.keyword === "quick" || o.keywords.includes("quick"))) continue;
-				if (wf(r, e, a, t)) return !0;
+				if (Tf(r, e, a, t)) return !0;
 			}
 		}
 		return !1;
@@ -26527,13 +26541,13 @@ var bf = {
 			error: "Not your card",
 			errorCode: "NOT_YOUR_CARD"
 		};
-		let o = P(a);
+		let o = N(a);
 		if (o.type === "legend" && a.meta.faceDown) return {
 			valid: !1,
 			error: "Legend is face-down",
 			errorCode: "LEGEND_FACE_DOWN"
 		};
-		if (!Sf(a, o, a.zone)) return {
+		if (!Cf(a, o, a.zone)) return {
 			valid: !1,
 			error: "Activated ability source is not in play",
 			errorCode: "NOT_ON_FIELD"
@@ -26544,7 +26558,7 @@ var bf = {
 			error: "No activated ability at this index",
 			errorCode: "INVALID_ABILITY"
 		};
-		let c = B(e, t);
+		let c = z(e, t);
 		if (e.G.attackState && !c) return {
 			valid: !1,
 			error: "Attack in progress",
@@ -26555,21 +26569,21 @@ var bf = {
 			error: "Can only activate QUICK abilities as a reaction",
 			errorCode: "NOT_QUICK"
 		};
-		if (!Gc(s, e, r, t)) return {
+		if (!Kc(s, e, r, t)) return {
 			valid: !1,
 			error: "Not enough eddies",
 			errorCode: "INSUFFICIENT_EDDIES"
 		};
 		let l = n.args.paymentSourceIds;
 		if (l !== void 0) {
-			let n = Kc(s, e, r, t), i = qc(s, e, r, t);
-			if (!Uc(e.G, t, n, l) || l.some((e) => i.includes(e))) return {
+			let n = qc(s, e, r, t), i = Jc(s, e, r, t);
+			if (!Wc(e.G, t, n, l) || l.some((e) => i.includes(e))) return {
 				valid: !1,
 				error: "Invalid payment sources",
 				errorCode: "INVALID_PAYMENT"
 			};
 		}
-		return Cf(s, e, r, t) ? Tf(s, e, r, t) ? { valid: !0 } : {
+		return wf(s, e, r, t) ? Ef(s, e, r, t) ? { valid: !0 } : {
 			valid: !1,
 			error: "Ability has no valid targets",
 			errorCode: "NO_VALID_TARGETS"
@@ -26582,9 +26596,9 @@ var bf = {
 	execute({ state: e, playerId: t, input: n, operations: r }) {
 		let { cardId: i, abilityIndex: a, paymentSourceIds: o } = n.args, s = e.G.cardIndex[i];
 		if (!s) return;
-		let c = P(s), l = (c?.abilities ?? [])[a], u = s.meta.attachedToId ? e.G.cardIndex[s.meta.attachedToId] : void 0, d = {
+		let c = N(s), l = (c?.abilities ?? [])[a], u = s.meta.attachedToId ? e.G.cardIndex[s.meta.attachedToId] : void 0, d = {
 			cardName: c.displayName,
-			...u ? { attachedToName: P(u).displayName } : {}
+			...u ? { attachedToName: N(u).displayName } : {}
 		}, f = u ? "move.activateAbility.attached" : "move.activateAbility";
 		r.event.emit({
 			type: "actionLog",
@@ -26613,10 +26627,10 @@ var bf = {
 		}, G(e, r), W(e, r);
 	}
 };
-function Sf(e, t, n) {
+function Cf(e, t, n) {
 	return n === "field" ? e.zone === "field" : n !== "legendArea" || e.zone !== "legendArea" ? !1 : t.type === "legend" ? !e.meta.faceDown : e.meta.attachedToId !== null;
 }
-function Cf(e, t, n, r) {
+function wf(e, t, n, r) {
 	if (!e.costs) return !0;
 	let i = {
 		state: t,
@@ -26627,20 +26641,20 @@ function Cf(e, t, n, r) {
 		boundTargets: {}
 	};
 	for (let r of e.costs) if (r.cost === "spend") {
-		let e = L(r.target, i);
+		let e = I(r.target, i);
 		for (let r of e) {
 			let e = t.G.cardIndex[r];
 			if (e?.meta.spent) return !1;
 			let i = t.G.cardIndex[n];
-			if ((r === n || i?.meta.attachedToId === r) && e?.meta.hasLag && e && Us(e, "unit")) return !1;
+			if ((r === n || i?.meta.attachedToId === r) && e?.meta.hasLag && e && Gs(e, "unit")) return !1;
 		}
 	}
-	return Gc(e, t, n, r);
-}
-function wf(e, t, n, r) {
-	return Cf(e, t, n, r) && Tf(e, t, n, r);
+	return Kc(e, t, n, r);
 }
 function Tf(e, t, n, r) {
+	return wf(e, t, n, r) && Ef(e, t, n, r);
+}
+function Ef(e, t, n, r) {
 	if (e.allowEmptyTargets) return !0;
 	let i = {
 		state: t,
@@ -26651,18 +26665,18 @@ function Tf(e, t, n, r) {
 		boundTargets: {}
 	}, a = [];
 	for (let n of e.bindings ?? []) {
-		let e = L(n.target, i), r = Df(n.target);
+		let e = I(n.target, i), r = Of(n.target);
 		if (e.length < r) return !1;
-		let o = Af(n.target);
-		if (o && !Iu(t, e, o)) return !1;
-		kf(n.target) === "choose" ? a.push(n) : i.boundTargets[n.id] = e;
+		let o = jf(n.target);
+		if (o && !Lu(t, e, o)) return !1;
+		Af(n.target) === "choose" ? a.push(n) : i.boundTargets[n.id] = e;
 	}
-	if (e.conditions?.length && !e.conditions.every((e) => z(e, i))) return !1;
+	if (e.conditions?.length && !e.conditions.every((e) => R(e, i))) return !1;
 	if (a.length === 1) {
-		let o = a[0], s = L(o.target, i), c = Df(o.target), l = Of(o.target);
+		let o = a[0], s = I(o.target, i), c = Of(o.target), l = kf(o.target);
 		if (c === 1 && l === 1) {
-			let a = Wc(e, t, n, r, i.boundTargets);
-			return s.some((t) => Ef(e, {
+			let a = Gc(e, t, n, r, i.boundTargets);
+			return s.some((t) => Df(e, {
 				...i,
 				boundTargets: {
 					...i.boundTargets,
@@ -26671,20 +26685,20 @@ function Tf(e, t, n, r) {
 			}, a));
 		}
 	}
-	return Ef(e, i, Wc(e, t, n, r, i.boundTargets));
+	return Df(e, i, Gc(e, t, n, r, i.boundTargets));
 }
-function Ef(e, t, n) {
+function Df(e, t, n) {
 	for (let r of e.effects) {
-		if (r.conditions?.length && !r.conditions.every((e) => z(e, t)) || r.optional || r.effect === "scry") continue;
+		if (r.conditions?.length && !r.conditions.every((e) => R(e, t)) || r.optional || r.effect === "scry") continue;
 		if (r.effect === "ifYouDo") {
 			let n = r.doEffect;
 			if ("target" in n && n.target) {
 				let r = n.target;
 				if (r.selector === "bound") {
 					let n = e.bindings?.find((e) => e.id === r.id);
-					if (n && kf(n.target) === "choose" && t.boundTargets[r.id] === void 0) continue;
+					if (n && Af(n.target) === "choose" && t.boundTargets[r.id] === void 0) continue;
 				}
-				if (L(r, t).length === 0) return !1;
+				if (I(r, t).length === 0) return !1;
 			}
 			continue;
 		}
@@ -26692,40 +26706,40 @@ function Ef(e, t, n) {
 		let i = r.target;
 		if (i.selector === "bound") {
 			let n = e.bindings?.find((e) => e.id === i.id);
-			if (n && kf(n.target) === "choose" && t.boundTargets[i.id] === void 0) continue;
+			if (n && Af(n.target) === "choose" && t.boundTargets[i.id] === void 0) continue;
 		}
-		let a = L(i, t);
-		if (a.length === 0 || r.effect === "playCard" && r.free !== !0 && !a.some((e) => t.state.G.cardIndex[e] ? Ac(t.state, e, t.sourcePlayerId) <= n : !1)) return !1;
+		let a = I(i, t);
+		if (a.length === 0 || r.effect === "playCard" && r.free !== !0 && !a.some((e) => t.state.G.cardIndex[e] ? Mc(t.state, e, t.sourcePlayerId) <= n : !1)) return !1;
 	}
 	return !0;
 }
-function Df(e) {
-	return jf(e)?.min ?? 1;
-}
 function Of(e) {
-	return jf(e)?.max ?? 1;
+	return Mf(e)?.min ?? 1;
 }
 function kf(e) {
-	return jf(e)?.mode;
+	return Mf(e)?.max ?? 1;
 }
 function Af(e) {
-	if (e.selector === "card" || e.selector === "gig" || e.selector === "context") return e.selection?.pairConstraint;
+	return Mf(e)?.mode;
 }
 function jf(e) {
+	if (e.selector === "card" || e.selector === "gig" || e.selector === "context") return e.selection?.pairConstraint;
+}
+function Mf(e) {
 	return "selection" in e ? e.selection : void 0;
 }
 // upstream/submodules/cyberpunk/packages/engine/src/moves/resolve-scry.ts
-function Mf(e) {
+function Nf(e) {
 	return e.remainder ? `${e.zone}:remainder` : e.zone;
 }
-function Nf(e, t) {
-	let n = Mf(t);
-	return (e.args.destinations.find((e) => Mf(e) === n) ?? e.args.destinations.find((e) => e.zone === t.zone))?.cardIds ?? [];
+function Pf(e, t) {
+	let n = Nf(t);
+	return (e.args.destinations.find((e) => Nf(e) === n) ?? e.args.destinations.find((e) => e.zone === t.zone))?.cardIds ?? [];
 }
-function Pf(e, t, n) {
+function Ff(e, t, n) {
 	return t.order === "random" ? new Ue(n.ctx.seed).shuffle(e) : [...e];
 }
-function Ff(e, t, n, r, i) {
+function If(e, t, n, r, i) {
 	let a = e.G.players[t];
 	if (!a) return !1;
 	for (let e of [
@@ -26740,7 +26754,7 @@ function Ff(e, t, n, r, i) {
 	let o = e.G.cardIndex[n];
 	if (!o) return !1;
 	let s = o.zone;
-	return r === "deckBottom" ? (o.zone = "deck", o.meta = ms("deck"), a.zones.deck.push(n)) : r === "deckTop" ? (o.zone = "deck", o.meta = ms("deck"), a.zones.deck.unshift(n)) : (o.zone = r, o.meta = ms(r), a.zones[r].push(n)), (s !== o.zone || r === "deckBottom" || r === "deckTop") && i.event.emit({
+	return r === "deckBottom" ? (o.zone = "deck", o.meta = gs("deck"), a.zones.deck.push(n)) : r === "deckTop" ? (o.zone = "deck", o.meta = gs("deck"), a.zones.deck.unshift(n)) : (o.zone = r, o.meta = gs(r), a.zones[r].push(n)), (s !== o.zone || r === "deckBottom" || r === "deckTop") && i.event.emit({
 		type: "cardMoved",
 		cardId: n,
 		fromZone: s,
@@ -26749,7 +26763,7 @@ function Ff(e, t, n, r, i) {
 		...r === "deckBottom" ? { deckPlacement: "bottom" } : r === "deckTop" ? { deckPlacement: "top" } : {}
 	}), s === "deck" && o.zone === "deck";
 }
-var If = {
+var Lf = {
 	handlesPendingChoice: !0,
 	available({ state: e, playerId: t }) {
 		let n = e.G.turnMetadata.pendingChoice;
@@ -26770,7 +26784,7 @@ var If = {
 		let i = r, a = new Set(i.payload.revealedCardIds.map((e) => e)), o = /* @__PURE__ */ new Set();
 		for (let t of i.payload.destinations) {
 			if (t.remainder) continue;
-			let r = Nf(n, t), s = t.min ?? 0, c = t.max ?? Infinity;
+			let r = Pf(n, t), s = t.min ?? 0, c = t.max ?? Infinity;
 			if (r.length < s) return {
 				valid: !1,
 				error: `Must select at least ${s} card(s)`,
@@ -26792,7 +26806,7 @@ var If = {
 					error: "Selected card was assigned twice",
 					errorCode: "DUPLICATE_CHOICE"
 				};
-				if (t.target && !L(t.target, {
+				if (t.target && !I(t.target, {
 					state: e,
 					sourceCardId: i.payload.sourceCardId,
 					sourcePlayerId: i.payload.sourcePlayerId,
@@ -26815,9 +26829,9 @@ var If = {
 		let a = i.payload.destinations, o = a.filter((e) => !e.remainder), s = a.find((e) => e.remainder) ?? {
 			zone: "deckBottom",
 			remainder: !0
-		}, c = /* @__PURE__ */ new Set(), l = o.flatMap((e) => Nf(n, e)), u = o.find((e) => Nf(n, e).some((e) => l.includes(e))), d = u?.reveal === !0, f = !1;
+		}, c = /* @__PURE__ */ new Set(), l = o.flatMap((e) => Pf(n, e)), u = o.find((e) => Pf(n, e).some((e) => l.includes(e))), d = u?.reveal === !0, f = !1;
 		for (let a of o) {
-			let o = Nf(n, a);
+			let o = Pf(n, a);
 			a.reveal && o.length > 0 && r.event.emit({
 				type: "cardsRevealed",
 				cardIds: o,
@@ -26827,15 +26841,15 @@ var If = {
 				ownerId: t,
 				sourceCardId: i.payload.sourceCardId
 			});
-			for (let n of o) c.add(n), f = Ff(e, t, n, a.zone, r) || f;
+			for (let n of o) c.add(n), f = If(e, t, n, a.zone, r) || f;
 		}
-		let p = Pf(i.payload.revealedCardIds.filter((e) => !c.has(e)), s, e);
-		for (let n of p) f = Ff(e, t, n, s.zone, r) || f;
+		let p = Ff(i.payload.revealedCardIds.filter((e) => !c.has(e)), s, e);
+		for (let n of p) f = If(e, t, n, s.zone, r) || f;
 		f && r.event.emit({
 			type: "deckCardsPlaced",
 			playerId: t
 		});
-		let m = l.map((t) => e.G.cardIndex[t]).filter((e) => e !== void 0).map((e) => P(e).displayName ?? P(e).name);
+		let m = l.map((t) => e.G.cardIndex[t]).filter((e) => e !== void 0).map((e) => N(e).displayName ?? N(e).name);
 		r.game.setPendingChoice(void 0), r.event.emit({
 			type: "searchPerformed",
 			playerId: t,
@@ -26866,7 +26880,7 @@ var If = {
 			cardIds: l
 		}), G(e, r);
 	}
-}, Lf = {
+}, Rf = {
 	handlesPendingChoice: !0,
 	available({ state: e, playerId: t }) {
 		let n = e.G.turnMetadata.pendingChoice;
@@ -26913,17 +26927,17 @@ var If = {
 				let t = r.payload.drawIfDestination.player, i = n.zone.drawCards(t, r.payload.drawIfDestination.amount);
 				if (i.length > 0) {
 					let a = r.payload.sourceCardId ? e.G.cardIndex[r.payload.sourceCardId] : void 0, o = i.map((t) => e.G.cardIndex[t]).filter((e) => e !== void 0).map((e) => {
-						let t = P(e);
+						let t = N(e);
 						return t.displayName ?? t.name;
 					});
 					n.event.emit({
 						type: "actionLog",
 						messageKey: "effect.draw.resolved",
 						params: {
-							sourceCardName: a ? P(a).displayName ?? P(a).name : "That effect",
+							sourceCardName: a ? N(a).displayName ?? N(a).name : "That effect",
 							drawnCount: i.length,
-							drawnCardIds: V(i, [t]),
-							drawnCardNames: V(o.join(", "), [t])
+							drawnCardIds: B(i, [t]),
+							drawnCardNames: B(o.join(", "), [t])
 						},
 						playerId: r.payload.sourcePlayerId ?? r.payload.player,
 						category: "effect",
@@ -26934,7 +26948,7 @@ var If = {
 			G(e, n), J(e, n);
 		}
 	}
-}, Rf = {
+}, zf = {
 	handlesPendingChoice: !0,
 	available({ state: e, playerId: t }) {
 		let n = e.G.turnMetadata.pendingChoice;
@@ -27026,7 +27040,7 @@ var If = {
 			let n = e.G.cardIndex[t];
 			return n ? [{
 				cardId: t,
-				cardName: P(n).displayName
+				cardName: N(n).displayName
 			}] : [];
 		}), s = e.G.turnMetadata.currentTrigger;
 		if (s && (s.contextTargets = {
@@ -27055,17 +27069,17 @@ var If = {
 	}
 };
 // upstream/submodules/cyberpunk/packages/engine/src/moves/resolve-adjust-gig.ts
-function zf(e) {
+function Bf(e) {
 	return e.payload.type === "effectTarget" && e.payload.adjustGig !== void 0;
 }
-function Bf(e) {
-	return e.payload.type === "adjustGig" || zf(e);
+function Vf(e) {
+	return e.payload.type === "adjustGig" || Bf(e);
 }
-var Vf = {
+var Hf = {
 	handlesPendingChoice: !0,
 	available({ state: e, playerId: t }) {
 		let n = e.G.turnMetadata.pendingChoice;
-		return !n || n.type !== "chooseTarget" || !Bf(n) ? !1 : n.chooserId === t;
+		return !n || n.type !== "chooseTarget" || !Vf(n) ? !1 : n.chooserId === t;
 	},
 	validate({ state: e, playerId: t, input: n }) {
 		let r = e.G.turnMetadata.pendingChoice;
@@ -27075,7 +27089,7 @@ var Vf = {
 			errorCode: "NO_PENDING_CHOICE"
 		};
 		let i = r;
-		if (!Bf(i)) return {
+		if (!Vf(i)) return {
 			valid: !1,
 			error: "Pending choice is not adjustGig",
 			errorCode: "WRONG_PENDING_CHOICE"
@@ -27145,7 +27159,7 @@ var Vf = {
 		} : { valid: !0 };
 	},
 	execute({ state: e, playerId: t, input: n, operations: r }) {
-		let i = e.G.turnMetadata.pendingChoice, a = zf(i), o = e.G.turnMetadata.currentTrigger;
+		let i = e.G.turnMetadata.pendingChoice, a = Bf(i), o = e.G.turnMetadata.currentTrigger;
 		if (n.args.kind === "noAdjustment") {
 			if (a && i.payload.selectedBindingId && o) {
 				o.boundTargets[i.payload.selectedBindingId] = [];
@@ -27160,7 +27174,7 @@ var Vf = {
 			o.boundTargets[i.payload.selectedBindingId] = [s];
 			let n = i.payload.adjustGig?.effectIndex;
 			if (n !== void 0 && (o.nextEffectIndex = n + 1), i.payload.sourceCardId) {
-				let n = Dl(e, i.payload.sourceCardId, [s], t);
+				let n = Ol(e, i.payload.sourceCardId, [s], t);
 				r.event.emit({
 					type: "effectTargeted",
 					sourceCardId: i.payload.sourceCardId,
@@ -27198,7 +27212,7 @@ var Vf = {
 		for (let t of r.event.getEmittedEvents().slice(u)) t.type === "gigValueChanged" && U(t, e, r);
 		W(e, r), G(e, r), J(e, r);
 	}
-}, Hf = {
+}, Uf = {
 	handlesPendingChoice: !0,
 	available({ state: e, playerId: t }) {
 		let n = e.G.turnMetadata.pendingChoice;
@@ -27242,14 +27256,14 @@ var Vf = {
 	execute({ state: e, playerId: t, input: n, operations: r }) {
 		let i = e.G.attackState;
 		if (!i) return;
-		let a = e.G.cardIndex[i.attackerId], o = a ? xs(a.definitionId)?.displayName ?? "" : "", s = F(e, i.attackerId);
+		let a = e.G.cardIndex[i.attackerId], o = a ? Cs(a.definitionId)?.displayName ?? "" : "", s = P(e, i.attackerId);
 		r.game.setPendingChoice(void 0);
-		let c = n.args.dieIds.map((e) => e), l = sc(e, i.attackerId, i.rivalId, c), u = Cl(e, i, l, o, s);
+		let c = n.args.dieIds.map((e) => e), l = lc(e, i.attackerId, i.rivalId, c), u = wl(e, i, l, o, s);
 		if (u) {
 			r.game.setPendingChoice(u);
 			return;
 		}
-		let d = Sl({
+		let d = Cl({
 			state: e,
 			operations: r,
 			attack: i,
@@ -27269,7 +27283,7 @@ var Vf = {
 			stolenGigs: d
 		});
 	}
-}, Uf = {
+}, Wf = {
 	handlesPendingChoice: !0,
 	available({ state: e, playerId: t }) {
 		let n = e.G.turnMetadata.pendingChoice;
@@ -27357,13 +27371,13 @@ var Vf = {
 				params: {
 					cardName: i.payload.effectSteal.sourceCardName,
 					count: t.length,
-					stolenGigs: kc(t)
+					stolenGigs: jc(t)
 				},
 				playerId: s,
 				category: "trigger",
 				cardIds: [i.payload.effectSteal.sourceCardId]
 			}), G(e, r), J(e, r);
-		} else Sl({
+		} else Cl({
 			state: e,
 			operations: r,
 			attack: a,
@@ -27373,7 +27387,7 @@ var Vf = {
 			attackerPower: i.payload.attackerPower
 		}), r.game.setAttackState(null);
 	}
-}, Wf = {
+}, Gf = {
 	handlesPendingChoice: !0,
 	available({ state: e, playerId: t }) {
 		let n = e.G.turnMetadata.pendingChoice;
@@ -27407,9 +27421,9 @@ var Vf = {
 		};
 	},
 	execute({ state: e, playerId: t, input: n, operations: r }) {
-		n.args.pass ? (Uu(e, r, t), J(e, r)) : (Wu(n.args.triggerId, e, r), J(e, r));
+		n.args.pass ? (Wu(e, r, t), J(e, r)) : (Gu(n.args.triggerId, e, r), J(e, r));
 	}
-}, Gf = "__selectedEffectTarget", Kf = {
+}, Kf = "__selectedEffectTarget", qf = {
 	handlesPendingChoice: !0,
 	available({ state: e, playerId: t }) {
 		let n = e.G.turnMetadata.pendingChoice;
@@ -27454,16 +27468,16 @@ var Vf = {
 			errorCode: "INVALID_CHOICE"
 		};
 		if (r.payload.pairConstraint !== void 0) {
-			let t = Pu(e, s, r.payload.pairConstraint);
+			let t = Fu(e, s, r.payload.pairConstraint);
 			if (!t.valid) return {
 				valid: !1,
-				error: qf(t.reason),
+				error: Jf(t.reason),
 				errorCode: "INVALID_CHOICE"
 			};
 		}
 		if (r.payload.targetPurpose === "playCard") {
-			let n = r.payload.availableEddiesAfterCosts ?? Hc(e, t);
-			for (let i of s) if ((r.payload.effectiveCostsByCardId?.[i] ?? Ac(e, i, t)) > n) return {
+			let n = r.payload.availableEddiesAfterCosts ?? V(e, t);
+			for (let i of s) if ((r.payload.effectiveCostsByCardId?.[i] ?? Mc(e, i, t)) > n) return {
 				valid: !1,
 				error: "Not enough eddies",
 				errorCode: "INSUFFICIENT_EDDIES"
@@ -27478,7 +27492,7 @@ var Vf = {
 		let o = n.args.targetIds ?? [];
 		if (n.args.pass || (i.canDecline || (i.min ?? 1) === 0) && o.length === 0) {
 			let t = e.G.turnMetadata.currentTrigger, n = t?.event, a = t ? e.G.cardIndex[t.sourceCardId] : void 0;
-			if (a && t?.kind === "authored" && P(a).abilities?.[t.abilityIndex]?.timing === "gigRollReplacement" && n?.type === "gigDieRolled" && U(n, e, r, !0), i.selectedBindingId) {
+			if (a && t?.kind === "authored" && N(a).abilities?.[t.abilityIndex]?.timing === "gigRollReplacement" && n?.type === "gigDieRolled" && U(n, e, r, !0), i.selectedBindingId) {
 				let t = e.G.turnMetadata.currentTrigger;
 				t && (t.boundTargets = {
 					...t.boundTargets,
@@ -27496,13 +27510,13 @@ var Vf = {
 				};
 				if (K(i.elseEffects, t, r, 0, { nested: !0 }) === "suspended") return;
 			} else if (i.targetPurpose === "playCard") {
-				Ku(e, r), J(e, r);
+				qu(e, r), J(e, r);
 				return;
 			}
 			G(e, r), J(e, r);
 			return;
 		}
-		let s = Dl(e, i.sourceCardId, o, t), c = Jf(e, i, o), l = Al(e, o);
+		let s = Ol(e, i.sourceCardId, o, t), c = Yf(e, i, o), l = jl(e, o);
 		if (l.length > 0 && r.event.emit({
 			type: "effectTargeted",
 			sourceCardId: i.sourceCardId,
@@ -27515,7 +27529,7 @@ var Vf = {
 				[i.selectedBindingId]: [...o]
 			}), c || r.event.emit({
 				type: "actionLog",
-				messageKey: Ol(a),
+				messageKey: kl(a),
 				params: s.params,
 				playerId: t,
 				category: "trigger",
@@ -27532,22 +27546,22 @@ var Vf = {
 			contextTargets: i.contextTargets ?? {},
 			boundTargets: {
 				...i.boundTargets,
-				[Gf]: [...o]
+				[Kf]: [...o]
 			}
 		}, d = i.targetPurpose === "attachHost" && "attachTo" in a ? {
 			...a,
 			attachTo: {
 				selector: "bound",
-				id: Gf
+				id: Kf
 			}
 		} : {
 			...a,
 			target: {
 				selector: "bound",
-				id: Gf
+				id: Kf
 			},
 			...a.effect === "moveCard" ? { optional: !1 } : {}
-		}, f = r.event.getEmittedEvents().length, p = Nu(d, u, r);
+		}, f = r.event.getEmittedEvents().length, p = Pu(d, u, r);
 		if ("outputBinding" in a && a.outputBinding) {
 			let t = e.G.turnMetadata.currentTrigger;
 			t && (t.boundTargets = {
@@ -27556,7 +27570,7 @@ var Vf = {
 			});
 		}
 		let m = r.event.getEmittedEvents();
-		p.status === "noAction" && a.effect !== "defeat" && !m.slice(f).some((e) => e.type === "actionLog") && ed(a, u, r);
+		p.status === "noAction" && a.effect !== "defeat" && !m.slice(f).some((e) => e.type === "actionLog") && td(a, u, r);
 		for (let t = f; t < m.length; t++) {
 			let n = m[t];
 			(n.type === "gigValueChanged" || n.type === "gigsSwapped" || n.type === "gigDieRolled" || n.type === "legendFlipped" || n.type === "legendCalled" || n.type === "gigStolen" || n.type === "cardPlayed" || n.type === "cardSpent" || n.type === "cardDefeated") && U(n, e, r);
@@ -27565,7 +27579,7 @@ var Vf = {
 			if (K(i.ifEffects, u, r, 0, { nested: !0 }) === "suspended") return;
 		} else if (p.status === "noAction" && i.elseEffects?.length && K(i.elseEffects, u, r, 0, { nested: !0 }) === "suspended") return;
 		if (!c) {
-			let e = kl(a, s, m.slice(f), o);
+			let e = Al(a, s, m.slice(f), o);
 			r.event.emit({
 				type: "actionLog",
 				messageKey: e.messageKey,
@@ -27592,7 +27606,7 @@ var Vf = {
 		}), G(e, r), J(e, r);
 	}
 };
-function qf(e) {
+function Jf(e) {
 	switch (e) {
 		case "same-player": return "Choose one Gig from each player. The source and target cannot belong to the same player.";
 		case "duplicate": return "Choose two different Gigs: first the source, then the target.";
@@ -27600,13 +27614,13 @@ function qf(e) {
 		case "missing-gig": return "One of the selected Gigs is no longer available. Choose the source and target again.";
 	}
 }
-function Jf(e, t, n) {
+function Yf(e, t, n) {
 	if (t.type !== "effectTarget" || t.targetKind !== "gig" || n.length !== 2) return !1;
 	let r = t.sourceCardId, i = r ? e.G.cardIndex[r] : void 0;
-	return (i ? (P(i).rulesText ?? "").toLowerCase() : "").includes("value of another gig");
+	return (i ? (N(i).rulesText ?? "").toLowerCase() : "").includes("value of another gig");
 }
 // upstream/submodules/cyberpunk/packages/engine/src/moves/resolve-card-type-choice.ts
-var Yf = {
+var Xf = {
 	handlesPendingChoice: !0,
 	available({ state: e, playerId: t }) {
 		let n = e.G.turnMetadata.pendingChoice;
@@ -27634,7 +27648,7 @@ var Yf = {
 			G(e, r), J(e, r);
 			return;
 		}
-		let s = e.G.cardIndex[o], c = s ? P(s).type === n.args.cardType : !1;
+		let s = e.G.cardIndex[o], c = s ? N(s).type === n.args.cardType : !1;
 		r.event.emit({
 			type: "cardsRevealed",
 			cardIds: [o],
@@ -27643,13 +27657,13 @@ var Yf = {
 			fromZone: "deck",
 			ownerId: t,
 			sourceCardId: i.payload.sourceCardId
-		}), c ? (s && (s.zone = "hand", s.meta = ms("hand")), a.zones.hand.push(o), r.event.emit({
+		}), c ? (s && (s.zone = "hand", s.meta = gs("hand")), a.zones.hand.push(o), r.event.emit({
 			type: "cardMoved",
 			cardId: o,
 			fromZone: "deck",
 			toZone: "hand",
 			playerId: t
-		}), a.spentEddies > 0 && r.game.readyEddies(t, 1)) : (s && (s.zone = "trash", s.meta = ms("trash")), a.zones.trash.push(o), r.event.emit({
+		}), a.spentEddies > 0 && r.game.readyEddies(t, 1)) : (s && (s.zone = "trash", s.meta = gs("trash")), a.zones.trash.push(o), r.event.emit({
 			type: "cardMoved",
 			cardId: o,
 			fromZone: "deck",
@@ -27660,16 +27674,16 @@ var Yf = {
 			messageKey: c ? "trigger.revealTopCardType.hit" : "trigger.revealTopCardType.miss",
 			params: {
 				chosenType: n.args.cardType,
-				revealedCardName: s ? P(s).displayName : "Unknown card",
-				revealedType: s ? P(s).type : "unknown",
-				sourceCardName: e.G.cardIndex[i.payload.sourceCardId] ? P(e.G.cardIndex[i.payload.sourceCardId]).displayName : "That effect"
+				revealedCardName: s ? N(s).displayName : "Unknown card",
+				revealedType: s ? N(s).type : "unknown",
+				sourceCardName: e.G.cardIndex[i.payload.sourceCardId] ? N(e.G.cardIndex[i.payload.sourceCardId]).displayName : "That effect"
 			},
 			playerId: t,
 			category: "trigger",
 			cardIds: [i.payload.sourceCardId, o]
 		}), G(e, r), J(e, r);
 	}
-}, Xf = {
+}, Zf = {
 	handlesPendingChoice: !0,
 	available({ state: e, playerId: t }) {
 		let n = e.G.turnMetadata.pendingChoice;
@@ -27707,7 +27721,7 @@ var Yf = {
 		};
 		K(i.effects, a, t, 0, { nested: !0 }) !== "suspended" && (G(e, t), J(e, t));
 	}
-}, Zf = {
+}, Qf = {
 	handlesPendingChoice: !0,
 	available({ state: e, playerId: t }) {
 		let n = e.G.turnMetadata.pendingChoice;
@@ -27730,7 +27744,7 @@ var Yf = {
 		if (!i || i.type !== "chooseFirstPlayer") return;
 		let a = e.ctx.playerIds.find((e) => e !== t);
 		if (!a) return;
-		let o = n.args.goFirst ? t : a, { events: s, blankEddieCounts: c } = Ps(e, o);
+		let o = n.args.goFirst ? t : a, { events: s, blankEddieCounts: c } = Is(e, o);
 		r.event.emit({
 			type: "actionLog",
 			messageKey: "setup.firstPlayerChoice",
@@ -27748,11 +27762,11 @@ var Yf = {
 			category: "setup"
 		});
 	}
-}, Qf = {
+}, $f = {
 	handlesPendingChoice: !0,
 	available({ state: e, playerId: t }) {
 		let n = e.G.turnMetadata.pendingChoice, r = e.G.turnMetadata.currentTrigger;
-		return !n || !r || n.chooserId !== t ? !1 : Gu(r);
+		return !n || !r || n.chooserId !== t ? !1 : Ku(r);
 	},
 	validate({ state: e, playerId: t }) {
 		let n = e.G.turnMetadata.pendingChoice, r = e.G.turnMetadata.currentTrigger;
@@ -27760,7 +27774,7 @@ var Yf = {
 			valid: !1,
 			error: "No ability resolution to cancel",
 			errorCode: "NO_PENDING_CHOICE"
-		} : n.chooserId === t ? Gu(r) ? { valid: !0 } : {
+		} : n.chooserId === t ? Ku(r) ? { valid: !0 } : {
 			valid: !1,
 			error: "Only a player-activated ability can be cancelled",
 			errorCode: "CANNOT_PASS"
@@ -27771,16 +27785,16 @@ var Yf = {
 		};
 	},
 	execute({ state: e, operations: t }) {
-		Ku(e, t), J(e, t);
+		qu(e, t), J(e, t);
 	}
-}, $f = [
+}, ep = [
 	"hand",
 	"field",
 	"eddieArea",
 	"trash",
 	"legendArea",
 	"deck"
-], ep = {
+], tp = {
 	hand: "Hand",
 	field: "Field",
 	eddieArea: "Eddie",
@@ -27788,22 +27802,22 @@ var Yf = {
 	legendArea: "Legends",
 	deck: "Deck"
 };
-function tp(e) {
-	return $f.includes(e);
+function np(e) {
+	return ep.includes(e);
 }
 var Y = {
 	available: () => !1,
 	handlesPendingChoice: !0,
 	undoable: !0
 };
-function np() {
+function rp() {
 	return {
 		valid: !1,
 		error: "Player not found",
 		errorCode: "PLAYER_NOT_FOUND"
 	};
 }
-function rp(e, t, n, r, i, a) {
+function ip(e, t, n, r, i, a) {
 	r === "eddieArea" && i !== "eddieArea" ? a ? t.spentEddies = Math.max(0, t.spentEddies - 1) : t.eddies > 0 && (--t.eddies, e.event.emit({
 		type: "eddiesSpent",
 		playerId: n,
@@ -27811,7 +27825,7 @@ function rp(e, t, n, r, i, a) {
 		forWhat: "manualCorrection"
 	})) : i === "eddieArea" && r !== "eddieArea" && e.game.gainEddies(n, 1);
 }
-var ip = {
+var ap = {
 	manualSetGigValue: {
 		...Y,
 		validate({ state: e, input: t }) {
@@ -27857,7 +27871,7 @@ var ip = {
 				valid: !1,
 				error: "Invalid gig location",
 				errorCode: "INVALID_GIG_LOCATION"
-			} : e.G.players[t.args.toPlayerId] ? { valid: !0 } : np() : {
+			} : e.G.players[t.args.toPlayerId] ? { valid: !0 } : rp() : {
 				valid: !1,
 				error: "Die not found",
 				errorCode: "DIE_NOT_FOUND"
@@ -27887,15 +27901,15 @@ var ip = {
 		...Y,
 		validate({ state: e, input: t }) {
 			let n = e.G.cardIndex[t.args.cardId];
-			return n ? tp(t.args.toZone) ? n.zone === t.args.toZone && t.args.toZone !== "deck" ? {
+			return n ? np(t.args.toZone) ? n.zone === t.args.toZone && t.args.toZone !== "deck" ? {
 				valid: !1,
 				error: "Card is already in that zone",
 				errorCode: "ALREADY_IN_ZONE"
-			} : t.args.toZone === "legendArea" && P(n).type !== "legend" ? {
+			} : t.args.toZone === "legendArea" && N(n).type !== "legend" ? {
 				valid: !1,
 				error: "Only Legends can move to the Legend area",
 				errorCode: "NOT_LEGEND"
-			} : e.G.players[n.ownerId] ? { valid: !0 } : np() : {
+			} : e.G.players[n.ownerId] ? { valid: !0 } : rp() : {
 				valid: !1,
 				error: "Invalid correction zone",
 				errorCode: "INVALID_ZONE"
@@ -27919,8 +27933,8 @@ var ip = {
 				let e = n.args.deckPosition === "bottom" ? "bottom" : "top", t = l.zones.deck, a = t.indexOf(i);
 				a !== -1 && t.splice(a, 1), e === "top" ? r.zone.moveCardsToTop(c, [i]) : r.zone.moveCardsToBottom(c, [i]);
 			}
-			rp(r, l, c, s, o, u);
-			let d = P(a).displayName, f = o === "deck" ? n.args.deckPosition === "bottom" ? "bottom of Deck" : "top of Deck" : ep[o];
+			ip(r, l, c, s, o, u);
+			let d = N(a).displayName, f = o === "deck" ? n.args.deckPosition === "bottom" ? "bottom of Deck" : "top of Deck" : tp[o];
 			r.event.emit({
 				type: "actionLog",
 				messageKey: "move.manualMoveCard",
@@ -27937,7 +27951,7 @@ var ip = {
 		...Y,
 		validate({ state: e, input: t }) {
 			let n = e.G.cardIndex[t.args.gearId], r = e.G.cardIndex[t.args.hostId];
-			return n ? r ? P(n).type === "gear" ? P(r).type === "gear" ? {
+			return n ? r ? N(n).type === "gear" ? N(r).type === "gear" ? {
 				valid: !1,
 				error: "Cannot attach to gear",
 				errorCode: "INVALID_HOST"
@@ -27972,14 +27986,14 @@ var ip = {
 			if (o && s) {
 				if (o.meta.attachedToId && r.card.detachGear(i), o.zone === "eddieArea") {
 					let t = e.G.players[o.ownerId];
-					t && rp(r, t, o.ownerId, "eddieArea", s.zone, o.meta.spent);
+					t && ip(r, t, o.ownerId, "eddieArea", s.zone, o.meta.spent);
 				}
 				o.zone !== s.zone && r.zone.moveCard(i, s.zone, s.ownerId), r.card.attachGear(i, a), r.event.emit({
 					type: "actionLog",
 					messageKey: "move.manualAttachGear",
 					params: {
-						gearName: P(o).displayName,
-						hostName: P(s).displayName
+						gearName: N(o).displayName,
+						hostName: N(s).displayName
 					},
 					playerId: t,
 					cardIds: [i, a]
@@ -28006,7 +28020,7 @@ var ip = {
 			a && (r.card.detachGear(i), r.event.emit({
 				type: "actionLog",
 				messageKey: "move.manualDetachGear",
-				params: { gearName: P(a).displayName },
+				params: { gearName: N(a).displayName },
 				playerId: t,
 				cardIds: [i]
 			}));
@@ -28041,7 +28055,7 @@ var ip = {
 				r.event.emit({
 					type: "actionLog",
 					messageKey: "move.manualExertCard",
-					params: { cardName: P(a).displayName },
+					params: { cardName: N(a).displayName },
 					playerId: t,
 					cardIds: [i]
 				});
@@ -28072,7 +28086,7 @@ var ip = {
 				r.event.emit({
 					type: "actionLog",
 					messageKey: "move.manualReadyCard",
-					params: { cardName: P(a).displayName },
+					params: { cardName: N(a).displayName },
 					playerId: t,
 					cardIds: [i]
 				});
@@ -28091,7 +28105,7 @@ var ip = {
 				valid: !1,
 				error: "Invalid deck position",
 				errorCode: "INVALID_DECK_POSITION"
-			} : { valid: !0 } : np();
+			} : { valid: !0 } : rp();
 		},
 		execute({ state: e, playerId: t, input: n, operations: r }) {
 			let i = n.args.playerId ?? t, a = e.G.players[i];
@@ -28105,7 +28119,7 @@ var ip = {
 				messageKey: "move.manualDrawCard",
 				params: {
 					destination: n.args.from === "bottom" ? "bottom of Deck" : "top of Deck",
-					cardName: s ? P(s).displayName : "a card"
+					cardName: s ? N(s).displayName : "a card"
 				},
 				playerId: t,
 				cardIds: [o]
@@ -28129,12 +28143,12 @@ var ip = {
 		},
 		execute({ state: e, playerId: t, input: n, operations: r }) {
 			let i = e.G.turnMetadata, a = i.currentTrigger, o = n.args.scope === "all" ? i.triggerQueue.length : 0;
-			n.args.scope === "all" && (i.triggerQueue = []), Ku(e, r), J(e, r);
+			n.args.scope === "all" && (i.triggerQueue = []), qu(e, r), J(e, r);
 			let s = a ? e.G.cardIndex[a.sourceCardId] : void 0;
 			s && r.event.emit({
 				type: "actionLog",
 				messageKey: "move.manualClearPendingResolution",
-				params: { cardName: P(s).displayName },
+				params: { cardName: N(s).displayName },
 				playerId: t
 			}), o > 0 && r.event.emit({
 				type: "actionLog",
@@ -28157,14 +28171,14 @@ var ip = {
 			let r = e.G.attackState;
 			if (!r) return;
 			let i = e.G.turnMetadata, a = i.currentTrigger, o = i.triggerQueue.length;
-			i.triggerQueue = [], Ku(e, n);
+			i.triggerQueue = [], qu(e, n);
 			let s = e.G.cardIndex[r.attackerId];
 			n.game.setAttackState(null);
 			let c = a ? e.G.cardIndex[a.sourceCardId] : void 0;
 			c && n.event.emit({
 				type: "actionLog",
 				messageKey: "move.manualClearPendingResolution",
-				params: { cardName: P(c).displayName },
+				params: { cardName: N(c).displayName },
 				playerId: t
 			}), o > 0 && n.event.emit({
 				type: "actionLog",
@@ -28174,7 +28188,7 @@ var ip = {
 			}), n.event.emit({
 				type: "actionLog",
 				messageKey: "move.manualResetCombat",
-				params: { attackerName: s ? P(s).displayName : "unknown attacker" },
+				params: { attackerName: s ? N(s).displayName : "unknown attacker" },
 				playerId: t
 			});
 		}
@@ -28197,14 +28211,14 @@ var ip = {
 			n.triggerQueue = [], t.game.setPendingChoice(void 0), n.currentTrigger = void 0, o && (t.game.setAttackState(null), t.event.emit({
 				type: "actionLog",
 				messageKey: "move.manualResetCombat",
-				params: { attackerName: a ? P(a).displayName : "unknown attacker" },
+				params: { attackerName: a ? N(a).displayName : "unknown attacker" },
 				playerId: n.activePlayerId
 			})), r > 0 && t.event.emit({
 				type: "actionLog",
 				messageKey: "move.manualClearTriggerStack",
 				params: { count: r },
 				playerId: n.activePlayerId
-			}), Yd(e, n.activePlayerId, t);
+			}), Xd(e, n.activePlayerId, t);
 		}
 	},
 	manualSetEddies: {
@@ -28215,7 +28229,7 @@ var ip = {
 				valid: !1,
 				error: "Eddies must be a non-negative integer",
 				errorCode: "INVALID_EDDIE_AMOUNT"
-			} : { valid: !0 } : np();
+			} : { valid: !0 } : rp();
 		},
 		execute({ state: e, playerId: t, input: n, operations: r }) {
 			let i = n.args.playerId ?? t, a = e.G.players[i];
@@ -28235,7 +28249,7 @@ var ip = {
 		...Y,
 		validate({ state: e, playerId: t, input: n }) {
 			let r = n.args.playerId ?? t;
-			return e.G.players[r] ? { valid: !0 } : np();
+			return e.G.players[r] ? { valid: !0 } : rp();
 		},
 		execute({ state: e, playerId: t, input: n, operations: r }) {
 			let i = n.args.playerId ?? t, a = e.G.players[i];
@@ -28275,7 +28289,7 @@ var ip = {
 				type: "actionLog",
 				messageKey: "move.manualSetCardFace",
 				params: {
-					cardName: P(i).displayName,
+					cardName: N(i).displayName,
 					face: n.args.faceDown ? "face-down" : "face-up"
 				},
 				playerId: t,
@@ -28287,7 +28301,7 @@ var ip = {
 		...Y,
 		validate({ state: e, playerId: t, input: n }) {
 			let r = n.args.playerId ?? t;
-			return e.G.players[r] ? { valid: !0 } : np();
+			return e.G.players[r] ? { valid: !0 } : rp();
 		},
 		execute({ state: e, playerId: t, input: n, operations: r }) {
 			let i = n.args.playerId ?? t, a = e.G.players[i];
@@ -28297,7 +28311,7 @@ var ip = {
 				"field",
 				"legendArea",
 				"eddieArea"
-			]) for (let n of a.zones[t]) e.G.cardIndex[n]?.meta.spent && (I(e, n).includes("cantReady") || (r.card.ready(n), o += 1));
+			]) for (let n of a.zones[t]) e.G.cardIndex[n]?.meta.spent && (F(e, n).includes("cantReady") || (r.card.ready(n), o += 1));
 			a.spentEddies > 0 && (r.game.gainEddies(i, a.spentEddies), a.spentEddies = 0), o > 0 && r.event.emit({
 				type: "actionLog",
 				messageKey: "move.manualReadyAll",
@@ -28312,7 +28326,7 @@ var ip = {
 			return { valid: !0 };
 		},
 		execute({ state: e, playerId: t, operations: n }) {
-			Zs(e), n.event.emit({
+			$s(e), n.event.emit({
 				type: "actionLog",
 				messageKey: "move.manualRecomputeActiveEffects",
 				params: { count: e.G.activeEffects.length },
@@ -28340,56 +28354,56 @@ var ip = {
 			}));
 		}
 	}
-}, ap = /* @__PURE__ */ "setCombatPriority.playCard.sellCard.callLegend.attackUnit.attackRival.useBlocker.goSolo.passPhase.concede.mulligan.keepHand.gainGig.resolveAttack.resolveCardToPlay.resolveCardToMove.activateAbility.resolveScry.resolveRevealDestination.resolveDiscardFromHand.resolveAdjustGig.resolveStealGigs.resolvePreventGigSteal.resolveTrigger.resolveEffectTarget.resolveCardTypeChoice.resolveChooseEffect.resolveRedirectDefeat.resolveSacrificialGear.resolveFirstPlayer.cancelPendingResolution".split("."), op = {
-	setCombatPriority: nf,
-	playCard: rf,
-	sellCard: af,
-	callLegend: sf,
-	attackUnit: cf,
-	attackRival: lf,
-	useBlocker: uf,
-	goSolo: df,
-	passPhase: Jd,
-	concede: mf,
-	mulligan: hf,
-	keepHand: Hd,
-	gainGig: Id,
-	resolveAttack: il,
-	resolveCardToPlay: _f,
-	resolveCardToMove: bf,
-	activateAbility: xf,
-	resolveScry: If,
-	resolveRevealDestination: Lf,
-	resolveDiscardFromHand: Rf,
-	resolveAdjustGig: Vf,
-	resolveStealGigs: Hf,
-	resolvePreventGigSteal: Uf,
-	resolveTrigger: Wf,
-	resolveEffectTarget: Kf,
-	resolveCardTypeChoice: Yf,
-	resolveChooseEffect: Xf,
-	resolveRedirectDefeat: gl,
-	resolveSacrificialGear: vl,
-	resolveFirstPlayer: Zf,
-	cancelPendingResolution: Qf
+}, op = /* @__PURE__ */ "setCombatPriority.playCard.sellCard.callLegend.attackUnit.attackRival.useBlocker.goSolo.passPhase.concede.mulligan.keepHand.gainGig.resolveAttack.resolveCardToPlay.resolveCardToMove.activateAbility.resolveScry.resolveRevealDestination.resolveDiscardFromHand.resolveAdjustGig.resolveStealGigs.resolvePreventGigSteal.resolveTrigger.resolveEffectTarget.resolveCardTypeChoice.resolveChooseEffect.resolveRedirectDefeat.resolveSacrificialGear.resolveFirstPlayer.cancelPendingResolution".split("."), sp = {
+	setCombatPriority: rf,
+	playCard: af,
+	sellCard: of,
+	callLegend: cf,
+	attackUnit: lf,
+	attackRival: uf,
+	useBlocker: df,
+	goSolo: ff,
+	passPhase: Yd,
+	concede: hf,
+	mulligan: gf,
+	keepHand: Ud,
+	gainGig: Ld,
+	resolveAttack: al,
+	resolveCardToPlay: vf,
+	resolveCardToMove: xf,
+	activateAbility: Sf,
+	resolveScry: Lf,
+	resolveRevealDestination: Rf,
+	resolveDiscardFromHand: zf,
+	resolveAdjustGig: Hf,
+	resolveStealGigs: Uf,
+	resolvePreventGigSteal: Wf,
+	resolveTrigger: Gf,
+	resolveEffectTarget: qf,
+	resolveCardTypeChoice: Xf,
+	resolveChooseEffect: Zf,
+	resolveRedirectDefeat: _l,
+	resolveSacrificialGear: yl,
+	resolveFirstPlayer: Qf,
+	cancelPendingResolution: $f
 };
 // upstream/submodules/cyberpunk/packages/engine/src/view/ability-hints.ts
-function sp(e) {
-	return e.abilities.map((t, n) => cp(e, t, n));
+function cp(e) {
+	return e.abilities.map((t, n) => lp(e, t, n));
 }
-function cp(e, t, n) {
+function lp(e, t, n) {
 	let r = /* @__PURE__ */ new Set(), i = /* @__PURE__ */ new Set();
-	for (let e of t.effects) fp(e, r, i);
+	for (let e of t.effects) pp(e, r, i);
 	let a = /* @__PURE__ */ new Set();
-	mp(t, a);
+	hp(t, a);
 	let o = [];
-	lp(t, o);
+	up(t, o);
 	let s = /* @__PURE__ */ new Set();
-	hp(t, s);
+	gp(t, s);
 	let c = /* @__PURE__ */ new Set();
-	return up(t, c), {
+	return dp(t, c), {
 		abilityIndex: n,
-		timing: dp(t),
+		timing: fp(t),
 		event: t.trigger?.trigger === "event" ? t.trigger.event.event : null,
 		reactive: t.keyword === "quick" || e.keywords.includes("quick") || s.has("attackContext"),
 		effects: [...r].sort(),
@@ -28400,38 +28414,38 @@ function cp(e, t, n) {
 		requirements: [...s].sort()
 	};
 }
-function lp(e, t) {
-	if (Array.isArray(e)) for (let n of e) lp(n, t);
-	else if (vp(e)) {
+function up(e, t) {
+	if (Array.isArray(e)) for (let n of e) up(n, t);
+	else if (yp(e)) {
 		typeof e.condition == "string" && typeof e.minCount == "number" && t.push({
 			condition: e.condition,
 			minCount: e.minCount
 		});
-		for (let n of Object.values(e)) lp(n, t);
-	}
-}
-function up(e, t) {
-	if (Array.isArray(e)) for (let n of e) up(n, t);
-	else if (vp(e)) {
-		e.condition === "cardName" && typeof e.name == "string" && vp(e.target) && e.target.selector === "host" && t.add(e.name);
 		for (let n of Object.values(e)) up(n, t);
 	}
 }
-function dp(e) {
+function dp(e, t) {
+	if (Array.isArray(e)) for (let n of e) dp(n, t);
+	else if (yp(e)) {
+		e.condition === "cardName" && typeof e.name == "string" && yp(e.target) && e.target.selector === "host" && t.add(e.name);
+		for (let n of Object.values(e)) dp(n, t);
+	}
+}
+function fp(e) {
 	return e.trigger ? e.trigger.trigger : e.kind === "keyword" ? "keyword" : "static";
 }
-function fp(e, t, n) {
+function pp(e, t, n) {
 	t.add(e.effect);
-	for (let t of pp(e)) n.add(t);
+	for (let t of mp(e)) n.add(t);
 	if (e.effect === "ifYouDo") {
-		fp(e.doEffect, t, n);
-		for (let r of e.ifEffects) fp(r, t, n);
-		for (let r of e.elseEffects ?? []) fp(r, t, n);
-	} else if (e.effect === "delayed" || e.effect === "forEachFriendlyGigPair") for (let r of e.effects) fp(r, t, n);
-	else if (e.effect === "chooseEffect") for (let r of e.options) for (let e of r.effects) fp(e, t, n);
-	else if ("elseEffects" in e && Array.isArray(e.elseEffects)) for (let r of e.elseEffects) fp(r, t, n);
+		pp(e.doEffect, t, n);
+		for (let r of e.ifEffects) pp(r, t, n);
+		for (let r of e.elseEffects ?? []) pp(r, t, n);
+	} else if (e.effect === "delayed" || e.effect === "forEachFriendlyGigPair") for (let r of e.effects) pp(r, t, n);
+	else if (e.effect === "chooseEffect") for (let r of e.options) for (let e of r.effects) pp(e, t, n);
+	else if ("elseEffects" in e && Array.isArray(e.elseEffects)) for (let r of e.elseEffects) pp(r, t, n);
 }
-function pp(e) {
+function mp(e) {
 	switch (e.effect) {
 		case "defeat":
 		case "spend":
@@ -28475,21 +28489,21 @@ function pp(e) {
 		case "chooseEffect": return [];
 	}
 }
-function mp(e, t) {
-	if (Array.isArray(e)) for (let n of e) mp(n, t);
-	else if (vp(e)) {
-		typeof e.condition == "string" && t.add(e.condition);
-		for (let n of Object.values(e)) mp(n, t);
-	}
-}
 function hp(e, t) {
 	if (Array.isArray(e)) for (let n of e) hp(n, t);
-	else if (vp(e)) {
-		_p(e) && gp(e, t);
+	else if (yp(e)) {
+		typeof e.condition == "string" && t.add(e.condition);
 		for (let n of Object.values(e)) hp(n, t);
 	}
 }
 function gp(e, t) {
+	if (Array.isArray(e)) for (let n of e) gp(n, t);
+	else if (yp(e)) {
+		vp(e) && _p(e, t);
+		for (let n of Object.values(e)) gp(n, t);
+	}
+}
+function _p(e, t) {
 	if (e.selector === "attacker") {
 		t.add("attackContext");
 		return;
@@ -28502,29 +28516,29 @@ function gp(e, t) {
 	let n = e.controller === "friendly" || e.controller === "owner", r = e.controller === "rival";
 	e.zones?.includes("trash") && n && t.add("friendlyTrash"), (!e.zones || e.zones.includes("field") || e.zones.includes("legendArea")) && (n && e.zones?.length === 1 && e.zones[0] === "legendArea" && e.face === "faceDown" && e.cardTypes?.includes("legend") === !0 ? t.add("friendlyFaceDownLegend") : n && t.add("friendlyBoard"), r && t.add("rivalBoard")), e.hasAttachedCards && n && t.add("equippedBoard");
 }
-function _p(e) {
+function vp(e) {
 	return e.selector === "self" || e.selector === "host" || e.selector === "bound" || e.selector === "context" || e.selector === "card" || e.selector === "gig" || e.selector === "attacker";
 }
-function vp(e) {
+function yp(e) {
 	return typeof e == "object" && !!e;
 }
 // upstream/submodules/cyberpunk/packages/engine/src/view/filter.ts
-function yp(e) {
-	return P(e).power ?? 0;
-}
 function bp(e) {
-	return e.event;
+	return N(e).power ?? 0;
 }
 function xp(e) {
+	return e.event;
+}
+function Sp(e) {
 	let t = /* @__PURE__ */ new Set();
 	for (let n of e.timingTriggers ?? []) t.add(n);
 	for (let n of e.abilities) {
 		let e = n.trigger;
-		e && (e.trigger === "event" ? t.add(bp(e.event)) : t.add(e.trigger));
+		e && (e.trigger === "event" ? t.add(xp(e.event)) : t.add(e.trigger));
 	}
 	return [...t].sort();
 }
-function Sp(e, t, n) {
+function Cp(e, t, n) {
 	let r = e.G.cardIndex[t];
 	if (!r) return { sourceName: "Effect" };
 	let i = [
@@ -28534,20 +28548,20 @@ function Sp(e, t, n) {
 		"removedFromGame"
 	].includes(r.zone) && !r.meta.faceDown, a = n !== void 0 && r.controllerId === n && r.zone !== "deck";
 	if (!i && !a && !r.meta.revealed) return { sourceName: "Effect" };
-	let o = P(r);
+	let o = N(r);
 	return {
 		sourceCardId: t,
 		sourceName: o.displayName ?? o.name
 	};
 }
-function Cp(e) {
+function wp(e) {
 	return e === "turn" ? "this turn" : e === "untilSourceNextTurn" ? "until source's next turn" : "while active";
 }
-function wp(e, t, n) {
+function Tp(e, t, n) {
 	return e.G.effectBag.some((e) => String(e.sourceCardId) === t && (e.delayedEffects ?? []).some((e) => e.effect === "defeat") && Object.values(e.resolvedBindings ?? {}).some((e) => e.includes(n)));
 }
-function Tp(e, t, n, r, i) {
-	let a = Sp(e, String(t.sourceCardId), i), o = Cp(t.duration), s = t.kind === "defeatAtEndOfTurnIfAttacked", c = wp(e, String(t.sourceCardId), r) || s && t.triggered === !0, l = {
+function Ep(e, t, n, r, i) {
+	let a = Cp(e, String(t.sourceCardId), i), o = wp(t.duration), s = t.kind === "defeatAtEndOfTurnIfAttacked", c = Tp(e, String(t.sourceCardId), r) || s && t.triggered === !0, l = {
 		id: a.sourceCardId ? t.id : `${r}:effect:${n}`,
 		...a,
 		effectKind: t.kind,
@@ -28591,10 +28605,10 @@ function Tp(e, t, n, r, i) {
 		tone: t.rule === "cantAttack" || t.rule === "mustAttack" ? "debuff" : "neutral"
 	};
 }
-function Ep(e, t, n) {
-	let r = String(e.instanceId), i = t.G.activeEffects.filter((e) => e.playerId === void 0 && String(e.targetCardId) === r).map((e, i) => Tp(t, e, i, r, n)), a = new Set(i.filter((e) => e.defeatsAtEndOfTurn).map((e) => e.sourceCardId)), o = t.G.effectBag.flatMap((e, i) => {
+function Dp(e, t, n) {
+	let r = String(e.instanceId), i = t.G.activeEffects.filter((e) => e.playerId === void 0 && String(e.targetCardId) === r).map((e, i) => Ep(t, e, i, r, n)), a = new Set(i.filter((e) => e.defeatsAtEndOfTurn).map((e) => e.sourceCardId)), o = t.G.effectBag.flatMap((e, i) => {
 		if (!(e.delayedEffects ?? []).some((e) => e.effect === "defeat") || !Object.values(e.resolvedBindings ?? {}).some((e) => e.includes(r))) return [];
-		let o = Sp(t, String(e.sourceCardId), n);
+		let o = Cp(t, String(e.sourceCardId), n);
 		return o.sourceCardId && a.has(o.sourceCardId) ? [] : [{
 			id: o.sourceCardId ? e.id : `${r}:delayed:${i}`,
 			...o,
@@ -28609,8 +28623,8 @@ function Ep(e, t, n) {
 	});
 	return [...i, ...o];
 }
-function Dp(e, t, n) {
-	let r = P(e), i = r.cost == null ? null : jc(t, e.instanceId, e.controllerId);
+function Op(e, t, n) {
+	let r = N(e), i = r.cost == null ? null : Nc(t, e.instanceId, e.controllerId);
 	return {
 		instanceId: e.instanceId,
 		definitionId: e.definitionId,
@@ -28621,12 +28635,12 @@ function Dp(e, t, n) {
 		revealed: e.meta.revealed === !0,
 		spent: e.meta.spent,
 		damage: e.meta.damage,
-		power: yp(e),
-		effectivePower: F(t, e.instanceId),
+		power: bp(e),
+		effectivePower: P(t, e.instanceId),
 		cost: r.cost ?? null,
 		effectiveCost: i?.effectiveCost ?? null,
 		costEffects: (i?.modifiers ?? []).map((r, i) => {
-			let a = Sp(t, String(r.sourceCardId), n);
+			let a = Cp(t, String(r.sourceCardId), n);
 			return {
 				id: a.sourceCardId ? r.id : `${e.instanceId}:cost:${i}`,
 				...a,
@@ -28639,7 +28653,7 @@ function Dp(e, t, n) {
 				defeatsAtEndOfTurn: !1
 			};
 		}),
-		activeEffects: Ep(e, t, n),
+		activeEffects: Dp(e, t, n),
 		type: r.type,
 		classifications: r.classifications ?? [],
 		hasSellTag: r.hasSellTag === !0,
@@ -28648,13 +28662,13 @@ function Dp(e, t, n) {
 		hasLag: e.meta.hasLag,
 		hasAttackedThisTurn: e.meta.hasAttackedThisTurn,
 		hasStolenGigThisTurn: e.meta.hasStolenGigThisTurn,
-		grantedRules: I(t, e.instanceId),
+		grantedRules: F(t, e.instanceId),
 		keywords: r.keywords ?? [],
-		triggerHints: xp(r),
-		abilityHints: e.meta.faceDown ? [] : sp(r)
+		triggerHints: Sp(r),
+		abilityHints: e.meta.faceDown ? [] : cp(r)
 	};
 }
-function Op(e, t) {
+function kp(e, t) {
 	return {
 		instanceId: e.instanceId,
 		definitionId: "",
@@ -28685,20 +28699,20 @@ function Op(e, t) {
 		abilityHints: []
 	};
 }
-function kp(e, t) {
+function Ap(e, t) {
 	let n = e.G.cardIndex[t];
-	return n ? Dp(n, e) : null;
+	return n ? Op(n, e) : null;
 }
-function Ap(e, t, n, r) {
-	return t.map((e) => n.G.cardIndex[e]).filter((e) => e !== void 0).map((t) => t.meta.revealed ? Dp(t, n, r) : e === "legendArea" && t.meta.faceDown || e === "eddieArea" && t.meta.faceDown ? Op(t, n) : Dp(t, n, r));
-}
-function jp(e, t) {
-	return Np(e, t, !1);
+function jp(e, t, n, r) {
+	return t.map((e) => n.G.cardIndex[e]).filter((e) => e !== void 0).map((t) => t.meta.revealed ? Op(t, n, r) : e === "legendArea" && t.meta.faceDown || e === "eddieArea" && t.meta.faceDown ? kp(t, n) : Op(t, n, r));
 }
 function Mp(e, t) {
-	return Np(e, t, !0);
+	return Pp(e, t, !1);
 }
-function Np(e, t, n) {
+function Np(e, t) {
+	return Pp(e, t, !0);
+}
+function Pp(e, t, n) {
 	let r = {};
 	for (let [i, a] of Object.entries(e.G.players)) {
 		let o = i === t, s = {};
@@ -28713,7 +28727,7 @@ function Np(e, t, n) {
 			"resolvingProgram"
 		]) {
 			let i = a.zones[r] ?? [];
-			s[r] = n ? i.map((t) => e.G.cardIndex[t]).filter((e) => e !== void 0).map((n) => Dp(n, e, t)) : r === "deck" || r === "hand" && !o ? i.length : Ap(r, i, e, t);
+			s[r] = n ? i.map((t) => e.G.cardIndex[t]).filter((e) => e !== void 0).map((n) => Op(n, e, t)) : r === "deck" || r === "hand" && !o ? i.length : jp(r, i, e, t);
 		}
 		let c = (a.gigArea ?? []).map((t) => e.G.gigDice[t]).filter((e) => e !== void 0), l = (a.fixerArea ?? []).map((t) => e.G.gigDice[t]).filter((e) => e !== void 0);
 		s.gigArea = c.map((e) => ({
@@ -28774,15 +28788,15 @@ function Np(e, t, n) {
 			zones: s,
 			firstPlayer: a.firstPlayer,
 			eddies: a.eddies,
-			availableEddies: Hc(e, i),
+			availableEddies: V(e, i),
 			soldThisTurn: a.soldThisTurn,
 			calledLegendThisTurn: a.calledLegendThisTurn,
 			calledLegendThisRivalTurn: a.calledLegendThisRivalTurn,
 			...o ? { combatPriority: a.combatPriority } : {},
 			gigCount: c.length,
 			fixerCount: l.length,
-			streetCred: hs(c),
-			activeEffects: e.G.activeEffects.filter((e) => e.playerId !== void 0 && String(e.playerId) === i).map((n, r) => Tp(e, n, r, i, t))
+			streetCred: _s(c),
+			activeEffects: e.G.activeEffects.filter((e) => e.playerId !== void 0 && String(e.playerId) === i).map((n, r) => Ep(e, n, r, i, t))
 		};
 	}
 	let i = e.G.attackState ? structuredClone(e.G.attackState) : null;
@@ -28800,18 +28814,18 @@ function Np(e, t, n) {
 		winnerId: e.G.winnerId,
 		winReason: e.G.winReason,
 		stateID: e.ctx.stateID,
-		prompt: Lp(e, t)
+		prompt: Rp(e, t)
 	};
 }
 // upstream/submodules/cyberpunk/packages/engine/src/view/player-prompt.ts
-var Pp = new Set(ap);
-function Fp(e, t) {
+var Fp = new Set(op);
+function Ip(e, t) {
 	let n = [];
-	for (let r of hh(e, t)) Pp.has(r) && n.push(r);
+	for (let r of gh(e, t)) Fp.has(r) && n.push(r);
 	return n;
 }
-var Ip = /* @__PURE__ */ new Set(["concede", "setCombatPriority"]);
-function Lp(e, t) {
+var Lp = /* @__PURE__ */ new Set(["concede", "setCombatPriority"]);
+function Rp(e, t) {
 	if (e.G.gameEnded) return {
 		status: "idle",
 		availableMoves: [],
@@ -28819,48 +28833,48 @@ function Lp(e, t) {
 	};
 	let n = e.G.turnMetadata.pendingChoice;
 	if (n && n.chooserId === t) {
-		let r = Fp(e, t).map((n) => Bp(n, e, t)).filter(zp);
+		let r = Ip(e, t).map((n) => Vp(n, e, t)).filter(Bp);
 		return {
 			status: "choice",
 			availableMoves: r,
-			choice: Qp(n, e),
-			payment: Rp(e, t, r)
+			choice: $p(n, e),
+			payment: zp(e, t, r)
 		};
 	}
 	if (n) return {
 		status: "waiting",
-		availableMoves: Fp(e, t).map((n) => Bp(n, e, t)).filter(zp),
+		availableMoves: Ip(e, t).map((n) => Vp(n, e, t)).filter(Bp),
 		choice: null
 	};
-	let r = Fp(e, t).map((n) => Bp(n, e, t)).filter(zp), i = r.some((e) => !Ip.has(e.moveId));
+	let r = Ip(e, t).map((n) => Vp(n, e, t)).filter(Bp), i = r.some((e) => !Lp.has(e.moveId));
 	return {
 		status: i ? "action" : "waiting",
 		availableMoves: r,
 		choice: null,
-		payment: i ? Rp(e, t, r) : void 0
+		payment: i ? zp(e, t, r) : void 0
 	};
 }
-function Rp(e, t, n) {
+function zp(e, t, n) {
 	if (e.G.manualPaymentPlayerId !== t) return;
 	let r = e.G.players[t];
 	if (!r) return;
 	let i = {}, a = {};
 	for (let { moveId: r, inputSpec: o } of n) switch (r) {
 		case "playCard":
-			o.type === "playCard" && (i[r] = Object.fromEntries(o.candidates.map(({ cardId: n }) => [n, { amount: Ac(e, n, t) }])));
+			o.type === "playCard" && (i[r] = Object.fromEntries(o.candidates.map(({ cardId: n }) => [n, { amount: Mc(e, n, t) }])));
 			break;
 		case "callLegend":
-			i[r] = { action: { amount: of(e, t) } };
+			i[r] = { action: { amount: sf(e, t) } };
 			break;
 		case "goSolo":
-			o.type === "selectCard" && (i[r] = Object.fromEntries(o.candidates.map((n) => [n, { amount: ff(e, n, t) }])));
+			o.type === "selectCard" && (i[r] = Object.fromEntries(o.candidates.map((n) => [n, { amount: pf(e, n, t) }])));
 			break;
 		case "activateAbility":
 			o.type === "selectAbility" && (i[r] = Object.fromEntries(o.candidates.map(({ cardId: n, abilityIndex: r, eddieCost: i }) => {
-				let a = P(e.G.cardIndex[n]).abilities[r];
+				let a = N(e.G.cardIndex[n]).abilities[r];
 				return [`${n}:${r}`, {
 					amount: i,
-					reservedLegendIds: qc(a, e, n, t)
+					reservedLegendIds: Jc(a, e, n, t)
 				}];
 			})));
 			break;
@@ -28874,9 +28888,9 @@ function Rp(e, t, n) {
 			if (n?.type !== "chooseCardToPlay") break;
 			let o = {};
 			for (let r of n.payload.cardIds) {
-				o[r] = { amount: n.payload.free ? 0 : Ac(e, r, t) };
+				o[r] = { amount: n.payload.free ? 0 : Mc(e, r, t) };
 				let i = e.G.cardIndex[r];
-				!n.payload.free && i && P(i).type === "gear" && !n.payload.resolvedAttachToId && (a[r] = yf(e, n, r, t));
+				!n.payload.free && i && N(i).type === "gear" && !n.payload.resolvedAttachToId && (a[r] = bf(e, n, r, t));
 			}
 			i[r] = o;
 			break;
@@ -28885,7 +28899,7 @@ function Rp(e, t, n) {
 	if (Object.keys(i).length !== 0) return {
 		legendIds: r.zones.legendArea.filter((t) => {
 			let n = e.G.cardIndex[t];
-			return n !== void 0 && Bc(n);
+			return n !== void 0 && Hc(n);
 		}),
 		eddieIds: r.eddieCardIds.filter((t) => e.G.cardIndex[t]?.meta.spent === !1),
 		eddies: r.eddies,
@@ -28893,7 +28907,7 @@ function Rp(e, t, n) {
 		effectGearHosts: a
 	};
 }
-function zp(e) {
+function Bp(e) {
 	switch (e.inputSpec.type) {
 		case "none": return !0;
 		case "selectCard": return e.inputSpec.candidates.length > 0;
@@ -28902,37 +28916,37 @@ function zp(e) {
 		case "playCard": return e.inputSpec.candidates.some((e) => e.attachTargets === void 0 || e.attachTargets.length > 0);
 	}
 }
-function Bp(e, t, n) {
+function Vp(e, t, n) {
 	switch (e) {
 		case "playCard": return {
 			moveId: e,
 			inputSpec: {
 				type: "playCard",
-				candidates: Vp(t, n)
+				candidates: Hp(t, n)
 			}
 		};
 		case "sellCard": return {
 			moveId: e,
 			inputSpec: {
 				type: "selectCard",
-				candidates: Hp(t, n)
+				candidates: Up(t, n)
 			}
 		};
 		case "callLegend": return {
 			moveId: e,
 			inputSpec: {
 				type: "selectCard",
-				candidates: Up(t, n)
+				candidates: Wp(t, n)
 			}
 		};
 		case "attackUnit": {
-			let r = Wp(t, n), i = r.some((e) => I(t, e).includes("canAttackReadyBlockers")), a = r.some((e) => I(t, e).includes("canAttackReadyUnits"));
+			let r = Gp(t, n), i = r.some((e) => F(t, e).includes("canAttackReadyBlockers")), a = r.some((e) => F(t, e).includes("canAttackReadyUnits"));
 			return {
 				moveId: e,
 				inputSpec: {
 					type: "selectPair",
 					fromCandidates: r,
-					toCandidates: [...Gp(t, n), ...a ? Jp(t, n) : i ? qp(t, n) : []]
+					toCandidates: [...Kp(t, n), ...a ? Yp(t, n) : i ? Jp(t, n) : []]
 				}
 			};
 		}
@@ -28940,35 +28954,35 @@ function Bp(e, t, n) {
 			moveId: e,
 			inputSpec: {
 				type: "selectCard",
-				candidates: Wp(t, n, { excludeUnitOnlyAttackers: !0 })
+				candidates: Gp(t, n, { excludeUnitOnlyAttackers: !0 })
 			}
 		};
 		case "useBlocker": return {
 			moveId: e,
 			inputSpec: {
 				type: "selectCard",
-				candidates: Kp(t, n)
+				candidates: qp(t, n)
 			}
 		};
 		case "goSolo": return {
 			moveId: e,
 			inputSpec: {
 				type: "selectCard",
-				candidates: Yp(t, n)
+				candidates: Xp(t, n)
 			}
 		};
 		case "resolveCardToPlay": return {
 			moveId: e,
 			inputSpec: {
 				type: "selectCard",
-				candidates: Xp(t)
+				candidates: Zp(t)
 			}
 		};
 		case "activateAbility": return {
 			moveId: e,
 			inputSpec: {
 				type: "selectAbility",
-				candidates: Zp(t, n)
+				candidates: Qp(t, n)
 			}
 		};
 		case "passPhase":
@@ -28998,17 +29012,17 @@ function Bp(e, t, n) {
 		};
 	}
 }
-function Vp(e, t) {
+function Hp(e, t) {
 	let n = e.G.players[t];
 	if (!n) return [];
-	let r = [], i = B(e, t);
+	let r = [], i = z(e, t);
 	for (let a of [...n.zones.hand, ...n.zones.legendArea]) {
 		let n = e.G.cardIndex[a];
 		if (!n) continue;
-		let o = P(n);
-		if ((n.zone !== "legendArea" || o.type === "legend" && !n.meta.faceDown && o.cost !== null) && !(Ac(e, a, t) > Hc(e, t)) && (!i || o.keywords.includes("quick"))) {
+		let o = N(n);
+		if ((n.zone !== "legendArea" || o.type === "legend" && !n.meta.faceDown && o.cost !== null) && !(Mc(e, a, t) > V(e, t)) && (!i || o.keywords.includes("quick"))) {
 			if (o.type === "gear") {
-				let n = wc(e, a, t);
+				let n = Ec(e, a, t);
 				if (n.length === 0) continue;
 				r.push({
 					cardId: a,
@@ -29019,71 +29033,71 @@ function Vp(e, t) {
 	}
 	return r;
 }
-function Hp(e, t) {
+function Up(e, t) {
 	let n = e.G.players[t];
 	return n ? n.zones.hand.filter((t) => {
 		let n = e.G.cardIndex[t];
-		return n && P(n).hasSellTag;
+		return n && N(n).hasSellTag;
 	}).map((e) => e) : [];
 }
-function Up(e, t) {
+function Wp(e, t) {
 	let n = e.G.players[t];
 	return n ? n.zones.legendArea.filter((t) => {
 		let n = e.G.cardIndex[t];
 		return n && n.meta.faceDown;
 	}).map((e) => e) : [];
 }
-function Wp(e, t, n) {
+function Gp(e, t, n) {
 	let r = e.G.players[t];
 	if (!r) return [];
 	let i = r.zones.field.filter((r) => {
 		let i = e.G.cardIndex[r];
 		if (!i || i.meta.spent) return !1;
-		let a = I(e, r);
-		if (a.includes("cantAttack") || n?.excludeUnitOnlyAttackers && a.includes("cantAttackRival") || a.includes("requiresProgramPlayedThisTurn") && !Gd(e, t)) return !1;
+		let a = F(e, r);
+		if (a.includes("cantAttack") || n?.excludeUnitOnlyAttackers && a.includes("cantAttackRival") || a.includes("requiresProgramPlayedThisTurn") && !Kd(e, t)) return !1;
 		if (i.meta.hasLag) return a.includes("adrenaline") || a.includes("canAttackRivalOnPlayedTurn") && n?.excludeUnitOnlyAttackers ? !0 : a.includes("canAttackOnPlayedTurnAgainstUnits") ? !n?.excludeUnitOnlyAttackers : a.includes("canAttackRivalOnPlayedTurn") ? n?.excludeUnitOnlyAttackers === !0 : !1;
-		let o = P(i);
+		let o = N(i);
 		return o.type === "unit" || o.keywords.includes("goSolo");
-	}).map((e) => e), a = new Set(Kd(e, t).map((e) => e));
+	}).map((e) => e), a = new Set(qd(e, t).map((e) => e));
 	return a.size === 0 ? i : i.filter((e) => a.has(e));
 }
-function Gp(e, t) {
-	let n = zs(e, t), r = e.G.players[n];
+function Kp(e, t) {
+	let n = Vs(e, t), r = e.G.players[n];
 	return r ? r.zones.field.filter((t) => {
 		let n = e.G.cardIndex[t];
-		return n && n.meta.spent && Us(n, "unit");
+		return n && n.meta.spent && Gs(n, "unit");
 	}).map((e) => e) : [];
-}
-function Kp(e, t) {
-	let n = e.G.players[t];
-	return n ? n.zones.field.filter((t) => t !== e.G.attackState?.defenderId && ec(e, t)).map((e) => e) : [];
 }
 function qp(e, t) {
-	let n = zs(e, t), r = e.G.players[n];
-	return r ? r.zones.field.filter((t) => ec(e, t)).map((e) => e) : [];
+	let n = e.G.players[t];
+	return n ? n.zones.field.filter((t) => t !== e.G.attackState?.defenderId && nc(e, t)).map((e) => e) : [];
 }
 function Jp(e, t) {
-	let n = zs(e, t), r = e.G.players[n];
-	return r ? r.zones.field.filter((t) => {
-		let n = e.G.cardIndex[t];
-		return !!(n && !n.meta.spent && Us(n, "unit"));
-	}).map((e) => e) : [];
+	let n = Vs(e, t), r = e.G.players[n];
+	return r ? r.zones.field.filter((t) => nc(e, t)).map((e) => e) : [];
 }
 function Yp(e, t) {
+	let n = Vs(e, t), r = e.G.players[n];
+	return r ? r.zones.field.filter((t) => {
+		let n = e.G.cardIndex[t];
+		return !!(n && !n.meta.spent && Gs(n, "unit"));
+	}).map((e) => e) : [];
+}
+function Xp(e, t) {
 	if (e.G.gamePhase !== "main" || e.G.turnMetadata.activePlayerId !== t) return [];
 	let n = e.G.players[t];
 	return n ? n.zones.legendArea.filter((n) => {
 		let r = e.G.cardIndex[n];
-		return !r || r.meta.faceDown ? !1 : P(r).keywords.includes("goSolo") && Hc(e, t) >= ff(e, n, t);
+		return !r || r.meta.faceDown ? !1 : N(r).keywords.includes("goSolo") && V(e, t) >= pf(e, n, t);
 	}).map((e) => e) : [];
 }
-function Xp(e) {
+function Zp(e) {
 	let t = e.G.turnMetadata.pendingChoice;
 	return !t || t.type !== "chooseCardToPlay" ? [] : t.payload.cardIds.map((e) => e);
 }
-function Zp(e, t) {
+function Qp(e, t) {
 	if (e.G.gamePhase !== "main") return [];
-	let n = B(e, t);
+	let n = z(e, t);
 	if (e.G.attackState && !n || !n && e.G.turnMetadata.activePlayerId !== t) return [];
 	let r = e.G.players[t];
 	if (!r) return [];
@@ -29091,23 +29105,23 @@ function Zp(e, t) {
 	for (let a of ["field", "legendArea"]) for (let o of r.zones[a]) {
 		let r = e.G.cardIndex[o];
 		if (!r) continue;
-		let s = P(r);
-		if (!Sf(r, s, a)) continue;
+		let s = N(r);
+		if (!Cf(r, s, a)) continue;
 		let c = s.abilities;
 		if (c) for (let r = 0; r < c.length; r++) {
 			let a = c[r];
-			a.trigger?.trigger === "activated" && (e.G.attackState && n && !(a.keyword === "quick" || s.keywords.includes("quick")) || wf(a, e, o, t) && i.push({
+			a.trigger?.trigger === "activated" && (e.G.attackState && n && !(a.keyword === "quick" || s.keywords.includes("quick")) || Tf(a, e, o, t) && i.push({
 				cardId: o,
 				abilityIndex: r,
 				effectHints: a.effects.map((e) => e.effect),
-				eddieCost: Kc(a, e, o, t),
+				eddieCost: qc(a, e, o, t),
 				spendsCard: (a.costs ?? []).some((e) => e.cost === "spend")
 			}));
 		}
 	}
 	return i;
 }
-function Qp(e, t) {
+function $p(e, t) {
 	let n = e.chooserId;
 	switch (e.type) {
 		case "chooseCardToPlay": {
@@ -29117,7 +29131,7 @@ function Qp(e, t) {
 				chooserId: n,
 				payload: {
 					cardIds: r,
-					cards: r.map((e) => kp(t, e)).filter((e) => e !== null),
+					cards: r.map((e) => Ap(t, e)).filter((e) => e !== null),
 					free: e.payload.free,
 					attachTo: e.payload.attachTo,
 					resolvedAttachToId: e.payload.resolvedAttachToId ?? void 0,
@@ -29126,7 +29140,7 @@ function Qp(e, t) {
 			};
 		}
 		case "chooseTarget": {
-			let r = e.payload.dieId ? e.payload.dieId : void 0, i = r ? t.G.gigDice[r] : void 0, a = $p(t, e.payload.sourceCardId), o = e.payload.type === "discardFromHand" ? (t.G.players[e.chooserId]?.zones.hand ?? []).map((e) => e) : void 0, s = e.payload.eligibleIds ?? o;
+			let r = e.payload.dieId ? e.payload.dieId : void 0, i = r ? t.G.gigDice[r] : void 0, a = em(t, e.payload.sourceCardId), o = e.payload.type === "discardFromHand" ? (t.G.players[e.chooserId]?.zones.hand ?? []).map((e) => e) : void 0, s = e.payload.eligibleIds ?? o;
 			return {
 				type: "chooseTarget",
 				chooserId: n,
@@ -29149,7 +29163,7 @@ function Qp(e, t) {
 					pairConstraint: e.payload.pairConstraint,
 					canDecline: e.payload.canDecline,
 					effect: e.payload.effect,
-					cards: (s ?? []).map((e) => kp(t, e)).filter((e) => e !== null),
+					cards: (s ?? []).map((e) => Ap(t, e)).filter((e) => e !== null),
 					source: a,
 					targetPurpose: e.payload.targetPurpose,
 					availableEddiesAfterCosts: e.payload.availableEddiesAfterCosts,
@@ -29162,7 +29176,7 @@ function Qp(e, t) {
 			chooserId: n,
 			payload: {
 				options: e.payload.options,
-				source: $p(t, e.payload.sourceCardId)
+				source: em(t, e.payload.sourceCardId)
 			}
 		};
 		case "chooseTrigger": return {
@@ -29171,7 +29185,7 @@ function Qp(e, t) {
 			payload: {
 				canPass: e.payload.canPass,
 				options: e.payload.options.map((e) => {
-					let n = t.G.turnMetadata.triggerQueue.find((t) => t.id === e.triggerId), r = t.G.cardIndex[e.sourceCardId], i = r && e.abilityIndex !== void 0 ? P(r).abilities?.[e.abilityIndex] : void 0, a = n?.event.type === "gigDieRolled" ? {
+					let n = t.G.turnMetadata.triggerQueue.find((t) => t.id === e.triggerId), r = t.G.cardIndex[e.sourceCardId], i = r && e.abilityIndex !== void 0 ? N(r).abilities?.[e.abilityIndex] : void 0, a = n?.event.type === "gigDieRolled" ? {
 						kind: "gigRoll",
 						dieId: n.event.dieId,
 						dieType: n.event.dieType,
@@ -29240,7 +29254,7 @@ function Qp(e, t) {
 							abilityIndex: e.payload.abilityIndex,
 							contextTargets: e.payload.contextTargets,
 							boundTargets: e.payload.boundTargets
-						}, a = n.target ? new Set(L(n.target, i)) : null;
+						}, a = n.target ? new Set(I(n.target, i)) : null;
 						return {
 							zone: n.zone,
 							min: n.min,
@@ -29250,12 +29264,12 @@ function Qp(e, t) {
 							order: n.order,
 							selectionLimitContext: n.selectionLimitContext,
 							eligibleCardIds: a ? r.filter((e) => a.has(e)) : [...r],
-							eligibilityLabel: em(n.target, i)
+							eligibilityLabel: tm(n.target, i)
 						};
 					}),
 					revealedCardIds: r,
-					revealedCards: r.map((e) => kp(t, e)).filter((e) => e !== null),
-					source: $p(t, e.payload.sourceCardId)
+					revealedCards: r.map((e) => Ap(t, e)).filter((e) => e !== null),
+					source: em(t, e.payload.sourceCardId)
 				}
 			};
 		}
@@ -29268,8 +29282,8 @@ function Qp(e, t) {
 					player: e.payload.player,
 					destinations: e.payload.destinations,
 					revealedCardIds: r,
-					revealedCards: r.map((e) => kp(t, e)).filter((e) => e !== null),
-					source: $p(t, e.payload.sourceCardId),
+					revealedCards: r.map((e) => Ap(t, e)).filter((e) => e !== null),
+					source: em(t, e.payload.sourceCardId),
 					drawIfDestination: e.payload.drawIfDestination ? {
 						destination: e.payload.drawIfDestination.destination,
 						player: e.payload.drawIfDestination.player,
@@ -29285,9 +29299,9 @@ function Qp(e, t) {
 				chooserId: n,
 				payload: {
 					cardIds: r,
-					cards: r.map((e) => kp(t, e)).filter((e) => e !== null),
+					cards: r.map((e) => Ap(t, e)).filter((e) => e !== null),
 					destination: e.payload.destination,
-					source: $p(t, e.payload.sourceCardId),
+					source: em(t, e.payload.sourceCardId),
 					resolvedAttachToId: e.payload.resolvedAttachToId ? e.payload.resolvedAttachToId : void 0,
 					canDecline: e.payload.canDecline
 				}
@@ -29298,7 +29312,7 @@ function Qp(e, t) {
 			chooserId: n,
 			payload: {
 				cardTypes: e.payload.cardTypes,
-				source: $p(t, e.payload.sourceCardId)
+				source: em(t, e.payload.sourceCardId)
 			}
 		};
 		case "gainGig": return {
@@ -29315,7 +29329,7 @@ function Qp(e, t) {
 				replacementCardId: e.payload.replacementCardId,
 				cost: e.payload.cost,
 				fightPlayerId: e.payload.continuation.kind === "fight" ? e.payload.continuation.fightPlayerId : e.chooserId,
-				source: $p(t, e.payload.replacementCardId)
+				source: em(t, e.payload.replacementCardId)
 			}
 		};
 		case "chooseSacrificialGear": return {
@@ -29324,9 +29338,9 @@ function Qp(e, t) {
 			payload: {
 				hostId: e.payload.hostId,
 				gearIds: e.payload.gearIds.map((e) => e),
-				gears: e.payload.gearIds.map((e) => kp(t, e)).filter((e) => e !== null),
+				gears: e.payload.gearIds.map((e) => Ap(t, e)).filter((e) => e !== null),
 				fightPlayerId: e.payload.continuation.kind === "fight" ? e.payload.continuation.fightPlayerId : e.chooserId,
-				source: $p(t, e.payload.hostId)
+				source: em(t, e.payload.hostId)
 			}
 		};
 		case "chooseFirstPlayer": return {
@@ -29336,11 +29350,11 @@ function Qp(e, t) {
 		};
 	}
 }
-function $p(e, t) {
+function em(e, t) {
 	if (!t) return;
 	let n = e.G.cardIndex[t];
 	if (!n) return;
-	let r = P(n);
+	let r = N(n);
 	return {
 		cardId: t,
 		controllerId: n.controllerId,
@@ -29351,35 +29365,35 @@ function $p(e, t) {
 		color: r.color
 	};
 }
-function em(e, t) {
+function tm(e, t) {
 	if (!e) return "any card";
 	let n = [];
 	if (e.cardTypes?.length && n.push(e.cardTypes.map((e) => `${e[0]?.toUpperCase() ?? ""}${e.slice(1)}`).join(" or ")), e.classifications?.length && n.push(e.classifications.join(" or ")), e.costEqualsGigValueOf) {
-		let r = L(e.costEqualsGigValueOf, t).map((e) => t.state.G.gigDice[e]?.faceValue).filter((e) => typeof e == "number"), i = [...new Set(r)].sort((e, t) => e - t), a = e.costEqualsGigValueOf.selector === "gig" ? e.costEqualsGigValueOf.controller === "rival" ? "rival" : "friendly" : "selected";
+		let r = I(e.costEqualsGigValueOf, t).map((e) => t.state.G.gigDice[e]?.faceValue).filter((e) => typeof e == "number"), i = [...new Set(r)].sort((e, t) => e - t), a = e.costEqualsGigValueOf.selector === "gig" ? e.costEqualsGigValueOf.controller === "rival" ? "rival" : "friendly" : "selected";
 		n.push(`cost matching a ${a} Gig value${i.length ? ` (${i.join(", ")})` : ""}`);
 	} else e.minCost !== void 0 && e.maxCost !== void 0 ? n.push(`cost ${e.minCost}-${e.maxCost}`) : e.maxCost === void 0 ? e.minCost !== void 0 && n.push(`cost ${e.minCost} or more`) : n.push(`cost ${e.maxCost} or less`);
 	return e.minPower !== void 0 && e.maxPower !== void 0 ? n.push(`power ${e.minPower}-${e.maxPower}`) : e.maxPower === void 0 ? e.minPower !== void 0 && n.push(`power ${e.minPower} or more`) : n.push(`power ${e.maxPower} or less`), n.length ? n.join(" with ") : "eligible card";
 }
 // upstream/submodules/cyberpunk/packages/engine/src/flow/combat-progression.ts
-function tm(e) {
+function nm(e) {
 	let { attackState: t, turnMetadata: n } = e.G;
 	if (e.G.gameEnded || !t || n.pendingChoice || n.currentTrigger || n.triggerQueue.length > 0) return null;
-	let r = t.step === "react" ? t.rivalId : n.activePlayerId, i = Lp(e, r);
+	let r = t.step === "react" ? t.rivalId : n.activePlayerId, i = Rp(e, r);
 	return !i.availableMoves.some((e) => e.moveId === "resolveAttack") || t.step === "react" && (e.G.players[r].combatPriority === "hold" || i.availableMoves.some(({ moveId: e }) => e === "callLegend" || e === "useBlocker" || e === "playCard" || e === "activateAbility")) ? null : r;
 }
-// ../vault/vendor/cyberpunk-engine/node_modules/mutative/dist/mutative.esm.mjs
+// vendor/cyberpunk-engine/node_modules/mutative/dist/mutative.esm.mjs
 var X = {
 	Remove: "remove",
 	Replace: "replace",
 	Add: "add"
-}, nm = Symbol.for("__MUTATIVE_PROXY_DRAFT__"), rm = Symbol("__MUTATIVE_RAW_RETURN_SYMBOL__"), im = Symbol.iterator, am = {
+}, rm = Symbol.for("__MUTATIVE_PROXY_DRAFT__"), im = Symbol("__MUTATIVE_RAW_RETURN_SYMBOL__"), am = Symbol.iterator, om = {
 	mutable: "mutable",
 	immutable: "immutable"
-}, om = {};
-function sm(e, t) {
+}, sm = {};
+function cm(e, t) {
 	return e instanceof Map ? e.has(t) : Object.prototype.hasOwnProperty.call(e, t);
 }
-function cm(e, t) {
+function lm(e, t) {
 	if (t in e) {
 		let n = Reflect.getPrototypeOf(e);
 		for (; n;) {
@@ -29389,80 +29403,80 @@ function cm(e, t) {
 		}
 	}
 }
-function lm(e) {
+function um(e) {
 	return Object.getPrototypeOf(e) === Set.prototype;
 }
-function um(e) {
+function dm(e) {
 	return Object.getPrototypeOf(e) === Map.prototype;
 }
-function dm(e) {
+function fm(e) {
 	return e.copy ?? e.original;
 }
-function fm(e) {
+function pm(e) {
 	return !!Z(e);
 }
 function Z(e) {
-	return typeof e == "object" ? e?.[nm] : null;
+	return typeof e == "object" ? e?.[rm] : null;
 }
-function pm(e) {
+function mm(e) {
 	let t = Z(e);
 	return t ? t.copy ?? t.original : e;
 }
-function mm(e, t) {
+function hm(e, t) {
 	if (!e || typeof e != "object") return !1;
 	let n;
-	return Object.getPrototypeOf(e) === Object.prototype || Array.isArray(e) || e instanceof Map || e instanceof Set || !!t?.mark && ((n = t.mark(e, am)) === am.immutable || typeof n == "function");
+	return Object.getPrototypeOf(e) === Object.prototype || Array.isArray(e) || e instanceof Map || e instanceof Set || !!t?.mark && ((n = t.mark(e, om)) === om.immutable || typeof n == "function");
 }
-function hm(e, t = []) {
+function gm(e, t = []) {
 	if (Object.hasOwnProperty.call(e, "key")) {
-		let n = e.parent.copy, r = Z(_m(n, e.key));
+		let n = e.parent.copy, r = Z(vm(n, e.key));
 		if (r !== null && r?.original !== e.original) return null;
 		let i = e.parent.type === 3, a = i ? Array.from(e.parent.setMap.keys()).indexOf(e.key) : e.key;
-		if (!(i && n.size > a || sm(n, a))) return null;
+		if (!(i && n.size > a || cm(n, a))) return null;
 		t.push(a);
 	}
-	if (e.parent) return hm(e.parent, t);
+	if (e.parent) return gm(e.parent, t);
 	t.reverse();
 	try {
-		Cm(e.copy, t);
+		wm(e.copy, t);
 	} catch {
 		return null;
 	}
 	return t;
 }
-function gm(e) {
+function _m(e) {
 	return Array.isArray(e) ? 1 : e instanceof Map ? 2 : e instanceof Set ? 3 : 0;
 }
-function _m(e, t) {
-	return gm(e) === 2 ? e.get(t) : e[t];
+function vm(e, t) {
+	return _m(e) === 2 ? e.get(t) : e[t];
 }
-function vm(e, t, n) {
-	gm(e) === 2 ? e.set(t, n) : e[t] = n;
-}
-function ym(e, t) {
-	let n = Z(e);
-	return (n ? dm(n) : e)[t];
+function ym(e, t, n) {
+	_m(e) === 2 ? e.set(t, n) : e[t] = n;
 }
 function bm(e, t) {
+	let n = Z(e);
+	return (n ? fm(n) : e)[t];
+}
+function xm(e, t) {
 	return e === t ? e !== 0 || 1 / e == 1 / t : e !== e && t !== t;
 }
-function xm(e) {
+function Sm(e) {
 	if (e) for (; e.finalities.revoke.length > 0;) e.finalities.revoke.pop()();
 }
-function Sm(e, t) {
+function Cm(e, t) {
 	return t ? e : [""].concat(e).map((e) => {
 		let t = `${e}`;
 		return t.indexOf("/") === -1 && t.indexOf("~") === -1 ? t : t.replace(/~/g, "~0").replace(/\//g, "~1");
 	}).join("/");
 }
-function Cm(e, t) {
+function wm(e, t) {
 	for (let n = 0; n < t.length - 1; n += 1) {
 		let r = t[n];
-		if (e = _m(gm(e) === 3 ? Array.from(e) : e, r), typeof e != "object") throw Error(`Cannot resolve patch at '${t.join("/")}'.`);
+		if (e = vm(_m(e) === 3 ? Array.from(e) : e, r), typeof e != "object") throw Error(`Cannot resolve patch at '${t.join("/")}'.`);
 	}
 	return e;
 }
-function wm(e) {
+function Tm(e) {
 	let t = Object.create(Object.getPrototypeOf(e));
 	return Reflect.ownKeys(e).forEach((n) => {
 		let r = Reflect.getOwnPropertyDescriptor(e, n);
@@ -29474,26 +29488,26 @@ function wm(e) {
 		}), Reflect.defineProperty(t, n, r));
 	}), t;
 }
-var Tm = Object.prototype.propertyIsEnumerable;
-function Em(e, t) {
+var Em = Object.prototype.propertyIsEnumerable;
+function Dm(e, t) {
 	let n;
 	if (Array.isArray(e)) return Array.prototype.concat.call(e);
 	if (e instanceof Set) {
-		if (!lm(e)) {
+		if (!um(e)) {
 			let t = Object.getPrototypeOf(e).constructor;
 			return new t(e.values());
 		}
 		return Set.prototype.difference ? Set.prototype.difference.call(e, /* @__PURE__ */ new Set()) : new Set(e.values());
 	}
 	if (e instanceof Map) {
-		if (!um(e)) {
+		if (!dm(e)) {
 			let t = Object.getPrototypeOf(e).constructor;
 			return new t(e);
 		}
 		return new Map(e);
 	}
-	if (t?.mark && (n = t.mark(e, am), n !== void 0) && n !== am.mutable) {
-		if (n === am.immutable) return wm(e);
+	if (t?.mark && (n = t.mark(e, om), n !== void 0) && n !== om.mutable) {
+		if (n === om.immutable) return Tm(e);
 		if (typeof n == "function") {
 			if (t.enablePatches || t.enableAutoFreeze) throw Error("You can't use mark and patches or auto freeze together.");
 			return n();
@@ -29505,47 +29519,47 @@ function Em(e, t) {
 		return Object.keys(e).forEach((n) => {
 			t[n] = e[n];
 		}), Object.getOwnPropertySymbols(e).forEach((n) => {
-			Tm.call(e, n) && (t[n] = e[n]);
+			Em.call(e, n) && (t[n] = e[n]);
 		}), t;
 	}
 	throw Error("Please check mark() to ensure that it is a stable marker draftable function.");
 }
 function Q(e) {
-	e.copy ||= Em(e.original, e.options);
+	e.copy ||= Dm(e.original, e.options);
 }
-function Dm(e) {
-	if (!mm(e)) return pm(e);
-	if (Array.isArray(e)) return e.map(Dm);
+function Om(e) {
+	if (!hm(e)) return mm(e);
+	if (Array.isArray(e)) return e.map(Om);
 	if (e instanceof Map) {
-		let t = Array.from(e.entries()).map(([e, t]) => [e, Dm(t)]);
-		if (!um(e)) {
+		let t = Array.from(e.entries()).map(([e, t]) => [e, Om(t)]);
+		if (!dm(e)) {
 			let n = Object.getPrototypeOf(e).constructor;
 			return new n(t);
 		}
 		return new Map(t);
 	}
 	if (e instanceof Set) {
-		let t = Array.from(e).map(Dm);
-		if (!lm(e)) {
+		let t = Array.from(e).map(Om);
+		if (!um(e)) {
 			let n = Object.getPrototypeOf(e).constructor;
 			return new n(t);
 		}
 		return new Set(t);
 	}
 	let t = Object.create(Object.getPrototypeOf(e));
-	for (let n in e) t[n] = Dm(e[n]);
+	for (let n in e) t[n] = Om(e[n]);
 	return t;
 }
-function Om(e) {
-	return fm(e) ? Dm(e) : e;
-}
 function km(e) {
-	e.assignedMap = e.assignedMap ?? /* @__PURE__ */ new Map(), e.operated || (e.operated = !0, e.parent && km(e.parent));
+	return pm(e) ? Om(e) : e;
 }
-function Am() {
+function Am(e) {
+	e.assignedMap = e.assignedMap ?? /* @__PURE__ */ new Map(), e.operated || (e.operated = !0, e.parent && Am(e.parent));
+}
+function jm() {
 	throw Error("Cannot modify frozen object");
 }
-function jm(e, t, n, r, i) {
+function Mm(e, t, n, r, i) {
 	{
 		n ??= /* @__PURE__ */ new WeakMap(), r ??= [], i ??= [];
 		let a = n.has(e) ? n.get(e) : e;
@@ -29559,32 +29573,32 @@ function jm(e, t, n, r, i) {
 			r.push(a), i.push(t);
 		} else r.push(a);
 	}
-	if (Object.isFrozen(e) || fm(e)) r.pop(), i.pop();
+	if (Object.isFrozen(e) || pm(e)) r.pop(), i.pop();
 	else {
-		switch (gm(e)) {
+		switch (_m(e)) {
 			case 2:
-				for (let [t, a] of e) jm(t, t, n, r, i), jm(a, t, n, r, i);
-				e.set = e.clear = e.delete = Am;
+				for (let [t, a] of e) Mm(t, t, n, r, i), Mm(a, t, n, r, i);
+				e.set = e.clear = e.delete = jm;
 				break;
 			case 3:
-				for (let t of e) jm(t, t, n, r, i);
-				e.add = e.clear = e.delete = Am;
+				for (let t of e) Mm(t, t, n, r, i);
+				e.add = e.clear = e.delete = jm;
 				break;
 			case 1:
 				Object.freeze(e);
 				let t = 0;
-				for (let a of e) jm(a, t, n, r, i), t += 1;
+				for (let a of e) Mm(a, t, n, r, i), t += 1;
 				break;
 			default: Object.freeze(e), Object.keys(e).forEach((t) => {
 				let a = e[t];
-				jm(a, t, n, r, i);
+				Mm(a, t, n, r, i);
 			});
 		}
 		r.pop(), i.pop();
 	}
 }
-function Mm(e, t) {
-	let n = gm(e);
+function Nm(e, t) {
+	let n = _m(e);
 	if (n === 0) Reflect.ownKeys(e).forEach((n) => {
 		t(n, e[n], e);
 	});
@@ -29593,16 +29607,16 @@ function Mm(e, t) {
 		for (let r of e) t(n, r, e), n += 1;
 	} else e.forEach((n, r) => t(r, n, e));
 }
-function Nm(e, t, n) {
-	if (fm(e) || !mm(e, n) || t.has(e) || Object.isFrozen(e)) return;
+function Pm(e, t, n) {
+	if (pm(e) || !hm(e, n) || t.has(e) || Object.isFrozen(e)) return;
 	let r = e instanceof Set, i = r ? /* @__PURE__ */ new Map() : void 0;
-	if (t.add(e), Mm(e, (a, o) => {
-		if (fm(o)) {
+	if (t.add(e), Nm(e, (a, o) => {
+		if (pm(o)) {
 			let t = Z(o);
 			Q(t);
 			let n = t.assignedMap?.size || t.operated ? t.copy : t.original;
-			vm(r ? i : e, a, n);
-		} else Nm(o, t, n);
+			ym(r ? i : e, a, n);
+		} else Pm(o, t, n);
 	}), i) {
 		let t = e, n = Array.from(t);
 		t.clear(), n.forEach((e) => {
@@ -29610,70 +29624,70 @@ function Nm(e, t, n) {
 		});
 	}
 }
-function Pm(e, t) {
+function Fm(e, t) {
 	let n = e.type === 3 ? e.setMap : e.copy;
-	e.finalities.revoke.length > 1 && e.assignedMap.get(t) && n && Nm(_m(n, t), e.finalities.handledSet, e.options);
+	e.finalities.revoke.length > 1 && e.assignedMap.get(t) && n && Pm(vm(n, t), e.finalities.handledSet, e.options);
 }
-function Fm(e) {
+function Im(e) {
 	e.type === 3 && e.copy && (e.copy.clear(), e.setMap.forEach((t) => {
-		e.copy.add(pm(t));
+		e.copy.add(mm(t));
 	}));
 }
-function Im(e, t, n, r) {
+function Lm(e, t, n, r) {
 	if (e.operated && e.assignedMap && e.assignedMap.size > 0 && !e.finalized) {
 		if (n && r) {
-			let i = hm(e);
+			let i = gm(e);
 			i && t(e, i, n, r);
 		}
 		e.finalized = !0;
 	}
 }
-function Lm(e, t, n, r) {
+function Rm(e, t, n, r) {
 	let i = Z(n);
 	i && (i.callbacks ||= [], i.callbacks.push((a, o) => {
 		let s = e.type === 3 ? e.setMap : e.copy;
-		if (bm(_m(s, t), n)) {
+		if (xm(vm(s, t), n)) {
 			let n = i.original;
-			i.copy && (n = i.copy), Fm(e), Im(e, r, a, o), e.options.enableAutoFreeze && (e.options.updatedValues = e.options.updatedValues ?? /* @__PURE__ */ new WeakMap(), e.options.updatedValues.set(n, i.original)), vm(s, t, n);
+			i.copy && (n = i.copy), Im(e), Lm(e, r, a, o), e.options.enableAutoFreeze && (e.options.updatedValues = e.options.updatedValues ?? /* @__PURE__ */ new WeakMap(), e.options.updatedValues.set(n, i.original)), ym(s, t, n);
 		}
-	}), e.options.enableAutoFreeze && i.finalities !== e.finalities && (e.options.enableAutoFreeze = !1)), mm(n, e.options) && e.finalities.draft.push(() => {
-		bm(_m(e.type === 3 ? e.setMap : e.copy, t), n) && Pm(e, t);
+	}), e.options.enableAutoFreeze && i.finalities !== e.finalities && (e.options.enableAutoFreeze = !1)), hm(n, e.options) && e.finalities.draft.push(() => {
+		xm(vm(e.type === 3 ? e.setMap : e.copy, t), n) && Fm(e, t);
 	});
 }
-function Rm(e, t, n, r, i) {
+function zm(e, t, n, r, i) {
 	let { original: a, assignedMap: o, options: s } = e, c = e.copy;
 	c.length < a.length && ([a, c] = [c, a], [n, r] = [r, n]);
 	for (let e = 0; e < a.length; e += 1) if (o.get(e.toString()) && c[e] !== a[e]) {
-		let o = Sm(t.concat([e]), i);
+		let o = Cm(t.concat([e]), i);
 		n.push({
 			op: X.Replace,
 			path: o,
-			value: Om(c[e])
+			value: km(c[e])
 		}), r.push({
 			op: X.Replace,
 			path: o,
-			value: Om(a[e])
+			value: km(a[e])
 		});
 	}
 	for (let e = a.length; e < c.length; e += 1) {
-		let r = Sm(t.concat([e]), i);
+		let r = Cm(t.concat([e]), i);
 		n.push({
 			op: X.Add,
 			path: r,
-			value: Om(c[e])
+			value: km(c[e])
 		});
 	}
 	if (a.length < c.length) {
 		let { arrayLengthAssignment: e = !0 } = s.enablePatches;
 		if (e) {
-			let e = Sm(t.concat(["length"]), i);
+			let e = Cm(t.concat(["length"]), i);
 			r.push({
 				op: X.Replace,
 				path: e,
 				value: a.length
 			});
 		} else for (let e = c.length; a.length < e; --e) {
-			let n = Sm(t.concat([e - 1]), i);
+			let n = Cm(t.concat([e - 1]), i);
 			r.push({
 				op: X.Remove,
 				path: n
@@ -29681,11 +29695,11 @@ function Rm(e, t, n, r, i) {
 		}
 	}
 }
-function zm({ original: e, copy: t, assignedMap: n }, r, i, a, o) {
+function Bm({ original: e, copy: t, assignedMap: n }, r, i, a, o) {
 	n.forEach((n, s) => {
-		let c = _m(e, s), l = Om(_m(t, s)), u = n ? sm(e, s) ? X.Replace : X.Add : X.Remove;
-		if (bm(c, l) && u === X.Replace) return;
-		let d = Sm(r.concat(s), o);
+		let c = vm(e, s), l = km(vm(t, s)), u = n ? cm(e, s) ? X.Replace : X.Add : X.Remove;
+		if (xm(c, l) && u === X.Replace) return;
+		let d = Cm(r.concat(s), o);
 		i.push(u === X.Remove ? {
 			op: u,
 			path: d
@@ -29707,11 +29721,11 @@ function zm({ original: e, copy: t, assignedMap: n }, r, i, a, o) {
 		});
 	});
 }
-function Bm({ original: e, copy: t }, n, r, i, a) {
+function Vm({ original: e, copy: t }, n, r, i, a) {
 	let o = 0;
 	e.forEach((e) => {
 		if (!t.has(e)) {
-			let t = Sm(n.concat([o]), a);
+			let t = Cm(n.concat([o]), a);
 			r.push({
 				op: X.Remove,
 				path: t,
@@ -29725,7 +29739,7 @@ function Bm({ original: e, copy: t }, n, r, i, a) {
 		o += 1;
 	}), o = 0, t.forEach((t) => {
 		if (!e.has(t)) {
-			let e = Sm(n.concat([o]), a);
+			let e = Cm(n.concat([o]), a);
 			r.push({
 				op: X.Add,
 				path: e,
@@ -29739,51 +29753,51 @@ function Bm({ original: e, copy: t }, n, r, i, a) {
 		o += 1;
 	});
 }
-function Vm(e, t, n, r) {
+function Hm(e, t, n, r) {
 	let { pathAsArray: i = !0 } = e.options.enablePatches;
 	switch (e.type) {
 		case 0:
-		case 2: return zm(e, t, n, r, i);
-		case 1: return Rm(e, t, n, r, i);
-		case 3: return Bm(e, t, n, r, i);
+		case 2: return Bm(e, t, n, r, i);
+		case 1: return zm(e, t, n, r, i);
+		case 3: return Vm(e, t, n, r, i);
 	}
 }
-var Hm = (e, t, n = !1) => {
-	if (typeof e == "object" && e && (!mm(e, t) || n)) throw Error("Strict mode: Mutable data cannot be accessed directly, please use 'unsafe(callback)' wrap.");
-}, Um = {
+var Um = (e, t, n = !1) => {
+	if (typeof e == "object" && e && (!hm(e, t) || n)) throw Error("Strict mode: Mutable data cannot be accessed directly, please use 'unsafe(callback)' wrap.");
+}, Wm = {
 	get size() {
-		return dm(Z(this)).size;
+		return fm(Z(this)).size;
 	},
 	has(e) {
-		return dm(Z(this)).has(e);
+		return fm(Z(this)).has(e);
 	},
 	set(e, t) {
-		let n = Z(this), r = dm(n);
-		return r.has(e) && bm(r.get(e), t) || (Q(n), km(n), n.assignedMap.set(e, !0), n.copy.set(e, t), Lm(n, e, t, Vm)), this;
+		let n = Z(this), r = fm(n);
+		return r.has(e) && xm(r.get(e), t) || (Q(n), Am(n), n.assignedMap.set(e, !0), n.copy.set(e, t), Rm(n, e, t, Hm)), this;
 	},
 	delete(e) {
 		if (!this.has(e)) return !1;
 		let t = Z(this);
-		return Q(t), km(t), t.original.has(e) ? t.assignedMap.set(e, !1) : t.assignedMap.delete(e), t.copy.delete(e), !0;
+		return Q(t), Am(t), t.original.has(e) ? t.assignedMap.set(e, !1) : t.assignedMap.delete(e), t.copy.delete(e), !0;
 	},
 	clear() {
 		let e = Z(this);
 		if (this.size) {
-			Q(e), km(e), e.assignedMap = /* @__PURE__ */ new Map();
+			Q(e), Am(e), e.assignedMap = /* @__PURE__ */ new Map();
 			for (let [t] of e.original) e.assignedMap.set(t, !1);
 			e.copy.clear();
 		}
 	},
 	forEach(e, t) {
-		dm(Z(this)).forEach((n, r) => {
+		fm(Z(this)).forEach((n, r) => {
 			e.call(t, this.get(r), r, this);
 		});
 	},
 	get(e) {
 		var t;
-		let n = Z(this), r = dm(n).get(e), i = (t = n.options).mark?.call(t, r, am) === am.mutable;
-		if (n.options.strict && Hm(r, n.options, i), i || n.finalized || !mm(r, n.options) || r !== n.original.get(e)) return r;
-		let a = om.createDraft({
+		let n = Z(this), r = fm(n).get(e), i = (t = n.options).mark?.call(t, r, om) === om.mutable;
+		if (n.options.strict && Um(r, n.options, i), i || n.finalized || !hm(r, n.options) || r !== n.original.get(e)) return r;
+		let a = sm.createDraft({
 			original: r,
 			parentDraft: n,
 			key: e,
@@ -29793,12 +29807,12 @@ var Hm = (e, t, n = !1) => {
 		return Q(n), n.copy.set(e, a), a;
 	},
 	keys() {
-		return dm(Z(this)).keys();
+		return fm(Z(this)).keys();
 	},
 	values() {
 		let e = this.keys();
 		return {
-			[im]: () => this.values(),
+			[am]: () => this.values(),
 			next: () => {
 				let t = e.next();
 				return t.done ? t : {
@@ -29811,7 +29825,7 @@ var Hm = (e, t, n = !1) => {
 	entries() {
 		let e = this.keys();
 		return {
-			[im]: () => this.entries(),
+			[am]: () => this.entries(),
 			next: () => {
 				let t = e.next();
 				if (t.done) return t;
@@ -29823,16 +29837,16 @@ var Hm = (e, t, n = !1) => {
 			}
 		};
 	},
-	[im]() {
+	[am]() {
 		return this.entries();
 	}
-}, Wm = Reflect.ownKeys(Um), Gm = (e, t, { isValuesIterator: n }) => () => {
+}, Gm = Reflect.ownKeys(Wm), Km = (e, t, { isValuesIterator: n }) => () => {
 	var r;
 	let i = t.next();
 	if (i.done) return i;
-	let a = i.value, o = e.setMap.get(a), s = Z(o), c = (r = e.options).mark?.call(r, o, am) === am.mutable;
-	if (e.options.strict && Hm(a, e.options, c), !c && !s && mm(a, e.options) && !e.finalized && e.original.has(a)) {
-		let t = om.createDraft({
+	let a = i.value, o = e.setMap.get(a), s = Z(o), c = (r = e.options).mark?.call(r, o, om) === om.mutable;
+	if (e.options.strict && Um(a, e.options, c), !c && !s && hm(a, e.options) && !e.finalized && e.original.has(a)) {
+		let t = sm.createDraft({
 			original: a,
 			parentDraft: e,
 			key: a,
@@ -29845,7 +29859,7 @@ var Hm = (e, t, n = !1) => {
 		done: !1,
 		value: n ? o : [o, o]
 	};
-}, Km = {
+}, qm = {
 	get size() {
 		return Z(this).setMap.size;
 	},
@@ -29858,19 +29872,19 @@ var Hm = (e, t, n = !1) => {
 	},
 	add(e) {
 		let t = Z(this);
-		return this.has(e) || (Q(t), km(t), t.assignedMap.set(e, !0), t.setMap.set(e, e), Lm(t, e, e, Vm)), this;
+		return this.has(e) || (Q(t), Am(t), t.assignedMap.set(e, !0), t.setMap.set(e, e), Rm(t, e, e, Hm)), this;
 	},
 	delete(e) {
 		if (!this.has(e)) return !1;
 		let t = Z(this);
-		Q(t), km(t);
+		Q(t), Am(t);
 		let n = Z(e);
 		return n && t.setMap.has(n.original) ? (t.assignedMap.set(n.original, !1), t.setMap.delete(n.original)) : (!n && t.setMap.has(e) ? t.assignedMap.set(e, !1) : t.assignedMap.delete(e), t.setMap.delete(e));
 	},
 	clear() {
 		if (!this.size) return;
 		let e = Z(this);
-		Q(e), km(e);
+		Q(e), Am(e);
 		for (let t of e.original) e.assignedMap.set(t, !1);
 		e.setMap.clear();
 	},
@@ -29880,7 +29894,7 @@ var Hm = (e, t, n = !1) => {
 		let t = e.setMap.keys();
 		return {
 			[Symbol.iterator]: () => this.values(),
-			next: Gm(e, t, { isValuesIterator: !0 })
+			next: Km(e, t, { isValuesIterator: !0 })
 		};
 	},
 	entries() {
@@ -29889,13 +29903,13 @@ var Hm = (e, t, n = !1) => {
 		let t = e.setMap.keys();
 		return {
 			[Symbol.iterator]: () => this.entries(),
-			next: Gm(e, t, { isValuesIterator: !1 })
+			next: Km(e, t, { isValuesIterator: !1 })
 		};
 	},
 	keys() {
 		return this.values();
 	},
-	[im]() {
+	[am]() {
 		return this.values();
 	},
 	forEach(e, t) {
@@ -29903,7 +29917,7 @@ var Hm = (e, t, n = !1) => {
 		for (; !r.done;) e.call(t, r.value, r.value, this), r = n.next();
 	}
 };
-Set.prototype.difference && Object.assign(Km, {
+Set.prototype.difference && Object.assign(qm, {
 	intersection(e) {
 		return Set.prototype.intersection.call(new Set(this.values()), e);
 	},
@@ -29926,27 +29940,27 @@ Set.prototype.difference && Object.assign(Km, {
 		return Set.prototype.isDisjointFrom.call(new Set(this.values()), e);
 	}
 });
-var qm = Reflect.ownKeys(Km), Jm = {
+var Jm = Reflect.ownKeys(qm), Ym = {
 	get(e, t, n) {
 		let r = e.copy?.[t];
 		if (r && e.finalities.draftsCache.has(r)) return r;
-		if (t === nm) return e;
+		if (t === rm) return e;
 		let i;
 		if (e.options.mark) {
 			let r = t === "size" && (e.original instanceof Map || e.original instanceof Set) ? Reflect.get(e.original, t) : Reflect.get(e.original, t, n);
-			if (i = e.options.mark(r, am), i === am.mutable) return e.options.strict && Hm(r, e.options, !0), r;
+			if (i = e.options.mark(r, om), i === om.mutable) return e.options.strict && Um(r, e.options, !0), r;
 		}
-		let a = dm(e);
-		if (a instanceof Map && Wm.includes(t)) return t === "size" ? Object.getOwnPropertyDescriptor(Um, "size").get.call(e.proxy) : Um[t].bind(e.proxy);
-		if (a instanceof Set && qm.includes(t)) return t === "size" ? Object.getOwnPropertyDescriptor(Km, "size").get.call(e.proxy) : Km[t].bind(e.proxy);
-		if (!sm(a, t)) {
-			let n = cm(a, t);
+		let a = fm(e);
+		if (a instanceof Map && Gm.includes(t)) return t === "size" ? Object.getOwnPropertyDescriptor(Wm, "size").get.call(e.proxy) : Wm[t].bind(e.proxy);
+		if (a instanceof Set && Jm.includes(t)) return t === "size" ? Object.getOwnPropertyDescriptor(qm, "size").get.call(e.proxy) : qm[t].bind(e.proxy);
+		if (!cm(a, t)) {
+			let n = lm(a, t);
 			return n ? "value" in n ? n.value : n.get?.call(e.proxy) : void 0;
 		}
 		let o = a[t];
-		if (e.options.strict && Hm(o, e.options), e.finalized || !mm(o, e.options)) return o;
-		if (o === ym(e.original, t)) {
-			if (Q(e), e.copy[t] = Ym({
+		if (e.options.strict && Um(o, e.options), e.finalized || !hm(o, e.options)) return o;
+		if (o === bm(e.original, t)) {
+			if (Q(e), e.copy[t] = Xm({
 				original: e.original[t],
 				parentDraft: e,
 				key: e.type === 1 ? Number(t) : t,
@@ -29954,29 +29968,29 @@ var qm = Reflect.ownKeys(Km), Jm = {
 				options: e.options
 			}), typeof i == "function") {
 				let n = Z(e.copy[t]);
-				return Q(n), km(n), n.copy;
+				return Q(n), Am(n), n.copy;
 			}
 			return e.copy[t];
 		}
-		return fm(o) && e.finalities.draftsCache.add(o), o;
+		return pm(o) && e.finalities.draftsCache.add(o), o;
 	},
 	set(e, t, n) {
 		if (e.type === 3 || e.type === 2) throw Error("Map/Set draft does not support any property assignment.");
 		let r;
 		if (e.type === 1 && t !== "length" && !(Number.isInteger(r = Number(t)) && r >= 0 && (t === 0 || r === 0 || String(r) === String(t)))) throw Error("Only supports setting array indices and the 'length' property.");
-		let i = cm(dm(e), t);
+		let i = lm(fm(e), t);
 		if (i?.set) return i.set.call(e.proxy, n), !0;
-		let a = ym(dm(e), t), o = Z(a);
-		return o && bm(o.original, n) ? (e.copy[t] = n, e.assignedMap = e.assignedMap ?? /* @__PURE__ */ new Map(), e.assignedMap.set(t, !1), !0) : (bm(n, a) && (n !== void 0 || sm(e.original, t)) || (Q(e), km(e), sm(e.original, t) && bm(n, e.original[t]) ? e.assignedMap.delete(t) : e.assignedMap.set(t, !0), e.copy[t] = n, Lm(e, t, n, Vm)), !0);
+		let a = bm(fm(e), t), o = Z(a);
+		return o && xm(o.original, n) ? (e.copy[t] = n, e.assignedMap = e.assignedMap ?? /* @__PURE__ */ new Map(), e.assignedMap.set(t, !1), !0) : (xm(n, a) && (n !== void 0 || cm(e.original, t)) || (Q(e), Am(e), cm(e.original, t) && xm(n, e.original[t]) ? e.assignedMap.delete(t) : e.assignedMap.set(t, !0), e.copy[t] = n, Rm(e, t, n, Hm)), !0);
 	},
 	has(e, t) {
-		return t in dm(e);
+		return t in fm(e);
 	},
 	ownKeys(e) {
-		return Reflect.ownKeys(dm(e));
+		return Reflect.ownKeys(fm(e));
 	},
 	getOwnPropertyDescriptor(e, t) {
-		let n = dm(e), r = Reflect.getOwnPropertyDescriptor(n, t);
+		let n = fm(e), r = Reflect.getOwnPropertyDescriptor(n, t);
 		return r && {
 			writable: !0,
 			configurable: e.type !== 1 || t !== "length",
@@ -29994,11 +30008,11 @@ var qm = Reflect.ownKeys(Km), Jm = {
 		throw Error("Cannot call 'defineProperty()' on drafts");
 	},
 	deleteProperty(e, t) {
-		return e.type === 1 ? Jm.set.call(this, e, t, void 0, e.proxy) : (ym(e.original, t) !== void 0 || t in e.original ? (Q(e), km(e), e.assignedMap.set(t, !1)) : (e.assignedMap = e.assignedMap ?? /* @__PURE__ */ new Map(), e.assignedMap.delete(t)), e.copy && delete e.copy[t], !0);
+		return e.type === 1 ? Ym.set.call(this, e, t, void 0, e.proxy) : (bm(e.original, t) !== void 0 || t in e.original ? (Q(e), Am(e), e.assignedMap.set(t, !1)) : (e.assignedMap = e.assignedMap ?? /* @__PURE__ */ new Map(), e.assignedMap.delete(t)), e.copy && delete e.copy[t], !0);
 	}
 };
-function Ym(e) {
-	let { original: t, parentDraft: n, key: r, finalities: i, options: a } = e, o = gm(t), s = {
+function Xm(e) {
+	let { original: t, parentDraft: n, key: r, finalities: i, options: a } = e, o = _m(t), s = {
 		type: o,
 		finalized: !1,
 		parent: n,
@@ -30010,15 +30024,15 @@ function Ym(e) {
 		setMap: o === 3 ? new Map(t.entries()) : void 0
 	};
 	(r || "key" in e) && (s.key = r);
-	let { proxy: c, revoke: l } = Proxy.revocable(o === 1 ? Object.assign([], s) : s, Jm);
+	let { proxy: c, revoke: l } = Proxy.revocable(o === 1 ? Object.assign([], s) : s, Ym);
 	if (i.revoke.push(l), s.proxy = c, n) {
 		let e = n;
 		e.finalities.draft.push((t, n) => {
 			var i;
-			let a = Z(c), o = e.type === 3 ? e.setMap : e.copy, s = _m(o, r), l = Z(s);
+			let a = Z(c), o = e.type === 3 ? e.setMap : e.copy, s = vm(o, r), l = Z(s);
 			if (l) {
 				let i = l.original;
-				l.operated && (i = pm(s)), Fm(l), Im(l, Vm, t, n), e.options.enableAutoFreeze && (e.options.updatedValues = e.options.updatedValues ?? /* @__PURE__ */ new WeakMap(), e.options.updatedValues.set(i, l.original)), vm(o, r, i);
+				l.operated && (i = mm(s)), Im(l), Lm(l, Hm, t, n), e.options.enableAutoFreeze && (e.options.updatedValues = e.options.updatedValues ?? /* @__PURE__ */ new WeakMap(), e.options.updatedValues.set(i, l.original)), ym(o, r, i);
 			}
 			(i = a.callbacks) == null || i.forEach((e) => {
 				e(t, n);
@@ -30027,17 +30041,17 @@ function Ym(e) {
 	} else {
 		let e = Z(c);
 		e.finalities.draft.push((t, n) => {
-			Fm(e), Im(e, Vm, t, n);
+			Im(e), Lm(e, Hm, t, n);
 		});
 	}
 	return c;
 }
-om.createDraft = Ym;
-function Xm(e, t, n, r, i) {
+sm.createDraft = Xm;
+function Zm(e, t, n, r, i) {
 	let a = Z(e), o = a?.original ?? e, s = !!t.length;
 	if (a?.operated) for (; a.finalities.draft.length > 0;) a.finalities.draft.pop()(n, r);
 	let c = s ? t[0] : a ? a.operated ? a.copy : a.original : e;
-	return a && xm(a), i && jm(c, c, a?.options.updatedValues), [
+	return a && Sm(a), i && Mm(c, c, a?.options.updatedValues), [
 		c,
 		n && s ? [{
 			op: X.Replace,
@@ -30051,7 +30065,7 @@ function Xm(e, t, n, r, i) {
 		}] : r
 	];
 }
-function Zm(e, t) {
+function Qm(e, t) {
 	let n = {
 		draft: [],
 		revoke: [],
@@ -30059,14 +30073,14 @@ function Zm(e, t) {
 		draftsCache: /* @__PURE__ */ new WeakSet()
 	}, r, i;
 	t.enablePatches && (r = [], i = []);
-	let a = t.mark?.call(t, e, am) === am.mutable || !mm(e, t) ? e : Ym({
+	let a = t.mark?.call(t, e, om) === om.mutable || !hm(e, t) ? e : Xm({
 		original: e,
 		parentDraft: null,
 		finalities: n,
 		options: t
 	});
 	return [a, (e = []) => {
-		let [n, o, s] = Xm(a, e, r, i, t.enableAutoFreeze);
+		let [n, o, s] = Zm(a, e, r, i, t.enableAutoFreeze);
 		return t.enablePatches ? [
 			n,
 			o,
@@ -30074,9 +30088,9 @@ function Zm(e, t) {
 		] : n;
 	}];
 }
-function Qm(e) {
+function $m(e) {
 	let { rootDraft: t, value: n, useRawReturn: r = !1, isRoot: i = !0 } = e;
-	Mm(n, (n, r, i) => {
+	Nm(n, (n, r, i) => {
 		let a = Z(r);
 		if (a && t && a.finalities === t.finalities) {
 			e.isContainDraft = !0;
@@ -30084,18 +30098,18 @@ function Qm(e) {
 			if (i instanceof Set) {
 				let e = Array.from(i);
 				i.clear(), e.forEach((e) => i.add(n === e ? t : e));
-			} else vm(i, n, t);
-		} else typeof r == "object" && r && (e.value = r, e.isRoot = !1, Qm(e));
+			} else ym(i, n, t);
+		} else typeof r == "object" && r && (e.value = r, e.isRoot = !1, $m(e));
 	}), i && (e.isContainDraft || console.warn("The return value does not contain any draft, please use 'rawReturn()' to wrap the return value to improve performance."), r && console.warn("The return value contains drafts, please don't use 'rawReturn()' to wrap the return value."));
 }
-function $m(e) {
+function eh(e) {
 	let t = Z(e);
-	if (!mm(e, t?.options)) return e;
-	let n = gm(e);
+	if (!hm(e, t?.options)) return e;
+	let n = _m(e);
 	if (t && !t.operated) return t.original;
 	let r;
 	function i() {
-		r = n === 2 ? um(e) ? new Map(e) : new (Object.getPrototypeOf(e)).constructor(e) : n === 3 ? Array.from(t.setMap.values()) : Em(e, t?.options);
+		r = n === 2 ? dm(e) ? new Map(e) : new (Object.getPrototypeOf(e)).constructor(e) : n === 3 ? Array.from(t.setMap.values()) : Dm(e, t?.options);
 	}
 	if (t) {
 		t.finalized = !0;
@@ -30105,21 +30119,21 @@ function $m(e) {
 			t.finalized = !1;
 		}
 	} else r = e;
-	if (Mm(r, (n, a) => {
-		if (t && bm(_m(t.original, n), a)) return;
-		let o = $m(a);
-		o !== a && (r === e && i(), vm(r, n, o));
+	if (Nm(r, (n, a) => {
+		if (t && xm(vm(t.original, n), a)) return;
+		let o = eh(a);
+		o !== a && (r === e && i(), ym(r, n, o));
 	}), n === 3) {
 		let e = t?.original ?? r;
-		return lm(e) ? new Set(r) : new (Object.getPrototypeOf(e)).constructor(r);
+		return um(e) ? new Set(r) : new (Object.getPrototypeOf(e)).constructor(r);
 	}
 	return r;
 }
-function eh(e) {
-	if (!fm(e)) throw Error(`current() is only used for Draft, parameter: ${e}`);
-	return $m(e);
+function th(e) {
+	if (!pm(e)) throw Error(`current() is only used for Draft, parameter: ${e}`);
+	return eh(e);
 }
-var th = ((e) => {
+var nh = ((e) => {
 	if (e !== void 0 && Object.prototype.toString.call(e) !== "[object Object]") throw Error(`Invalid options: ${String(e)}, 'options' should be an object.`);
 	return function t(n, r, i) {
 		if (typeof n == "function" && typeof r != "function") return function(e, ...i) {
@@ -30128,7 +30142,7 @@ var th = ((e) => {
 		let a = n, o = r, s = i;
 		if (typeof r != "function" && (s = r), s !== void 0 && Object.prototype.toString.call(s) !== "[object Object]") throw Error(`Invalid options: ${s}, 'options' should be an object.`);
 		s = Object.assign(Object.assign({}, e), s);
-		let c = fm(a) ? eh(a) : a, l = Array.isArray(s.mark) ? ((e, t) => {
+		let c = pm(a) ? th(a) : a, l = Array.isArray(s.mark) ? ((e, t) => {
 			for (let n of s.mark) {
 				if (typeof n != "function") throw Error(`Invalid mark: ${n}, 'mark' should be a function.`);
 				let r = n(e, t);
@@ -30140,32 +30154,32 @@ var th = ((e) => {
 			strict: d,
 			enablePatches: u
 		};
-		if (!mm(c, f) && typeof c == "object" && c) throw Error("Invalid base state: create() only supports plain objects, arrays, Set, Map or using mark() to mark the state as immutable.");
-		let [p, m] = Zm(c, f);
+		if (!hm(c, f) && typeof c == "object" && c) throw Error("Invalid base state: create() only supports plain objects, arrays, Set, Map or using mark() to mark the state as immutable.");
+		let [p, m] = Qm(c, f);
 		if (typeof r != "function") {
-			if (!mm(c, f)) throw Error("Invalid base state: create() only supports plain objects, arrays, Set, Map or using mark() to mark the state as immutable.");
+			if (!hm(c, f)) throw Error("Invalid base state: create() only supports plain objects, arrays, Set, Map or using mark() to mark the state as immutable.");
 			return [p, m];
 		}
 		let h;
 		try {
 			h = o(p);
 		} catch (e) {
-			throw xm(Z(p)), e;
+			throw Sm(Z(p)), e;
 		}
 		let g = (e) => {
 			let t = Z(p);
-			if (!fm(e)) {
-				if (e !== void 0 && !bm(e, p) && t?.operated) throw Error("Either the value is returned as a new non-draft value, or only the draft is modified without returning any value.");
-				let n = e?.[rm];
+			if (!pm(e)) {
+				if (e !== void 0 && !xm(e, p) && t?.operated) throw Error("Either the value is returned as a new non-draft value, or only the draft is modified without returning any value.");
+				let n = e?.[im];
 				if (n) {
 					let r = n[0];
-					return f.strict && typeof e == "object" && e && Qm({
+					return f.strict && typeof e == "object" && e && $m({
 						rootDraft: t,
 						value: e,
 						useRawReturn: !0
 					}), m([r]);
 				}
-				if (e !== void 0) return typeof e == "object" && e && Qm({
+				if (e !== void 0) return typeof e == "object" && e && $m({
 					rootDraft: t,
 					value: e
 				}), m([e]);
@@ -30174,18 +30188,18 @@ var th = ((e) => {
 			let n = Z(e);
 			if (f === n.options) {
 				if (n.operated) throw Error("Cannot return a modified child draft.");
-				return m([eh(e)]);
+				return m([th(e)]);
 			}
 			return m([e]);
 		};
 		return h instanceof Promise ? h.then(g, (e) => {
-			throw xm(Z(p)), e;
+			throw Sm(Z(p)), e;
 		}) : g(h);
 	};
 })();
 Object.prototype.constructor.toString();
 // upstream/submodules/cyberpunk/packages/engine/src/operations/index.ts
-function nh(e, t, n) {
+function rh(e, t, n) {
 	function r() {
 		if (!e.overtime || e.gameEnded) return;
 		let n = Object.keys(e.gigDice).length, r = Math.floor(n / 2) + 1;
@@ -30213,7 +30227,7 @@ function nh(e, t, n) {
 				e !== -1 && l.eddieCardIds.splice(e, 1);
 			}
 			let f = l.zones[r];
-			a?.index === void 0 ? f.push(n) : f.splice(a.index, 0, n), r === "eddieArea" && s !== "eddieArea" && l.eddieCardIds.push(n), o.zone = r, s !== r && (o.meta = ms(r, {
+			a?.index === void 0 ? f.push(n) : f.splice(a.index, 0, n), r === "eddieArea" && s !== "eddieArea" && l.eddieCardIds.push(n), o.zone = r, s !== r && (o.meta = gs(r, {
 				attachedGearIds: [...o.meta.attachedGearIds],
 				attachedToId: o.meta.attachedToId
 			})), t.push({
@@ -30245,7 +30259,7 @@ function nh(e, t, n) {
 				let t = i.zones.deck.shift();
 				if (!t) break;
 				let r = e.cardIndex[t];
-				r && (r.zone = "hand", r.meta = ms("hand", {
+				r && (r.zone = "hand", r.meta = gs("hand", {
 					attachedGearIds: [...r.meta.attachedGearIds],
 					attachedToId: r.meta.attachedToId
 				})), i.zones.hand.push(t), s.push(t), a.moveAttachedGear(t, "hand");
@@ -30350,7 +30364,7 @@ function nh(e, t, n) {
 			let o = e.players[n];
 			if (!o) return;
 			if (a?.sourceIds) {
-				if (!Uc(e, n, r, a.sourceIds)) return;
+				if (!Wc(e, n, r, a.sourceIds)) return;
 				let s = 0;
 				for (let n of a.sourceIds) {
 					let r = e.cardIndex[n];
@@ -30384,7 +30398,7 @@ function nh(e, t, n) {
 			for (let r of a?.preferredLegendIds ?? []) {
 				if (s <= 0) break;
 				let i = e.cardIndex[r];
-				i && i.controllerId === n && i.zone === "legendArea" && !i.meta.spent && Bc(i) && (i.meta.spent = !0, s--, t.push({
+				i && i.controllerId === n && i.zone === "legendArea" && !i.meta.spent && Hc(i) && (i.meta.spent = !0, s--, t.push({
 					type: "cardSpent",
 					cardId: r,
 					playerId: i.controllerId
@@ -30402,7 +30416,7 @@ function nh(e, t, n) {
 					playerId: r.controllerId
 				}));
 			}
-			let u = $c(e, n, s, a?.excludedLegendIds);
+			let u = el(e, n, s, a?.excludedLegendIds);
 			for (let n of u) {
 				let r = e.cardIndex[n];
 				r && (r.meta.spent = !0, t.push({
@@ -30605,7 +30619,7 @@ function nh(e, t, n) {
 					if (t) {
 						t.meta.playedThisTurn = !0;
 						let r = e.turnMetadata.playedCardTypesThisTurn[n.playerId] ?? [];
-						r.push(P(t).type), e.turnMetadata.playedCardTypesThisTurn[n.playerId] = r;
+						r.push(N(t).type), e.turnMetadata.playedCardTypesThisTurn[n.playerId] = r;
 					}
 				}
 				t.push(n);
@@ -30625,7 +30639,7 @@ function nh(e, t, n) {
 	};
 }
 // upstream/submodules/cyberpunk/packages/engine/src/command/synthesize-move-logs.ts
-var rh = /* @__PURE__ */ new Set(["move.turnEnded"]), ih = /* @__PURE__ */ new Set([
+var ih = /* @__PURE__ */ new Set(["move.turnEnded"]), ah = /* @__PURE__ */ new Set([
 	"game.overtimeStarted",
 	"game.overtimeFirstEmptyTurn",
 	"game.overtimeFinalTurn",
@@ -30636,10 +30650,10 @@ var rh = /* @__PURE__ */ new Set(["move.turnEnded"]), ih = /* @__PURE__ */ new S
 	"move.resolveSearchDeckNamed",
 	"move.readyStep.cantReady"
 ]);
-function ah(e) {
-	return e.startsWith("setup.") || e.startsWith("effect.") || e.startsWith("trigger.") || ih.has(e);
+function oh(e) {
+	return e.startsWith("setup.") || e.startsWith("effect.") || e.startsWith("trigger.") || ah.has(e);
 }
-var oh = /* @__PURE__ */ new Set([
+var sh = /* @__PURE__ */ new Set([
 	"playCard",
 	"sellCard",
 	"callLegend",
@@ -30661,15 +30675,15 @@ var oh = /* @__PURE__ */ new Set([
 	"resolveScry",
 	"action"
 ]);
-function sh(e) {
-	let { explicitLogs: t, events: n, playerId: r, state: i } = e, a = i.G.turnMetadata.turnNumber, o = Date.now(), s = [], c = t.some((e) => oh.has(e.type));
+function ch(e) {
+	let { explicitLogs: t, events: n, playerId: r, state: i } = e, a = i.G.turnMetadata.turnNumber, o = Date.now(), s = [], c = t.some((e) => sh.has(e.type));
 	for (let e of t) s.push(e);
 	let l = !1;
 	for (let e of n) {
 		if (e.type !== "actionLog") continue;
 		let t = e;
-		if (rh.has(t.messageKey)) continue;
-		let n = ah(t.messageKey);
+		if (ih.has(t.messageKey)) continue;
+		let n = oh(t.messageKey);
 		if (c && !n || !c && l && !n) continue;
 		let r = {
 			type: "action",
@@ -30685,7 +30699,7 @@ function sh(e) {
 		if (t.type !== "cardDefeated") continue;
 		let r = i.G.cardIndex[t.cardId];
 		if (!r) throw Error(`Defeated card missing from index: ${t.cardId}`);
-		let c = P(r), l = n.slice(0, e).reverse().find((e) => e.type === "cardMoved" && e.cardId === t.cardId);
+		let c = N(r), l = n.slice(0, e).reverse().find((e) => e.type === "cardMoved" && e.cardId === t.cardId);
 		s.push({
 			type: "cardDefeated",
 			wasUnit: c.type === "unit" || c.type === "legend" && l?.type === "cardMoved" && l.fromZone === "field",
@@ -30693,7 +30707,7 @@ function sh(e) {
 			turnNumber: a,
 			timestamp: o,
 			cardId: t.cardId,
-			cardName: P(r).displayName
+			cardName: N(r).displayName
 		});
 	}
 	let u = n.filter((e) => e.type === "actionLog").filter((e) => [
@@ -30752,7 +30766,7 @@ function sh(e) {
 			turnNumber: t.turnNumber,
 			timestamp: o
 		};
-		ch(s, "turnEnded", t.turnNumber) || s.push(n);
+		lh(s, "turnEnded", t.turnNumber) || s.push(n);
 	} else if (e.type === "turnStarted") {
 		let t = e, n = {
 			type: "turnStarted",
@@ -30760,7 +30774,7 @@ function sh(e) {
 			turnNumber: t.turnNumber,
 			timestamp: o
 		};
-		ch(s, "turnStarted", t.turnNumber) || s.push(n);
+		lh(s, "turnStarted", t.turnNumber) || s.push(n);
 	} else if (e.type === "gameEnded") {
 		let t = e, n = {
 			type: "gameEnded",
@@ -30770,11 +30784,11 @@ function sh(e) {
 			winnerId: t.winnerId,
 			reason: t.reason
 		};
-		ch(s, "gameEnded", a) || s.push(n);
+		lh(s, "gameEnded", a) || s.push(n);
 	}
 	return s;
 }
-function ch(e, t, n) {
+function lh(e, t, n) {
 	return e.some((e) => e.type === t && e.turnNumber === n);
 }
 // upstream/submodules/cyberpunk/packages/engine/src/animation/durations.ts
@@ -30802,7 +30816,7 @@ var $ = {
 	drawStaggerMs: 800
 };
 // upstream/submodules/cyberpunk/packages/engine/src/animation/builder.ts
-function lh(e) {
+function uh(e) {
 	let t = /* @__PURE__ */ new Map(), n = /* @__PURE__ */ new Map(), r = /* @__PURE__ */ new Set(), i = /* @__PURE__ */ new Map(), a = /* @__PURE__ */ new Map(), o = /* @__PURE__ */ new Map(), s = /* @__PURE__ */ new Set(), c = /* @__PURE__ */ new Set(), l = /* @__PURE__ */ new Set();
 	for (let u of e) if (u.type === "cardsRevealed") {
 		if (u.fromZone === "deck") for (let e of u.cardIds) r.add(e);
@@ -30844,19 +30858,19 @@ function lh(e) {
 		spentCards: l
 	};
 }
-function uh(e) {
+function dh(e) {
 	let t, n;
-	if (fh(e) ? (t = e, n = e.events) : (t = null, n = e), n.length === 0 && !t) return gs;
-	let r = lh(n), i = t ? dh(t.toState) : void 0, a = /* @__PURE__ */ new Set(), o = /* @__PURE__ */ new Set(), s = /* @__PURE__ */ new Set();
+	if (ph(e) ? (t = e, n = e.events) : (t = null, n = e), n.length === 0 && !t) return vs;
+	let r = uh(n), i = t ? fh(t.toState) : void 0, a = /* @__PURE__ */ new Set(), o = /* @__PURE__ */ new Set(), s = /* @__PURE__ */ new Set();
 	if (t) {
 		for (let e of n) {
 			if (e.type !== "cardPlayed") continue;
 			let n = t.fromState.G.cardIndex[e.cardId];
-			n && P(n).type === "program" && a.add(e.cardId);
+			n && N(n).type === "program" && a.add(e.cardId);
 		}
 		for (let [e, n] of [[t.fromState, o], [t.toState, s]]) {
-			let t = dh(e), r = t ? e.G.cardIndex[t] : void 0;
-			t && r && P(r).type === "program" && n.add(t);
+			let t = fh(e), r = t ? e.G.cardIndex[t] : void 0;
+			t && r && N(r).type === "program" && n.add(t);
 		}
 	}
 	let c = new Set(o), l = /* @__PURE__ */ new Map(), u = /* @__PURE__ */ new Map();
@@ -31364,31 +31378,31 @@ function uh(e) {
 		totalDurationMs: h
 	};
 }
-function dh(e) {
+function fh(e) {
 	let t = e.G.turnMetadata.pendingChoice;
 	if (t && "payload" in t && "sourceCardId" in t.payload) return t.payload.sourceCardId;
 }
-function fh(e) {
+function ph(e) {
 	return typeof e == "object" && !!e && !Array.isArray(e) && "events" in e;
 }
 // upstream/submodules/cyberpunk/packages/engine/src/command/processor.ts
-var ph = {};
-function mh(e) {
-	ph = {
-		...ph,
+var mh = {};
+function hh(e) {
+	mh = {
+		...mh,
 		...e
 	};
 }
-function hh(e, t) {
+function gh(e, t) {
 	let n = [];
-	for (let [r, i] of Object.entries(ph)) e.G.turnMetadata.pendingChoice && !i.handlesPendingChoice || i.available && !i.available({
+	for (let [r, i] of Object.entries(mh)) e.G.turnMetadata.pendingChoice && !i.handlesPendingChoice || i.available && !i.available({
 		state: e,
 		playerId: t
 	}) || n.push(r);
 	return n;
 }
-function gh(e, t, n, r = "automatic") {
-	let i = t.timestamp ?? Date.now(), a = ph[t.move];
+function _h(e, t, n, r = "automatic") {
+	let i = t.timestamp ?? Date.now(), a = mh[t.move];
 	if (!a) return {
 		success: !1,
 		error: `Unknown move: ${t.move}`,
@@ -31414,30 +31428,30 @@ function gh(e, t, n, r = "automatic") {
 			currentStateID: e.ctx.stateID
 		};
 	}
-	let o = [], s = [], c = [], l = Ks(e), u = e.G.gamePhase, [d, f, p] = th(e, (e) => {
-		let d = nh(e.G, o, s);
+	let o = [], s = [], c = [], l = Js(e), u = e.G.gamePhase, [d, f, p] = nh(e, (e) => {
+		let d = rh(e.G, o, s);
 		if (a.execute({
 			state: e,
 			playerId: n,
 			input: t.input ?? { args: {} },
 			operations: d
-		}), Qd(e, d), Zs(e), c.push(...sh({
+		}), $d(e, d), $s(e), c.push(...ch({
 			explicitLogs: s,
 			events: o,
 			playerId: n,
 			moveId: t.move,
 			state: e
 		})), r === "automatic") for (let t = 0;; t++) {
-			let n = tm(e);
+			let n = nm(e);
 			if (!n) break;
 			if (t >= 32) throw Error("Combat failed to reach a decision boundary");
 			let r = o.length, i = s.length;
-			il.execute({
+			al.execute({
 				state: e,
 				playerId: n,
 				input: { args: { pass: !0 } },
 				operations: d
-			}), Zs(e), c.push(...sh({
+			}), $s(e), c.push(...ch({
 				explicitLogs: s.slice(i),
 				events: o.slice(r),
 				playerId: n,
@@ -31445,7 +31459,7 @@ function gh(e, t, n, r = "automatic") {
 				state: e
 			}));
 		}
-		_h({
+		vh({
 			state: e,
 			actorId: n,
 			previousActivePlayerId: l,
@@ -31453,7 +31467,7 @@ function gh(e, t, n, r = "automatic") {
 			moveId: t.move,
 			timestamp: i
 		}), e.ctx.stateID++;
-	}, { enablePatches: !0 }), m = a.undoable !== !1, h = uh({
+	}, { enablePatches: !0 }), m = a.undoable !== !1, h = dh({
 		command: t,
 		actorId: n,
 		fromState: e,
@@ -31474,7 +31488,7 @@ function gh(e, t, n, r = "automatic") {
 		undoable: m
 	};
 }
-function _h(e) {
+function vh(e) {
 	let t = e.state.ctx.timeControl, n = e.state.ctx.clockState;
 	if (!t || t.mode !== "dynamic" || !n) return;
 	let r = t.config, i = e.previousActivePlayerId ? n[e.previousActivePlayerId] : void 0;
@@ -31487,20 +31501,20 @@ function _h(e) {
 		let t = r.perActionBonusMs ?? 0, n = e.moveId === "passPhase" && e.previousPhase === "main" ? r.perTurnPassBonusMs ?? 0 : 0, i = t + n, o = r.reserveCapMs ?? r.initialReserveMs;
 		a.reserveMsRemaining = Math.min(o, a.reserveMsRemaining + i), a.movesMade += 1, a.actionBonusMsGranted = (a.actionBonusMsGranted ?? 0) + t, a.turnPassBonusMsGranted = (a.turnPassBonusMsGranted ?? 0) + n, a.lastUpdatedAtMs = e.timestamp;
 	}
-	let o = Ks(e.state);
+	let o = Js(e.state);
 	for (let [t, r] of Object.entries(n)) r.isOnClock = t === o, t === o && (r.lastUpdatedAtMs = e.timestamp);
 }
 // upstream/submodules/cyberpunk/packages/engine/src/transport/local-engine.ts
-var vh = class e {
+var yh = class e {
 	_state;
 	combatProgression;
 	undoStack = [];
 	turnStartCheckpoint = null;
 	constructor(e, t = {}) {
-		this._state = e, this.combatProgression = t.combatProgression ?? "automatic", mh({
-			...op,
-			...ip
-		}), t.continuation ? (this.undoStack = structuredClone(t.continuation.undoStack), this.turnStartCheckpoint = t.continuation.turnStartCheckpoint ? structuredClone(t.continuation.turnStartCheckpoint) : null) : t.initializeTurnStartCheckpoint !== !1 && (this.turnStartCheckpoint = yh(e, 0));
+		this._state = e, this.combatProgression = t.combatProgression ?? "automatic", hh({
+			...sp,
+			...ap
+		}), t.continuation ? (this.undoStack = structuredClone(t.continuation.undoStack), this.turnStartCheckpoint = t.continuation.turnStartCheckpoint ? structuredClone(t.continuation.turnStartCheckpoint) : null) : t.initializeTurnStartCheckpoint !== !1 && (this.turnStartCheckpoint = bh(e, 0));
 	}
 	get state() {
 		return this._state;
@@ -31516,25 +31530,25 @@ var vh = class e {
 		});
 	}
 	getEffectiveActivePlayerId() {
-		return Ks(this._state);
+		return Js(this._state);
 	}
 	getFilteredView(e) {
-		return jp(this._state, e);
-	}
-	getOracleView(e) {
 		return Mp(this._state, e);
 	}
+	getOracleView(e) {
+		return Np(this._state, e);
+	}
 	getPrompt(e) {
-		return Lp(this._state, e);
+		return Rp(this._state, e);
 	}
 	processCommand(e, t) {
-		let n = this._state, r = gh(this._state, e, t, this.combatProgression);
+		let n = this._state, r = _h(this._state, e, t, this.combatProgression);
 		if (r.success) {
 			e.move === "setCombatPriority" || (r.undoable ? this.undoStack.push({
 				state: this._state,
 				inversePatches: r.inversePatches
 			}) : (this.undoStack = [], this.turnStartCheckpoint = null)), this._state = r.state;
-			let t = xh(n, r.state);
+			let t = Sh(n, r.state);
 			t && (this.undoStack = [], this.turnStartCheckpoint = {
 				...t,
 				stackDepth: 0
@@ -31600,45 +31614,45 @@ var vh = class e {
 		let e = this.turnStartCheckpoint;
 		if (!e) return null;
 		let t = this._state.G.turnMetadata;
-		return t.turnNumber !== e.turnNumber || t.activePlayerId !== e.activePlayerId || bh(this._state) !== e.signature ? null : e;
+		return t.turnNumber !== e.turnNumber || t.activePlayerId !== e.activePlayerId || xh(this._state) !== e.signature ? null : e;
 	}
 };
-function yh(e, t) {
+function bh(e, t) {
 	return e.G.gamePhase !== "main" && e.G.gamePhase !== "start" ? null : {
 		state: e,
 		activePlayerId: e.G.turnMetadata.activePlayerId,
 		turnNumber: e.G.turnMetadata.turnNumber,
 		stackDepth: t,
-		signature: bh(e)
+		signature: xh(e)
 	};
 }
-function bh(e) {
+function xh(e) {
 	return JSON.stringify({
 		matchId: e.ctx.matchId,
 		playerIds: e.ctx.playerIds,
 		playerZones: Object.fromEntries(Object.entries(e.G.players).map(([e, t]) => [e, Object.keys(t.zones).sort()]))
 	});
 }
-function xh(e, t) {
+function Sh(e, t) {
 	if (t.G.gamePhase !== "main" && t.G.gamePhase !== "start") return null;
 	let n = e.G.turnMetadata, r = t.G.turnMetadata, i = n.turnNumber !== r.turnNumber || n.activePlayerId !== r.activePlayerId, a = e.G.gamePhase === "start" && e.G.turnMetadata.pendingChoice?.type !== "gainGig", o = e.G.gamePhase === "setup";
-	return !i && !a && !o ? null : yh(t, 0);
+	return !i && !a && !o ? null : bh(t, 0);
 }
-us("p1"), us("p2"), ap.length, Sh({
+fs("p1"), fs("p2"), op.length, Ch({
 	dslVersion: 1,
 	minSupportedDslVersion: 1,
-	moves: ap
+	moves: op
 });
-function Sh(e) {
-	let t = Ch(e), n = 2166136261;
+function Ch(e) {
+	let t = wh(e), n = 2166136261;
 	for (let e = 0; e < t.length; e++) n ^= t.charCodeAt(e), n = Math.imul(n, 16777619);
 	return (n >>> 0).toString(16).padStart(8, "0");
 }
-function Ch(e) {
-	return Array.isArray(e) ? `[${e.map(Ch).join(",")}]` : e && typeof e == "object" ? `{${Object.entries(e).sort(([e], [t]) => e.localeCompare(t)).map(([e, t]) => `${JSON.stringify(e)}:${Ch(t)}`).join(",")}}` : JSON.stringify(e) ?? "undefined";
+function wh(e) {
+	return Array.isArray(e) ? `[${e.map(wh).join(",")}]` : e && typeof e == "object" ? `{${Object.entries(e).sort(([e], [t]) => e.localeCompare(t)).map(([e, t]) => `${JSON.stringify(e)}:${wh(t)}`).join(",")}}` : JSON.stringify(e) ?? "undefined";
 }
 // upstream/submodules/cyberpunk/packages/engine/src/automation/search/expert-oracle.ts
-var wh = class e {
+var Th = class e {
 	source;
 	views = /* @__PURE__ */ new Map();
 	prompts = /* @__PURE__ */ new Map();
@@ -31650,7 +31664,7 @@ var wh = class e {
 	}
 	getOracleView(e) {
 		let t = this.views.get(e);
-		return t || (t = Th(this.source, e), this.views.set(e, t)), t;
+		return t || (t = Eh(this.source, e), this.views.set(e, t)), t;
 	}
 	getPrompt(e) {
 		let t = this.prompts.get(e);
@@ -31663,39 +31677,39 @@ var wh = class e {
 		return new e(this.source.fork());
 	}
 };
-function Th(e, t) {
+function Eh(e, t) {
 	if (!e.getOracleView) throw Error("Expert requires a full-information practice engine.");
 	return e.getOracleView(t);
 }
-function Eh(e, t) {
-	let n = Th(e, t);
+function Dh(e, t) {
+	let n = Eh(e, t);
 	if (n.gameEnded) return;
-	let r = Object.keys(n.players).map(us);
+	let r = Object.keys(n.players).map(fs);
 	return r.sort((e, t) => Number(t === n.activePlayerId) - Number(e === n.activePlayerId)), r.find((t) => {
 		let n = e.getPrompt(t).status;
 		return n === "action" || n === "choice";
 	});
 }
-function Dh(e, t) {
+function Oh(e, t) {
 	return {
 		engine: e,
 		playerId: t,
-		view: Th(e, t),
+		view: Eh(e, t),
 		prompt: e.getPrompt(t),
 		rng: () => .5
 	};
 }
-function Oh(e) {
+function kh(e) {
 	if (e.prompt.choice) {
-		let t = Mn(e.prompt.choice);
+		let t = Nn(e.prompt.choice);
 		if (t.length) return t;
-		let n = We(e.prompt.choice, ft, e);
+		let n = We(e.prompt.choice, pt, e);
 		return n.kind === "command" ? [n] : [];
 	}
-	return An(e.prompt);
+	return jn(e.prompt);
 }
-function kh(e, t, n) {
-	let r = Th(e, t), i = bn(r, t);
+function Ah(e, t, n) {
+	let r = Eh(e, t), i = xn(r, t);
 	if (r.gameEnded) return i;
 	let a = (e) => {
 		let t = r.players[e];
@@ -31706,22 +31720,22 @@ function kh(e, t, n) {
 	};
 	return i + a(t) - Object.keys(r.players).filter((e) => e !== t).reduce((e, t) => e + a(t), 0) + o(t) - Object.keys(r.players).filter((e) => e !== t).reduce((e, t) => e + o(t), 0);
 }
-function Ah(e, t) {
-	let n = Eh(e, t);
-	return fn({
-		view: Th(e, t),
+function jh(e, t) {
+	let n = Dh(e, t);
+	return pn({
+		view: Eh(e, t),
 		actor: n,
 		prompt: n ? e.getPrompt(n) : null
 	});
 }
-function jh(e = {}) {
+function Mh(e = {}) {
 	let t = (e, t) => Number.isFinite(e) ? Math.max(1, Math.floor(e)) : t, n = t(e.beamWidth, 5), r = t(e.depthLimit, 12), i = t(e.replyLines, 4), a = t(e.maxNodes, 768), o = typeof e.unitDevelopmentWeight == "number" && Number.isFinite(e.unitDevelopmentWeight) ? Math.max(0, e.unitDevelopmentWeight) : 40, s = /* @__PURE__ */ new WeakMap(), c = (e) => {
 		if (!e.engine?.getOracleView) return {
 			kind: "stuck",
 			reason: "Expert requires a full-information practice engine."
 		};
-		let t = new wh(e.engine), c = e.playerId, l = Dh(t, c);
-		if (l.prompt.availableMoves.some((e) => e.moveId === "mulligan")) return ft.decideAction(l);
+		let t = new Th(e.engine), c = e.playerId, l = Oh(t, c);
+		if (l.prompt.availableMoves.some((e) => e.moveId === "mulligan")) return pt.decideAction(l);
 		let u = s.get(e.engine);
 		u || (u = /* @__PURE__ */ new Map(), s.set(e.engine, u));
 		let d = `${l.view.turnNumber}/${l.view.activePlayerId}`, f = u.get(c);
@@ -31729,8 +31743,8 @@ function jh(e = {}) {
 			scope: d,
 			revision: l.view.stateID,
 			states: /* @__PURE__ */ new Set()
-		}, u.set(c, f)), f.revision = l.view.stateID, f.states.add(Ah(t, c));
-		let p = Oh(l);
+		}, u.set(c, f)), f.revision = l.view.stateID, f.states.add(jh(t, c));
+		let p = kh(l);
 		if (!p.length) return {
 			kind: "stuck",
 			reason: "No legal expert action."
@@ -31746,38 +31760,38 @@ function jh(e = {}) {
 				input: { args: n.args ?? {} }
 			}, t).success ? i : void 0;
 		}, v = (e, t) => e.sort((e, t) => t.score - e.score || e.depth - t.depth).slice(0, t), y = (e) => {
-			let t = Th(e, c);
+			let t = Eh(e, c);
 			return t.gameEnded || t.turnNumber !== _ || t.activePlayerId !== ee;
 		}, ne = (e, t, n, r) => {
 			let i, a = -Infinity;
-			for (let s of Oh(Dh(e, t))) {
+			for (let s of kh(Oh(e, t))) {
 				let l = te(e, t, s, n);
 				if (!l) continue;
 				for (let e = 0; e < 12 && m < n; e++) {
-					let e = Eh(l, c);
+					let e = Dh(l, c);
 					if (!e) break;
-					let t = Oh(Dh(l, e));
+					let t = kh(Oh(l, e));
 					if (t.length !== 1) break;
 					let r = te(l, e, t[0], n);
-					if (!r || Ah(r, c) === Ah(l, c)) break;
+					if (!r || jh(r, c) === jh(l, c)) break;
 					l = r;
 				}
-				if (r.has(Ah(l, c))) continue;
-				let u = kh(l, t, o);
+				if (r.has(jh(l, c))) continue;
+				let u = Ah(l, t, o);
 				u > a && (i = l, a = u);
 			}
 			return i;
 		}, b = (e, t) => {
 			let n = e.engine, r = new Set(e.seen);
 			for (let i = 0; i < 24; i++) {
-				let i = Ah(n, c);
+				let i = jh(n, c);
 				if (r.has(i)) return;
 				r.add(i);
-				let a = Eh(n, c);
+				let a = Dh(n, c);
 				if (!a || y(n) || a === c) return {
 					...e,
 					engine: n,
-					score: kh(n, c, o),
+					score: Ah(n, c, o),
 					seen: r
 				};
 				let s = ne(n, a, t, r);
@@ -31799,7 +31813,7 @@ function jh(e = {}) {
 		}
 		for (let e = 1; e < r && re.length && m < g; e++) {
 			let t = [];
-			for (let r of v(re, n)) for (let n of Oh(Dh(r.engine, c))) {
+			for (let r of v(re, n)) for (let n of kh(Oh(r.engine, c))) {
 				let i = te(r.engine, c, n, g);
 				if (!i) continue;
 				let a = b({
@@ -31816,17 +31830,17 @@ function jh(e = {}) {
 		for (let e = 0; e < ae.length; e++) {
 			let t = ae[e], n = t.engine, r = new Set(t.seen), i = m + Math.floor((a - m) / (ae.length - e));
 			for (let e = 0; e < 60 && m < i; e++) {
-				let e = Eh(n, c);
+				let e = Dh(n, c);
 				if (!e) break;
-				let t = Th(n, c);
+				let t = Eh(n, c);
 				if (y(n) && e === c && t.activePlayerId === c) break;
 				let a = ne(n, e, i, r);
 				if (!a) break;
-				n = a, r.add(Ah(n, c));
+				n = a, r.add(jh(n, c));
 			}
 			oe.push({
 				...t,
-				score: kh(n, c, o)
+				score: Ah(n, c, o)
 			});
 		}
 		let se = v(oe, i), ce = se[0];
@@ -31840,7 +31854,7 @@ function jh(e = {}) {
 				scoreGap: se[1] ? ce.score - se[1].score : null,
 				cutoffReason: m >= g ? "node-budget" : h >= r ? "depth" : "complete"
 			}
-		} : l.prompt.choice ? We(l.prompt.choice, ft, l) : ft.decideAction(l);
+		} : l.prompt.choice ? We(l.prompt.choice, pt, l) : pt.decideAction(l);
 	};
 	return {
 		name: "expert-oracle",
@@ -31862,9 +31876,9 @@ function jh(e = {}) {
 		}
 	};
 }
-var Mh = jh();
+var Nh = Mh();
 // upstream/submodules/cyberpunk/packages/engine/src/automation/strategies/first-legal.ts
-function Nh(e, t) {
+function Ph(e, t) {
 	if (e.moveId === "setCombatPriority" || e.moveId === "useBlocker" && t.view.attackState?.redirectedByBlocker) return !1;
 	switch (e.inputSpec.type) {
 		case "none": return !0;
@@ -31874,10 +31888,10 @@ function Nh(e, t) {
 		case "playCard": return e.inputSpec.candidates.some((e) => e.attachTargets === void 0 || e.attachTargets.length > 0);
 	}
 }
-var Ph = {
+var Fh = {
 	name: "first-legal",
 	decideAction(e) {
-		let t = e.prompt.availableMoves.filter((t) => Nh(t, e));
+		let t = e.prompt.availableMoves.filter((t) => Ph(t, e));
 		if (t.length === 0) return {
 			kind: "stuck",
 			reason: "no actionable moves"
@@ -31894,19 +31908,19 @@ var Ph = {
 			}
 		});
 	}
-}, Fh = {
+}, Ih = {
 	name: "random",
 	decideAction(e) {
-		return Ih(e);
+		return Lh(e);
 	}
 };
-function Ih(e) {
+function Lh(e) {
 	let t = e.prompt.availableMoves;
 	if (t.length === 0) return {
 		kind: "stuck",
 		reason: "no available moves"
 	};
-	let n = t.filter((e) => e.moveId !== "concede"), r = Lh(n.length > 0 ? n : t, e.rng);
+	let n = t.filter((e) => e.moveId !== "concede"), r = Rh(n.length > 0 ? n : t, e.rng);
 	for (let t of r) {
 		let n = w(t, {
 			pickFromCandidates: (t) => t.length === 0 ? null : t[Math.floor(e.rng() * t.length)],
@@ -31934,7 +31948,7 @@ function Ih(e) {
 		reason: "random strategy could not build args for any available move"
 	};
 }
-function Lh(e, t) {
+function Rh(e, t) {
 	let n = [...e];
 	for (let e = n.length - 1; e > 0; e--) {
 		let r = Math.floor(t() * (e + 1));
@@ -31943,16 +31957,16 @@ function Lh(e, t) {
 	return n;
 }
 // upstream/submodules/cyberpunk/packages/engine/src/automation/strategies/default.ts
-var Rh = {
-	...Mh,
+var zh = {
+	...Nh,
 	name: "default"
-}, zh = [
+}, Bh = [
 	"keepHand",
 	"resolveAttack",
 	"resolveCardToMove",
 	"passPhase"
 ];
-function Bh(e) {
+function Vh(e) {
 	for (let t of e) {
 		if (t.attachTargets === void 0) return { cardId: t.cardId };
 		let e = t.attachTargets[0];
@@ -31963,7 +31977,7 @@ function Bh(e) {
 	}
 	return null;
 }
-function Vh(e) {
+function Hh(e) {
 	return w(e, {
 		pickFromCandidates: (e) => e[0] ?? null,
 		pickPair: (e, t) => {
@@ -31974,14 +31988,14 @@ function Vh(e) {
 			} : null;
 		},
 		pickAbility: (e) => e[0] ?? null,
-		pickPlayCard: Bh
+		pickPlayCard: Vh
 	});
 }
-function Hh(e, t) {
+function Uh(e, t) {
 	for (let n of t) {
 		let t = e.prompt.availableMoves.find((e) => e.moveId === n);
 		if (!t) continue;
-		let r = Vh(t);
+		let r = Hh(t);
 		if (r.kind === "command") return r;
 	}
 	return {
@@ -31989,16 +32003,16 @@ function Hh(e, t) {
 		reason: "forced strategy found no matching move"
 	};
 }
-function Uh(e, t) {
+function Wh(e, t) {
 	return {
 		name: e,
 		decideChoice: S,
 		decideAction(e) {
-			return Hh(e, [...t, ...zh]);
+			return Uh(e, [...t, ...Bh]);
 		}
 	};
 }
-var Wh = Uh("pass-only", ["passPhase", "keepHand"]), Gh = Uh("attack-unit-only", ["attackUnit"]), Kh = Uh("attack-rival-only", ["attackRival"]), qh = Uh("call-legend-only", ["callLegend"]), Jh = {
+var Gh = Wh("pass-only", ["passPhase", "keepHand"]), Kh = Wh("attack-unit-only", ["attackUnit"]), qh = Wh("attack-rival-only", ["attackRival"]), Jh = Wh("call-legend-only", ["callLegend"]), Yh = {
 	blocks: 207,
 	cardCatalogHash: "fnv1a32:1938cfe8",
 	confidenceInterval: {
@@ -32021,19 +32035,19 @@ var Wh = Uh("pass-only", ["passPhase", "keepHand"]), Gh = Uh("attack-unit-only",
 		maxDepth: 3,
 		maxNodes: 48
 	} }
-}, Yh = [
+}, Xh = [
 	{
 		id: "default",
 		label: "Recommended",
 		description: "Runs Expert (full information). Plans action sequences and opponent replies. Sees both hands, both decks in order, and face-down Legends.",
-		strategy: Rh,
+		strategy: zh,
 		informationPolicy: "oracle"
 	},
 	{
 		id: "greedy",
 		label: "Greedy",
 		description: "Priority-list heuristic exposed for direct simulator and comparison runs.",
-		strategy: ft,
+		strategy: pt,
 		informationPolicy: "public",
 		testOnly: !0
 	},
@@ -32041,28 +32055,28 @@ var Wh = Uh("pass-only", ["passPhase", "keepHand"]), Gh = Uh("attack-unit-only",
 		id: "tactical",
 		label: "Sharp",
 		description: "Looks ahead before committing: scores the board and plans around the replies the opponent is likely to have.",
-		strategy: Xn,
+		strategy: Zn,
 		informationPolicy: "public"
 	},
 	{
 		id: "tactical-ability-aware",
 		label: "Masterful",
 		description: "Uses public information to read card roles, timing windows, and visible board requirements when planning.",
-		strategy: Zn,
+		strategy: Qn,
 		informationPolicy: "public"
 	},
 	{
 		id: "expert-oracle",
 		label: "Expert (full information)",
 		description: "Plans action sequences and opponent replies. Sees both hands, both decks in order, and face-down Legends.",
-		strategy: Mh,
+		strategy: Nh,
 		informationPolicy: "oracle"
 	},
 	{
 		id: "first-legal",
 		label: "First legal",
 		description: "Test strategy that picks the first actionable move the engine offers.",
-		strategy: Ph,
+		strategy: Fh,
 		informationPolicy: "public",
 		testOnly: !0
 	},
@@ -32070,7 +32084,7 @@ var Wh = Uh("pass-only", ["passPhase", "keepHand"]), Gh = Uh("attack-unit-only",
 		id: "random",
 		label: "Random",
 		description: "Test strategy that samples legal moves and candidates uniformly.",
-		strategy: Fh,
+		strategy: Ih,
 		informationPolicy: "public",
 		testOnly: !0
 	},
@@ -32078,7 +32092,7 @@ var Wh = Uh("pass-only", ["passPhase", "keepHand"]), Gh = Uh("attack-unit-only",
 		id: "attack-rival-only",
 		label: "Always attack",
 		description: "A sparring partner that attacks the rival Gig area whenever it can and never fights Units.",
-		strategy: Kh,
+		strategy: qh,
 		informationPolicy: "public",
 		testOnly: !0
 	},
@@ -32086,7 +32100,7 @@ var Wh = Uh("pass-only", ["passPhase", "keepHand"]), Gh = Uh("attack-unit-only",
 		id: "attack-unit-only",
 		label: "Attack unit only",
 		description: "Test strategy that forces the first available Unit fight, useful for combat QA.",
-		strategy: Gh,
+		strategy: Kh,
 		informationPolicy: "public",
 		testOnly: !0
 	},
@@ -32094,7 +32108,7 @@ var Wh = Uh("pass-only", ["passPhase", "keepHand"]), Gh = Uh("attack-unit-only",
 		id: "call-legend-only",
 		label: "Call legend only",
 		description: "Test strategy that calls a Legend when possible, then falls back to passing.",
-		strategy: qh,
+		strategy: Jh,
 		informationPolicy: "public",
 		testOnly: !0
 	},
@@ -32102,31 +32116,31 @@ var Wh = Uh("pass-only", ["passPhase", "keepHand"]), Gh = Uh("attack-unit-only",
 		id: "pass-only",
 		label: "Only passes",
 		description: "A practice dummy that never plays cards — it advances phases so you can develop freely.",
-		strategy: Wh,
+		strategy: Gh,
 		informationPolicy: "public",
 		testOnly: !0
 	}
 ];
-function Xh(e) {
+function Zh(e) {
 	if (!e || typeof e != "object") return !1;
 	let t = e;
 	return typeof t.ownNearWinThreshold == "number" && typeof t.rivalNearWinThreshold == "number" && typeof t.mulliganMinCheapCards == "number" && typeof t.mulliganCheapCostThreshold == "number" && typeof t.mulliganMinSellable == "number" && typeof t.fightMinMargin == "number" && !!t.defaultPriority && typeof t.defaultPriority == "object" && !!t.ownNearWinPriority && typeof t.ownNearWinPriority == "object" && !!t.rivalNearWinPriority && typeof t.rivalNearWinPriority == "object";
 }
-function Zh(e) {
-	if (Yh.some((t) => t.id === e.promotedStrategyId)) return Yh;
+function Qh(e) {
+	if (Xh.some((t) => t.id === e.promotedStrategyId)) return Xh;
 	let t = e.strategyConfig?.greedyWeights;
-	return Xh(t) ? [{
+	return Zh(t) ? [{
 		id: e.promotedStrategyId,
 		label: `${e.promotedStrategyId} (promoted)`,
 		description: "Promoted greedy strategy reconstructed from its audited bot-lab weights.",
-		strategy: dt(t, e.promotedStrategyId),
+		strategy: ft(t, e.promotedStrategyId),
 		informationPolicy: e.informationPolicy
-	}, ...Yh] : Yh;
+	}, ...Xh] : Xh;
 }
-Zh(Jh);
+Qh(Yh);
 // upstream/submodules/cyberpunk/packages/engine/src/automation/search/monte-carlo.ts
-function Qh(e = {}) {
-	let t = e.rolloutsPerAction ?? 10, n = e.maxRolloutSteps ?? 200, r = e.rolloutStrategy ?? Fh;
+function $h(e = {}) {
+	let t = e.rolloutsPerAction ?? 10, n = e.maxRolloutSteps ?? 200, r = e.rolloutStrategy ?? Ih;
 	return {
 		name: `monte-carlo:${r.name}`,
 		decideAction(e) {
@@ -32134,25 +32148,25 @@ function Qh(e = {}) {
 				kind: "stuck",
 				reason: "monte-carlo: requires ctx.engine"
 			};
-			let i = An(e.engine.getPrompt(e.playerId));
+			let i = jn(e.engine.getPrompt(e.playerId));
 			if (i.length === 0) return {
 				kind: "stuck",
 				reason: "no actionable moves"
 			};
-			if (i.length === 1) return jn(e.engine, e.playerId, i);
+			if (i.length === 1) return Mn(e.engine, e.playerId, i);
 			let a = i[0], o = -Infinity, s = [], c = `mc:${Math.floor(e.rng() * 4294967296)}`;
 			for (let l of i) {
-				let i = $h(e.engine, l, e.playerId, t, n, r, c);
+				let i = eg(e.engine, l, e.playerId, t, n, r, c);
 				i !== -Infinity && (i > o ? (o = i, a = l, s = [l]) : i === o && s.push(l));
 			}
 			if (s.length > 1) {
 				let t = r.decideAction(e);
 				if (t.kind === "command") {
-					let n = eg(t), r = s.find((e) => eg(e) === n);
-					if (r) return jn(e.engine, e.playerId, [r, ...s]);
+					let n = tg(t), r = s.find((e) => tg(e) === n);
+					if (r) return Mn(e.engine, e.playerId, [r, ...s]);
 				}
 			}
-			return jn(e.engine, e.playerId, [
+			return Mn(e.engine, e.playerId, [
 				a,
 				...s,
 				...i
@@ -32160,33 +32174,33 @@ function Qh(e = {}) {
 		}
 	};
 }
-Qh(), Qh({ rolloutStrategy: ft });
-function $h(e, t, n, r, i, a, o) {
+$h(), $h({ rolloutStrategy: pt });
+function eg(e, t, n, r, i, a, o) {
 	let s = e.fork(), c = {
-		commandID: `mc-probe-${eg(t)}`,
+		commandID: `mc-probe-${tg(t)}`,
 		move: t.move,
 		input: t.args ? { args: t.args } : void 0
 	};
 	if (!s.processCommand(c, n).success) return -Infinity;
 	let l = 0;
 	for (let e = 0; e < r; e++) {
-		let t = Hn(s.fork(), n, a, dn(`${o}/rollout-${e}`), i);
+		let t = Un(s.fork(), n, a, fn(`${o}/rollout-${e}`), i);
 		t.winnerId === n ? l += 1 : t.kind === "draw" && (l += .5);
 	}
 	return l / Math.max(1, r);
 }
-function eg(e) {
-	return `${e.move}:${tg(e.args ?? {})}`;
-}
 function tg(e) {
+	return `${e.move}:${ng(e.args ?? {})}`;
+}
+function ng(e) {
 	if (typeof e != "object" || !e) return JSON.stringify(e);
-	if (Array.isArray(e)) return `[${e.map((e) => tg(e)).join(",")}]`;
+	if (Array.isArray(e)) return `[${e.map((e) => ng(e)).join(",")}]`;
 	let t = e;
-	return `{${Object.keys(t).sort().map((e) => `${JSON.stringify(e)}:${tg(t[e])}`).join(",")}}`;
+	return `{${Object.keys(t).sort().map((e) => `${JSON.stringify(e)}:${ng(t[e])}`).join(",")}}`;
 }
 // upstream/submodules/cyberpunk/packages/engine/src/automation/search/mcts.ts
-function ng(e = {}) {
-	let t = e.iterations ?? 50, n = e.explorationConstant ?? Math.sqrt(2), r = e.maxRolloutSteps ?? 200, i = e.rolloutStrategy ?? Fh;
+function rg(e = {}) {
+	let t = e.iterations ?? 50, n = e.explorationConstant ?? Math.sqrt(2), r = e.maxRolloutSteps ?? 200, i = e.rolloutStrategy ?? Ih;
 	return {
 		name: `mcts:${i.name}`,
 		decideAction(e) {
@@ -32194,12 +32208,12 @@ function ng(e = {}) {
 				kind: "stuck",
 				reason: "mcts: requires ctx.engine"
 			};
-			let a = An(e.engine.getPrompt(e.playerId));
+			let a = jn(e.engine.getPrompt(e.playerId));
 			if (a.length === 0) return {
 				kind: "stuck",
 				reason: "no actionable moves"
 			};
-			if (a.length === 1) return jn(e.engine, e.playerId, a);
+			if (a.length === 1) return Mn(e.engine, e.playerId, a);
 			let o = {
 				engine: e.engine.fork(),
 				playerToMove: e.playerId,
@@ -32213,28 +32227,28 @@ function ng(e = {}) {
 			for (let a = 0; a < t; a++) {
 				let t = o;
 				for (; t.untriedActions.length === 0 && t.children.length > 0;) {
-					let e = rg(t, n);
+					let e = ig(t, n);
 					if (!e) break;
 					t = e;
 				}
 				if (t.untriedActions.length > 0 && t.playerToMove !== null) {
-					let n = ig(t, e.playerId);
+					let n = ag(t, e.playerId);
 					n && (t = n);
 				}
-				let a = Hn(t.engine.fork(), e.playerId, i, e.rng, r);
-				ag(t, a.winnerId);
+				let a = Un(t.engine.fork(), e.playerId, i, e.rng, r);
+				og(t, a.winnerId);
 			}
 			let s = e.playerId, c = o.children.slice().sort((e, t) => {
 				if (e.visits !== t.visits) return t.visits - e.visits;
 				let n = (e.rewards.get(s) ?? 0) / Math.max(1, e.visits), r = (t.rewards.get(s) ?? 0) / Math.max(1, t.visits);
 				return n === r ? (e.actionFromParent?.move ?? "").localeCompare(t.actionFromParent?.move ?? "") : r - n;
 			}).flatMap((e) => e.actionFromParent ? [e.actionFromParent] : []);
-			return jn(e.engine, e.playerId, [...c, ...a]);
+			return Mn(e.engine, e.playerId, [...c, ...a]);
 		}
 	};
 }
-ng(), ng({ rolloutStrategy: ft });
-function rg(e, t) {
+rg(), rg({ rolloutStrategy: pt });
+function ig(e, t) {
 	if (e.children.length === 0) return null;
 	let n = e.playerToMove ? e.playerToMove : null, r = Math.log(Math.max(1, e.visits)), i = null;
 	for (let a of e.children) {
@@ -32247,7 +32261,7 @@ function rg(e, t) {
 	}
 	return i?.node ?? null;
 }
-function ig(e, t) {
+function ag(e, t) {
 	let n = e.untriedActions.pop();
 	if (!n || e.playerToMove === null) return null;
 	let r = e.engine.fork(), i = {
@@ -32256,23 +32270,23 @@ function ig(e, t) {
 		input: n.args ? { args: n.args } : void 0
 	};
 	if (!r.processCommand(i, e.playerToMove).success) return null;
-	let a = og(r, t), o = {
+	let a = sg(r, t), o = {
 		engine: r,
 		playerToMove: a,
 		parent: e,
 		actionFromParent: n,
-		untriedActions: a ? An(r.getPrompt(a)) : [],
+		untriedActions: a ? jn(r.getPrompt(a)) : [],
 		children: [],
 		visits: 0,
 		rewards: /* @__PURE__ */ new Map()
 	};
 	return e.children.push(o), o;
 }
-function ag(e, t) {
+function og(e, t) {
 	let n = e;
 	for (; n;) n.visits += 1, t && n.rewards.set(t, (n.rewards.get(t) ?? 0) + 1), n = n.parent;
 }
-function og(e, t) {
+function sg(e, t) {
 	let n = e.getFilteredView(t);
 	if (n.gameEnded) return null;
 	let r = [...Object.keys(n.players)].sort((e, t) => (e === n.activePlayerId ? 0 : 1) - (t === n.activePlayerId ? 0 : 1));
@@ -32283,22 +32297,51 @@ function og(e, t) {
 	return null;
 }
 // vendor/cyberpunk-engine/entry.ts
-var sg = {
-	greedy: dt(),
-	tactical: Xn,
-	"tactical-ability-aware": Zn
-};
-function cg(e, t, n, r = {}) {
-	let i = sg[r.strategy ?? "greedy"] ?? sg.greedy, { prompt: a } = e, o = {
+var cg = {
+	greedy: ft(),
+	tactical: Zn,
+	"tactical-ability-aware": Qn
+}, lg = /* @__PURE__ */ new WeakMap();
+function ug(e, t) {
+	if (!t) return cg[e] ?? cg.greedy;
+	let n = lg.get(t);
+	return n || (n = {
+		tactical: Xn({ deckProfile: t }),
+		"tactical-ability-aware": Xn({
+			deckProfile: t,
+			abilityAware: !0,
+			maxNodes: 80,
+			maxDepth: 4,
+			disabledHeuristics: t.planCombatSetup ? ["safe-steal"] : []
+		})
+	}, lg.set(t, n)), n[e] ?? cg.greedy;
+}
+function dg(e, t, n, r = {}) {
+	let i = ug(r.strategy ?? "greedy", r.profile), { prompt: a } = e, o = {
 		view: e,
 		prompt: a,
 		playerId: n,
 		rng: t,
 		...r.engine && { engine: r.engine }
-	}, s = a.status === "choice" && a.choice ? We(a.choice, i, o) : i.decideAction(o);
+	};
+	if (r.profile?.preferSecond && a.choice?.type === "chooseFirstPlayer") return {
+		move: "resolveFirstPlayer",
+		args: { goFirst: !1 }
+	};
+	if (r.profile?.developLegends && a.status === "action" && e.activePlayerId === n && !e.attackState && e.turnNumber <= 6) {
+		let t = a.availableMoves.find((e) => e.moveId === "callLegend"), r = a.availableMoves.find((e) => e.moveId === "playCard"), i = e.players[n]?.zones.field, o = Array.isArray(i) && i.some((e) => e.type === "unit"), s = e.players[n]?.zones.hand, c = r?.inputSpec.type === "playCard" && Array.isArray(s) && r.inputSpec.candidates.some((e) => s.some((t) => t.instanceId === e.cardId && t.type === "unit"));
+		if (!o && !c && t?.inputSpec.type === "selectCard") {
+			let r = e.players[n]?.zones.legendArea, i = t.inputSpec.candidates, a = Array.isArray(r) && r.find((e) => !e.spent && i.includes(e.instanceId)), o = a ? a.instanceId : i[0];
+			if (o) return {
+				move: "callLegend",
+				args: { legendId: o }
+			};
+		}
+	}
+	let s = a.status === "choice" && a.choice ? We(a.choice, i, o) : i.decideAction(o);
 	return s.kind === "command" ? {
 		move: s.move,
 		args: s.args
 	} : void 0;
 }
-export { vh as LocalEngine, Ue as SeededRNG, cg as chooseMove, is as createCardCatalog, Ls as createMatchState, kp as projectRevealedCardView };
+export { yh as LocalEngine, Ue as SeededRNG, dg as chooseMove, os as createCardCatalog, zs as createMatchState, Ap as projectRevealedCardView };

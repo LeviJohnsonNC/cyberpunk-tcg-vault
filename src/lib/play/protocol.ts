@@ -12,11 +12,14 @@ export interface MatchDeck {
 /** How the rival chooses its moves. Every level plays from what a player could see. */
 export type RivalSkill = 'standard' | 'sharp' | 'masterful';
 
+export type CampaignRivalPlan = 'chrome-debt-v3' | 'dead-drop-v3' | 'last-call-v3';
+
 export interface MatchSetup {
   player: MatchDeck;
   rival: MatchDeck;
   /** Absent in matches saved before skill levels existed; those keep the standard rival. */
   rivalSkill?: RivalSkill;
+  campaignRivalPlan?: CampaignRivalPlan;
   /** Present only for matches started after Circuit launched. Does not affect game rules. */
   circuit?: { version: 1; contractId?: string; rivalKey: string };
 }

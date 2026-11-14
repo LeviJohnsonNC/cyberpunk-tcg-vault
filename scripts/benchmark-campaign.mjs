@@ -3,6 +3,8 @@ import { createServer } from 'vite';
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const seats = ['player', 'rival'];
+const referenceSeats = (process.env.CAMPAIGN_SEATS ?? seats.join(',')).split(',');
+if (referenceSeats.some(seat => !seats.includes(seat))) throw new Error('CAMPAIGN_SEATS must contain player or rival.');
 const policiesByName = {
   starter: { swaps: 0, style: 'balanced' },
   casual: { swaps: 1, style: 'balanced', modestOffer: true },
@@ -16,18 +18,23 @@ const policies = (process.env.CAMPAIGN_POLICIES ?? 'casual,balanced,pressure,con
 const encounters = (process.env.CAMPAIGN_ENCOUNTERS ?? '1,2,3,4,5,6,7,8,9').split(',').map(Number);
 const starters = (process.env.CAMPAIGN_STARTERS ?? 'the-heist,embracing-power').split(',');
 const playerSkill = process.env.CAMPAIGN_PLAYER_SKILL ?? 'sharp';
+const retryPacks = Number(process.env.CAMPAIGN_RETRY_PACKS ?? 0);
+if (!Number.isSafeInteger(retryPacks) || retryPacks < 0) throw new Error('CAMPAIGN_RETRY_PACKS must be a nonnegative integer.');
+const useRivalPlan = process.env.CAMPAIGN_RIVAL_PLAN !== 'off';
 const fixedRivalSkill = process.env.CAMPAIGN_RIVAL_SKILL;
-const legacy = process.env.CAMPAIGN_BALANCE === 'legacy';
+const balance = process.env.CAMPAIGN_BALANCE ?? 'v3';
+if (!['legacy', 'v2', 'v3'].includes(balance)) throw new Error('CAMPAIGN_BALANCE must be legacy, v2, or v3.');
 const trials = process.env.CAMPAIGN_TRIALS ? JSON.parse(readFileSync(process.env.CAMPAIGN_TRIALS, 'utf8')) : {};
 const vite = await createServer({ server: { middlewareMode: true, ws: false }, appType: 'custom', logLevel: 'error' });
 try {
   const { LocalEngine, SeededRNG } = await vite.ssrLoadModule('/vendor/cyberpunk-engine/engine.mjs');
   const { botDecision, initialEngineState } = await vite.ssrLoadModule('/src/lib/play/engineSession.ts');
   const { prepareMatchDeck } = await vite.ssrLoadModule('/src/lib/play/matchDeck.ts');
-  const { newCampaign, ENCOUNTERS, encounterDeck, encounterSkill, generateReward, campaignDeckIssues } = await vite.ssrLoadModule('/src/lib/play/campaign.ts');
-  const { deckFromRecommended } = await vite.ssrLoadModule('/src/lib/decks.ts');
-  const { BY_SLUG, fitsRam, ramLimits } = await vite.ssrLoadModule('/src/lib/data.ts');
+  const { newCampaign, ENCOUNTERS, encounterDeck, encounterRivalPlan, encounterSkill, generateReward, settleCampaignMatch, emptyProfile, campaignDeckIssues } = await vite.ssrLoadModule('/src/lib/play/campaign.ts');
+  const { deckFromRecommended, COPY_MAX } = await vite.ssrLoadModule('/src/lib/decks.ts');
+  const { BY_SLUG } = await vite.ssrLoadModule('/src/lib/data.ts');
   const { cardScore, scoreDeck } = await vite.ssrLoadModule('/src/lib/autobuild.ts');
+  const { campaignCardFit, campaignCrew } = await vite.ssrLoadModule('/src/lib/play/campaignDeckRules.ts');
 
   function upgrade(run, pack, policy) {
     const score = slug => cardScore(BY_SLUG.get(slug), run.deck.legends, policy.style);
@@ -41,14 +48,15 @@ try {
         && !campaignDeckIssues({ ...run, inventory: { ...run.inventory, [slug]: 1 } }, deck).length)
       .sort((a, b) => scoreDeck(b.deck.legends, b.deck.cards, policy.style) - scoreDeck(a.deck.legends, a.deck.cards, policy.style))[0] : undefined;
     const choice = recruit?.slug ?? (policy.modestOffer ? main.at(-1) : main[0]);
-    for (const slug of [...pack.cards, choice]) run.inventory[slug] = (run.inventory[slug] ?? 0) + 1;
+    for (const slug of [...pack.cards, ...(choice ? [choice] : [])]) run.inventory[slug] = (run.inventory[slug] ?? 0) + 1;
     if (recruit) run.deck = recruit.deck;
-    const limits = ramLimits(run.deck.legends);
-    const candidates = Object.keys(run.inventory).filter(slug => BY_SLUG.get(slug).type !== 'Legend' && fitsRam(BY_SLUG.get(slug), limits));
+    if (policy.swaps === 0) return;
+    const crew = campaignCrew(run.deck.legends);
+    const candidates = Object.keys(run.inventory).filter(slug => !campaignCardFit(BY_SLUG.get(slug), crew));
     for (let swap = 0; swap < policy.swaps; swap++) {
       let best, bestScore = scoreDeck(run.deck.legends, run.deck.cards, policy.style) + .2;
       for (const add of candidates) {
-        if ((run.deck.cards[add] ?? 0) >= run.inventory[add]) continue;
+        if ((run.deck.cards[add] ?? 0) >= Math.min(run.inventory[add], COPY_MAX)) continue;
         for (const remove of Object.keys(run.deck.cards)) {
           if (add === remove) continue;
           const cards = { ...run.deck.cards, [remove]: run.deck.cards[remove] - 1, [add]: (run.deck.cards[add] ?? 0) + 1 };
@@ -64,12 +72,13 @@ try {
     if (issues.length) throw new Error(issues.join(' '));
   }
 
-  function play(run, rivalDeck, rivalSkill, seat, seed) {
+  function play(run, rivalDeck, rivalSkill, plan, seat, seed) {
     const player = prepareMatchDeck(run.deck), rival = prepareMatchDeck(rivalDeck);
     const setup = seat === 'player' ? { player, rival } : { player: rival, rival: player };
     const engine = new LocalEngine(initialEngineState(setup, seed, seed));
     const referenceRng = new SeededRNG(seed + ':reference'), opponentRng = new SeededRNG(seed + ':opponent');
     let view, error, commands = 0, slowestMs = 0;
+    const rivalMoves = {};
     for (; commands < 800; commands++) {
       view = engine.getFilteredView(seat);
       if (view.gameEnded) break;
@@ -78,15 +87,16 @@ try {
       const reference = active === seat;
       const rng = reference ? referenceRng : opponentRng;
       const started = performance.now();
-      const move = botDecision(engine, active, () => rng.next(), reference ? playerSkill : rivalSkill);
+      const move = botDecision(engine, active, () => rng.next(), reference ? playerSkill : rivalSkill, reference ? undefined : plan);
       slowestMs = Math.max(slowestMs, performance.now() - started);
       if (!move || move.move === 'concede') { error = `No playable move for ${active}`; break; }
       const result = engine.processCommand({ commandID: String(commands), move: move.move, input: move.args ? { args: move.args } : undefined }, active);
       if (!result.success) { error = `${active} ${move.move}: ${result.error}`; break; }
+      if (!reference) rivalMoves[move.move] = (rivalMoves[move.move] ?? 0) + 1;
     }
     if (!view?.gameEnded && !error) error = 'Command cap reached';
     return { outcome: view?.winnerId ? view.winnerId === seat ? 'win' : 'loss' : 'draw',
-      turns: view?.turnNumber, commands, slowestMs: Math.round(slowestMs), error };
+      turns: view?.turnNumber, commands, rivalMoves, slowestMs: Math.round(slowestMs), error };
   }
 
   const results = [];
@@ -95,11 +105,18 @@ try {
     const policy = policiesByName[name];
     if (!policy) throw new Error(`Unknown upgrade policy: ${name}`);
     for (let seed = firstSeed; seed < firstSeed + seedCount; seed++) {
-      const run = newCampaign(starter, `${starter}:${seed}`, `campaign-balance:${seed}`);
-      if (legacy) { delete run.balanceVersion; run.opponents = []; }
+      const run = newCampaign(starter, `${starter}:${seed}`, `campaign-balance:${seed}`, balance === 'v3' ? 3 : 2);
+      if (balance === 'legacy') { delete run.balanceVersion; run.opponents = []; }
       const original = { ...run.deck.cards };
       for (const encounter of ENCOUNTERS.keys()) {
         run.encounter = encounter;
+        if (policy.swaps && encounters.includes(encounter + 1)) {
+          for (let attempt = 0; attempt < retryPacks; attempt++) {
+            const match = { summary: { matchId: `bench-loss:${encounter}:${attempt}`, ended: true } };
+            const loss = settleCampaignMatch({ ...run, attempts: attempt, phase: 'inMatch', match }, emptyProfile(), match, 'rival').run;
+            upgrade(run, loss.latestRetry, policy);
+          }
+        }
         if (encounters.includes(encounter + 1)) {
           const stageTrial = trials[encounter + 1];
           const trial = stageTrial?.byStarter?.[starter] ?? stageTrial;
@@ -113,12 +130,13 @@ try {
             }
           }
           const skill = fixedRivalSkill ?? trial?.skill ?? encounterSkill(run);
+          const plan = useRivalPlan ? encounterRivalPlan(run) : undefined;
           const seedKey = `campaign-calibration:${starter}:${seed}:${encounter}`;
           const replaced = Object.entries(original).reduce((n, [slug, qty]) => n + Math.max(0, qty - (run.deck.cards[slug] ?? 0)), 0);
-          for (const seat of seats) {
-            const key = JSON.stringify([seedKey, seat, skill, run.deck.legends, run.deck.cards, rival.legends, rival.cards]);
-            if (!matchCache.has(key)) matchCache.set(key, play(run, rival, skill, seat, seedKey));
-            const result = { starter, policy: name, seed, seat, encounter: encounter + 1, opponent: rival.name, skill, replaced,
+          for (const seat of referenceSeats) {
+            const key = JSON.stringify([seedKey, seat, skill, plan, run.deck.legends, run.deck.cards, rival.legends, rival.cards]);
+            if (!matchCache.has(key)) matchCache.set(key, play(run, rival, skill, plan, seat, seedKey));
+            const result = { starter, policy: name, seed, seat, encounter: encounter + 1, opponent: rival.name, skill, plan, replaced,
               ...matchCache.get(key) };
             results.push(result);
             if (result.error) console.error(result);
@@ -138,7 +156,7 @@ try {
     console.log(`${index + 1} ${encounter.title}: ${summary.join(' | ')}`);
   }
   if (process.argv[2]) writeFileSync(process.argv[2], JSON.stringify({
-    firstSeed, seedCount, policies, encounters, playerSkill, fixedRivalSkill, legacy, trials, results,
+    firstSeed, seedCount, policies, encounters, playerSkill, fixedRivalSkill, useRivalPlan, retryPacks, referenceSeats, balance, trials, results,
   }, null, 2) + '\n');
   if (results.some(result => result.error)) process.exitCode = 1;
 } finally { await vite.close(); }

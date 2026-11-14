@@ -1,10 +1,11 @@
+import { CAMPAIGN_RIVAL_PLANS } from './campaignBalance';
 import { engineSlug } from './engineCards';
 import { chooseMove, createCardCatalog, createMatchState, LocalEngine, projectRevealedCardView, SeededRNG } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import type { EngineEvent, EngineHandle, EngineState } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import { describeAction, hideConcealedTargets, visibleCards, zoneCards, zoneCount } from './matchView';
 import { describeBeat, describeRolls, matchTableCues, presentationView } from './matchPresentation';
 import { emptyTally, matchReport, recordMove } from './matchReport';
-import type { CardView, GigRoll, MatchBeat, MatchFrame, MatchLogEntry, MatchSetup, MatchSnapshot, MatchTally, Move, RivalSkill, Seat } from './protocol';
+import type { CampaignRivalPlan, CardView, GigRoll, MatchBeat, MatchFrame, MatchLogEntry, MatchSetup, MatchSnapshot, MatchTally, Move, RivalSkill, Seat } from './protocol';
 
 const catalog = createCardCatalog();
 
@@ -57,10 +58,10 @@ function fairHandle(engine: LocalEngine): EngineHandle {
   };
 }
 
-export function botDecision(engine: LocalEngine, seat: Seat, rng: () => number, skill: RivalSkill = 'standard') {
+export function botDecision(engine: LocalEngine, seat: Seat, rng: () => number, skill: RivalSkill = 'standard', plan?: CampaignRivalPlan) {
   const view = hideConcealedTargets(engine.getFilteredView(seat));
   if (view.prompt.status === 'choice' || view.prompt.status === 'action') {
-    return chooseMove(view, rng, seat, skill === 'standard' ? undefined : { strategy: strategies[skill], engine: fairHandle(engine) });
+    return chooseMove(view, rng, seat, skill === 'standard' ? undefined : { strategy: strategies[skill], engine: fairHandle(engine), profile: plan ? CAMPAIGN_RIVAL_PLANS[plan] : undefined });
   }
 }
 
@@ -218,7 +219,7 @@ export function createEngineSession(
           feedback = undefined;
           return snapshot;
         }
-        const command = botDecision(engine, 'rival', () => botRng.next(), setup.rivalSkill);
+        const command = botDecision(engine, 'rival', () => botRng.next(), setup.rivalSkill, setup.campaignRivalPlan);
         if (!command || command.move === 'concede') throw new Error('The rival could not resolve its current action.');
         apply('rival', command);
       }

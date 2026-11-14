@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
 import { BY_SLUG, CARDS, fitsRam, ramLimits, PRINTING_INDEX } from '../data';
 import { STARTERS } from '../starters';
-import { ENCOUNTERS, campaignDeckIssues, campaignPackLayout, encounterDeck, encounterSkill, generateReward, prepareCampaignReward, settleCampaignMatch, newCampaign, type CampaignRun } from './campaign';
+import { ENCOUNTERS, campaignDeckIssues, campaignPackLayout, encounterDeck, encounterRivalPlan, encounterSkill, generateReward, prepareCampaignReward, settleCampaignMatch, newCampaign, type CampaignRun } from './campaign';
 import { campaignPulls } from './campaignPack';
 import { matchDeckIssues, prepareMatchDeck } from './matchDeck';
 import { createMatchController } from './workerController';
@@ -137,7 +137,11 @@ describe('starter campaign', () => {
     const saturated = Object.fromEntries(CARDS.map(card => [card.slug, 3]));
     const samePack = settleCampaignMatch({ ...otherCrew, encounter, inventory: saturated, phase: 'inMatch', match }, profile, match, 'rival').run.latestRetry;
     expect(loss.latestRetry?.cards).toHaveLength(5);
-    expect(loss.latestRetry).toEqual(samePack);
+    expect(loss.latestRetry?.cards).toEqual(samePack?.cards);
+    expect(loss.latestRetry?.printingIds).toEqual(samePack?.printingIds);
+    expect(samePack?.offers).toEqual([]);
+    expect(loss.latestRetry?.offers).toHaveLength(3);
+    expect(loss.latestRetry?.offers.every(slug => BY_SLUG.get(slug)?.color === 'Red')).toBe(true);
     expect(loss.rewards[encounter]).toEqual(revised);
     expect(loss.retryPrintings).toMatchObject(Object.fromEntries(loss.latestRetry!.cards.map((slug, i) => [slug, loss.latestRetry!.printingIds![i]])));
   });
@@ -148,6 +152,7 @@ describe('starter campaign', () => {
     legacy.opponents = [];
     legacy.opponents = ENCOUNTERS.map((_, encounter) => encounterDeck({ ...legacy, encounter }));
     const current = newCampaign('the-heist', 'current', 'compat');
+    const previous = newCampaign('the-heist', 'previous', 'compat', 2);
     expect(encounterDeck(legacy).cards).toEqual(STARTERS.find(starter => starter.key === 'embracing-power')?.cards);
     const tuned = encounterDeck(current);
     expect(tuned.name).toBe('Moth’s Embracing Power');
@@ -155,6 +160,11 @@ describe('starter campaign', () => {
     expect(encounterDeck(current)).toEqual(tuned);
     expect(encounterSkill({ ...legacy, encounter: 3 })).toBe('standard');
     expect(encounterSkill({ ...current, encounter: 3 })).toBe('sharp');
+    expect(encounterSkill({ ...previous, encounter: 1 })).toBe('standard');
+    expect(encounterRivalPlan({ ...previous, encounter: 8 })).toBeUndefined();
+    expect(encounterSkill({ ...current, encounter: 1 })).toBe('sharp');
+    expect(encounterRivalPlan({ ...current, encounter: 8 })).toBe('last-call-v3');
+    expect(current.opponents.slice(3, 8)).toEqual(previous.opponents.slice(3, 8));
     expect(encounterDeck({ ...legacy, encounter: 8 }).legends).toContain('yorinobu-arasaka-embracing-destruction');
     expect(encounterDeck({ ...current, encounter: 8 }).legends).toContain('goro-takemura-hands-unclean');
   });
@@ -210,7 +220,12 @@ describe('starter campaign', () => {
       expect(unlockedCampaignChapters(run!)).toEqual([]);
       expect(run!.rewards[0]).toEqual(winPack);
       expect(pack.cards).toHaveLength(5);
-      expect(pack.offers).toEqual([]);
+      expect(pack.offers).toHaveLength(3);
+      for (const slug of pack.offers) {
+        expect(pack.cards).not.toContain(slug);
+        expect(campaignCardFit(BY_SLUG.get(slug)!, campaignCrew(run!.deck.legends))).toBeUndefined();
+        expect(run!.inventory[slug] ?? 0).toBeLessThan(3);
+      }
       expect(new Set(pack.cards).size).toBe(5);
       const rarities = campaignPulls(pack).map(pull => pull.printing!.rarity);
       expect(rarities.slice(0, 4).every(rarity => rarity === 'Common' || rarity === 'Uncommon')).toBe(true);
@@ -250,11 +265,20 @@ describe('starter campaign', () => {
       await expect(revealCampaignSlot(scope, partial, pack.id, 5)).rejects.toThrow();
       await expect(revealCampaignSlot(scope, partial, pack.id, 4)).rejects.toThrow();
       const revealed = await revealSlots(scope, partial, pack.id, [1, 3, 0, 2]);
-      const finished = await finishCampaignPack(scope, revealed);
       await expect(finishCampaignPack(scope, revealed)).rejects.toThrow();
-      expect(finished.run.encounter).toBe(0);
-      expect(finished.run.phase).toBe('preparing');
-      expect(latestPack(finished.run).map(pull => pull.slug)).toEqual(pack.cards);
+      await expect(chooseReward(scope, revealed, pack.id, pack.cards[0])).rejects.toThrow();
+      const pick = pack.offers[0];
+      const [accepted, stale] = await Promise.allSettled([
+        chooseReward(scope, revealed, pack.id, pick),
+        chooseReward(scope, revealed, pack.id, pick),
+      ]);
+      expect([accepted.status, stale.status].sort()).toEqual(['fulfilled', 'rejected']);
+      const finished = (await readCampaign(scope)).run!;
+      expect(finished.encounter).toBe(0);
+      expect(finished.phase).toBe('preparing');
+      expect(finished.rewards[0]).toEqual(winPack);
+      expect(finished.inventory[pick]).toBe((run!.inventory[pick] ?? 0) + 1);
+      expect(latestPack(finished).map(pull => pull.slug)).toEqual([...pack.cards, pick]);
     }
     expect(seen.size).toBe(4);
   });

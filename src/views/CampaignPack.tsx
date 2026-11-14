@@ -322,16 +322,17 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
     <div className="campaign-tabletop-inner">
       {bonus ? <>
         <header className="campaign-bonus-head">
-          <p className="campaign-invitation-eyebrow">The Afterlife <span aria-hidden="true">//</span> Final choice</p>
-          <h1 id="campaign-moment-title" tabIndex={-1} ref={attachTitle}>One more for the crew<span aria-hidden="true">.</span></h1>
-          <p>{count} cards secured. Choose one bonus card for your reserve.</p>
+          <p className="campaign-invitation-eyebrow">The Afterlife <span aria-hidden="true">//</span> {retry ? 'House pack' : 'Final choice'}</p>
+          <h1 id="campaign-moment-title" tabIndex={-1} ref={attachTitle}>{retry ? 'Pick an upgrade for the rematch' : 'One more for the crew'}<span aria-hidden="true">.</span></h1>
+          <p>{retry ? 'Choose a card that fits your crew. You can swap it in before the rematch.' : `${count} cards secured. Choose one bonus card for your reserve.`}</p>
         </header>
         <div className="campaign-bonus-cards" style={{ '--offer-count': reward.offers.length } as CSSProperties} role="group" aria-label="Bonus cards">
           {reward.offers.map(slug => {
             const card = BY_SLUG.get(slug);
             const printing = card && defaultPrinting(card);
             const name = displayName(slug);
-            const context = (run.inventory[slug] ?? 0) === 0 && card?.type !== 'Legend' ? 'New to your reserve' : packCardContext(run, slug);
+            const newToReserve = !retry && (run.inventory[slug] ?? 0) === 0 && card?.type !== 'Legend';
+            const context = newToReserve ? 'New to your reserve' : packCardContext(run, slug);
             return <article key={slug}>
               <button type="button" className="campaign-bonus-pick" aria-pressed={choice === slug}
                 aria-label={`Select ${name}`} disabled={busy} onClick={() => setChoice(slug)}>
@@ -397,7 +398,7 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
         <footer className="campaign-tabletop-actions">
           <button type="button" className="campaign-tabletop-link" disabled={busy || !!flip} onClick={back}>← Back to contract</button>
           {allRevealed && !flip && <button type="button" className="campaign-invitation-cta" disabled={busy}
-            onClick={hasChoice ? () => void switchBonus(true) : finish}>{hasChoice ? 'Choose your bonus card' : finishLabel} <span aria-hidden="true">→</span></button>}
+            onClick={hasChoice ? () => void switchBonus(true) : finish}>{hasChoice ? retry ? 'Choose a rematch upgrade' : 'Choose your bonus card' : finishLabel} <span aria-hidden="true">→</span></button>}
           {tools}
         </footer>
       </>}
