@@ -49,6 +49,16 @@ export interface PriceBookModel {
 }
 
 export type SortKey = 'total' | 'unit' | 'name' | 'qty';
+export const UNSPECIFIED_SET = 'Printing unspecified';
+export const FILTERS = [
+  { key: 'color', label: 'Color', all: 'All colors' },
+  { key: 'rarity', label: 'Rarity', all: 'All rarities' },
+  { key: 'type', label: 'Card type', all: 'All card types' },
+  { key: 'set', label: 'Set', all: 'All sets' },
+  { key: 'basis', label: 'Price confidence', all: 'Any confidence' },
+] as const;
+export type FilterKey = (typeof FILTERS)[number]['key'];
+export type PriceFilters = Partial<Record<FilterKey, string>>;
 
 export const COPY_LIMIT = 3;
 const BASIS_ORDER: Basis[] = ['Market', 'Beta proxy', 'Low listing'];
@@ -70,7 +80,7 @@ function group(lines: Line[], key: (l: Line) => string): Group[] {
   return [...m.values()];
 }
 
-export function buildPriceBook(entries: Entry[]): PriceBookModel {
+export function holdingLines(entries: Entry[]): Line[] {
   const lines: Line[] = [];
   for (const entry of entries) {
     const card = BY_SLUG.get(entry.slug);
@@ -89,6 +99,44 @@ export function buildPriceBook(entries: Entry[]): PriceBookModel {
       sourcePrintingId: v?.sourcePrintingId ?? null,
     });
   }
+  return lines;
+}
+
+const filterValue = {
+  color: (line: Line) => line.card.color,
+  rarity: (line: Line) => line.rarity,
+  type: (line: Line) => line.card.type,
+  set: (line: Line) => line.printing?.set ?? UNSPECIFIED_SET,
+  basis: (line: Line) => line.basis ?? 'Unpriced',
+};
+
+export function filterOptions(lines: Line[]) {
+  return Object.fromEntries(FILTERS.map(({ key }) => {
+    const values = [...new Set(lines.map(filterValue[key]))];
+    values.sort((a, b) => (key === 'rarity' ? rarityRank(a) - rarityRank(b)
+      : key === 'basis' ? basisRank(a) - basisRank(b) : 0) || a.localeCompare(b));
+    return [key, values.map((value) => ({ value, label: value }))];
+  })) as Record<FilterKey, { value: string; label: string }[]>;
+}
+
+export function filterHoldings(lines: Line[], query: string, filters: PriceFilters) {
+  const normalize = (value: string) => value.toLowerCase().replace(/β/g, 'b').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  const terms = normalize(query).split(/\s+/).filter(Boolean);
+  return lines.filter((line) => {
+    if (!FILTERS.every(({ key }) => !filters[key] || filterValue[key](line) === filters[key])) return false;
+    if (!terms.length) return true;
+    const number = line.printing?.num ?? '';
+    const search = normalize([line.card.name, line.card.sub, line.card.display, line.printing?.set,
+      printingLabel(line.entry.printingId, false), number.replace(/^([βb]?)0+(?=\d)/i, '$1')].join(' '));
+    return terms.every((term) => search.includes(term));
+  });
+}
+
+export function buildPriceBook(entries: Entry[]): PriceBookModel {
+  return summarizeHoldings(holdingLines(entries));
+}
+
+export function summarizeHoldings(lines: Line[], fullCollection?: PriceBookModel): PriceBookModel {
   const priced = lines.filter((l) => l.unit != null);
   const total = priced.reduce((a, l) => a + l.total!, 0);
   const count = lines.reduce((a, l) => a + l.entry.qty, 0);
@@ -96,8 +144,27 @@ export function buildPriceBook(entries: Entry[]): PriceBookModel {
   const top = priced.reduce<Line | null>((m, l) => (!m || l.unit! > m.unit! ? l : m), null);
 
   // Trade bait: copies past the deck limit. You'd trade away your least valuable copies first.
+  const extras = fullCollection?.extras ?? tradeExtras(lines);
+  return {
+    lines, total, count, pricedCount, unpriced: count - pricedCount,
+    average: pricedCount ? total / pricedCount : 0,
+    top, extras,
+    extrasCopies: extras.reduce((a, x) => a + x.copies, 0),
+    extrasValue: extras.reduce((a, x) => a + x.value, 0),
+    extrasUnpriced: extras.reduce((a, x) => a + x.unpriced, 0),
+    byConfidence: group(lines, (l) => l.basis ?? 'Unpriced').sort((a, b) => basisRank(a.key) - basisRank(b.key)),
+    byColor: group(lines, (l) => l.card.color).sort((a, b) => b.value - a.value),
+    byRarity: group(lines, (l) => l.rarity).sort((a, b) => rarityRank(a.key) - rarityRank(b.key)),
+  };
+}
+
+function tradeExtras(lines: Line[]): Extra[] {
   const bySlug = new Map<string, Line[]>();
-  for (const l of lines) bySlug.set(l.card.slug, [...(bySlug.get(l.card.slug) ?? []), l]);
+  for (const line of lines) {
+    const group = bySlug.get(line.card.slug);
+    if (group) group.push(line);
+    else bySlug.set(line.card.slug, [line]);
+  }
   const extras: Extra[] = [];
   for (const [slug, ls] of bySlug) {
     let spare = ls.reduce((a, l) => a + l.entry.qty, 0) - COPY_LIMIT;
@@ -116,24 +183,7 @@ export function buildPriceBook(entries: Entry[]): PriceBookModel {
   }
   extras.sort((a, b) => b.value - a.value || a.card.display.localeCompare(b.card.display));
 
-  return {
-    lines,
-    total,
-    count,
-    pricedCount,
-    unpriced: count - pricedCount,
-    average: pricedCount ? total / pricedCount : 0,
-    top,
-    extras,
-    extrasCopies: extras.reduce((a, x) => a + x.copies, 0),
-    extrasValue: extras.reduce((a, x) => a + x.value, 0),
-    extrasUnpriced: extras.reduce((a, x) => a + x.unpriced, 0),
-    byConfidence: group(lines, (l) => l.basis ?? 'Unpriced').sort(
-      (a, b) => basisRank(a.key) - basisRank(b.key), // Market, Beta proxy, Low listing, then Unpriced
-    ),
-    byColor: group(lines, (l) => l.card.color).sort((a, b) => b.value - a.value),
-    byRarity: group(lines, (l) => l.rarity).sort((a, b) => rarityRank(a.key) - rarityRank(b.key)),
-  };
+  return extras;
 }
 
 export function sortLines(lines: Line[], key: SortKey): Line[] {

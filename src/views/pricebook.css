@@ -73,6 +73,21 @@
 .pb-btn { border-color: var(--color-accent); color: var(--color-accent); }
 .pb-btn:hover { background: var(--color-accent); color: var(--color-accent-ink); }
 .pb-btn:disabled { opacity: 0.4; cursor: not-allowed; background: var(--color-canvas); color: var(--color-accent); }
+.pb-filters { display: grid; gap: var(--space-2); padding: 0 var(--space-5) var(--space-4); }
+.pb-search { width: 100%; min-width: 0; }
+.pb-filter-disclosure summary {
+  width: fit-content; cursor: pointer; color: var(--color-text); font-weight: 600; font-size: 14px;
+  padding: var(--space-2) 0;
+}
+.pb-filter-count {
+  margin-inline-start: var(--space-2); color: var(--color-ticket); font: 600 12px/1 var(--font-mono);
+}
+.pb-filter-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: var(--space-2); }
+.pb-filter-fields label { display: grid; align-content: start; gap: 5px; min-width: 0; font-size: 12px; color: var(--color-text-muted); }
+.pb-filter-fields .pb-select { width: 100%; min-width: 0; }
+.pb-filter-results { display: flex; align-items: center; flex-wrap: wrap; gap: 4px var(--space-3); }
+.pb-text-action { padding: 2px 0; color: var(--color-accent); background: none; border: 0; cursor: pointer; text-decoration: underline; font-size: 13px !important; }
+.pb-stats-jump { display: none; }
 
 .pb-rows { border-top: 1px solid var(--color-divider); }
 .pb-row {
@@ -121,7 +136,7 @@
 .pb-trade .num { color: var(--color-accent); }
 .pb-dim { font: 400 13px/1 var(--font-ui); text-transform: none; letter-spacing: 0; color: var(--color-text-faint); }
 
-.pb-rail { background: var(--color-surface); border: 1px solid var(--color-accent-deep); padding: var(--space-2) var(--space-4); position: sticky; top: 74px; }
+.pb-rail { background: var(--color-surface); border: 1px solid var(--color-accent-deep); padding: var(--space-2) var(--space-4); min-width: 0; scroll-margin-top: 75px; }
 .pb-breakdown { padding: var(--space-3) 0 var(--space-4); }
 .pb-breakdown + .pb-breakdown { border-top: 1px dashed var(--color-divider); }
 .pb-breakdown header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: var(--space-2); }
@@ -140,6 +155,30 @@
 .pb-disclosure dt { margin-top: var(--space-1); }
 .pb-disclosure dd { margin: 0; line-height: 1.45; }
 .pb-source { margin: 0; padding: var(--space-3) 0; border-top: 1px dashed var(--color-divider); font: 400 11px/1.5 var(--font-mono); color: var(--color-text-faint); }
+.pb-trend { border-top: 1px dashed var(--color-divider); }
+.pb-trend-summary { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); color: var(--color-text-muted); font-size: 12px; }
+.pb-trend-value { font-size: 24px; color: var(--color-ticket); overflow-wrap: anywhere; }
+.pb-trend-change, .pb-trend-note { margin: var(--space-1) 0; color: var(--color-text-muted); font-size: 12px; line-height: 1.4; }
+.pb-trend-change[data-direction="1"] { color: var(--color-basis-market); }
+.pb-trend-change[data-direction="-1"] { color: var(--color-accent); }
+.pb-trend-change span { color: var(--color-text-muted); white-space: nowrap; }
+.pb-trend-chart { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); margin-top: var(--space-2); }
+.pb-trend-plot { position: relative; height: 122px; background: var(--color-canvas); border: 1px solid var(--color-divider); border-radius: var(--radius-sm); }
+.pb-trend-scale { display: flex; flex-direction: column; justify-content: space-between; align-items: end; padding-block: 13px; color: var(--color-text-muted); font: 400 10px/1.2 var(--font-mono); }
+.pb-trend-plot svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.pb-trend-grid { fill: none; stroke: var(--color-divider); stroke-width: 1; }
+.pb-trend-line { fill: none; stroke: var(--color-accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pb-trend-point {
+  position: absolute; transform: translate(-50%, -50%); width: 36px; height: 36px; border: 0; border-radius: 50%;
+  background: transparent; display: grid; place-items: center; padding: 0; cursor: pointer;
+}
+.pb-trend-point::after { content: ''; width: 8px; height: 8px; border: 2px solid var(--color-accent); border-radius: 50%; background: var(--color-surface); }
+.pb-trend-point[data-missing]::after { border-color: var(--color-text-faint); border-radius: 1px; height: 2px; }
+.pb-trend-point[aria-pressed="true"]::after { background: var(--color-ticket); border-color: var(--color-ticket); box-shadow: 0 0 0 3px var(--color-accent-deep); }
+.pb-trend-point:focus-visible { z-index: 1; }
+.pb-trend-axis { display: flex; justify-content: space-between; margin: 5px 0 var(--space-2); color: var(--color-text-muted); font: 400 11px/1.3 var(--font-mono); }
+.pb-trend-method { margin-top: var(--space-2); }
+.pb-trend-method p { margin: var(--space-1) 0 0; font-size: 12px; line-height: 1.4; }
 
 /* ---------- loading ---------- */
 .pb-skel { background: linear-gradient(90deg, var(--color-surface-raised), var(--color-divider), var(--color-surface-raised)); background-size: 200% 100%; animation: pb-shimmer 1.2s linear infinite; border-radius: 2px; }
@@ -152,7 +191,7 @@
 @media (max-width: 1100px) {
   .pb-hero { grid-template: 'masthead' 'feature' 'valuation' / minmax(0, 1fr); gap: var(--space-4); }
   .pb-body { grid-template-columns: 1fr; }
-  .pb-rail { position: static; }
+  .pb-stats-jump { display: inline-block; margin-inline-start: auto; }
 }
 @media (max-width: 760px) {
   .pb-hero { grid-template: 'masthead' 'valuation' / minmax(0, 1fr); gap: var(--space-3); margin-bottom: var(--space-3); }
@@ -190,8 +229,13 @@
   }
   .pb-marquee-card:hover { transform: rotate(3deg); }
   .pb-marquee-noart { padding: var(--space-1); font-size: 12px; }
+  .pb-marquee.is-empty { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'ticket' 'copy'; }
   .pb-holdings-head { gap: var(--space-2); padding: var(--space-3) var(--space-4); }
   .pb-holdings-head h2 { font-size: 29px; }
+  .pb-filters { padding-inline: var(--space-4); }
+  .pb-search, .pb-filter-disclosure summary, .pb-text-action { min-height: 44px; }
+  .pb-filter-disclosure summary { align-content: center; }
+  .pb-filter-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pb-controls { margin-left: 0; width: 100%; }
   .pb-select { flex: 1; min-width: 0; padding-inline: var(--space-2); }
   .pb-select, .pb-btn { min-height: 44px; }

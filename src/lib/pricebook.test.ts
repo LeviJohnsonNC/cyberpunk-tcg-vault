@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import sample from '../../public/imports/levi-collection.json';
-import { buildPriceBook, sortLines, toCsv } from './pricebook';
+import { buildPriceBook, filterHoldings, filterOptions, sortLines, summarizeHoldings, toCsv } from './pricebook';
 import { BY_SLUG, FX, defaultPrinting, valueHolding } from './data';
 import type { Entry } from './store';
 
@@ -9,6 +9,34 @@ vi.mock('../data/prices.json', () => import('./fixtures/prices.json'));
 const entries = sample.entries as Entry[];
 const NOVA_EO = BY_SLUG.get('adam-smasher-ender-of-legends')!.printings.find((p) => p.set === 'Edgerunner Open S 1')!.id;
 const JACKIE_RETAIL = BY_SLUG.get('jackie-welles-pour-one-out-for-me')!.printings.find((p) => p.set === 'The Heist — Retail Starter Deck')!.id;
+
+describe('filtered Price Book', () => {
+  const full = buildPriceBook(entries);
+
+  it('combines a collector-number search with the exact printing set and quote basis', () => {
+    const jackie = full.lines.find((line) => line.entry.printingId === JACKIE_RETAIL)!;
+    const visible = filterHoldings(full.lines, 'pour one #011', { set: jackie.printing!.set, basis: 'Beta proxy' });
+    const model = summarizeHoldings(visible, full);
+    expect(model.lines).toEqual([jackie]);
+    expect(model.count).toBe(jackie.entry.qty);
+    expect(model.top).toBe(jackie);
+    expect(model.total).toBe(jackie.total);
+    for (const groups of [model.byConfidence, model.byColor, model.byRarity]) {
+      expect(groups).toHaveLength(1);
+      expect(groups[0]).toMatchObject({ count: jackie.entry.qty, value: jackie.total });
+    }
+    expect(toCsv(model.lines).split('\n')).toHaveLength(2);
+    expect(model.extras).toBe(full.extras);
+  });
+
+  it('keeps filter choices based on owned printings and leaves unpriced copies visible', () => {
+    expect(filterOptions(full.lines).basis).toContainEqual({ value: 'Unpriced', label: 'Unpriced' });
+    const unpriced = filterHoldings(full.lines, '', { basis: 'Unpriced' });
+    expect(unpriced.reduce((total, line) => total + line.entry.qty, 0)).toBe(full.unpriced);
+    const noMatches = summarizeHoldings(filterHoldings(unpriced, 'no matching card', {}), full);
+    expect(noMatches).toMatchObject({ count: 0, top: null, byConfidence: [] });
+  });
+});
 
 describe('buildPriceBook', () => {
   const pb = buildPriceBook(entries);
