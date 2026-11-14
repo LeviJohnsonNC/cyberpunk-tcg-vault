@@ -1,0 +1,216 @@
+{
+  "asOf": "2026-11-14",
+  "windowStart": "2026-10-16",
+  "latestDeckAt": "2026-11-14T17:29:24.028Z",
+  "deckCount": 747,
+  "legends": [
+    {
+      "slug": "river-ward-detective-on-the-hunt",
+      "count": 235
+    },
+    {
+      "slug": "alt-cunningham-soulkiller-architect",
+      "count": 166
+    },
+    {
+      "slug": "adam-smasher-ender-of-legends",
+      "count": 155
+    },
+    {
+      "slug": "v-streetkid",
+      "count": 151
+    },
+    {
+      "slug": "hanako-arasaka-daughter-of-the-emperor",
+      "count": 139
+    },
+    {
+      "slug": "jackie-welles-pour-one-out-for-me",
+      "count": 111
+    },
+    {
+      "slug": "royce-psycho-on-the-edge",
+      "count": 105
+    },
+    {
+      "slug": "muamar-reyes-el-capita-n",
+      "count": 99
+    },
+    {
+      "slug": "rogue-amendiares-preem-solo",
+      "count": 95
+    },
+    {
+      "slug": "dexter-deshawn-off-the-grid",
+      "count": 93
+    },
+    {
+      "slug": "judy-a-lvarez-braindance-maestro",
+      "count": 93
+    },
+    {
+      "slug": "viktor-vektor-sit-down-and-relax",
+      "count": 86
+    },
+    {
+      "slug": "dum-dum-maelstrom-triggerman",
+      "count": 84
+    },
+    {
+      "slug": "panam-palmer-nomad-cavalry",
+      "count": 82
+    },
+    {
+      "slug": "v-corporate-exile",
+      "count": 79
+    },
+    {
+      "slug": "johnny-silverhand-rocking-renegade",
+      "count": 69
+    },
+    {
+      "slug": "padre-man-of-the-cross",
+      "count": 62
+    },
+    {
+      "slug": "kerry-eurodyne-axe-attitude-audience",
+      "count": 55
+    },
+    {
+      "slug": "goro-takemura-vengeful-bodyguard",
+      "count": 47
+    },
+    {
+      "slug": "saburo-arasaka-stubborn-patriarch",
+      "count": 47
+    },
+    {
+      "slug": "evelyn-parker-beautiful-enigma",
+      "count": 37
+    },
+    {
+      "slug": "goro-takemura-hands-unclean",
+      "count": 37
+    },
+    {
+      "slug": "jackie-welles-mama-s-favorite",
+      "count": 35
+    },
+    {
+      "slug": "sasha-yakovleva-won-t-let-you-down",
+      "count": 27
+    },
+    {
+      "slug": "yorinobu-arasaka-embracing-destruction",
+      "count": 26
+    },
+    {
+      "slug": "wakako-okada-peace-and-harmony",
+      "count": 25
+    },
+    {
+      "slug": "lucyna-kushinada-fresh-beginnings",
+      "count": 1
+    }
+  ],
+  "colours": [
+    {
+      "colours": [
+        "Red",
+        "Yellow"
+      ],
+      "count": 186
+    },
+    {
+      "colours": [
+        "Green",
+        "Red"
+      ],
+      "count": 124
+    },
+    {
+      "colours": [
+        "Blue",
+        "Green"
+      ],
+      "count": 117
+    },
+    {
+      "colours": [
+        "Blue",
+        "Red"
+      ],
+      "count": 77
+    },
+    {
+      "colours": [
+        "Blue",
+        "Yellow"
+      ],
+      "count": 58
+    },
+    {
+      "colours": [
+        "Green",
+        "Yellow"
+      ],
+      "count": 49
+    },
+    {
+      "colours": [
+        "Yellow"
+      ],
+      "count": 39
+    },
+    {
+      "colours": [
+        "Blue"
+      ],
+      "count": 30
+    },
+    {
+      "colours": [
+        "Blue",
+        "Red",
+        "Yellow"
+      ],
+      "count": 20
+    },
+    {
+      "colours": [
+        "Green",
+        "Red",
+        "Yellow"
+      ],
+      "count": 17
+    },
+    {
+      "colours": [
+        "Blue",
+        "Green",
+        "Red"
+      ],
+      "count": 14
+    },
+    {
+      "colours": [
+        "Blue",
+        "Green",
+        "Yellow"
+      ],
+      "count": 8
+    },
+    {
+      "colours": [
+        "Green"
+      ],
+      "count": 5
+    },
+    {
+      "colours": [
+        "Red"
+      ],
+      "count": 3
+    }
+  ]
+}

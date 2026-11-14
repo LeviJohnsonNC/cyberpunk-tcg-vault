@@ -1,5 +1,6 @@
-import type { Color } from '../lib/data';
+import { BY_SLUG, type Color } from '../lib/data';
 import { Pip } from '../components/bits';
+import communityMeta from '../data/community-meta.json';
 
 const CARD_COLOR: Record<string, string> = {
   Yellow: 'var(--color-card-yellow)',
@@ -7,22 +8,12 @@ const CARD_COLOR: Record<string, string> = {
   Red: 'var(--color-card-red)',
   Green: 'var(--color-card-green)',
 };
-const LEGEND_PICKS: [string, string, number][] = [
-  ['River Ward', 'Yellow', 27.8],
-  ['Judy Álvarez', 'Blue', 23.5],
-  ['Alt Cunningham', 'Blue', 20.3],
-  ['Hanako Arasaka', 'Green', 19.8],
-  ['V: Streetkid', 'Red', 15.1],
-  ['Dum Dum', 'Yellow', 15.1],
-];
-const COMBOS: [string, number][] = [
-  ['Red / Yellow', 20.5],
-  ['Blue / Green', 13.3],
-  ['Green / Red', 11.9],
-  ['Blue / Red', 11.0],
-  ['Mono Yellow', 9.5],
-  ['Mono Blue', 9.2],
-];
+const deckCount = new Intl.NumberFormat('en-CA').format(communityMeta.deckCount);
+const dateRange = new Intl.DateTimeFormat('en-CA', {
+  month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC',
+}).formatRange(new Date(communityMeta.windowStart), new Date(communityMeta.asOf));
+const share = (count: number) => 100 * count / communityMeta.deckCount;
+const chartMax = Math.ceil(share(Math.max(communityMeta.legends[0].count, communityMeta.colours[0].count)) / 10) * 10;
 const IDENTITY: { color: Color; title: string; body: string }[] = [
   { color: 'Red', title: 'Maximize, overpower', body: 'The biggest bodies and the most direct removal. Pushes Gigs to 8+ to discount Carnage and Octant, and turns fights into extra steals. Weak to being out-tempoed early.' },
   { color: 'Yellow', title: 'Diverge, equip, repurpose', body: 'Efficient Units carrying cheap Cyberware that draws, adjusts Gigs to different values and doubles steals. River Ward and Viktor find and deploy Gear. Little interaction on the Rival’s turn.' },
@@ -61,38 +52,42 @@ export function MetaLearn() {
           </div>
         </details>
         <details className="panel meta-disclosure meta-learn-topic" open>
-          <summary>What players were building</summary>
-          <p className="callout meta-data-note"><b>Honest read</b> · These charts show deck-building popularity. The percentages measure picks and pairings.
-            Tournament performance and win rates require a separate results dataset.</p>
+          <summary>What players are building</summary>
+          <p className="meta-data-note">
+            <b>{deckCount} public Constructed decks</b> updated {dateRange}. Percentages show deck share.
+            {' '}<a href="https://cyberpunktcg.com/decks?tab=community">Official Community Decks</a>
+          </p>
           <div className="grid cols-2 meta-learn-charts">
             <section className="meta-chart">
               <h3>Most-picked Legends</h3>
-              <p className="meta-chart-source">September 2026 · 716 public decks · compiled by Mythras</p>
-              {LEGEND_PICKS.map(([name, color, pct]) => (
-                <div className="hbar" key={name}>
-                  <span className="tiny"><Pip color={color} bare /> {name}</span>
-                  <span className="track" aria-hidden="true"><span style={{ width: `${(pct / 30) * 100}%`, background: CARD_COLOR[color] }} /></span>
-                  <span className="num">{pct}%</span>
-                </div>
-              ))}
-              <p className="meta-chart-source">Source data from the official deck builder.</p>
+              <p className="meta-chart-source">Decks with each Legend in their crew.</p>
+              {communityMeta.legends.slice(0, 6).map(({ slug, count }) => {
+                const card = BY_SLUG.get(slug);
+                if (!card) return null;
+                return (
+                  <div className="hbar" key={slug}>
+                    <span className="tiny meta-chart-legend">
+                      <Pip color={card.color} bare />
+                      <span>{card.name}{card.sub && <small>{card.sub}</small>}</span>
+                    </span>
+                    <span className="track" aria-hidden="true"><span style={{ width: `${(share(count) / chartMax) * 100}%`, background: CARD_COLOR[card.color] }} /></span>
+                    <span className="num">{share(count).toFixed(1)}%</span>
+                  </div>
+                );
+              })}
             </section>
             <section className="meta-chart">
               <h3>Colour pairings</h3>
-              <p className="meta-chart-source">Selected colour combinations and mono-colour decks.</p>
-              {COMBOS.map(([name, pct]) => (
-                <div className="hbar" key={name}>
-                  <span className="tiny">{name}</span>
-                  <span className="track" aria-hidden="true"><span style={{ width: `${(pct / 30) * 100}%` }} /></span>
-                  <span className="num">{pct}%</span>
+              <p className="meta-chart-source">Top combinations by Legend crew colours.</p>
+              {communityMeta.colours.slice(0, 6).map(({ colours, count }) => (
+                <div className="hbar" key={colours.join('/')}>
+                  <span className="tiny">{colours.length === 1 ? `Mono ${colours[0]}` : colours.join(' / ')}</span>
+                  <span className="track" aria-hidden="true"><span style={{ width: `${(share(count) / chartMax) * 100}%` }} /></span>
+                  <span className="num">{share(count).toFixed(1)}%</span>
                 </div>
               ))}
             </section>
           </div>
-          <details className="meta-disclosure meta-community-opinion">
-            <summary>Community opinion</summary>
-            <p>In November 2026, TCG Contender’s early tier list put a Red/Yellow crew of Adam Smasher, Dum Dum, and V: Streetkid on top.</p>
-          </details>
         </details>
       </div>
     </section>
