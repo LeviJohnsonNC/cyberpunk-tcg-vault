@@ -8,7 +8,7 @@ import type { Deck } from '../store';
 import type { StoredMatch } from './workerController';
 import type { CampaignRivalPlan, RivalSkill } from './protocol';
 import recommended from '../../data/decks.json';
-import { ARASAKA_HOUSE_LIST, HEIST_OPENING_RIVAL, MOTH_PRACTICE_DELTAS, REWARD_THEMES, RIVAL_TUNING, ROGUELIKE_RIVAL_DELTAS } from './campaignBalance';
+import { ARASAKA_HOUSE_LIST, HEIST_OPENING_RIVAL, LEDGER_GEAR_LIST, MOTH_PRACTICE_DELTAS, REWARD_THEMES, RIVAL_TUNING, ROGUELIKE_RIVAL_DELTAS } from './campaignBalance';
 
 export const CAMPAIGN_VERSION = 1;
 export const ENVIRONMENTS = [
@@ -57,7 +57,7 @@ export interface CampaignRun {
   version: 1; id: string; starter: StarterKey; seed: string; revision: number; phase: CampaignPhase;
   encounter: number; attempts: number; inventory: Record<string, number>; deck: Deck; lastLegal: Deck;
   /** Absent on runs started before the versioned balance passes. */
-  balanceVersion?: 2 | 3;
+  balanceVersion?: 2 | 3 | 4;
   /** Presentation-only acknowledgement. Older runs can show their current act once. */
   briefedAct?: number;
   /** A finished match remains on its result screen until the player continues. */
@@ -84,7 +84,7 @@ export function makeStarterDeck(key: StarterKey): Deck {
   return { id: `campaign:${key}`, name: starter.name, legends, cards, sideboard: {}, notes: '', updatedAt: '' };
 }
 
-export function newCampaign(starter: StarterKey, id: string, seed: string, balanceVersion: CampaignRun['balanceVersion'] = 3): CampaignRun {
+export function newCampaign(starter: StarterKey, id: string, seed: string, balanceVersion: CampaignRun['balanceVersion'] = 4): CampaignRun {
   const deck = makeStarterDeck(starter);
   const run: CampaignRun = { version: 1, id, seed, starter, revision: 0, phase: 'preparing', encounter: 0, attempts: 0, balanceVersion,
     inventory: { ...deck.cards, ...Object.fromEntries(deck.legends.map(slug => [slug, 1])) },
@@ -112,18 +112,23 @@ export function encounterDeck(run: CampaignRun): Deck {
       rival.name = MOTH_EMBRACING_POWER;
       applyCopyDeltas(rival.cards, HEIST_OPENING_RIVAL.cards);
     }
-    if (run.balanceVersion === 3) applyCopyDeltas(rival.cards, MOTH_PRACTICE_DELTAS[run.starter]);
+    if ((run.balanceVersion ?? 0) >= 3) applyCopyDeltas(rival.cards, MOTH_PRACTICE_DELTAS[run.starter]);
     return rival;
   }
   if (run.balanceVersion && info.id === 'last-call') {
     const cards = { ...ARASAKA_HOUSE_LIST.cards };
-    if (run.balanceVersion === 3) applyCopyDeltas(cards, ROGUELIKE_RIVAL_DELTAS[info.id]?.cards);
+    if ((run.balanceVersion ?? 0) >= 3) applyCopyDeltas(cards, ROGUELIKE_RIVAL_DELTAS[info.id]?.cards);
     return { id: 'campaign-rival:arasaka-nines', name: 'Arasaka 9s · House List',
       legends: [...ARASAKA_HOUSE_LIST.legends], cards,
       sideboard: {}, notes: 'Hold the board with blockers and Arasaka Units, then close with Goro or Smasher.', updatedAt: '' };
   }
   const item = recommended.find(deck => deck.id === info.rival);
   if (!item) throw new Error('This opponent is not available.');
+  if (run.balanceVersion === 4 && info.id === 'chrome-debt') {
+    return { id: `campaign-rival:${item.id}`, name: item.name, legends: [...LEDGER_GEAR_LIST.legends],
+      cards: { ...LEDGER_GEAR_LIST.cards }, sideboard: {},
+      notes: 'Equip cheap attackers and use Gear removal and blockers to protect the Gig lead.', updatedAt: '' };
+  }
   const cards = Object.fromEntries(Object.entries(item.cards).filter((entry): entry is [string, number] => typeof entry[1] === 'number'));
   if (run.encounter === 8) {
     // The public Arasaka 9s concept is top-heavy. This fixed campaign variant keeps
@@ -133,7 +138,7 @@ export function encounterDeck(run: CampaignRun): Deck {
       'all-is-lost': 3, detonate: 2, 'take-control': 2, 'peace-offering': 1 });
   }
   if (run.balanceVersion) applyCopyDeltas(cards, RIVAL_TUNING[info.id]?.cards);
-  if (run.balanceVersion === 3) applyCopyDeltas(cards, ROGUELIKE_RIVAL_DELTAS[info.id]?.cards);
+  if ((run.balanceVersion ?? 0) >= 3) applyCopyDeltas(cards, ROGUELIKE_RIVAL_DELTAS[info.id]?.cards);
   return { id: `campaign-rival:${item.id}`, name: run.encounter === 8 ? 'Arasaka 9s · House List' : item.name, legends: [...item.legends], cards, sideboard: {}, notes: item.summary, updatedAt: '' };
 }
 
@@ -147,13 +152,13 @@ function applyCopyDeltas(cards: Record<string, number>, deltas?: Readonly<Record
 
 export function encounterSkill(run: CampaignRun): RivalSkill {
   const info = ENCOUNTERS[run.encounter];
-  return (run.balanceVersion === 3 ? ROGUELIKE_RIVAL_DELTAS[info.id]?.skill : undefined)
+  return ((run.balanceVersion ?? 0) >= 3 ? ROGUELIKE_RIVAL_DELTAS[info.id]?.skill : undefined)
     ?? (run.balanceVersion ? RIVAL_TUNING[info.id]?.skill : undefined) ?? info.skill;
 }
 
 export function encounterRivalPlan(run: CampaignRun): CampaignRivalPlan | undefined {
   const encounter = ENCOUNTERS[run.encounter];
-  if (run.balanceVersion === 3 && encounter) return ROGUELIKE_RIVAL_DELTAS[encounter.id]?.plan;
+  if ((run.balanceVersion ?? 0) >= 3 && encounter) return ROGUELIKE_RIVAL_DELTAS[encounter.id]?.plan;
 }
 
 // Rewards have their own seed. A loss changes match shuffle, never the pack waiting behind it.
@@ -181,7 +186,7 @@ function compatibleRewards(run: CampaignRun) {
   return CARDS.filter(card => !campaignCardFit(card, crew));
 }
 
-// V3 changes retry rewards only. Keep the V2 contract reward stream.
+// V3 and V4 keep the V2 contract reward stream.
 const rewardSeed = (run: CampaignRun) => `${run.seed}:reward:${run.encounter}:v${run.balanceVersion ? 2 : 1}`;
 const offerCrew = (legends: string[]) => [...legends].sort().join(',');
 
@@ -326,7 +331,7 @@ export function settleCampaignMatch(run: CampaignRun, profile: CampaignProfile, 
       if (printing && (printing.rarity.startsWith('Iconic ') || !retryPrintings[slug])) retryPrintings[slug] = printing.id;
     }
     addPack(reward.cards);
-    if (run.balanceVersion === 3) {
+    if ((run.balanceVersion ?? 0) >= 3) {
       reward.offers = retryOffers(run, inventory, reward.cards, `${run.seed}:retry-choice:${run.encounter}:${next.attempts}`);
     }
     return { run: { ...next, inventory, aftermath, phase: 'retryReward' as const, latestRetry: reward, retryPrintings,
