@@ -2,6 +2,38 @@
 
 ## Roguelike calibration
 
+### Benchmarking earned retries
+
+`CAMPAIGN_MAX_ATTEMPTS` plays a route from First Call through the highest requested encounter. Each loss or draw goes through campaign settlement, awards its saved House pack and opens a new shuffle at the same table. A route that reaches the per-table attempt cap stops there. The report shows first-attempt results, retries, actual swaps and how far each route reached. It keeps reward generation and deck legality checks shared with the game.
+
+Use `starter` to leave the deck untouched, `balanced-win-only` to edit after wins, or `balanced` to edit after wins and completed retries. Both balanced policies can make up to two swaps when they edit and have access to the same types of reward. The win-only policy banks House cards until its next win. Pair the seed and seat across policies, and read later first-attempt rates alongside the number of runs that reached that encounter.
+
+```sh
+CAMPAIGN_FIRST_SEED=166 CAMPAIGN_SEEDS=2 CAMPAIGN_SEATS=player \
+  CAMPAIGN_MAX_ATTEMPTS=3 CAMPAIGN_ENCOUNTERS=4 CAMPAIGN_TRACE=1 \
+  CAMPAIGN_POLICIES=balanced-win-only,balanced \
+  node scripts/benchmark-campaign.mjs /tmp/campaign-retries.json
+```
+
+Set `CAMPAIGN_ENCOUNTERS=9` for a full route. An isolated matchup sweep can still be run with `CAMPAIGN_MAX_ATTEMPTS` omitted. The cap is a benchmark limit. The live campaign allows additional attempts.
+
+In the seeds 166–167 smoke run, the Heist run on seed 167 cleared Night Drive on its third try after applying retry swaps. The paired win-only run exhausted its attempts at Dead Drop. Both policies cleared Night Drive with Embracing Power on both seeds. A separate full-route smoke run on seeds 162–163 let both untouched Embracing Power decks clear Last Call. Neither untouched Heist deck reached it. These samples check the retry loop and flag matchup differences. Estimating completion rates will take more runs.
+
+### Night Drive trials
+
+On seeds 146–153 the live list lost 15 of 16 games to untouched starters and 12 of 16 to edited decks. The trials compared cheaper bodies and a stronger midgame with a separate mulligan and Gear-host profile. Early-body variants repeatedly made The Heist's matchup tougher while Embracing Power swept its untouched games on seeds 154–159. A mixed list with Emergency Atlus, Dexter, Gilded Mato-N and MaxTac AV gave both starters a reason to edit on seeds 160–163. That advantage reversed for Embracing Power on fresh seeds.
+
+| Seeds | Night Drive rival | The Heist starter | The Heist edited | Embracing Power starter | Embracing Power edited |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 160–163 | Mixed list and profile | 2/4 | 3/4 | 1/4 | 2/4 |
+| 172–179 | Current | 5/8 | 3/8 | 5/8 | 8/8 |
+| 172–179 | Mixed list | 5/8 | 5/8 | 7/8 | 6/8 |
+| 172–179 | Mixed list and profile | 6/8 | 7/8 | 8/8 | 7/8 |
+
+The profile kept at least one cheap Unit and one sellable card on the mulligan, preferred going second, and selected Gear hosts for pressure. None of the tested deck and profile combinations reliably made both routes lose more often before upgrades and improve after them. Night Drive keeps its current list and AI. The fixed-seed sweep uses independent matches with rewards from the preceding encounters, while the route benchmark above plays out those encounters and retries.
+
+### Earlier balance versions
+
 Balance version 4 gives Ledger a Yellow/Red Gear deck. River and Viktor still support inexpensive Gear. Cheap carriers, Meredith, and Detonate give Ledger more ways to contest the field against both starters. Ledger uses the Sharp profile from version 3. Earlier campaigns keep their pinned rival decks.
 
 The benchmark's `boss-ready` policy builds from legal earned inventory while keeping the original Legends. It makes up to three substitutions per pack and favors playable threats and matchup answers, including Safety Override and Rita Wheeler for The Heist and Detonate and Meredith Stout for Embracing Power. It plays the same Sharp reference as the untouched starter policy. Set `CAMPAIGN_TRACE=1` to record the reference deck and composition, plus each actor's plays and visible targets.
