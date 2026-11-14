@@ -28,6 +28,7 @@ export async function collectCommunityMeta(cards, now = new Date(), loadPage = f
   const windowStart = new Date(cutoff).toISOString().slice(0, 10);
   const legendCounts = new Map();
   const colourCounts = new Map();
+  const crewCounts = new Map();
   const seenDecks = new Set();
   let offset = 0;
   let total;
@@ -64,9 +65,12 @@ export async function collectCommunityMeta(cards, now = new Date(), loadPage = f
 
       latestDeckAt ??= deck.updated_at;
       deckCount++;
-      for (const slug of new Set(crew.map(card => card.slug))) {
+      const slugs = crew.map(card => card.slug).sort();
+      for (const slug of new Set(slugs)) {
         legendCounts.set(slug, (legendCounts.get(slug) ?? 0) + 1);
       }
+      const crewKey = slugs.join('/');
+      crewCounts.set(crewKey, (crewCounts.get(crewKey) ?? 0) + 1);
       const combo = [...new Set(colours)].join('/');
       colourCounts.set(combo, (colourCounts.get(combo) ?? 0) + 1);
     }
@@ -82,6 +86,7 @@ export async function collectCommunityMeta(cards, now = new Date(), loadPage = f
     deckCount,
     legends: [...legendCounts].sort(byCount).map(([slug, count]) => ({ slug, count })),
     colours: [...colourCounts].sort(byCount).map(([combo, count]) => ({ colours: combo.split('/'), count })),
+    crews: Object.fromEntries([...crewCounts].sort(byCount)),
   };
 }
 

@@ -5,6 +5,7 @@ import { BY_SLUG, COLORS, RECOMMENDED, type Color } from '../lib/data';
 import { estimateText } from '../lib/currency';
 import { CLOSE_THRESHOLD, completion, deckFromRecommended, costRank, matchesFilter, validate, type BuildFilter } from '../lib/decks';
 import { useStore, type Deck } from '../lib/store';
+import communityMeta from '../data/community-meta.json';
 
 const KIND_LABEL = { budget: 'Budget', meta: 'Community meta', brew: 'Brew' } as const;
 const LS_KEY = 'cptv.meta.filters.v1';
@@ -12,6 +13,7 @@ const BUILD_LABEL: Record<BuildFilter, string> = { all: 'All decks', close: `${C
 const SORTS = [
   { value: 'fit', label: 'Best fit for my vault' },
   { value: 'cost', label: 'Cheapest to finish' },
+  { value: 'popularity', label: 'Meta popularity' },
   { value: 'name', label: 'Name' },
 ] as const;
 
@@ -23,7 +25,15 @@ interface Filters {
 }
 
 const DEFAULTS: Filters = { build: 'all', colors: [], sort: 'fit' };
-const LISTS = RECOMMENDED.map((deck) => ({ deck, legal: validate({ ...deck, sideboard: {} }).legal }));
+const crewCounts: Readonly<Record<string, number>> = communityMeta.crews;
+const LISTS = RECOMMENDED.map((deck) => ({
+  deck,
+  legal: validate({ ...deck, sideboard: {} }).legal,
+  crewMatches: crewCounts[[...deck.legends].sort().join('/')] ?? 0,
+}));
+const deckCount = new Intl.NumberFormat('en-CA').format(communityMeta.deckCount);
+const asOf = new Intl.DateTimeFormat('en-CA', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(communityMeta.asOf));
+const needsVault = (sort: SortKey) => sort === 'fit' || sort === 'cost';
 
 function loadFilters(): Filters {
   try {
@@ -31,7 +41,7 @@ function loadFilters(): Filters {
     return {
       build: saved?.build === 'close' || saved?.build === 'owned' ? saved.build : DEFAULTS.build,
       colors: Array.isArray(saved?.colors) ? COLORS.filter((color) => saved.colors.includes(color)) : [],
-      sort: saved?.sort === 'cost' || saved?.sort === 'name' ? saved.sort : DEFAULTS.sort,
+      sort: SORTS.find(({ value }) => value === saved?.sort)?.value ?? DEFAULTS.sort,
     };
   } catch {
     return DEFAULTS;
@@ -52,11 +62,13 @@ export function CuratedDecks({ onOpen, openInBuilder, onPlayAgainst }: { onOpen:
   };
 
   const scored = useMemo(() => LISTS.map((item) => ({ ...item, fit: collectionReady ? completion(item.deck, owned) : null })), [collectionReady, owned]);
-  const sort = collectionReady ? f.sort : 'name';
+  const sort = !collectionReady && needsVault(f.sort) ? 'name' : f.sort;
   const shown = scored
     .filter(({ deck, fit }) => (!fit || matchesFilter(fit, f.build)) && (!f.colors.length || deck.colors.some((color) => f.colors.includes(color))))
     .sort((a, b) => {
-      if (sort === 'name' || !a.fit || !b.fit) return a.deck.name.localeCompare(b.deck.name);
+      const byName = a.deck.name.localeCompare(b.deck.name);
+      if (sort === 'popularity') return b.crewMatches - a.crewMatches || byName;
+      if (sort === 'name' || !a.fit || !b.fit) return byName;
       const fit = b.fit.pct - a.fit.pct;
       const cost = costRank(a.fit.estimate) - costRank(b.fit.estimate);
       return sort === 'cost' ? cost || fit : fit || cost;
@@ -98,10 +110,13 @@ export function CuratedDecks({ onOpen, openInBuilder, onPlayAgainst }: { onOpen:
         <div className="meta-option meta-curated-sort">
           <label className="meta-control-label" htmlFor="meta-sort">Sort by</label>
           <VaultSelect id="meta-sort" value={sort} onValueChange={(value) => set({ sort: value as SortKey })}
-            options={SORTS.map((option) => ({ ...option, disabled: !collectionReady && option.value !== 'name' }))} />
+            options={SORTS.map((option) => ({ ...option, disabled: !collectionReady && needsVault(option.value) }))} />
         </div>
       </div>
       <p className="meta-list-count" role="status">{shown.length} of {LISTS.length} decks</p>
+      {sort === 'popularity' && <p className="meta-popularity-source">
+        Ranked by how often all three Legends appear together in {deckCount} public Constructed decks from the 30 days ending {asOf}.
+      </p>}
       {shown.length === 0 ? (
         <div className="panel meta-state">
           <h3>No deck matches these filters</h3>
@@ -112,7 +127,7 @@ export function CuratedDecks({ onOpen, openInBuilder, onPlayAgainst }: { onOpen:
         </div>
       ) : (
         <div className="meta-curated-list">
-          {shown.map(({ deck: d, legal, fit }) => {
+          {shown.map(({ deck: d, legal, fit, crewMatches }) => {
             const base = d.base ? RECOMMENDED.find((item) => item.id === d.base)?.name : null;
             return (
               <article key={d.id} className="meta-curated-card panel" aria-labelledby={`deck-${d.id}`}>
@@ -125,6 +140,7 @@ export function CuratedDecks({ onOpen, openInBuilder, onPlayAgainst }: { onOpen:
                     <div className="meta-category">{KIND_LABEL[d.kind]} <span>·</span> {d.archetype}</div>
                     <h3 id={`deck-${d.id}`}>{d.name}</h3>
                     <div className="meta-deck-colours"><span aria-hidden="true">{d.colors.map((color) => <Pip key={color} color={color} bare />)}</span> {d.colors.join(' / ')}</div>
+                    {sort === 'popularity' && <p className="meta-popularity-count">{crewMatches} public {crewMatches === 1 ? 'deck' : 'decks'} with this crew</p>}
                     <p className="meta-curated-hook">{d.summary}</p>
                   </div>
                   <dl className="meta-curated-fit">

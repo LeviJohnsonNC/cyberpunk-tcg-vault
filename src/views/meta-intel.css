@@ -142,6 +142,8 @@
 .meta-curated-filters .chip:disabled { opacity: 0.55; cursor: default; }
 .meta-curated-status { margin-bottom: var(--space-3); }
 .meta-list-count { margin: 0 0 var(--space-2); color: var(--color-text-muted); font: 500 12px/1.4 var(--font-mono); }
+.meta-popularity-source { margin: 0 0 var(--space-3); color: var(--color-text-muted); font-size: 13px; }
+.meta-popularity-count { margin: var(--space-1) 0 0; color: var(--color-ticket); font-size: 13px; }
 .meta-curated-list { display: grid; gap: var(--space-3); }
 .meta-curated-card { padding: var(--space-3) var(--space-4); }
 .meta-curated-main {
