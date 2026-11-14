@@ -1,6 +1,33 @@
 # Campaign encounter and reward calibration
 
-New runs use balance version 2. Existing runs retain their saved opponent lists, original opponent skills, and original reward algorithm. Both player decks still start with the official retail list.
+## Roguelike calibration
+
+Balance version 4 gives Ledger a Yellow/Red Gear deck. River and Viktor still support inexpensive Gear. Cheap carriers, Meredith, and Detonate give Ledger more ways to contest the field against both starters. Ledger uses the Sharp profile from version 3. Earlier campaigns keep their pinned rival decks.
+
+The benchmark's `boss-ready` policy builds from legal earned inventory while keeping the original Legends. It makes up to three substitutions per pack and favors playable threats and matchup answers, including Safety Override and Rita Wheeler for The Heist and Detonate and Meredith Stout for Embracing Power. It plays the same Sharp reference as the untouched starter policy. Set `CAMPAIGN_TRACE=1` to record the reference deck and composition, plus each actor's plays and visible targets.
+
+| Encounter | The Heist starter | The Heist edited | Embracing Power starter | Embracing Power edited |
+| --- | ---: | ---: | ---: | ---: |
+| First Call | 7/10 | 7/10 | 9/10 | 9/10 |
+| Chrome Debt | 2/10 | 2/10 | 4/10 | 4/10 |
+| Last Call, two simulated retry packs for edited decks | 2/12 | 4/12 | 5/12 | 10/12 |
+
+The opening sweep uses version 4 and seeds 76–85. The finale sweep uses version 3 and seeds 76–87, with the same Last Call deck, AI, and reward stream in version 4. Each row uses the production player seat and pairs the shuffles across policies. Chrome Debt's version 3 reference on seeds 76–85 was 7/10 and 5/10 for the untouched and edited Heist decks, and 5/10 and 8/10 for the untouched and edited Embracing Power decks. All reported games finished without an engine error or stall.
+
+Several Sato variants tried early Eddie sales, different Gear hosts, and changes to removal, ramp, and finishers. Results varied with the route and shuffle. On seeds 66–71, Sato's current list and plan yielded 4/12 starter wins and 8/12 edited wins with win packs alone. Prioritizing early Eddie sales narrowed that upgrade advantage in exploratory trials. The benchmark shows that earned edits can help, but the boss still misses the target of fewer than 10% starter wins and around 30–45% edited wins on both routes. Human play is pending.
+
+```sh
+CAMPAIGN_FIRST_SEED=76 CAMPAIGN_SEEDS=10 CAMPAIGN_SEATS=player \
+  CAMPAIGN_POLICIES=starter,boss-ready CAMPAIGN_ENCOUNTERS=1,2 \
+  node scripts/benchmark-campaign.mjs /tmp/campaign-v4-opening.json
+CAMPAIGN_BALANCE=v3 CAMPAIGN_FIRST_SEED=76 CAMPAIGN_SEEDS=12 CAMPAIGN_SEATS=player \
+  CAMPAIGN_POLICIES=starter,boss-ready CAMPAIGN_ENCOUNTERS=9 CAMPAIGN_RETRY_PACKS=2 \
+  node scripts/benchmark-campaign.mjs /tmp/campaign-v3-boss.json
+```
+
+### Version 2 calibration
+
+Both player decks start with the official retail list. Each run saves its opponent decks when it starts. The rest of this document records the earlier version 2 pass.
 
 ## Encounter decisions
 
@@ -58,11 +85,11 @@ Both starters recorded wins with every upgrade policy, including one swap per pa
 Run from the repository root. The seed range and exact opponent skills are written to the report. Use a distinct output path for each sweep.
 
 ```sh
-CAMPAIGN_SEEDS=6 CAMPAIGN_POLICIES=balanced CAMPAIGN_ENCOUNTERS=1,2,3,4,5,6,7,8 \
+CAMPAIGN_BALANCE=v2 CAMPAIGN_SEEDS=6 CAMPAIGN_POLICIES=balanced CAMPAIGN_ENCOUNTERS=1,2,3,4,5,6,7,8 \
   node scripts/benchmark-campaign.mjs /tmp/campaign-route.json
-CAMPAIGN_FIRST_SEED=6 CAMPAIGN_SEEDS=6 CAMPAIGN_POLICIES=casual,balanced,pressure,control CAMPAIGN_ENCOUNTERS=9 \
+CAMPAIGN_BALANCE=v2 CAMPAIGN_FIRST_SEED=6 CAMPAIGN_SEEDS=6 CAMPAIGN_POLICIES=casual,balanced,pressure,control CAMPAIGN_ENCOUNTERS=9 \
   node scripts/benchmark-campaign.mjs /tmp/campaign-finale.json
-CAMPAIGN_FIRST_SEED=6 CAMPAIGN_SEEDS=3 CAMPAIGN_POLICIES=starter CAMPAIGN_ENCOUNTERS=9 \
+CAMPAIGN_BALANCE=v2 CAMPAIGN_FIRST_SEED=6 CAMPAIGN_SEEDS=3 CAMPAIGN_POLICIES=starter CAMPAIGN_ENCOUNTERS=9 \
   node scripts/benchmark-campaign.mjs /tmp/campaign-finale-starters.json
 ```
 

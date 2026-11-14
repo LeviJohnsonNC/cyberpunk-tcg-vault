@@ -11,19 +11,23 @@ const policiesByName = {
   balanced: { swaps: 2, style: 'balanced' },
   pressure: { swaps: 2, style: 'aggro', recruit: true },
   control: { swaps: 2, style: 'control', recruit: true },
+  'boss-ready': { swaps: 3, style: 'balanced', matchup: true },
 };
 const seedCount = Number(process.env.CAMPAIGN_SEEDS ?? 6);
 const firstSeed = Number(process.env.CAMPAIGN_FIRST_SEED ?? 0);
 const policies = (process.env.CAMPAIGN_POLICIES ?? 'casual,balanced,pressure,control').split(',');
 const encounters = (process.env.CAMPAIGN_ENCOUNTERS ?? '1,2,3,4,5,6,7,8,9').split(',').map(Number);
+const lastEncounter = Math.max(...encounters);
 const starters = (process.env.CAMPAIGN_STARTERS ?? 'the-heist,embracing-power').split(',');
 const playerSkill = process.env.CAMPAIGN_PLAYER_SKILL ?? 'sharp';
 const retryPacks = Number(process.env.CAMPAIGN_RETRY_PACKS ?? 0);
 if (!Number.isSafeInteger(retryPacks) || retryPacks < 0) throw new Error('CAMPAIGN_RETRY_PACKS must be a nonnegative integer.');
 const useRivalPlan = process.env.CAMPAIGN_RIVAL_PLAN !== 'off';
 const fixedRivalSkill = process.env.CAMPAIGN_RIVAL_SKILL;
-const balance = process.env.CAMPAIGN_BALANCE ?? 'v3';
-if (!['legacy', 'v2', 'v3'].includes(balance)) throw new Error('CAMPAIGN_BALANCE must be legacy, v2, or v3.');
+const balance = process.env.CAMPAIGN_BALANCE ?? 'v4';
+const balanceVersions = { legacy: 2, v2: 2, v3: 3, v4: 4 };
+if (!Object.hasOwn(balanceVersions, balance)) throw new Error('CAMPAIGN_BALANCE must be legacy, v2, v3, or v4.');
+const trace = process.env.CAMPAIGN_TRACE === '1';
 const trials = process.env.CAMPAIGN_TRIALS ? JSON.parse(readFileSync(process.env.CAMPAIGN_TRIALS, 'utf8')) : {};
 const vite = await createServer({ server: { middlewareMode: true, ws: false }, appType: 'custom', logLevel: 'error' });
 try {
@@ -33,11 +37,49 @@ try {
   const { newCampaign, ENCOUNTERS, encounterDeck, encounterRivalPlan, encounterSkill, generateReward, settleCampaignMatch, emptyProfile, campaignDeckIssues } = await vite.ssrLoadModule('/src/lib/play/campaign.ts');
   const { deckFromRecommended, COPY_MAX } = await vite.ssrLoadModule('/src/lib/decks.ts');
   const { BY_SLUG } = await vite.ssrLoadModule('/src/lib/data.ts');
-  const { cardScore, scoreDeck } = await vite.ssrLoadModule('/src/lib/autobuild.ts');
+  const { cardScore, scoreDeck, compositionPenalty } = await vite.ssrLoadModule('/src/lib/autobuild.ts');
   const { campaignCardFit, campaignCrew } = await vite.ssrLoadModule('/src/lib/play/campaignDeckRules.ts');
 
+  // Value early attackers and answers to the blockers and Gear in Sato's list.
+  // The reference builds with earned cards and keeps its starting Legends.
+  const bossPriorities = {
+    'the-heist': {
+      'dexter-deshawn-one-last-chance': 4, 'psycho-squad': 3, 'offduty-malfini': 3,
+      'zetatech-faceplate': 3, 'gilded-mato-n': 5, 'safety-override': 5, 'reboot-optics': 3,
+      'towerfall': 6, 'rita-wheeler-no-stupid-questions': 4, 'mox-inciters': 4,
+      'augmented-negotiators': 2, 'pyramid-song': 1, 'evelyn-parker-scheming-siren': -4,
+      'mandibular-upgrade': -2, 'secondhand-bombus': -1,
+    },
+    'embracing-power': {
+      'ruthless-lowlife': 2, 'swordwise-huscle': 4, 'la-llorona-ghost-of-the-past': 5,
+      'meredith-stout-stone-cold-corpo': 4, '6th-street-recruits': 3, 'emergency-atlus': 3,
+      'maxtac-av': 4, 'detonate': 4, 'take-control': 3, 'memory-relapse': 4,
+      'sandevistan': 3, 'bonnie-and-clyde': 4, 'shattered-memories': -4,
+      'corporate-surveillance': -2, 'arasaka-emergency-radioport': -2,
+    },
+  };
+
+  function bossCardValue(card, starter) {
+    const cost = card.cost ?? Infinity;
+    return (bossPriorities[starter][card.slug] ?? 0)
+      + (card.type === 'Unit' && cost <= 4 && (card.power ?? 0) > 0 ? 1.5 : 0)
+      + (card.sellable ? 0.75 : 0)
+      - (cost >= 6 ? 1.5 : 0);
+  }
+
   function upgrade(run, pack, policy) {
-    const score = slug => cardScore(BY_SLUG.get(slug), run.deck.legends, policy.style);
+    if (!policy.swaps) return;
+    const matchupValues = new Map();
+    const matchup = slug => {
+      if (!policy.matchup) return 0;
+      if (!matchupValues.has(slug)) matchupValues.set(slug, bossCardValue(BY_SLUG.get(slug), run.starter));
+      return matchupValues.get(slug);
+    };
+    const score = slug => cardScore(BY_SLUG.get(slug), run.deck.legends, policy.style) + matchup(slug);
+    const deckScore = cards => {
+      const base = scoreDeck(run.deck.legends, cards, policy.style);
+      return policy.matchup ? base + Object.entries(cards).reduce((sum, [slug, count]) => sum + count * matchup(slug), 0) : base;
+    };
     const main = pack.offers.filter(slug => BY_SLUG.get(slug).type !== 'Legend').sort((a, b) => score(b) - score(a));
     const recruit = policy.recruit ? pack.offers.filter(slug => BY_SLUG.get(slug).type === 'Legend')
       .flatMap(slug => run.deck.legends.map(prior => ({
@@ -50,18 +92,17 @@ try {
     const choice = recruit?.slug ?? (policy.modestOffer ? main.at(-1) : main[0]);
     for (const slug of [...pack.cards, ...(choice ? [choice] : [])]) run.inventory[slug] = (run.inventory[slug] ?? 0) + 1;
     if (recruit) run.deck = recruit.deck;
-    if (policy.swaps === 0) return;
     const crew = campaignCrew(run.deck.legends);
     const candidates = Object.keys(run.inventory).filter(slug => !campaignCardFit(BY_SLUG.get(slug), crew));
     for (let swap = 0; swap < policy.swaps; swap++) {
-      let best, bestScore = scoreDeck(run.deck.legends, run.deck.cards, policy.style) + .2;
+      let best, bestScore = deckScore(run.deck.cards) + .2;
       for (const add of candidates) {
         if ((run.deck.cards[add] ?? 0) >= Math.min(run.inventory[add], COPY_MAX)) continue;
         for (const remove of Object.keys(run.deck.cards)) {
           if (add === remove) continue;
           const cards = { ...run.deck.cards, [remove]: run.deck.cards[remove] - 1, [add]: (run.deck.cards[add] ?? 0) + 1 };
           if (!cards[remove]) delete cards[remove];
-          const score = scoreDeck(run.deck.legends, cards, policy.style);
+          const score = deckScore(cards);
           if (score > bestScore) { best = cards; bestScore = score; }
         }
       }
@@ -79,6 +120,7 @@ try {
     const referenceRng = new SeededRNG(seed + ':reference'), opponentRng = new SeededRNG(seed + ':opponent');
     let view, error, commands = 0, slowestMs = 0;
     const rivalMoves = {};
+    const actions = [];
     for (; commands < 800; commands++) {
       view = engine.getFilteredView(seat);
       if (view.gameEnded) break;
@@ -90,13 +132,24 @@ try {
       const move = botDecision(engine, active, () => rng.next(), reference ? playerSkill : rivalSkill, reference ? undefined : plan);
       slowestMs = Math.max(slowestMs, performance.now() - started);
       if (!move || move.move === 'concede') { error = `No playable move for ${active}`; break; }
+      if (trace) {
+        const table = engine.getFilteredView(active);
+        const visibleCards = Object.values(table.players).flatMap(owner => Object.values(owner.zones)
+          .flatMap(zone => Array.isArray(zone) ? zone : []));
+        const visibleName = id => visibleCards.find(card => card.instanceId === id)?.cardName ?? undefined;
+        const targetIds = move.args?.targetIds ?? move.args?.cardIds
+          ?? [move.args?.defenderId ?? move.args?.attachToId ?? move.args?.blockerId];
+        actions.push({ turn: table.turnNumber, side: reference ? 'reference' : 'rival', move: move.move,
+          card: visibleName(move.args?.cardId ?? move.args?.attackerId ?? move.args?.legendId),
+          targets: targetIds.map(visibleName).filter(Boolean), gigs: table.players[active].gigCount });
+      }
       const result = engine.processCommand({ commandID: String(commands), move: move.move, input: move.args ? { args: move.args } : undefined }, active);
       if (!result.success) { error = `${active} ${move.move}: ${result.error}`; break; }
       if (!reference) rivalMoves[move.move] = (rivalMoves[move.move] ?? 0) + 1;
     }
     if (!view?.gameEnded && !error) error = 'Command cap reached';
     return { outcome: view?.winnerId ? view.winnerId === seat ? 'win' : 'loss' : 'draw',
-      turns: view?.turnNumber, commands, rivalMoves, slowestMs: Math.round(slowestMs), error };
+      turns: view?.turnNumber, commands, rivalMoves, slowestMs: Math.round(slowestMs), ...(trace && { trace: actions }), error };
   }
 
   const results = [];
@@ -105,7 +158,7 @@ try {
     const policy = policiesByName[name];
     if (!policy) throw new Error(`Unknown upgrade policy: ${name}`);
     for (let seed = firstSeed; seed < firstSeed + seedCount; seed++) {
-      const run = newCampaign(starter, `${starter}:${seed}`, `campaign-balance:${seed}`, balance === 'v3' ? 3 : 2);
+      const run = newCampaign(starter, `${starter}:${seed}`, `campaign-balance:${seed}`, balanceVersions[balance]);
       if (balance === 'legacy') { delete run.balanceVersion; run.opponents = []; }
       const original = { ...run.deck.cards };
       for (const encounter of ENCOUNTERS.keys()) {
@@ -130,30 +183,34 @@ try {
             }
           }
           const skill = fixedRivalSkill ?? trial?.skill ?? encounterSkill(run);
-          const plan = useRivalPlan ? encounterRivalPlan(run) : undefined;
+          const plan = useRivalPlan ? trial?.plan ?? encounterRivalPlan(run) : undefined;
           const seedKey = `campaign-calibration:${starter}:${seed}:${encounter}`;
           const replaced = Object.entries(original).reduce((n, [slug, qty]) => n + Math.max(0, qty - (run.deck.cards[slug] ?? 0)), 0);
           for (const seat of referenceSeats) {
             const key = JSON.stringify([seedKey, seat, skill, plan, run.deck.legends, run.deck.cards, rival.legends, rival.cards]);
             if (!matchCache.has(key)) matchCache.set(key, play(run, rival, skill, plan, seat, seedKey));
             const result = { starter, policy: name, seed, seat, encounter: encounter + 1, opponent: rival.name, skill, plan, replaced,
+              ...(trace && { deck: run.deck.cards, deckStats: compositionPenalty(run.deck.cards).stats }),
               ...matchCache.get(key) };
             results.push(result);
             if (result.error) console.error(result);
           }
         }
-        if (encounter < ENCOUNTERS.length - 1) upgrade(run, generateReward(run), policy);
+        if (policy.swaps && encounter + 1 < lastEncounter) upgrade(run, generateReward(run), policy);
       }
     }
   }
   for (const [index, encounter] of ENCOUNTERS.entries()) {
     const played = results.filter(result => result.encounter === index + 1);
     if (!played.length) continue;
-    const summary = starters.map(starter => {
-      const games = played.filter(game => game.starter === starter);
-      return `${starter} ${games.filter(game => game.outcome === 'win').length}/${games.length}`;
-    });
-    console.log(`${index + 1} ${encounter.title}: ${summary.join(' | ')}`);
+    console.log(`${index + 1} ${encounter.title}`);
+    for (const starter of starters) {
+      const summary = policies.map(policy => {
+        const games = played.filter(game => game.starter === starter && game.policy === policy);
+        return `${policy} ${games.filter(game => game.outcome === 'win').length}/${games.length}`;
+      });
+      console.log(`  ${starter} ${summary.join(' | ')}`);
+    }
   }
   if (process.argv[2]) writeFileSync(process.argv[2], JSON.stringify({
     firstSeed, seedCount, policies, encounters, playerSkill, fixedRivalSkill, useRivalPlan, retryPacks, referenceSeats, balance, trials, results,
