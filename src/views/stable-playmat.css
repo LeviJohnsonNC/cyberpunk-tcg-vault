@@ -107,15 +107,13 @@ html:has(.play-direct) { scrollbar-gutter: stable; }
 .play-gig-adjustment-options { flex-wrap: nowrap; overflow-x: auto; padding: 3px; scrollbar-width: thin; }
 .play-gig-adjustment-options .btn { flex: none; }
 
-/* Longer choices open above the strip. Only the panel body scrolls. */
+/* Choices open above the strip and wrap at the panel's available width. */
 .play-decision-panel {
   position: absolute;
   z-index: 8;
   inset: auto 0 calc(100% + 6px) auto;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
   width: min(670px, 100%);
-  max-height: min(34svh, 276px);
   border: 1px solid #ff8cbb70;
   border-radius: 8px;
   background: linear-gradient(145deg, #241925, #151019);
@@ -132,7 +130,7 @@ html:has(.play-direct) { scrollbar-gutter: stable; }
 }
 .play-decision-panel-heading h4 { margin: 0; color: var(--color-ticket); font: italic 800 20px/1.1 var(--font-display); text-transform: uppercase; }
 .play-direct .play-decision-panel-heading .btn { min-height: 30px; }
-.play-decision-panel-body { display: grid; gap: 9px; padding: 10px 12px; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.play-decision-panel-body { display: grid; gap: 9px; padding: 10px 12px; overflow-wrap: anywhere; }
 .play-decision-panel-body > * { min-width: 0; }
 .play-decision-panel .play-active-choice .play-pick-list { flex-wrap: wrap; max-height: none; overflow: visible; }
 .play-decision-panel .play-active-choice .play-option { max-width: 100%; }
@@ -169,7 +167,4 @@ html:has(.play-direct) { scrollbar-gutter: stable; }
   .play-direct .play-table { --play-command-height: 212px; }
   .play-command-content { flex-wrap: wrap; }
   .play-gig-adjustment-values { max-width: min(100%, 225px); }
-}
-@media (min-width: 2620px) {
-  .app--play .play-decision-panel { inset: 0 auto auto calc(100% + 28px); width: 330px; max-height: min(55svh, 480px); }
 }

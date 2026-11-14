@@ -8,6 +8,7 @@ export interface MatchActionForm {
   id: string;
   label: string;
   detail?: string;
+  remainder?: string;
   confirm?: string;
   fields: (picks: Picks) => PickField[];
   move: (picks: Picks) => Move;
@@ -160,12 +161,13 @@ export function matchActions(view: PlayerView): MatchActionForm[] {
         const labels: Record<string, string> = { hand: 'Add to hand', trash: 'Send to trash', deckTop: 'Top of deck', deckBottom: 'Bottom of deck', field: 'Put on the field' };
         const selectable = destinations.filter((dest) => !dest.remainder);
         const remainder = destinations.find((dest) => dest.remainder)?.zone ?? 'deckBottom';
-        actions = [form('resolveScry', 'Place revealed cards', (p) => selectable.map((dest, i) =>
+        const placement = form('resolveScry', 'Place revealed cards', (p) => selectable.map((dest, i) =>
           field(String(i), labels[dest.zone] ?? dest.zone,
             options(dest.eligibleCardIds.filter((id) => !Object.entries(p).some(([key, chosen]) => key !== String(i) && chosen.includes(id)))),
             dest.min ?? 0, dest.max ?? dest.eligibleCardIds.length, dest.order !== 'random' && (dest.zone === 'deckTop' || dest.zone === 'deckBottom'))),
         (p) => ({ destinations: selectable.map((dest, i) => ({ zone: dest.zone, cardIds: dest.zone === 'deckTop' ? [...(p[String(i)] ?? [])].reverse() : p[String(i)] ?? [] })) }),
-        [detail, `Unassigned cards · ${labels[remainder] ?? remainder}.`].filter(Boolean).join(' '))];
+        detail);
+        actions = [{ ...placement, remainder: labels[remainder] ?? remainder }];
         break;
       }
       case 'revealDestination':

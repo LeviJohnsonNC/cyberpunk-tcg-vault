@@ -1,8 +1,7 @@
 .play-direct .play-table {
   --play-legend-art: clamp(35px, min(4.1vw, var(--play-legend-width)), 74px);
-  /* The spent tilt and scale use the same easing so the art fits throughout the turn. */
   --play-legend-slot-width: calc(var(--play-legend-art) * 1.38 + 5px);
-  --play-legend-slot-height: calc(var(--play-legend-art) * 1.52 + 5px);
+  --play-legend-slot-height: calc(var(--play-legend-art) * 1.66 + 2px);
   --play-crew-width: max(278px, calc(var(--play-legend-art) * 5.2 + 36px));
   --play-eddie-slot: min(56px, calc((var(--play-crew-width) - 104px) / 4));
   --play-eddie-panel-height: calc(var(--play-eddie-slot) + 12px);
@@ -69,8 +68,7 @@
 }
 .play-direct .play-legend-slot .play-card[data-legend-card] .play-card-art { outline: none; }
 .play-legend-slot .play-card[data-spent="true"] .play-card-art {
-  rotate: 45deg;
-  scale: .8;
+  rotate: 20deg;
   filter: saturate(.76) brightness(.79);
 }
 .play-card[data-legend-card] .play-art-fallback:has(b) {
@@ -269,6 +267,6 @@
 }
 @media (prefers-reduced-motion: no-preference) {
   .play-card[data-legend-card] .play-card-art, .play-eddie-card {
-    transition: rotate 210ms cubic-bezier(.2,.7,.25,1), scale 210ms cubic-bezier(.2,.7,.25,1), filter 210ms ease;
+    transition: rotate 210ms cubic-bezier(.2,.7,.25,1), filter 210ms ease;
   }
 }
