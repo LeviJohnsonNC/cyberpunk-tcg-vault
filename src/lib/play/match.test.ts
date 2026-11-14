@@ -188,6 +188,33 @@ describe('play engine', () => {
     expect(move).toMatchObject({ move: 'attackRival', args: { attackerId: attacker } });
   });
 
+  it('uses Detonate on the Gear that makes a late direct attack steal an extra Gig', () => {
+    const { state, active, other } = rulesFixture('player');
+    state.G.players[other].zones.hand = [];
+    for (let i = 0; i < 5; i++) giveGig(state, other);
+    placeEddie(state, other);
+    const detonate = placeCard(state, other, 'detonate', 'hand');
+    const attacker = placeCard(state, active, 'maxtac-av', 'field');
+    const blades = placeCard(state, active, 'mantis-blades', 'field');
+    equipFixture(state, attacker, blades);
+    const decoy = placeCard(state, active, 'valentino-street-racer', 'field');
+    equipFixture(state, decoy, placeCard(state, active, 'satori-sword-of-saburo', 'field'));
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'attackRival', { attackerId: attacker });
+    const decision = (position: LocalEngine) => botDecision(position, other, () => .3, 'masterful', 'last-call-v5');
+    const play = decision(engine)!;
+    expect(play).toEqual({ move: 'playCard', args: { cardId: detonate } });
+    const alternate = structuredClone(engine.getState());
+    changeHiddenCards(alternate, active);
+    expect(decision(new LocalEngine(alternate))).toEqual(play);
+    issue(engine, other, play.move, play.args);
+    const target = decision(engine)!;
+    expect(target).toEqual({ move: 'resolveEffectTarget', args: { targetIds: [blades] } });
+    issue(engine, other, target.move, target.args);
+    expect((engine.getFilteredView(active).players[active].zones.field as CardView[])
+      .find(card => card.instanceId === attacker)?.effectivePower).toBe(8);
+  });
+
   it.each(['sharp', 'masterful'] as const)('%s sells an unusable Gear to fund a Unit on an empty field', skill => {
     const { state, active, other } = rulesFixture();
     state.G.players[active].zones.hand = [];
