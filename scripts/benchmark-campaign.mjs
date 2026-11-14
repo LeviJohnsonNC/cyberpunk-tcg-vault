@@ -121,6 +121,7 @@ try {
     let view, error, commands = 0, slowestMs = 0;
     const rivalMoves = {};
     const actions = [];
+    const rivalOpening = [];
     for (; commands < 800; commands++) {
       view = engine.getFilteredView(seat);
       if (view.gameEnded) break;
@@ -132,6 +133,17 @@ try {
       const move = botDecision(engine, active, () => rng.next(), reference ? playerSkill : rivalSkill, reference ? undefined : plan);
       slowestMs = Math.max(slowestMs, performance.now() - started);
       if (!move || move.move === 'concede') { error = `No playable move for ${active}`; break; }
+      if (!reference && move.move === 'passPhase' && view.gamePhase === 'main' && view.turnNumber <= 6) {
+        const rival = view.players[active];
+        const bodies = rival.zones.field.filter(card => card.type === 'unit' || card.type === 'legend');
+        rivalOpening.push({
+          turn: view.turnNumber,
+          gigs: rival.gigCount,
+          units: bodies.length,
+          power: bodies.reduce((total, card) => total + card.effectivePower, 0),
+          eddies: rival.zones.eddieArea.length,
+        });
+      }
       if (trace) {
         const table = engine.getFilteredView(active);
         const visibleCards = Object.values(table.players).flatMap(owner => Object.values(owner.zones)
@@ -149,7 +161,9 @@ try {
     }
     if (!view?.gameEnded && !error) error = 'Command cap reached';
     return { outcome: view?.winnerId ? view.winnerId === seat ? 'win' : 'loss' : 'draw',
-      turns: view?.turnNumber, commands, rivalMoves, slowestMs: Math.round(slowestMs), ...(trace && { trace: actions }), error };
+      turns: view?.turnNumber, winReason: view?.winReason, referenceWentFirst: view?.players[seat].firstPlayer,
+      commands, rivalMoves, rivalOpening, slowestMs: Math.round(slowestMs),
+      ...(trace && { trace: actions }), error };
   }
 
   const results = [];
