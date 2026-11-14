@@ -2,7 +2,6 @@ import { Activity, lazy, Suspense, useCallback, useEffect, useRef, useState } fr
 import { Analytics, type BeforeSendEvent } from '@vercel/analytics/react';
 import { useStore, type Deck } from './lib/store';
 import { cloudEnabled } from './lib/supabase';
-import { PRICES } from './lib/data';
 import { AuthBox } from './components/AuthBox';
 import { CardDrawer } from './components/CardDrawer';
 import { Collection } from './views/Collection';
@@ -313,16 +312,9 @@ export default function App() {
       </div>
 
       {route.tab !== 'play' && <footer className="footer">
-        Unofficial fan-made tool. Not affiliated with WeirdCo or CD PROJEKT RED. Card data and images come from the official
-        Cyberpunk TCG card database. Cyberpunk and card art are trademarks and copyrights of CD PROJEKT S.A.
-        <br />
-        Prices: {PRICES.source}, in USD; CAD at 1 USD = {PRICES.fx.usdToCad.toFixed(4)} CAD. Updated{' '}
-        {new Date(PRICES.updatedAt).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' }).replace(/\.$/, '')}.
-        <br />
         <a href="#/about">How it works</a> ·{' '}
         <a href="#" onClick={(e) => { e.preventDefault(); setFeedbackOpen(true); }}>Send feedback</a> ·{' '}
-        <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a> ·{' '}
-        <a href="https://github.com/LeviJohnsonNC/cyberpunk-tcg-vault" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a>
       </footer>}
     </div>
     {mobile && <MobileVaultNav tab={route.tab} />}
