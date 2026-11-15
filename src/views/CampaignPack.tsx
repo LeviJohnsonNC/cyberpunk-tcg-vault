@@ -2,13 +2,13 @@ import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState, type CSSP
 import { CARD_BACK } from '../components/bits';
 import { BY_SLUG, defaultPrinting } from '../lib/data';
 import { ENCOUNTERS, campaignPackLayout, type CampaignRun, type CampaignReward } from '../lib/play/campaign';
-import { campaignPulls, packRarityLabel } from '../lib/play/campaignPack';
+import { campaignPulls, packRarityLabel, type CampaignPull } from '../lib/play/campaignPack';
 import { packCardContext } from '../lib/play/campaignPresentation';
 import { packMaterial, packMaterialStyle } from '../lib/play/packMaterial';
 import { getPrintingArt } from '../lib/printingArt';
 import wrapperArt from '../assets/play/campaign-booster-foil.webp';
 import { CampaignTimeline, type CampaignInspect } from './CampaignHub';
-import { CampaignFeaturedCard } from './CampaignFeaturedCard';
+import { CampaignFeaturedCard, CampaignMaterialCard } from './CampaignFeaturedCard';
 import { CampaignRewardArt } from './CampaignRewardArt';
 import { CampaignDispatch } from './CampaignStory';
 import './campaign-pack-scene.css';
@@ -40,6 +40,24 @@ const flipDuration = 505;
 const faceTime = 266;
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const displayName = (slug: string) => BY_SLUG.get(slug)?.display ?? slug;
+function bonusPull(slug: string): CampaignPull {
+  const card = BY_SLUG.get(slug);
+  return { slug, printing: card && defaultPrinting(card) };
+}
+
+function warmPrintingArt(pulls: readonly CampaignPull[]) {
+  for (const { slug, printing } of pulls) {
+    if (!printing) continue;
+    void getPrintingArt(slug, printing.id).then(src => {
+      if (!src) return;
+      const image = new Image();
+      image.decoding = 'async';
+      image.referrerPolicy = 'no-referrer';
+      image.src = src;
+      return image.decode();
+    }).catch(() => {});
+  }
+}
 
 export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, flipSlot, showBonus, revealSound, choose, finish, inspect, back }: PackProps) {
   const retry = run.phase === 'retryReward';
@@ -78,21 +96,15 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
   const pull = layout && active !== undefined ? pulls[layout.order[active]] : undefined;
   const openingSpread = !pull && !bonus;
   const turningSlot = flip && flip.phase !== 'saving' ? flip.slot : undefined;
+  const warmOffers = hasChoice && revealed.length >= Math.max(1, count - 2);
 
   useEffect(() => {
     // Warm exact printing art without making a save depend on the artwork host.
-    for (const { slug, printing } of campaignPulls(reward)) {
-      if (printing) void getPrintingArt(slug, printing.id).then(src => {
-        if (src) {
-          const image = new Image();
-          image.decoding = 'async';
-          image.referrerPolicy = 'no-referrer';
-          image.src = src;
-          void image.decode().catch(() => {});
-        }
-      }).catch(() => {});
-    }
+    warmPrintingArt(campaignPulls(reward));
   }, [reward]);
+  useEffect(() => {
+    if (warmOffers) warmPrintingArt(reward.offers.map(bonusPull));
+  }, [reward.offers, warmOffers]);
 
   useEffect(() => {
     if (!peeling) return;
@@ -322,37 +334,32 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
     <div className="campaign-tabletop-inner">
       {bonus ? <>
         <header className="campaign-bonus-head">
-          <p className="campaign-invitation-eyebrow">The Afterlife <span aria-hidden="true">//</span> {retry ? 'House pack' : 'Final choice'}</p>
-          <h1 id="campaign-moment-title" tabIndex={-1} ref={attachTitle}>{retry ? 'Pick an upgrade for the rematch' : 'One more for the crew'}<span aria-hidden="true">.</span></h1>
-          <p>{retry ? 'Choose a card that fits your crew. You can swap it in before the rematch.' : `${count} cards secured. Choose one bonus card for your reserve.`}</p>
+          <h1 id="campaign-moment-title" tabIndex={-1} ref={attachTitle}>Choose one bonus card<span aria-hidden="true">.</span></h1>
         </header>
         <div className="campaign-bonus-cards" style={{ '--offer-count': reward.offers.length } as CSSProperties} role="group" aria-label="Bonus cards">
           {reward.offers.map(slug => {
             const card = BY_SLUG.get(slug);
-            const printing = card && defaultPrinting(card);
+            const pull = bonusPull(slug);
             const name = displayName(slug);
-            const newToReserve = !retry && (run.inventory[slug] ?? 0) === 0 && card?.type !== 'Legend';
-            const context = newToReserve ? 'New to your reserve' : packCardContext(run, slug);
-            return <article key={slug}>
-              <button type="button" className="campaign-bonus-pick" aria-pressed={choice === slug}
-                aria-label={`Select ${name}`} disabled={busy} onClick={() => setChoice(slug)}>
-                <CampaignRewardArt pull={{ slug, printing }} alt="" exact />
-              </button>
+            const copies = run.deck.cards[slug] ?? 0;
+            const detail = card?.type === 'Legend' ? `${card.ram ?? 0} ${card.color} RAM`
+              : copies ? `${copies} in deck` : card && !run.inventory[slug] ? 'New to reserve' : undefined;
+            const detailId = detail ? `bonus-detail-${slug}` : undefined;
+            return <article key={slug} data-selected={choice === slug || undefined}>
+              <CampaignMaterialCard pull={pull} offer={{ selected: choice === slug, disabled: busy, detailId }} onPress={() => setChoice(slug)} />
               <div className="campaign-bonus-card-copy">
                 <strong>{name}</strong>
-                <span>{[card?.color, card?.type].filter(Boolean).join(' / ')}</span>
-                <small>{context}</small>
-                <button type="button" className="campaign-tabletop-link" aria-label={`Inspect ${name}`}
-                  onClick={() => inspect(slug, printing?.id)}>Inspect</button>
+                {detail && <small id={detailId}>{detail}</small>}
+                <button type="button" className="campaign-bonus-inspect" aria-label={`Inspect ${name}`} title={`Inspect ${name}`}
+                  onClick={() => inspect(slug, pull.printing?.id)}>i</button>
               </div>
             </article>;
           })}
         </div>
         <div className="campaign-bonus-actions">
           <button type="button" className="campaign-invitation-cta" disabled={busy || !choice} onClick={() => { if (choice) choose(choice); }}>
-            Add selected card to reserve <span aria-hidden="true">→</span>
+            Add to reserve <span aria-hidden="true">→</span>
           </button>
-          <small>You can add it to your deck in the Workbench.</small>
           <button type="button" className="campaign-tabletop-link" disabled={busy} onClick={() => void switchBonus(false)}>Review pack</button>
         </div>
       </> : <>
