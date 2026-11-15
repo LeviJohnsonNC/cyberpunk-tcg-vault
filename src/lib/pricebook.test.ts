@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import sample from '../../public/imports/levi-collection.json';
-import { buildPriceBook, filterHoldings, filterOptions, sortLines, summarizeHoldings, toCsv } from './pricebook';
-import { BY_SLUG, FX, defaultPrinting, valueHolding } from './data';
+import { buildPriceBook, catalogPrices, filterHoldings, filterOptions, sortLines, summarizeHoldings, toCsv } from './pricebook';
+import { BY_SLUG, CARDS, FX, defaultPrinting, valueHolding } from './data';
 import type { Entry } from './store';
 
 vi.mock('../data/prices.json', () => import('./fixtures/prices.json'));
@@ -9,6 +9,16 @@ vi.mock('../data/prices.json', () => import('./fixtures/prices.json'));
 const entries = sample.entries as Entry[];
 const NOVA_EO = BY_SLUG.get('adam-smasher-ender-of-legends')!.printings.find((p) => p.set === 'Edgerunner Open S 1')!.id;
 const JACKIE_RETAIL = BY_SLUG.get('jackie-welles-pour-one-out-for-me')!.printings.find((p) => p.set === 'The Heist — Retail Starter Deck')!.id;
+
+describe('catalog prices', () => {
+  it('includes each catalog printing once, including unowned and unpriced promos', () => {
+    const rows = catalogPrices();
+    expect(rows.map(({ printingId }) => printingId)).toEqual(CARDS.flatMap((card) => card.printings.map(({ id }) => id)));
+    const judge = filterHoldings(rows, 'Maman Brigitte #037', { basis: 'Unpriced' });
+    expect(judge).toHaveLength(1);
+    expect(judge[0]).toMatchObject({ unit: null, printing: { num: '037' } });
+  });
+});
 
 describe('filtered Price Book', () => {
   const full = buildPriceBook(entries);

@@ -1,14 +1,14 @@
 // Price Book: reference implementation of the Afterlife design language.
 // See docs/design-system.md. Uses only semantic tokens (src/theme.css) and pricebook.css.
-import { lazy, Suspense, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { Activity, lazy, Suspense, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import { VaultSelect } from '../components/VaultSelect';
 import { BASIS_CLASS, PRICES, printingLabel } from '../lib/data';
 import { getCurrency, money, moneyOr, toDisplay } from '../lib/currency';
-import { buildPriceBook, FILTERS, filterHoldings, filterOptions, sortLines, summarizeHoldings, toCsv, type Basis, type Group, type Line, type PriceFilters, type SortKey } from '../lib/pricebook';
+import { buildPriceBook, catalogPrices, FILTERS, filterHoldings, filterOptions, sortLines, summarizeHoldings, toCsv, type Basis, type FilterKey, type Group, type Line, type PriceFilters, type SortKey } from '../lib/pricebook';
 import { useStore } from '../lib/store';
 import { CardImg } from '../components/bits';
 import { PrintingArt } from '../components/PrintingArt';
-import { Masthead, MetricStrip } from '../components/ui';
+import { Masthead, MetricStrip, ViewTabs } from '../components/ui';
 import './pricebook.css';
 
 const PriceTrend = lazy(() => import('./PriceTrend'));
@@ -129,7 +129,7 @@ function Breakdown({ title, groups, total, fill, children }: { title: string; gr
 }
 
 /* ---------- page ---------- */
-export function PriceBook({ mobile, onOpen, goAdd }: { mobile: boolean; onOpen: OpenHolding; goAdd: () => void }) {
+function HoldingsPriceBook({ mobile, onOpen, goAdd }: PriceBookProps) {
   const { entries, collectionReady, collectionError, retryCollection } = useStore();
   const [sortBy, setSortBy] = useState<SortKey>('total');
   const [query, setQuery] = useState('');
@@ -175,7 +175,7 @@ export function PriceBook({ mobile, onOpen, goAdd }: { mobile: boolean; onOpen: 
   const updated = new Date(PRICES.updatedAt).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' }).replace(/\.$/, '');
 
   return (
-    <div className="pb">
+    <>
       <div className="pb-hero">
         <Masthead
           size="hero"
@@ -211,19 +211,8 @@ export function PriceBook({ mobile, onOpen, goAdd }: { mobile: boolean; onOpen: 
             </div>
           </header>
           {collectionReady && full.lines.length > 0 && <div className="pb-filters">
-            <input ref={search} className="input search pb-search" type="search" aria-label="Search holdings"
-              placeholder="Search name, set, or card number" value={query} onChange={(event) => setQuery(event.target.value)} />
-            <details className="pb-filter-disclosure">
-              <summary>Filters{activeCount > 0 && <span className="pb-filter-count">{activeCount}</span>}</summary>
-              <div className="pb-filter-fields">
-                {FILTERS.map(({ key, label, all }) => <label key={key}>
-                  <span>{label}</span>
-                  <VaultSelect className="pb-select" aria-label={label} value={filters[key] ?? ''}
-                    options={[{ value: '', label: all }, ...options[key]]}
-                    onValueChange={(value) => setFilters((previous) => ({ ...previous, [key]: value }))} />
-                </label>)}
-              </div>
-            </details>
+            <PriceFiltersControls label="Search holdings" query={query} setQuery={setQuery} search={search}
+              filters={filters} options={options} changeFilter={(key, value) => setFilters((previous) => ({ ...previous, [key]: value }))} />
             <div className="pb-filter-results">
               <span className="pb-count" role="status">{filtered ? `${pb.count} of ${full.count} copies` : `${pb.count} ${pb.count === 1 ? 'copy' : 'copies'}`}</span>
               {filtered && <button type="button" className="pb-text-action" onClick={clearFilters}>Clear all</button>}
@@ -341,6 +330,145 @@ export function PriceBook({ mobile, onOpen, goAdd }: { mobile: boolean; onOpen: 
           </Suspense>}
         </aside>
       </div>
-    </div>
+    </>
   );
+}
+
+function PriceFiltersControls({ label, query, setQuery, search, filters, options, changeFilter }: {
+  label: string;
+  query: string;
+  setQuery: (value: string) => void;
+  search: RefObject<HTMLInputElement | null>;
+  filters: PriceFilters;
+  options: ReturnType<typeof filterOptions>;
+  changeFilter: (key: FilterKey, value: string) => void;
+}) {
+  const count = FILTERS.filter(({ key }) => filters[key]).length;
+  return <>
+    <input ref={search} className="input search pb-search" type="search" aria-label={label}
+      placeholder="Search name, set, or card number" value={query} onChange={(event) => setQuery(event.target.value)} />
+    <details className="pb-filter-disclosure">
+      <summary>Filters{count > 0 && <span className="pb-filter-count">{count}</span>}</summary>
+      <div className="pb-filter-fields">
+        {FILTERS.map(({ key, label: filterLabel, all }) => <label key={key}>
+          <span>{filterLabel}</span>
+          <VaultSelect className="pb-select" aria-label={filterLabel} value={filters[key] ?? ''}
+            options={[{ value: '', label: all }, ...options[key]]}
+            onValueChange={(value) => changeFilter(key, value)} />
+        </label>)}
+      </div>
+    </details>
+  </>;
+}
+
+const catalogPageSize = 40;
+const catalogSorts = [
+  { value: 'name', label: 'Name' },
+  { value: 'high', label: 'Price high to low' },
+  { value: 'low', label: 'Price low to high' },
+] as const;
+const priceBookViews = [{ id: 'holdings', label: 'My Holdings' }, { id: 'catalog', label: 'All Cards' }] as const;
+type PriceBookView = typeof priceBookViews[number]['id'];
+type PriceBookProps = { mobile: boolean; onOpen: OpenHolding; goAdd: () => void };
+
+function CatalogPriceBook({ onOpen }: Pick<PriceBookProps, 'onOpen'>) {
+  const [query, setQuery] = useState('');
+  const [filters, setFilters] = useState<PriceFilters>({});
+  const [sort, setSort] = useState('name');
+  const [page, setPage] = useState(0);
+  const search = useRef<HTMLInputElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const lines = useMemo(catalogPrices, []);
+  const options = useMemo(() => filterOptions(lines), [lines]);
+  const visible = useMemo(() => filterHoldings(lines, query, filters).sort((a, b) => {
+    const byName = a.card.display.localeCompare(b.card.display) || printingLabel(a.printingId, false).localeCompare(printingLabel(b.printingId, false));
+    if (sort === 'name' || (a.unit === null && b.unit === null)) return byName;
+    if (a.unit === null || b.unit === null) return a.unit === null ? 1 : -1;
+    return (sort === 'high' ? b.unit - a.unit : a.unit - b.unit) || byName;
+  }), [lines, query, filters, sort]);
+  const start = page * catalogPageSize;
+  const shown = visible.slice(start, start + catalogPageSize);
+  const market = visible.filter((row) => row.basis === 'Market').length;
+  const unpriced = visible.filter((row) => row.basis === null).length;
+  const estimates = visible.length - market - unpriced;
+  const filtered = query.trim() || FILTERS.some(({ key }) => filters[key]);
+  const asOf = PRICES.priceDate
+    ? new Date(`${PRICES.priceDate}T12:00:00Z`).toLocaleDateString('en-CA', { dateStyle: 'medium', timeZone: 'UTC' })
+    : new Date(PRICES.updatedAt).toLocaleDateString('en-CA', { dateStyle: 'medium' });
+  const goPage = (next: number) => { setPage(next); heading.current?.focus(); };
+  return <>
+    <div className="pb-catalog-masthead">
+      <Masthead eyebrow="The Afterlife / Night Market" title="Price Book" sub={`Current prices by printing · ${getCurrency()}`} />
+      <MetricStrip items={[
+        { label: 'Market', value: market },
+        { label: 'Estimates', value: estimates },
+        { label: 'Unpriced', value: unpriced },
+      ]} />
+    </div>
+    <section className="pb-holdings pb-catalog" aria-labelledby="pb-catalog-title">
+      <header className="pb-holdings-head">
+        <h2 id="pb-catalog-title" ref={heading} tabIndex={-1}>Catalog prices</h2>
+        <div className="pb-controls">
+          <VaultSelect aria-label="Sort catalog prices" className="pb-select" value={sort}
+            onValueChange={(value) => { setSort(value); setPage(0); }} options={catalogSorts} />
+        </div>
+      </header>
+      <div className="pb-filters">
+        <PriceFiltersControls label="Search all cards" query={query} search={search}
+          setQuery={(value) => { setQuery(value); setPage(0); }} filters={filters} options={options}
+          changeFilter={(key, value) => { setFilters((previous) => ({ ...previous, [key]: value })); setPage(0); }} />
+        <div className="pb-filter-results">
+          <span role="status" className="pb-count">{shown.length ? `${start + 1}–${start + shown.length} of ${visible.length} printings` : '0 matching printings'}</span>
+          {filtered && <button type="button" className="pb-text-action" onClick={() => {
+            setQuery(''); setFilters({}); setPage(0); search.current?.focus();
+          }}>Clear all</button>}
+        </div>
+      </div>
+      {shown.length ? (
+        <div className="pb-rows pb-catalog-rows" role="table" aria-label="Catalog prices" aria-rowcount={visible.length + 1}>
+          <div className="pb-row pb-row-head" role="row">
+            <span role="columnheader">Card and printing</span>
+            <span role="columnheader" className="r">Price</span>
+            <span role="columnheader">Basis</span>
+          </div>
+          {shown.map((row, index) => {
+            const printing = printingLabel(row.printingId, false);
+            const source = row.sourcePrintingId !== row.printingId ? row.sourcePrintingId : null;
+            return <div key={row.printingId} className="pb-row" role="row" aria-rowindex={start + index + 2}>
+              <span role="cell" className="pb-id-text">
+                <button type="button" className="pb-name" aria-label={`Open ${row.card.display}, ${printing}`}
+                  onClick={(event) => onOpen(row.card.slug, row.printingId, false, event.currentTarget)}>{row.card.display}</button>
+                <span className="pb-print">{printing} · {row.rarity}</span>
+              </span>
+              <span role="cell" className={`pb-catalog-price num r${row.unit == null ? ' pb-dim' : ''}`}>{moneyOr(row.unit)}</span>
+              <span role="cell" className="pb-c-basis">
+                {row.url ? <a href={row.url} rel="noreferrer" target="_blank" aria-label={`${row.basis} quote on TCGplayer`}>
+                  <BasisTag basis={row.basis} from={source} />
+                </a> : row.basis && <BasisTag basis={row.basis} from={source} />}
+              </span>
+            </div>;
+          })}
+        </div>
+      ) : <div className="pb-empty"><p>No printings match your search and filters.</p></div>}
+      {visible.length > catalogPageSize && <nav className="pb-catalog-pagination" aria-label="Catalog pages">
+        <button type="button" className="pb-btn" disabled={page === 0} onClick={() => goPage(page - 1)}>Previous</button>
+        <span>Page {page + 1} of {Math.ceil(visible.length / catalogPageSize)}</span>
+        <button type="button" className="pb-btn" disabled={start + shown.length >= visible.length} onClick={() => goPage(page + 1)}>Next</button>
+      </nav>}
+    </section>
+    <p className="pb-source">Source {PRICES.source} · Prices as of {asOf} · {getCurrency()}</p>
+  </>;
+}
+
+export function PriceBook(props: PriceBookProps) {
+  const [view, setView] = useState<PriceBookView>('holdings');
+  return <div className="pb">
+    <ViewTabs id="price-book" className="pb-view-tabs" label="Price Book views" tabs={priceBookViews} value={view} onChange={setView} />
+    <div id="price-book-panel-holdings" role="tabpanel" aria-labelledby="price-book-tab-holdings" hidden={view !== 'holdings'}>
+      <Activity mode={view === 'holdings' ? 'visible' : 'hidden'}><HoldingsPriceBook {...props} /></Activity>
+    </div>
+    <div id="price-book-panel-catalog" role="tabpanel" aria-labelledby="price-book-tab-catalog" hidden={view !== 'catalog'}>
+      <Activity mode={view === 'catalog' ? 'visible' : 'hidden'}><CatalogPriceBook onOpen={props.onOpen} /></Activity>
+    </div>
+  </div>;
 }

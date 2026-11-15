@@ -47,6 +47,7 @@ export interface PrintingQuote {
 interface PriceFile {
   version: number;
   updatedAt: string;
+  priceDate?: string; // UTC publication date at the price source
   source: string;
   fx: { usdToCad: number; asOf: string };
   printings: Record<string, PrintingQuote>;

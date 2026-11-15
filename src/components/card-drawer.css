@@ -358,3 +358,14 @@
   .card-drawer-move > button { grid-column: 1 / -1; }
 }
 @media (prefers-reduced-motion: reduce) { .card-drawer { animation: none; } }
+
+.card-drawer-history select {
+  min-height: 30px;
+  color: var(--color-text-muted);
+  background: var(--color-canvas-deep);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-sm);
+  padding: 2px 5px;
+  font: 11px/1.25 var(--font-mono);
+}
+.card-drawer-chart-dot { fill: var(--color-accent); }

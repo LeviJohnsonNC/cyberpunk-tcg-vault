@@ -5,11 +5,12 @@
 // Run: node scripts/sync-data.mjs
 import { writeFile, mkdir } from 'node:fs/promises';
 import { buildPrices } from './price-build.mjs';
-import { priceSnapshot, saveWeekly } from './price-history.mjs';
+import { priceSnapshot, saveDaily, saveWeekly } from './price-history.mjs';
 import { refreshCommunityMeta } from './sync-community-meta.mjs';
 
 const CARD_API = 'https://api.netdeck.gg/api/cards/cyberpunk';
-const TCG = 'https://tcgcsv.com/tcgplayer/92';
+const TCGCSV = 'https://tcgcsv.com';
+const TCG = `${TCGCSV}/tcgplayer/92`;
 const OUT = new URL('../src/data/', import.meta.url);
 
 const getJSON = async (url) => {
@@ -53,6 +54,12 @@ async function cards() {
 }
 
 async function tcgplayer() {
+  // TCGCSV publishes in the evening. Record the provider's date even when we fetch the following morning.
+  const response = await fetch(`${TCGCSV}/last-updated.txt`, { headers: { 'user-agent': 'cyberpunk-tcg-vault/1.0' } });
+  if (!response.ok) throw new Error(`Could not read the price publication date (${response.status})`);
+  const publication = new Date((await response.text()).trim());
+  if (!Number.isFinite(publication.getTime())) throw new Error('Invalid TCGCSV publication date');
+  const priceDate = publication.toISOString().slice(0, 10);
   const groups = (await getJSON(`${TCG}/groups`)).results;
   const rows = [];
   for (const g of groups) {
@@ -77,7 +84,7 @@ async function tcgplayer() {
       });
     }
   }
-  return { rows, groups: groups.map((g) => g.name) };
+  return { rows, priceDate };
 }
 
 async function fx() {
@@ -100,9 +107,11 @@ const main = async () => {
   await writeFile(new URL('cards.json', OUT), JSON.stringify(cardList));
   await writeFile(
     new URL('prices.json', OUT),
-    JSON.stringify({ version: 2, updatedAt, source: 'TCGplayer market (via tcgcsv.com)', fx: rate, printings, pairs }),
+    JSON.stringify({ version: 2, updatedAt, priceDate: tcg.priceDate, source: 'TCGplayer market (via tcgcsv.com)', fx: rate, printings, pairs }),
   );
-  await saveWeekly(new URL('price-history.json', OUT), priceSnapshot(updatedAt, printings));
+  const snapshot = priceSnapshot(tcg.priceDate, printings);
+  await saveWeekly(new URL('price-history.json', OUT), snapshot);
+  await saveDaily(new URL('printing-price-history.json', OUT), [snapshot]);
   await import('./gen-api-data.mjs');
   console.log(`cards=${cardList.length} printingPrices=${Object.keys(printings).length} matched=${matched} pairs=${Object.keys(pairs).length} ambiguous=${ambiguous.length} usdToCad=${rate.usdToCad}`);
   try {

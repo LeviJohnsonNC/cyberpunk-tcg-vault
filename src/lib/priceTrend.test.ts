@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { archiveQuotes, priceSnapshot, retainWeekly, weekStart } from '../../scripts/price-history.mjs';
+import { archiveQuotes, priceSnapshot, retainDaily, retainWeekly, weekStart } from '../../scripts/price-history.mjs';
 import { priceTrend, type PriceSnapshot } from './priceTrend';
 import type { Line } from './pricebook';
 
@@ -58,5 +58,22 @@ describe('weekly price snapshots', () => {
     expect(archiveQuotes(catalog, [
       row(1, 'Normal', 99), row(1, 'Foil', 3), row(2, 'Normal', 2), row(3, 'Normal', 1), row(3, 'Normal', 2),
     ])).toEqual({ exact: { market: 3, low: null } });
+  });
+});
+
+describe('persistent daily price archive', () => {
+  it('inserts earlier dates, preserves unrelated quotes, and is idempotent on retry', () => {
+    const daily: PriceSnapshot[] = [{ date: '2026-11-15', quotes: { exact: [120, null], other: [90, null] } },
+      { date: '2026-11-13', quotes: { exact: [100, 80] } }];
+    const initial = retainDaily({ version: 1, dates: [], quotes: {} }, daily.slice(0, 1));
+    const backfilled = retainDaily(initial, daily.slice(1));
+    expect(backfilled).toEqual({
+      version: 1, dates: ['2026-11-13', '2026-11-15'],
+      quotes: { exact: [[0, 100, 80], [1, 120, null]], other: [[1, 90, null]] },
+    });
+    expect(retainDaily(backfilled, daily)).toEqual(backfilled);
+    const corrected = retainDaily(backfilled, [{ date: '2026-11-15', quotes: { exact: [130, null] } }]);
+    expect(corrected.quotes.exact.at(-1)).toEqual([1, 130, null]);
+    expect(corrected.quotes.other).toEqual(backfilled.quotes.other);
   });
 });

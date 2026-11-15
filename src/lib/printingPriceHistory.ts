@@ -1,32 +1,37 @@
 import type { PriceSnapshot } from './priceTrend';
 
 const DAY = 86_400_000;
-const WEEK = 7 * DAY;
-const WEDNESDAY = Date.UTC(1970, 0, 7);
 
 export type HistoryBasis = 'Market' | 'Low listing';
+export type HistoryRange = 'month' | 'all';
 
-export function printingPriceHistory(id: string, history: PriceSnapshot[], latest: PriceSnapshot, basis: HistoryBasis) {
+export interface DailyPriceArchive {
+  dates: string[];
+  quotes: Record<string, [day: number, market: number | null, low: number | null][]>;
+}
+
+export function printingPriceHistory(id: string, archive: DailyPriceArchive, latest: PriceSnapshot, basis: HistoryBasis, range: HistoryRange) {
+  const slot = basis === 'Market' ? 1 : 2;
+  const byDate = new Map<string, number>();
+  for (const point of archive.quotes[id] ?? []) {
+    const cents = point[slot];
+    if (cents != null && cents > 0) byDate.set(archive.dates[point[0]], cents);
+  }
+  const current = latest.quotes[id]?.[slot - 1];
+  if (current != null && current > 0) byDate.set(latest.date, current);
+
   const end = Date.parse(latest.date);
-  const start = end - 30 * DAY;
-  const slot = basis === 'Market' ? 0 : 1;
-  // The current feed supersedes a saved observation from the same date.
-  const snapshots = new Map([...history, latest].map((snapshot) => [snapshot.date, snapshot]));
-  const points = [...snapshots.values()]
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .flatMap(({ date, quotes }) => {
-      const time = Date.parse(date);
-      const cents = quotes[id]?.[slot];
-      return time >= start && time <= end && cents != null && Number.isFinite(cents) && cents > 0
-        ? [{ date, time, cents, week: Math.floor((time - WEDNESDAY) / WEEK) }]
-        : [];
-    });
+  const earliest = [...byDate.keys()].sort()[0];
+  const monthStart = end - 30 * DAY;
+  const start = range === 'all' && earliest ? Date.parse(earliest) : monthStart;
+  const points = [...byDate.entries()].map(([date, cents]) => ({ date, time: Date.parse(date), cents }))
+    .filter((point) => point.time >= start && point.time <= end)
+    .sort((a, b) => a.time - b.time);
   return {
-    start,
-    end,
+    start, end,
     points: points.map((point, index) => ({
       ...point,
-      connect: index > 0 && point.week - points[index - 1].week <= 1,
+      connect: index > 0 && point.time - points[index - 1].time === DAY,
     })),
   };
 }
