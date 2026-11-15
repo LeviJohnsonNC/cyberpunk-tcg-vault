@@ -16,7 +16,7 @@ import { PlayTable } from './PlayTable';
 import { useTableSound } from './useTableSound';
 import { useMatchPresentation } from './useMatchPresentation';
 import { useRivalDialogue, useRivalDialoguePreference } from './useRivalDialogue';
-import { rememberPlayMode, type PlayModeId } from '../lib/playNavigation';
+import { playHref, rememberPlayMode, type PlayModeId } from '../lib/playNavigation';
 import { PlayLanding } from './PlayLanding';
 import './play-mode.css';
 import './play-tactics.css';
@@ -30,7 +30,7 @@ type Client = Awaited<ReturnType<typeof openPlayMatch>>;
 type Confirm = 'replace' | 'restart' | 'concede';
 
 type Props = {
-  scope: string; mode?: PlayModeId; draft?: DeckDraft; saved?: MatchSummary; matchUnavailable?: boolean;
+  scope: string; mode?: PlayModeId; draft?: DeckDraft; saved?: MatchSummary; onMatchRead: (saved?: MatchSummary) => void;
   initialRival?: string; initialOpponent?: Deck; initialCuratedId?: string; savedDecks: Deck[]; rememberRival: (id: string) => void;
   requestedMatch?: string; onLeaveMatch: () => void;
   onCheckpoint: (snapshot: MatchSnapshot, draft?: DeckDraft) => void; onEdit: () => void; onCampaignDeck: (deck: Deck) => void;
@@ -38,19 +38,23 @@ type Props = {
 };
 
 export default function PlayMode(props: Props) {
-  const [freePlaySession, setFreePlaySession] = useState(0);
   const mode = props.mode ?? (props.draft || props.initialOpponent || props.requestedMatch ? 'free' : undefined);
   useEffect(() => { if (mode) rememberPlayMode(props.scope, mode); }, [mode, props.scope]);
-  if (!mode) return <PlayLanding scope={props.scope} saved={props.saved} matchUnavailable={props.matchUnavailable} mobile={props.preparationOnly} />;
-  if (mode === 'campaign') return <CampaignMode scope={props.scope} preparationOnly={props.preparationOnly} openInBuilder={props.onCampaignDeck} />;
+  const resolveAfterReset = (from: string) => {
+    if (window.location.hash === from) window.location.replace(playHref());
+  };
+  if (!mode) return <PlayLanding scope={props.scope} onMatchRead={props.onMatchRead} mobile={props.preparationOnly} />;
+  if (mode === 'campaign') return <CampaignMode scope={props.scope} preparationOnly={props.preparationOnly} openInBuilder={props.onCampaignDeck}
+    onReset={resolveAfterReset} />;
   if (props.preparationOnly) return <section className="panel play-landing"><h1 className="panel-title">Free Play</h1><p>Open the Vault on a desktop to play a match.</p></section>;
-  return <FreePlayMode {...props} key={freePlaySession} onFreePlayReset={() => {
+  return <FreePlayMode {...props} onFreePlayReset={(from) => {
     props.onFreePlayReset();
-    setFreePlaySession(session => session + 1);
+    resolveAfterReset(from);
   }} />;
 }
 
-function FreePlayMode({ scope, draft, saved, requestedMatch, initialRival, initialOpponent, initialCuratedId, savedDecks, rememberRival, onCheckpoint, onEdit, onFreePlayReset, onLeaveMatch }: Props) {
+function FreePlayMode({ scope, draft, saved, requestedMatch, initialRival, initialOpponent, initialCuratedId, savedDecks, rememberRival, onCheckpoint, onEdit, onFreePlayReset, onLeaveMatch }:
+  Omit<Props, 'onFreePlayReset'> & { onFreePlayReset: (from: string) => void }) {
   const [environment, setEnvironment] = useState<Environment>();
   useEffect(() => { let active = true; void readCampaign(scope).then(value => { if (active) setEnvironment(value.profile.equipped); }).catch(() => {}); return () => { active = false; }; }, [scope]);
   const [resume, requestResume] = useState(() => !draft && !initialOpponent && !!saved && (!saved.ended || requestedMatch === saved.matchId));
@@ -113,6 +117,7 @@ function FreePlayMode({ scope, draft, saved, requestedMatch, initialRival, initi
 
   async function reset() {
     if (locked.current || busy || equipping) return;
+    const from = window.location.hash;
     locked.current = true;
     setResetting(true);
     setResetError(undefined);
@@ -125,7 +130,7 @@ function FreePlayMode({ scope, draft, saved, requestedMatch, initialRival, initi
       return;
     }
     try { localStorage.setItem(freePlaySkillKey(scope), 'sharp'); } catch { /* Optional preference. */ }
-    onFreePlayReset();
+    onFreePlayReset(from);
   }
 
   useLayoutEffect(() => {

@@ -41,8 +41,8 @@ function hasSeenIntro(key: string) {
   try { return localStorage.getItem(key) === 'seen'; } catch { return false; }
 }
 
-export function CampaignMode({ scope, openInBuilder, preparationOnly = false }: {
-  scope: string; openInBuilder: (deck: Deck) => void; preparationOnly?: boolean;
+export function CampaignMode({ scope, openInBuilder, preparationOnly = false, onReset }: {
+  scope: string; openInBuilder: (deck: Deck) => void; preparationOnly?: boolean; onReset?: (from: string) => void;
 }) {
   const introKey = `cptv.campaign.lastCallIntro:${scope}`;
   const [introSeen, setIntroSeen] = useState(() => hasSeenIntro(introKey));
@@ -205,6 +205,7 @@ export function CampaignMode({ scope, openInBuilder, preparationOnly = false }: 
 
   async function reset() {
     if (!resetTarget || busy || actionLock.current) return;
+    const from = window.location.hash;
     actionLock.current = true;
     recoveryVersion.current++;
     setBusy(true); setResetError(undefined);
@@ -217,6 +218,7 @@ export function CampaignMode({ scope, openInBuilder, preparationOnly = false }: 
       setInspected(undefined); setReviewed(undefined); setCrewEdit(undefined); setSurface('hub'); setError(undefined); setIntroSeen(false);
       window.scrollTo({ top: 0, behavior: 'instant' });
       requestAnimationFrame(() => hub.current?.focus({ preventScroll: true }));
+      onReset?.(from);
     } catch (cause) {
       setResetError(cause instanceof Error ? cause.message : 'The campaign couldn’t be reset. Try again.');
     } finally {
