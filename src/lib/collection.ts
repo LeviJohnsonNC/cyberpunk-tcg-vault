@@ -1,4 +1,5 @@
-import { PRINTING_INDEX, acquireQuote, defaultPrinting, printingLabel, rarityRank, valueHolding, type Card } from './data';
+import { printingVariant, type PrintingVariant } from './cardPrintingVariants';
+import { PRICES, PRINTING_INDEX, acquireQuote, defaultPrinting, printingLabel, rarityRank, valueHolding, type Card, type Printing } from './data';
 import type { Entry } from './store';
 
 export type CollectionSort = 'name' | 'catalog' | 'color' | 'type' | 'cost' | 'power' | 'ram' | 'rarity' | 'qty' | 'unit' | 'value';
@@ -17,14 +18,26 @@ export function collectionValue(entries: Entry[]) {
   return { knownCad, unpriced, copies };
 }
 
-/** Stable representative. Catalog order breaks ties between equally owned printings. */
+const showcaseRank: Record<PrintingVariant, number> = { Regular: 0, Promo: 1, Nova: 2, Iconic: 3, Judge: 4 };
+
+function compareShowcase(a: Printing, b: Printing) {
+  return showcaseRank[printingVariant(a)] - showcaseRank[printingVariant(b)]
+    || rarityRank(a.rarity) - rarityRank(b.rarity)
+    || (PRICES.printings[a.id]?.market ?? 0) - (PRICES.printings[b.id]?.market ?? 0);
+}
+
+/** Use the most collectible owned printing, with catalog order as the final tie-breaker. */
 export function collectionCard(card: Card, entries: Entry[], qty: number) {
   const catalog = defaultPrinting(card);
   let cover: Entry | undefined;
+  let coverPrinting: Printing | undefined;
   let unknownCopies = 0;
   for (const printing of card.printings) {
     const holding = entries.find((entry) => entry.printingId === printing.id);
-    if (holding && (!cover || holding.qty > cover.qty)) cover = holding;
+    if (holding && holding.qty > 0 && (!coverPrinting || compareShowcase(printing, coverPrinting) > 0)) {
+      cover = holding;
+      coverPrinting = printing;
+    }
   }
   for (const entry of entries) {
     if (!card.printings.some((printing) => printing.id === entry.printingId)) unknownCopies += entry.qty;
