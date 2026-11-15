@@ -26,7 +26,7 @@ type Client = Awaited<ReturnType<typeof openPlayMatch>>;
 type Confirm = 'replace' | 'restart' | 'concede';
 
 type Props = {
-  scope: string; draft?: DeckDraft; saved?: MatchSummary; initialRival?: string; initialOpponent?: Deck; savedDecks: Deck[]; rememberRival: (id: string) => void;
+  scope: string; draft?: DeckDraft; saved?: MatchSummary; initialRival?: string; initialOpponent?: Deck; initialCuratedId?: string; savedDecks: Deck[]; rememberRival: (id: string) => void;
   requestedMatch?: string; onLeaveMatch: () => void;
   onCheckpoint: (snapshot: MatchSnapshot, draft?: DeckDraft) => void; onEdit: () => void; onCampaignDeck: (deck: Deck) => void;
   onFreePlayReset: () => void; preparationOnly?: boolean;
@@ -49,7 +49,7 @@ export default function PlayMode(props: Props) {
     setMode(next);
     try { localStorage.setItem(`cptv.playMode:${props.scope}`, next); } catch { /* optional preference */ }
   };
-  return <>{!props.preparationOnly && <nav className="play-mode-tabs" aria-label="Play mode"><button className="btn" aria-current={mode === 'campaign' ? 'page' : undefined} onClick={() => choose('campaign')}>Campaign</button><button className="btn" aria-current={mode === 'free' ? 'page' : undefined} onClick={() => choose('free')}>Free Play</button><span className="play-mode-explainer">{mode === 'campaign' ? 'Grow an official starter through nine matches and earn a new room.' : 'Bring any legal deck, choose a rival, and practice without campaign stakes.'}</span></nav>}
+  return <>{!props.preparationOnly && <nav className="play-mode-tabs" aria-label="Play mode"><button className="btn" aria-current={mode === 'campaign' ? 'page' : undefined} onClick={() => choose('campaign')}>Campaign</button><button className="btn" aria-current={mode === 'free' ? 'page' : undefined} onClick={() => choose('free')}>Free Play</button>{mode === 'campaign' && <span className="play-mode-explainer">Grow an official starter through nine matches and earn a new room.</span>}</nav>}
     {props.preparationOnly || mode === 'campaign' ? <CampaignMode scope={props.scope} preparationOnly={props.preparationOnly}
       exit={props.preparationOnly ? undefined : () => choose('free')} openInBuilder={props.onCampaignDeck} /> : <FreePlayMode {...props} key={freePlaySession} onFreePlayReset={() => {
       props.onFreePlayReset();
@@ -57,12 +57,13 @@ export default function PlayMode(props: Props) {
     }} />}</>;
 }
 
-function FreePlayMode({ scope, draft, saved, requestedMatch, initialRival, initialOpponent, savedDecks, rememberRival, onCheckpoint, onEdit, onFreePlayReset, onLeaveMatch }: Props) {
+function FreePlayMode({ scope, draft, saved, requestedMatch, initialRival, initialOpponent, initialCuratedId, savedDecks, rememberRival, onCheckpoint, onEdit, onFreePlayReset, onLeaveMatch }: Props) {
   const [environment, setEnvironment] = useState<Environment>();
   useEffect(() => { let active = true; void readCampaign(scope).then(value => { if (active) setEnvironment(value.profile.equipped); }).catch(() => {}); return () => { active = false; }; }, [scope]);
-  const [resume] = useState(() => !draft && !initialOpponent && !!saved && (!saved.ended || requestedMatch === saved.matchId));
+  const [resume, requestResume] = useState(() => !draft && !initialOpponent && !!saved && (!saved.ended || requestedMatch === saved.matchId));
   const [storedDraft] = useState(() => readDeckDraft(scope));
   const [resumeAttempt, setResumeAttempt] = useState(0);
+  const manualResume = useRef(false);
   const [snapshot, setSnapshot] = useState<MatchSnapshot>();
   const [busy, setBusy] = useState(resume);
   const [error, setError] = useState<string>();
@@ -152,8 +153,10 @@ function FreePlayMode({ scope, draft, saved, requestedMatch, initialRival, initi
         next.close();
         setLobby(true);
       } else {
+        client.current?.close();
         client.current = next;
-        setSnapshot(next.opening);
+        setSnapshot(manualResume.current ? { ...next.opening, openingDeal: undefined } : next.opening);
+        setLobby(false);
       }
       setBusy(false);
     }).catch((cause: unknown) => {
@@ -163,6 +166,19 @@ function FreePlayMode({ scope, draft, saved, requestedMatch, initialRival, initi
     });
     return () => { active = false; };
   }, [resume, resumeAttempt, scope, requestedOnEntry]);
+
+  function returnToMatch() {
+    if (snapshot && !snapshot.view.gameEnded) {
+      setLobby(false);
+      return;
+    }
+    if (busy || !saved || saved.ended) return;
+    manualResume.current = true;
+    setBusy(true);
+    setError(undefined);
+    requestResume(true);
+    setResumeAttempt(attempt => attempt + 1);
+  }
 
   async function run(action: (isCurrent: () => boolean) => Promise<MatchSnapshot>, startedDraft?: DeckDraft) {
     if (locked.current) return;
@@ -226,8 +242,8 @@ function FreePlayMode({ scope, draft, saved, requestedMatch, initialRival, initi
             <button type="button" className="btn quiet" disabled={busy} onClick={() => { presentation.playback?.skip(); onEdit(); }}>Back to draft</button>
             {live && <button type="button" className="btn danger-ghost" disabled={busy || presentation.playing} onClick={() => setConfirm('concede')}>Concede</button>}
           </>} />
-      </> : !resume || lobby ? progress ? <CircuitHub scope={scope} progress={progress} draft={hubDraft} savedDecks={savedDecks} initialRival={initialRival} initialOpponent={initialOpponent}
-        busy={busy || equipping} error={error ?? progressError} equip={equip} onEdit={onEdit} onResume={snapshot && !snapshot.view.gameEnded ? () => setLobby(false) : undefined}
+      </> : !resume || lobby ? progress ? <CircuitHub scope={scope} progress={progress} draft={hubDraft} savedDecks={savedDecks} initialRival={initialRival} initialOpponent={initialOpponent} initialCuratedId={initialCuratedId}
+        busy={busy || equipping} error={error ?? progressError} equip={equip} onEdit={onEdit} onResume={(snapshot ? !snapshot.view.gameEnded : saved && !saved.ended) ? returnToMatch : undefined}
         onReset={() => { setResetError(undefined); setResetOpen(true); }}
         onStart={(draft, rival, skill, key, contractId) => { pendingStart.current = { draft, rival, skill, key, contractId }; start(); }} />
         : <div className="panel" role="status"><h1>Opening the Circuit</h1>{progressError ? <><p className="play-error">{progressError}</p><button className="btn" onClick={() => setProgressAttempt(value => value + 1)}>Try again</button><button className="btn quiet" onClick={onEdit}>Back to draft</button></> : <p>Checking your standing…</p>}</div>

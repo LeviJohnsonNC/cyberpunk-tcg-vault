@@ -14,7 +14,7 @@ const VIEWS = [
 
 type View = (typeof VIEWS)[number]['id'];
 
-export function MetaIntel({ onOpen, openInBuilder, goAdd, onPlayAgainst }: { onOpen: (slug: string) => void; openInBuilder: (id: string) => void; goAdd: () => void; onPlayAgainst?: (deck: Deck) => void }) {
+export function MetaIntel({ onOpen, openInBuilder, goAdd, onPlayAgainst }: { onOpen: (slug: string) => void; openInBuilder: (id: string) => void; goAdd: () => void; onPlayAgainst?: (deck: Deck, curatedId: string) => void }) {
   const [view, setView] = useState<View>('build');
 
   return (
