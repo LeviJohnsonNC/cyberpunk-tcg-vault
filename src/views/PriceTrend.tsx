@@ -3,7 +3,7 @@ import { FX } from '../lib/data';
 import { money, type Currency } from '../lib/currency';
 import type { Line } from '../lib/pricebook';
 import { dailyPriceArchive, latestPriceSnapshot } from '../lib/priceSnapshots';
-import { priceTrend } from '../lib/priceTrend';
+import { priceTrend, priceTrendPaths } from '../lib/priceTrend';
 
 const dateLabel = (date: string) => new Date(date).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 const plotInset = 9;
@@ -36,8 +36,9 @@ export default function PriceTrend({ lines, count, currency }: { lines: Line[]; 
   const value = (cents: number) => money(cents * FX / 100, currency);
   const activeValue = active.cents === null ? 'No quote' : value(active.cents);
   const coverage = `${active.covered} of ${count} ${count === 1 ? 'copy' : 'copies'} with quotes`;
-  const path = positioned.flatMap(({ cents, connect, x, y }) => cents === null ? [] : [`${connect ? 'L' : 'M'}${x},${y}`]).join(' ');
-  const dots = positioned.flatMap(({ cents, x, y }) => cents === null ? [] : [`M${x},${y}h.01`]).join(' ');
+  const observed = positioned.filter(point => point.cents !== null);
+  const paths = priceTrendPaths(observed);
+  const dots = observed.map(({ x, y }) => `M${x},${y}h.01`).join(' ');
   const prefix = change && change.cents > 0 ? '+' : '';
   const selectPoint = (index: number) => setActiveDate(points[Math.min(lastIndex, Math.max(0, index))].date);
   const pickPoint = (event: MouseEvent<HTMLDivElement>) => {
@@ -74,7 +75,8 @@ export default function PriceTrend({ lines, count, currency }: { lines: Line[]; 
         onPointerMove={event => { if (event.pointerType === 'mouse') pickPoint(event); }}>
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
           <path className="pb-trend-grid" vectorEffect="non-scaling-stroke" d="M0 16H100 M0 50H100 M0 84H100" />
-          <path className="pb-trend-line" vectorEffect="non-scaling-stroke" d={path} />
+          <path className="pb-trend-line" vectorEffect="non-scaling-stroke" d={paths.solid} />
+          <path className="pb-trend-line pb-trend-bridge" vectorEffect="non-scaling-stroke" d={paths.dashed} />
           <path className="pb-trend-dots" vectorEffect="non-scaling-stroke" d={dots} />
         </svg>
         <button type="button" className="pb-trend-point" style={{ left: `${active.x}%`, top: `${active.y}%` }}
@@ -84,9 +86,10 @@ export default function PriceTrend({ lines, count, currency }: { lines: Line[]; 
       </div>
       <div className="pb-trend-axis"><span>{dateLabel(start)}</span><span>{dateLabel(end)}</span></div>
     </div>
+    {paths.dashed && <p className="pb-trend-note pb-trend-key">Dashed where quote coverage changes or a day has no quotes.</p>}
     <details className="pb-disclosure pb-trend-method">
       <summary>How the trend is calculated</summary>
-      <p>Each day uses market quotes for your exact printings and today’s quantities. The line breaks when the set of priced copies changes or there are no quotes. The change compares only copies quoted on both dates.</p>
+      <p>Each day uses market quotes for your exact printings and today’s quantities. A solid line joins consecutive days with quotes for the same copies. The percentage change compares only copies quoted on both dates.</p>
       <p>Total value can also include Beta estimates and low listings. {currency === 'CAD' && 'CAD uses the same exchange rate for every date.'}</p>
     </details>
   </section>;
