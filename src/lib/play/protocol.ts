@@ -180,7 +180,7 @@ export interface MatchSnapshot extends MatchFrame {
   presentation?: { beats: MatchBeat[]; feedback?: MatchBeat };
   /** Present once the match has ended. */
   report?: MatchReport;
-  circuit?: { contractId?: string; skill: RivalSkill; receipt?: CircuitReceipt };
+  circuit?: { contractId?: string; rivalKey?: string; skill: RivalSkill; receipt?: CircuitReceipt };
 }
 
 export type MatchAction =

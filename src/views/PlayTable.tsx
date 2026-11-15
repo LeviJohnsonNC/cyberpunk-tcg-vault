@@ -26,6 +26,7 @@ import { CombatArrow, CombatBanner } from './PlayCombat';
 import { PlayPresentation, type MatchPlayback } from './PlayPresentation';
 import { MatchResult } from './PlayResult';
 import { CampaignMatchResult, type CampaignResultDetails } from './CampaignMatchResult';
+import { PracticeMatchResult } from './PracticeMatchResult';
 import { CIRCUIT_CONTRACTS } from '../lib/play/circuit';
 import { MatchRadioContainer } from '../lib/play/matchRadio';
 import './play-table.css';
@@ -89,11 +90,12 @@ function ContextMenu({ context, children, close }: { context: Context; children:
   </div>, document.body);
 }
 
-export function PlayTable({ scope, snapshot, names, busy: saving, error, send, rematch, edit, circuit, playback, feedback, reduced, controls, navigation, audio, cue, campaign }: {
+export function PlayTable({ scope, snapshot, names, busy: saving, error, send, rematch, edit, circuit, playback, feedback, reduced, controls, navigation, audio, cue, campaign, practiceLobby }: {
   campaign?: CampaignResultDetails & { rival: ReactNode; act?: number };
   cue?: (name: TableCue, delayMs?: number) => (() => void) | undefined;
   playback?: MatchPlayback; feedback?: MatchBeat; scope: string; snapshot: MatchSnapshot; names: Record<Seat, string>; busy: boolean; error?: string;
   send: (move: Move) => void; rematch: () => void; edit: () => void; circuit?: () => void; reduced: boolean; controls?: ReactNode; navigation?: ReactNode; audio?: ReactNode;
+  practiceLobby?: () => void;
 }) {
   const { view } = snapshot;
   const radioContainer = useContext(MatchRadioContainer);
@@ -404,6 +406,8 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
   const closePanel = <button type="button" className="btn quiet" aria-label="Close panel" onClick={() => setPanel(undefined)}>×</button>;
   if (campaign && view.gameEnded) return <CampaignMatchResult details={campaign} snapshot={snapshot}
     busy={busy} error={error} onContinue={rematch} />;
+  if (practiceLobby && view.gameEnded) return <PracticeMatchResult snapshot={snapshot}
+    busy={busy} error={error} rematch={rematch} lobby={practiceLobby} edit={edit} />;
 
   return <div ref={grid} className="play-grid play-direct" data-match-id={snapshot.matchId} data-state-id={view.stateID} data-busy={busy} data-playback={!!playback} data-campaign={!!campaign}
     onKeyDown={(event) => {
