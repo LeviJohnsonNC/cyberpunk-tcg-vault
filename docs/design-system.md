@@ -142,6 +142,8 @@ Play Mode is the one screen where the cards are the interface. The table is the 
 
 **Rival skill.** The setup screen offers Standard, Sharp and Masterful. All three play from what a player could see; say so wherever skill is described.
 
+**Rival dialogue.** Campaign and Free Play use the same portrait and caption area on the rival bench. A line reacts to a public match event after it happens, and the caption keeps a fixed height. Free Play rivals have their own voices or use familiar Campaign voices with match-specific greetings and outcomes. Saved, imported and mirror decks use a neutral portrait and table dialogue. Clicking the rival opens their profile and a dialogue switch shared across modes.
+
 **Pacing.** `beatDuration` gives each public move enough time for its movement to land, and long sequences speed up without dropping below a readable pace. Skip always jumps to the current decision.
 
 ## Play Mode interactions

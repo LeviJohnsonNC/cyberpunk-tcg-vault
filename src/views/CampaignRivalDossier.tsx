@@ -8,6 +8,7 @@ import type { StarterKey } from '../lib/starters';
 import type { CampaignInspect } from './CampaignHub';
 import { CampaignRewardArt } from './CampaignRewardArt';
 import { CampaignRivalPortrait } from './CampaignRivalPortrait';
+import { RivalSeat } from './RivalSeat';
 import latch from '../assets/play/latch-dossier.webp';
 import './campaign-rival-dossier.css';
 
@@ -93,10 +94,10 @@ export function CampaignRivalDossier(props: DossierProps) {
   ] as const;
 
   return <>
-    <button ref={trigger} type="button" className={context === 'contract' ? 'btn quiet campaign-board-dossier' : 'campaign-rival-trigger'}
+    <button ref={trigger} type="button" className={context === 'contract' ? 'btn quiet campaign-board-dossier' : 'play-rival-trigger'}
       aria-label={`View ${rival}’s profile`} aria-haspopup="dialog"
       onClick={() => { detail.current?.showModal(); setOpened(true); }}>
-      {context === 'contract' ? <>View profile <span aria-hidden="true">→</span></> : <span className="campaign-rival-table-portrait" style={{ '--rival-crop-y': tablePortraitY[encounter] } as CSSProperties} aria-hidden="true">
+      {context === 'contract' ? <>View profile <span aria-hidden="true">→</span></> : <span className="play-rival-seat-portrait" style={{ '--rival-crop-y': tablePortraitY[encounter] } as CSSProperties} aria-hidden="true">
         {dossierArt[encounter] ? <img src={dossierArt[encounter]} alt="" /> : <CampaignRivalPortrait encounter={encounter} />}
       </span>}
     </button>
@@ -153,12 +154,7 @@ export function CampaignRivalDossier(props: DossierProps) {
 
 export function CampaignRivalSeat(props: SharedProps & Omit<MatchProps, 'context'>) {
   const { rival, role } = campaignChapters[props.encounter];
-  return <div className="campaign-rival-seat">
+  return <RivalSeat name={rival} role={role} quote={props.dialogue ? props.quote : undefined}>
     <CampaignRivalDossier {...props} context="match" />
-    <div className="campaign-rival-caption">
-      <p className="play-eyebrow">{role}</p>
-      <strong>{rival}<span aria-hidden="true">.</span></strong>
-      <div aria-live="polite">{props.dialogue && props.quote && <p key={props.quote.sequence}>“{props.quote.text}”</p>}</div>
-    </div>
-  </div>;
+  </RivalSeat>;
 }

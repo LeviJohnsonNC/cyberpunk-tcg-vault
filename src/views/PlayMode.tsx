@@ -1,5 +1,5 @@
 import { ReactiveRoom } from './ReactiveRoom';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ConfirmDialog } from '../components/ui';
 import { readDeckDraft, type DeckDraft } from '../lib/deckDraft';
 import type { Deck } from '../lib/store';
@@ -11,9 +11,13 @@ import { openPlayMatch, resumePlayMatch } from '../lib/play/matchClient';
 import type { MatchSnapshot, MatchSummary, Move, RivalSkill } from '../lib/play/protocol';
 import { visibleCards } from '../lib/play/matchView';
 import { preloadFaces } from '../lib/play/cardArt';
+import { freePlayRivalProfile } from '../lib/play/freePlayDialogue';
+import { rivalDialogueLine, rivalResult } from '../lib/play/rivalDialogue';
+import { FreePlayRivalSeat } from './FreePlayRivalSeat';
 import { PlayTable } from './PlayTable';
 import { useTableSound } from './useTableSound';
 import { useMatchPresentation } from './useMatchPresentation';
+import { useRivalDialogue, useRivalDialoguePreference } from './useRivalDialogue';
 import './play-mode.css';
 import './play-tactics.css';
 import './circuit.css';
@@ -65,6 +69,8 @@ function FreePlayMode({ scope, draft, saved, requestedMatch, initialRival, initi
   const [resumeAttempt, setResumeAttempt] = useState(0);
   const manualResume = useRef(false);
   const [snapshot, setSnapshot] = useState<MatchSnapshot>();
+  const [opening, setOpening] = useState<{ matchId: string; retry: boolean }>();
+  const { enabled: dialogue, toggle: toggleDialogue } = useRivalDialoguePreference(scope);
   const [busy, setBusy] = useState(resume);
   const [error, setError] = useState<string>();
   const [confirm, setConfirm] = useState<Confirm>();
@@ -85,6 +91,10 @@ function FreePlayMode({ scope, draft, saved, requestedMatch, initialRival, initi
   // Keep the entry request fixed while the player moves between the table and the lobby.
   const [requestedOnEntry] = useState(requestedMatch);
   const presentation = useMatchPresentation(snapshot);
+  const rivalKey = snapshot?.circuit?.rivalKey;
+  const rivalDeckName = snapshot?.names.rival;
+  const rival = useMemo(() => rivalDeckName ? freePlayRivalProfile(rivalKey, rivalDeckName) : undefined, [rivalKey, rivalDeckName]);
+  const quote = useRivalDialogue(rival?.lines, snapshot, opening, presentation.playing, presentation.playback?.beat);
   const sound = useTableSound();
 
   useEffect(() => {
@@ -180,7 +190,7 @@ function FreePlayMode({ scope, draft, saved, requestedMatch, initialRival, initi
     setResumeAttempt(attempt => attempt + 1);
   }
 
-  async function run(action: (isCurrent: () => boolean) => Promise<MatchSnapshot>, startedDraft?: DeckDraft) {
+  async function run(action: (isCurrent: () => boolean) => Promise<MatchSnapshot>, startedDraft?: DeckDraft, retry = false) {
     if (locked.current) return;
     const current = generation.current;
     const isCurrent = () => current === generation.current;
@@ -190,6 +200,7 @@ function FreePlayMode({ scope, draft, saved, requestedMatch, initialRival, initi
     try {
       const next = await action(isCurrent);
       if (isCurrent()) {
+        if (next.openingDeal) setOpening({ matchId: next.matchId, retry });
         setSnapshot(next);
         onCheckpoint(next, startedDraft);
       }
@@ -222,12 +233,15 @@ function FreePlayMode({ scope, draft, saved, requestedMatch, initialRival, initi
 
   function rematch() {
     const current = client.current;
-    if (current && snapshot) void run(() => current.rematch(snapshot));
+    if (current && snapshot) void run(() => current.rematch(snapshot), undefined, true);
   }
 
   const live = snapshot && !(presentation.displayed ?? snapshot).view.gameEnded;
   const practice = !snapshot?.circuit?.contractId;
   const practiceResult = snapshot && !lobby && practice && !live;
+  const result = dialogue && snapshot && !live ? rivalResult(snapshot.view) : undefined;
+  const resultQuote = rival && snapshot && result
+    ? { rival: rival.name, text: rivalDialogueLine(rival.lines, result, snapshot.matchId) } : undefined;
   return (
     <section className="play-mode" data-practice-result={practiceResult || undefined}
       data-finish={progress?.finish ?? 'afterlife'} data-environment={environment ?? 'default'} onPointerDownCapture={sound.unlock} onKeyDownCapture={sound.unlock}>
@@ -235,6 +249,8 @@ function FreePlayMode({ scope, draft, saved, requestedMatch, initialRival, initi
       {snapshot && !lobby ? <>
         <PlayTable key={snapshot.matchId} scope={scope} snapshot={presentation.displayed ?? snapshot} names={snapshot.names}
           playback={presentation.playback} feedback={presentation.feedback} reduced={presentation.reduced} cue={sound.cue}
+          freePlay={rival && { rival: <FreePlayRivalSeat profile={rival} deckName={snapshot.names.rival} quote={quote}
+            enabled={dialogue} toggle={toggleDialogue} />, resultQuote }}
           busy={busy || presentation.playing} error={error} send={send} rematch={rematch} edit={onEdit} circuit={openCircuit}
           practiceLobby={practice ? openCircuit : undefined}
           navigation={<button type="button" className="btn quiet" disabled={busy} onClick={openCircuit}>Free Play lobby</button>}
