@@ -1,21 +1,14 @@
 import { useMemo, useState } from 'react';
-import history from '../data/price-history.json';
 import { FX, PRICES } from '../lib/data';
 import { money, type Currency } from '../lib/currency';
 import type { Line } from '../lib/pricebook';
-import { priceTrend, type PriceSnapshot } from '../lib/priceTrend';
+import { latestPriceSnapshot, weeklyPriceSnapshots } from '../lib/priceSnapshots';
+import { priceTrend } from '../lib/priceTrend';
 
-const latest: PriceSnapshot = {
-  date: PRICES.updatedAt.slice(0, 10),
-  quotes: Object.fromEntries(Object.entries(PRICES.printings).map(([id, quote]) => [
-    id, [quote.market === null ? null : Math.round(quote.market * 100), quote.low === null ? null : Math.round(quote.low * 100)],
-  ])),
-};
-const snapshots = history.snapshots as unknown as PriceSnapshot[];
 const dateLabel = (date: string) => new Date(date).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
 export default function PriceTrend({ lines, count, currency }: { lines: Line[]; count: number; currency: Currency }) {
-  const series = useMemo(() => priceTrend(lines, snapshots, latest, PRICES.pairs), [lines]);
+  const series = useMemo(() => priceTrend(lines, weeklyPriceSnapshots, latestPriceSnapshot, PRICES.pairs), [lines]);
   const [activeDate, setActiveDate] = useState<string>();
   const quoted = series.points.filter(({ cents }) => cents !== null);
   const active = series.points.find(({ date }) => date === activeDate) ?? quoted.at(-1);
