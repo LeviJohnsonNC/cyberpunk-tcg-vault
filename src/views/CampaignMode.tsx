@@ -27,8 +27,9 @@ import { aftermathBeats } from '../lib/play/campaignScenes';
 import { CampaignInvitation, CampaignScene } from './CampaignStory';
 import { CampaignRivalSeat } from './CampaignRivalDossier';
 import { campaignRivalIntel, knownRivalLegendSlugs } from '../lib/play/campaignRivalIntel';
+import { campaignChapters } from '../lib/play/campaignStory';
 import { CampaignCrewPick } from './CampaignCrewPick';
-import { useRivalDialogue } from './useRivalDialogue';
+import { useRivalDialogue, useRivalDialoguePreference } from './useRivalDialogue';
 import './campaign.css';
 import './campaign-moments.css';
 
@@ -44,11 +45,8 @@ export function CampaignMode({ scope, exit, openInBuilder, preparationOnly = fal
   scope: string; exit?: () => void; openInBuilder: (deck: Deck) => void; preparationOnly?: boolean;
 }) {
   const introKey = `cptv.campaign.lastCallIntro:${scope}`;
-  const dialogueKey = `cptv.campaign.rivalDialogue:${scope}`;
   const [introSeen, setIntroSeen] = useState(() => hasSeenIntro(introKey));
-  const [dialogue, setDialogue] = useState(() => {
-    try { return localStorage.getItem(dialogueKey) !== 'off'; } catch { return true; }
-  });
+  const { enabled: dialogue, toggle: toggleDialogue } = useRivalDialoguePreference(scope);
   const [opening, setOpening] = useState<{ matchId: string; retry: boolean }>();
   const focusStarter = useRef(false);
   const focusBriefing = useRef(false);
@@ -85,7 +83,7 @@ export function CampaignMode({ scope, exit, openInBuilder, preparationOnly = fal
   const displayedMatch = presentation.displayed ?? snapshot;
   const sound = useTableSound();
   const encounter = run && ENCOUNTERS[run.encounter];
-  const quote = useRivalDialogue(encounter?.id, snapshot, opening, presentation.playing, presentation.playback?.beat);
+  const quote = useRivalDialogue(encounter && campaignChapters[encounter.id].lines, snapshot, opening, presentation.playing, presentation.playback?.beat);
 
   function proceedToStarters() {
     focusStarter.current = true;
@@ -93,11 +91,6 @@ export function CampaignMode({ scope, exit, openInBuilder, preparationOnly = fal
     setIntroSeen(true);
     window.scrollTo({ top: 0, behavior: 'instant' });
     try { localStorage.setItem(introKey, 'seen'); } catch { /* Optional preference. */ }
-  }
-
-  function toggleDialogue() {
-    setDialogue(!dialogue);
-    try { localStorage.setItem(dialogueKey, dialogue ? 'off' : 'on'); } catch { /* Optional preference. */ }
   }
 
   const send = useCallback((action: { type: 'start'; revision: number } | { type: 'resume' } | { type: 'move'; matchId: string; stateID: number; move: Move }) =>

@@ -25,9 +25,9 @@ function GigTimeline({ gigs }: { gigs: MatchReport['gigs'] }) {
 }
 
 /** The end of the match, on the table: the result, how it went, and what never got played. */
-export function MatchResult({ view, report, receipt, circuit, title, reason, busy, rematch, edit }: {
+export function MatchResult({ view, report, receipt, circuit, title, reason, busy, rematch, edit, quote }: {
   view: PlayerView; report?: MatchReport; title: string; reason: string; busy: boolean; rematch: () => void; edit: () => void;
-  receipt?: CircuitReceipt; circuit?: () => void;
+  receipt?: CircuitReceipt; circuit?: () => void; quote?: { rival: string; text: string };
 }) {
   const reportBody = report && <div className="play-result-body">
     {report.gigs.length > 1 && <GigTimeline gigs={report.gigs} />}
@@ -42,6 +42,7 @@ export function MatchResult({ view, report, receipt, circuit, title, reason, bus
     <p className="play-eyebrow">Match report{report ? <> <span>/</span> {report.turns} turns</> : null}</p>
     <h2>{title}</h2>
     <p className="play-result-reason">{reason}</p>
+    {quote && <figure className="campaign-result-quote"><figcaption>{quote.rival}</figcaption><blockquote>“{quote.text}”</blockquote></figure>}
     <dl className="play-result-score"><div><dt>Your Gigs</dt><dd>{view.players.player.gigCount}</dd></div><div><dt>Rival Gigs</dt><dd>{view.players.rival.gigCount}</dd></div></dl>
     {receipt && <CircuitPayout receipt={receipt} />}
     {receipt ? <details className="circuit-match-detail"><summary>Inspect match report</summary>{reportBody}</details> : reportBody}

@@ -75,4 +75,11 @@ describe('Last Call story and rival dialogue', () => {
     expect(rivalResult({ gameEnded: true, winnerId: null })).toBe('draw');
     expect(advanceRivalDialogue(undefined, frame, lines).line).toBeUndefined();
   });
+
+  it('greets the player when an opening frame already carries setup feedback', () => {
+    const frame = { matchId: 'opening-deal', batch: 1, beats: [beat(1, 0, 0)], now: 0, opening: 'intro' as const };
+    const opened = advanceRivalDialogue(undefined, frame, lines);
+    expect(opened.line?.moment).toBe('intro');
+    expect(advanceRivalDialogue(opened, { ...frame, now: 5000 }, lines)).toBe(opened);
+  });
 });

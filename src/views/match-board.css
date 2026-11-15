@@ -83,7 +83,7 @@
 .play-direct .play-seat-hand { font: 500 12px/1.2 var(--font-ui); letter-spacing: 0; text-transform: none; }
 .play-direct .play-seat-hand b { color: var(--color-ticket); font: 700 17px/1 var(--font-display); }
 .play-direct .play-rival-hand { width: 100%; padding-inline: 0; }
-.play-direct .campaign-rival-seat {
+.play-direct .play-rival-seat {
   position: relative;
   isolation: isolate;
   display: flex;
@@ -94,7 +94,7 @@
   width: 100%;
   max-width: none;
 }
-.play-direct .campaign-rival-trigger {
+.play-direct .play-rival-trigger {
   position: absolute;
   z-index: -1;
   inset: 0;
@@ -104,8 +104,8 @@
   padding: 0;
   background: linear-gradient(90deg, var(--color-canvas-deep), transparent 85%);
 }
-.play-direct .campaign-rival-trigger:is(:hover, :focus-visible) { border-color: var(--color-accent); }
-.campaign-rival-table-portrait {
+.play-direct .play-rival-trigger:is(:hover, :focus-visible) { border-color: var(--color-accent); }
+.play-rival-seat-portrait {
   position: absolute;
   inset: 0 auto 0 0;
   width: min(47%, calc(var(--rival-portrait-size) * 1.22));
@@ -114,22 +114,23 @@
   border-radius: inherit;
   mask-image: linear-gradient(90deg, #000 72%, transparent 100%);
 }
-.campaign-rival-table-portrait img { width: 100%; height: 100%; object-fit: cover; object-position: center var(--rival-crop-y); }
-.campaign-rival-table-portrait .campaign-rival-portrait {
+.play-rival-seat-portrait img { position: relative; width: 100%; height: 100%; object-fit: cover; object-position: center var(--rival-crop-y, top); }
+.play-rival-seat-portrait .campaign-rival-portrait {
+  position: relative;
   width: min(100%, calc(var(--rival-portrait-size) * 1.06));
-  translate: 0 var(--rival-crop-y);
+  translate: 0 var(--rival-crop-y, 0%);
   background-image: url('../assets/play/last-call-rival-atlas-detail.webp');
 }
-.play-direct .campaign-rival-caption { display: block; width: max(55%, calc(100% - var(--rival-portrait-size) * 1.12)); padding: 5px; pointer-events: none; }
-.play-direct .campaign-rival-caption > .play-eyebrow { display: block; margin: 0 0 3px; font-size: 11px; letter-spacing: .055em; }
-.play-direct .campaign-rival-caption > strong {
+.play-direct .play-rival-caption { display: block; width: max(55%, calc(100% - var(--rival-portrait-size) * 1.12)); padding: 5px; pointer-events: none; }
+.play-direct .play-rival-caption > .play-eyebrow { display: block; margin: 0 0 3px; font-size: 11px; letter-spacing: .055em; }
+.play-direct .play-rival-caption > strong {
   color: var(--color-ticket);
   font: italic 800 clamp(24px, 3vw, 49px)/.9 var(--font-display);
   text-transform: uppercase;
 }
-.play-direct .campaign-rival-caption strong span { color: var(--color-accent); }
-.play-direct .campaign-rival-caption > div p { -webkit-line-clamp: 2; margin-top: 4px; color: var(--color-text-muted); font: italic 400 clamp(12px, 1vw, 15px)/1.22 var(--font-ui); }
-.play-direct .campaign-rival-caption > div { block-size: 2.65em; }
+.play-direct .play-rival-caption strong span { color: var(--color-accent); }
+.play-direct .play-rival-caption > div p { -webkit-line-clamp: 2; margin-top: 4px; color: var(--color-text-muted); font: italic 400 clamp(12px, 1vw, 15px)/1.22 var(--font-ui); }
+.play-direct .play-rival-caption > div { block-size: 2.65em; }
 .play-direct .play-bench[data-seat="player"] { gap: clamp(7px, .9vw, 17px); }
 .play-direct .play-bench[data-seat="player"] .play-bench-crew { align-self: stretch; justify-content: center; min-width: 156px; }
 .play-direct .play-bench[data-seat="player"] .play-bench-piles { align-self: center; }
@@ -141,7 +142,7 @@
   .play-radio-panel .afterhours-radio { grid-template-columns: minmax(124px, .8fr) minmax(130px, 1fr) minmax(185px, 1.2fr) auto; gap: 5px 8px; }
   .play-direct .play-bench[data-portrait] { grid-template-columns: minmax(150px, 1fr) auto minmax(95px, .7fr) auto; gap: 6px; }
   .play-direct .play-bench-seat .play-eyebrow { display: none; }
-  .play-direct .campaign-rival-caption > strong { font-size: clamp(23px, 3.15vw, 35px); }
+  .play-direct .play-rival-caption > strong { font-size: clamp(23px, 3.15vw, 35px); }
 }
 
 /* Low light keeps the cards and legal drop outlines in front. */

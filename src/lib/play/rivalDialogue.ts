@@ -1,5 +1,9 @@
-import type { RivalMoment } from './campaignStory';
 import type { MatchBeat, MatchChange, PlayerView } from './protocol';
+
+export type RivalMoment =
+  | 'intro' | 'retry' | 'playerGig' | 'rivalGig' | 'playerLead' | 'rivalLead'
+  | 'playerUnitLost' | 'rivalUnitLost' | 'highRoll' | 'lowRoll' | 'playerWon' | 'rivalWon' | 'draw';
+export type RivalDialogueBank = Record<RivalMoment, readonly string[]>;
 
 export const dialogueCooldown = 4500;
 
@@ -29,6 +33,12 @@ export function rivalResult(view: Pick<PlayerView, 'gameEnded' | 'winnerId'>): R
   return view.winnerId === 'player' ? 'playerWon' : view.winnerId === 'rival' ? 'rivalWon' : 'draw';
 }
 
+export function rivalDialogueLine(bank: RivalDialogueBank, moment: RivalMoment, matchId: string, count = 0) {
+  const lines = bank[moment];
+  const offset = [...matchId].reduce((sum, character) => sum + character.charCodeAt(0), 0);
+  return lines[(offset + count) % lines.length];
+}
+
 export interface RivalDialogueState {
   matchId: string;
   batch: number;
@@ -50,7 +60,7 @@ interface DialogueFrame {
 }
 
 export function advanceRivalDialogue(
-  previous: RivalDialogueState | undefined, frame: DialogueFrame, bank: Record<RivalMoment, readonly string[]>,
+  previous: RivalDialogueState | undefined, frame: DialogueFrame, bank: RivalDialogueBank,
 ): RivalDialogueState {
   const state = previous?.matchId === frame.matchId ? previous : {
     matchId: frame.matchId, batch: frame.batch, seen: [], opened: false, result: false, lastAt: -Infinity, counts: {},
@@ -61,18 +71,16 @@ export function advanceRivalDialogue(
     ? { ...state, batch: frame.batch, seen: [...seen, ...fresh.map(beat => beat.id)] } : state;
   let moment: RivalMoment | undefined;
   if (frame.result && !state.result) moment = frame.result;
-  else if (frame.opening && !state.opened && !state.line && !fresh.length) moment = frame.opening;
+  // Opening deals can include public setup beats in the very first frame.
+  else if (frame.opening && !state.opened && !state.line) moment = frame.opening;
   else if (!state.result && frame.now - state.lastAt >= dialogueCooldown) {
     moment = fresh.map(rivalReaction).findLast(candidate => candidate !== undefined);
   }
   if (!moment) return next;
-  const lines = bank[moment];
   const count = state.counts[moment] ?? 0;
-  // Cycle each event's lines from a stable offset so separate attempts can open differently.
-  const offset = [...frame.matchId].reduce((sum, character) => sum + character.charCodeAt(0), 0);
   return {
     ...next, opened: true, result: !!frame.result, lastAt: frame.now,
     counts: { ...state.counts, [moment]: count + 1 },
-    line: { moment, text: lines[(offset + count) % lines.length], sequence: (state.line?.sequence ?? 0) + 1 },
+    line: { moment, text: rivalDialogueLine(bank, moment, frame.matchId, count), sequence: (state.line?.sequence ?? 0) + 1 },
   };
 }

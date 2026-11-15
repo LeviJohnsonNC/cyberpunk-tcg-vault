@@ -1,8 +1,5 @@
 import { ENCOUNTERS, campaignClearedCount, type CampaignRun, type EncounterId } from './campaign';
-
-export type RivalMoment =
-  | 'intro' | 'retry' | 'playerGig' | 'rivalGig' | 'playerLead' | 'rivalLead'
-  | 'playerUnitLost' | 'rivalUnitLost' | 'highRoll' | 'lowRoll' | 'playerWon' | 'rivalWon' | 'draw';
+import type { RivalDialogueBank } from './rivalDialogue';
 
 interface StoryBeat {
   title: string;
@@ -14,7 +11,7 @@ interface CampaignChapter {
   role: string;
   briefing: string;
   victory: StoryBeat;
-  lines: Record<RivalMoment, readonly string[]>;
+  lines: RivalDialogueBank;
 }
 
 export const campaignInvitation = {

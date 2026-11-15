@@ -89,8 +89,9 @@ function ContextMenu({ context, children, close }: { context: Context; children:
   </div>, document.body);
 }
 
-export function PlayTable({ scope, snapshot, names, busy: saving, error, send, rematch, edit, circuit, playback, feedback, reduced, controls, navigation, audio, cue, campaign, practiceLobby }: {
+export function PlayTable({ scope, snapshot, names, busy: saving, error, send, rematch, edit, circuit, playback, feedback, reduced, controls, navigation, audio, cue, campaign, freePlay, practiceLobby }: {
   campaign?: CampaignResultDetails & { rival: ReactNode; act?: number };
+  freePlay?: { rival: ReactNode; resultQuote?: { rival: string; text: string } };
   cue?: (name: TableCue, delayMs?: number) => (() => void) | undefined;
   playback?: MatchPlayback; feedback?: MatchBeat; scope: string; snapshot: MatchSnapshot; names: Record<Seat, string>; busy: boolean; error?: string;
   send: (move: Move) => void; rematch: () => void; edit: () => void; circuit?: () => void; reduced: boolean; controls?: ReactNode; navigation?: ReactNode; audio?: ReactNode;
@@ -405,7 +406,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
   if (campaign && view.gameEnded) return <CampaignMatchResult details={campaign} snapshot={snapshot}
     busy={busy} error={error} onContinue={rematch} />;
   if (practiceLobby && view.gameEnded) return <PracticeMatchResult snapshot={snapshot}
-    busy={busy} error={error} rematch={rematch} lobby={practiceLobby} edit={edit} />;
+    busy={busy} error={error} rematch={rematch} lobby={practiceLobby} edit={edit} quote={freePlay?.resultQuote?.text} />;
 
   return <div ref={grid} className="play-grid play-direct" data-match-id={snapshot.matchId} data-state-id={view.stateID} data-busy={busy} data-playback={!!playback} data-campaign={!!campaign}
     onKeyDown={(event) => {
@@ -478,7 +479,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     </aside>}
     <div ref={table} className="play-table" inert={opening.showing} data-opening={opening.showing || undefined} data-setup-choice={choice?.type === 'chooseFirstPlayer' || undefined} data-turn={playing ? view.activePlayerId : undefined} data-combat={!!combat} data-ended={view.gameEnded}>
       <GigRollAnnouncement rolls={snapshot.gigRolls} />
-      <RivalBench portrait={campaign?.rival} rolls={rolls} name={names.rival} active={playing && !yourTurn} {...targeting} renderCard={renderCard} renderFace={face} />
+      <RivalBench portrait={campaign?.rival ?? freePlay?.rival} rolls={rolls} name={names.rival} active={playing && !yourTurn} {...targeting} renderCard={renderCard} renderFace={face} />
       <SeatField seat="rival" active={playing && !yourTurn} {...targeting} renderCard={renderCard} />
       <GigZones {...targeting} adjustedGig={adjustedGig} />
       <div className="play-command" data-presentation={command.variant} data-attention={command.attention} data-reduced={reduced || undefined} data-seat={playing ? view.activePlayerId : undefined} data-state={playback ? 'playback' : selected || choice || setup ? 'decision' : combat ? 'combat' : 'idle'}>
@@ -539,7 +540,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
       {playing && turnKey !== firstTurn && <div className="play-turn-banner" key={turnKey} data-seat={view.activePlayerId} aria-hidden="true">
         <span>Turn {view.turnNumber}</span><strong>{yourTurn ? 'Your turn' : 'Rival turn'}</strong>
       </div>}
-      {view.gameEnded && <MatchResult view={view} report={snapshot.report} receipt={snapshot.circuit?.receipt} circuit={circuit} title={decisionTitle} reason={winReasons[view.winReason ?? ''] ?? 'Match ended'} busy={busy} rematch={rematch} edit={edit} />}
+      {view.gameEnded && <MatchResult view={view} report={snapshot.report} receipt={snapshot.circuit?.receipt} circuit={circuit} title={decisionTitle} reason={winReasons[view.winReason ?? ''] ?? 'Match ended'} busy={busy} rematch={rematch} edit={edit} quote={freePlay?.resultQuote} />}
       <span className="sr-only" role="status">{notice}{busy ? ' Resolving move.' : ''}</span>
       {notice && <p className="play-table-notice">{notice}</p>}
       {rolling && <PlayGigRoll key={view.stateID} rolls={rolls} thrown={activeThrow} cue={cue} />}

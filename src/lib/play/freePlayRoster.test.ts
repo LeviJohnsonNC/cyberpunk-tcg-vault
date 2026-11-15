@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { communityCrewMatches } from '../communityPopularity';
+import { campaignChapters } from './campaignStory';
+import { freePlayRivalProfile } from './freePlayDialogue';
 import { browseRivals, freePlayRoster } from './freePlayRoster';
 import { curatedOpponents } from './opponents';
+import { advanceRivalDialogue, rivalDialogueLine, rivalResult } from './rivalDialogue';
 
 describe('Free Play rival browser', () => {
   it('features the six intended portrait matches without removing or changing curated decks', () => {
@@ -44,6 +47,40 @@ describe('Free Play rival browser', () => {
         expect(assets, `${id} ${outcome}`).toHaveProperty([`../../assets/play/results/${artKey}-${outcome}.webp`]);
       }
     }
+  });
+
+  it('gives every curated portrait its own voice and keeps Campaign plot lines out of Free Play endings', () => {
+    const moments = Object.keys(campaignChapters['first-call'].lines).sort();
+    const intros = new Set<string>();
+    for (const { key, deck, portrait } of freePlayRoster) {
+      const profile = freePlayRivalProfile(key, deck.name);
+      expect(profile.name).toBe(portrait?.alias);
+      expect(Object.keys(profile.lines).sort()).toEqual(moments);
+      for (const lines of Object.values(profile.lines)) {
+        expect(lines.length).toBeGreaterThan(0);
+        expect(lines.every(line => line.trim().length > 0)).toBe(true);
+      }
+      intros.add(profile.lines.intro[0]);
+      if (portrait && 'encounter' in portrait) {
+        expect(profile.lines.playerWon).not.toEqual(campaignChapters[portrait.encounter].lines.playerWon);
+        expect(profile.lines.rivalWon).not.toEqual(campaignChapters[portrait.encounter].lines.rivalWon);
+      }
+    }
+    expect(intros.size).toBe(freePlayRoster.length);
+  });
+
+  it('uses a neutral identity for custom and older saved rivals and resolves the same outcome line on resume', () => {
+    const name = 'Smasher Surge';
+    for (const key of ['saved:123', 'mirror', 'import', 'external', undefined]) {
+      expect(freePlayRivalProfile(key, name)).toMatchObject({ name, portrait: undefined });
+    }
+    const { lines } = freePlayRivalProfile('curated:smasher-surge', name);
+    const frame = { matchId: 'new-match', batch: 1, beats: [], now: 0 };
+    expect(advanceRivalDialogue(undefined, { ...frame, opening: 'intro' }, lines).line?.text).toBe(lines.intro[0]);
+    expect(advanceRivalDialogue(undefined, frame, lines).line).toBeUndefined();
+    const result = rivalResult({ gameEnded: true, winnerId: 'rival' })!;
+    expect(advanceRivalDialogue(undefined, { ...frame, result }, lines).line?.text).toBe(rivalDialogueLine(lines, result, frame.matchId));
+    expect(lines.retry[0]).not.toBe(lines.intro[0]);
   });
 
   it('sorts alphabetically in either direction and ranks popularity by exact Legend crews', () => {

@@ -4,8 +4,8 @@ import { CircuitPayout } from './CircuitHub';
 import { FreePlayRivalPortrait } from './FreePlayRivalPortrait';
 import { MatchOutcome } from './MatchOutcome';
 
-export function PracticeMatchResult({ snapshot, busy, error, rematch, lobby, edit }: {
-  snapshot: MatchSnapshot; busy: boolean; error?: string;
+export function PracticeMatchResult({ snapshot, busy, error, rematch, lobby, edit, quote }: {
+  snapshot: MatchSnapshot; busy: boolean; error?: string; quote?: string;
   rematch: () => void; lobby: () => void; edit: () => void;
 }) {
   const rosterRival = freePlayRoster.find(entry => entry.key === snapshot.circuit?.rivalKey);
@@ -15,7 +15,7 @@ export function PracticeMatchResult({ snapshot, busy, error, rematch, lobby, edi
   const receipt = snapshot.circuit?.receipt;
 
   return <MatchOutcome snapshot={snapshot} busy={busy} error={error} label="Free Play" kind="Free Play" rival={name}
-    artKey={artKey} portrait={portrait && <FreePlayRivalPortrait portrait={portrait} priority />}
+    artKey={artKey} portrait={portrait && <FreePlayRivalPortrait portrait={portrait} priority />} quote={quote}
     continueLabel="Rematch" onContinue={rematch}
     secondaryActions={<>
       <button type="button" className="btn quiet" disabled={busy} onClick={edit}>Edit draft</button>
