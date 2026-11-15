@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { getPrintingArt, prioritizePrintingArt } from '../lib/printingArt';
+import { isIconicPrinting, type FoilMode } from '../lib/iconicFoil';
+import { IconicFoil } from './IconicFoil';
 import { CARD_BACK } from './bits';
 
 const artRequests = new WeakMap<Element, (visible: boolean) => void>();
@@ -34,9 +36,9 @@ function observeArt(element: Element, load: (visible: boolean) => void) {
   };
 }
 
-export function PrintingArt({ slug, printingId, alt, pocket = false, inline = false, fallback, placeholder, onReady }: { slug: string; printingId: string; alt: string; pocket?: boolean; inline?: boolean; fallback?: ReactNode; placeholder?: string; onReady?: (src: string) => void }) {
+export function PrintingArt({ slug, printingId, alt, pocket = false, inline = false, foil = 'compact', fallback, placeholder, onReady }: { slug: string; printingId: string; alt: string; pocket?: boolean; inline?: boolean; foil?: FoilMode; fallback?: ReactNode; placeholder?: string; onReady?: (src: string) => void }) {
   const image = useRef<HTMLImageElement>(null);
-  const [loadedSrc, setLoadedSrc] = useState<string>();
+  const [ready, setReady] = useState<{ printingId: string; src: string }>();
   const [art, setArt] = useState<{ printingId: string; src: string | null }>();
 
   useEffect(() => {
@@ -65,9 +67,13 @@ export function PrintingArt({ slug, printingId, alt, pocket = false, inline = fa
 
   const loading = art?.printingId !== printingId;
   const src = loading ? null : art.src;
-  const loaded = !!src && loadedSrc === src;
+  const foilMode = foil !== 'off' && isIconicPrinting(printingId) ? foil : undefined;
+  const loaded = !!src && ready?.printingId === printingId && ready.src === src;
+  const surface = foilMode && loaded ? <IconicFoil mode={foilMode} /> : null;
+  const foilClass = surface ? ' iconic-art' : '';
   const img = (
     <img
+      key={printingId}
       ref={image}
       className={pocket ? 'binder-card-image' : 'card-art'}
       src={src ?? CARD_BACK}
@@ -76,22 +82,32 @@ export function PrintingArt({ slug, printingId, alt, pocket = false, inline = fa
       referrerPolicy="no-referrer"
       data-printing-loaded={inline && loaded ? true : undefined}
       hidden={!!placeholder && !loaded}
-      onLoad={inline && src ? () => { setLoadedSrc(src); onReady?.(src); } : undefined}
-      onError={src ? () => setArt({ printingId, src: null }) : undefined}
+      onLoad={(inline || foilMode) && src ? ({ currentTarget }) => {
+        if (currentTarget !== image.current || !currentTarget.naturalWidth || currentTarget.currentSrc !== currentTarget.src) return;
+        if (currentTarget.getAttribute('src') !== src) return;
+        setReady({ printingId, src });
+        if (inline) onReady?.(src);
+      } : undefined}
+      onError={src ? ({ currentTarget }) => {
+        if (currentTarget === image.current && currentTarget.getAttribute('src') === src) {
+          setArt({ printingId, src: null });
+        }
+      } : undefined}
     />
   );
   if (inline && !loading && !src && fallback) return fallback;
-  if (inline) return <span className="printing-inline" aria-busy={loading || (!!placeholder && !!src && !loaded)}>
+  if (inline) return <span className={`printing-inline${foilClass}`} aria-busy={loading || (!!placeholder && !!src && !loaded)}>
     {img}
+    {surface}
     {placeholder && !loaded && <span className="printing-placeholder">{placeholder}</span>}
     {!loading && !src && <small role="status">Printing art unavailable</small>}
   </span>;
   if (pocket) {
-    return <span className="binder-art-frame">{img}{!loading && !src && <span className="binder-art-status">Art unavailable</span>}</span>;
+    return <span className={`binder-art-frame${foilClass}`}>{img}{surface}{!loading && !src && <span className="binder-art-status">Art unavailable</span>}</span>;
   }
   return (
-    <figure className="drawer-printing-art">
-      {img}
+    <figure className={`drawer-printing-art${foilMode === 'inspection' ? '' : foilClass}`}>
+      {foilMode === 'inspection' ? <span className={`iconic-inspection-art${foilClass}`}>{img}{surface}</span> : <>{img}{surface}</>}
       <figcaption className="tiny muted" role="status">
         {loading ? 'Loading printing art…' : !src ? 'Art unavailable for this printing' : ''}
       </figcaption>
