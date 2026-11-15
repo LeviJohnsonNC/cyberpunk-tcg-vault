@@ -27,6 +27,20 @@ const campaignRivals = new Map(featuredEncounters.map((encounter, order) => [
   { encounter, alias: campaignChapters[encounter].rival, order },
 ]));
 
+const freePlayPortraits: Readonly<Partial<Record<string, { alias: string; art: string }>>> = {
+  'lowball-netrun': { alias: 'Patchbay', art: 'patchbay' },
+  'ripperdoc-rampage': { alias: 'Kiln', art: 'kiln' },
+  'arasaka-nines': { alias: 'Glasshouse', art: 'glasshouse' },
+  'triple-fixers': { alias: 'Switchline', art: 'switchline' },
+  'streetkid-braindance': { alias: 'Crossfade', art: 'crossfade' },
+  'ganger-surge': { alias: 'Saint Static', art: 'saint-static' },
+  'baby-girl-bbg': { alias: 'Aftercare', art: 'aftercare' },
+  'smasher-river-viktor': { alias: 'Coil', art: 'coil' },
+  'smasher-muamar-river': { alias: 'Torque', art: 'torque' },
+  'smasher-saburo-streetkid': { alias: 'Heirloom', art: 'heirloom' },
+  'smasher-padre-streetkid': { alias: 'Votive', art: 'votive' },
+};
+
 // Short matchup notes describe the exact Free Play lists.
 const matchupNotes: Readonly<Record<string, string>> = {
   'lowball-netrun': 'Low Gigs make its Programs cheaper and keep the cards flowing. Pressure before it can build up answers.',
@@ -50,7 +64,7 @@ const matchupNotes: Readonly<Record<string, string>> = {
 
 export const freePlayRoster = curatedOpponents.map(opponent => ({
   ...opponent,
-  portrait: campaignRivals.get(opponent.id),
+  portrait: campaignRivals.get(opponent.id) ?? freePlayPortraits[opponent.id],
   summary: matchupNotes[opponent.id] ?? opponent.deck.notes,
   crewMatches: communityCrewMatches(opponent.deck.legends),
 }));
@@ -71,7 +85,7 @@ export function browseRivals(search: string, category: RivalCategory, sort: Riva
     if (sort === 'nameAsc') return byName;
     if (sort === 'nameDesc') return -byName;
     if (sort === 'popularity') return b.crewMatches - a.crewMatches || byName;
-    return (a.portrait?.order ?? featuredEncounters.length) - (b.portrait?.order ?? featuredEncounters.length);
+    return (campaignRivals.get(a.id)?.order ?? featuredEncounters.length) - (campaignRivals.get(b.id)?.order ?? featuredEncounters.length);
   });
   return { rows, counts };
 }
