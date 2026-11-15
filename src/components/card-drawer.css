@@ -111,7 +111,7 @@
   height: 100%;
   margin: 0;
 }
-.card-drawer-art-button .card-art, .card-art-viewer .card-art {
+.card-drawer-art-button .card-art, .card-art-viewer .drawer-printing-art .card-art {
   display: block;
   width: 100%;
   height: 100%;
@@ -130,6 +130,7 @@
   color: var(--color-text);
   font: 12px/1.35 var(--font-ui);
 }
+.card-art-viewer figcaption { margin: 0; }
 .card-art-viewer figcaption:empty { display: none; }
 .card-drawer-holding {
   display: grid;
@@ -329,7 +330,7 @@
 .card-drawer-disclosure .kv dd { min-width: 0; overflow-wrap: anywhere; }
 
 .card-art-viewer {
-  width: min(480px, calc(100% - 28px), calc((100dvh - 64px) * 5 / 7));
+  width: min(480px, calc(100% - 28px), calc((100dvh - 108px) * 5 / 7));
   padding: 0;
   overflow: visible;
   color: var(--color-text);
