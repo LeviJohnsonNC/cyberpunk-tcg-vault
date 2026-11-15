@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
-import type { FoilMode } from '../lib/iconicFoil';
-import './iconic-foil.css';
+import type { FoilFinish, FoilMode } from '../lib/printingFoil';
+import './printing-foil.css';
 
-export function IconicFoil({ mode, glintOnOpen }: { mode: Exclude<FoilMode, 'off'>; glintOnOpen: boolean }) {
+export function PrintingFoil({ finish, mode, glintOnOpen }: { finish: FoilFinish; mode: Exclude<FoilMode, 'off'>; glintOnOpen: boolean }) {
   const surface = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     const foil = surface.current;
@@ -25,7 +25,7 @@ export function IconicFoil({ mode, glintOnOpen }: { mode: Exclude<FoilMode, 'off
       stopGlint();
     };
     const glintEnded = (event: AnimationEvent) => {
-      if (event.animationName === 'iconic-foil-glint') stopGlint();
+      if (event.animationName === 'printing-foil-glint') stopGlint();
     };
     const glint = mode === 'inspection' && glintOnOpen && !motion.matches && !document.hidden;
     if (glint) {
@@ -75,7 +75,7 @@ export function IconicFoil({ mode, glintOnOpen }: { mode: Exclude<FoilMode, 'off
     };
   }, [mode, glintOnOpen]);
 
-  return <span ref={surface} aria-hidden="true" className="iconic-foil" data-foil-mode={mode}>
-    <span className="iconic-foil-light" />
+  return <span ref={surface} aria-hidden="true" className="printing-foil" data-foil-mode={mode} data-foil-finish={finish}>
+    <span className="printing-foil-light" />
   </span>;
 }

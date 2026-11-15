@@ -1,0 +1,155 @@
+/* Lighting sits over the loaded printing. Keep ornament inside the card's edge. */
+.foil-art {
+  position: relative;
+  isolation: isolate;
+}
+.foil-art.printing-inline { display: block; }
+.foil-inspection-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.printing-foil {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  --foil-grain: .15;
+  --foil-prism: .72;
+  --foil-specular: .71;
+  --foil-edge-size: 2px;
+  --foil-rest-x: 77%;
+  --foil-rest-y: 34%;
+  --foil-angle: 18deg;
+  --foil-cool: 99 240 255;
+  --foil-violet: 176 119 255;
+  --foil-rose: 255 90 189;
+  --foil-gold: 255 214 121;
+}
+.printing-foil::before, .printing-foil::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.printing-foil::before {
+  inset: 12% 5% 43%;
+  background: url('../assets/iconic-foil-grain.png') repeat 0 0 / 53px 53px;
+  opacity: var(--foil-grain);
+}
+.printing-foil-light {
+  position: absolute;
+  inset: 14% 7% 45%;
+  overflow: hidden;
+  clip-path: ellipse(50% 50% at 50% 50%);
+}
+.printing-foil-light::before, .printing-foil-light::after {
+  content: '';
+  position: absolute;
+}
+.printing-foil-light::before {
+  inset: 0;
+  background:
+    radial-gradient(ellipse 26% 40% at calc(var(--foil-x, var(--foil-rest-x)) + 7%) calc(var(--foil-y, var(--foil-rest-y)) - 7%),
+      rgb(var(--foil-cool) / .8), rgb(var(--foil-cool) / .42) 40%, transparent 100%),
+    radial-gradient(ellipse 18% 30% at calc(var(--foil-x, var(--foil-rest-x)) - 13%) var(--foil-y, var(--foil-rest-y)),
+      rgb(var(--foil-violet) / .67), rgb(var(--foil-rose) / .38) 40%, transparent 100%),
+    radial-gradient(ellipse 20% 35% at calc(var(--foil-x, var(--foil-rest-x)) + 3%) calc(var(--foil-y, var(--foil-rest-y)) + 14%),
+      rgb(var(--foil-gold) / .76), rgb(var(--foil-gold) / .34) 46%, transparent 100%),
+    radial-gradient(ellipse 22% 25% at 9% 34%, rgb(var(--foil-rose) / .71), rgb(var(--foil-violet) / .28) 47%, transparent 100%);
+  opacity: var(--foil-prism);
+}
+.printing-foil-light::after {
+  left: var(--foil-x, var(--foil-rest-x));
+  top: var(--foil-y, var(--foil-rest-y));
+  width: 33%;
+  height: 88%;
+  transform: translate(-50%, -50%) rotate(var(--foil-angle));
+  background: linear-gradient(90deg, transparent 4%, rgb(var(--foil-violet) / .30) 22%,
+    rgb(var(--foil-rose) / .55) 37%, rgb(var(--foil-gold) / .68) 46%,
+    rgb(255 249 228 / .90) 52%, rgb(var(--foil-cool) / .69) 59%,
+    rgb(var(--foil-cool) / .32) 70%, transparent 91%);
+  opacity: var(--foil-specular);
+}
+/* Limit the strong face light to the illustration and soften it before the name and rules. */
+@supports (mask-image: linear-gradient(#000, transparent)) {
+  .printing-foil::before {
+    inset: 0;
+    mask-image: radial-gradient(ellipse 50% 42% at 67% 32%, #000 0%, rgb(0 0 0 / .44) 52%, transparent 100%);
+  }
+  .printing-foil-light {
+    inset: 0;
+    clip-path: none;
+    mask-image: radial-gradient(ellipse 59% 41% at 51% 30%, #000 0 47%, rgb(0 0 0 / .78) 62%,
+      rgb(0 0 0 / .22) 85%, transparent 100%);
+  }
+}
+.printing-foil::after {
+  border: var(--foil-edge-size) solid rgb(232 239 236 / .87);
+}
+@supports (mask-composite: exclude) {
+  .printing-foil::after {
+    padding: var(--foil-edge-size);
+    border: 0;
+    background:
+      radial-gradient(ellipse 40% 18% at 100% 0%, #fffae5, transparent),
+      radial-gradient(ellipse 35% 19% at 0% 100%, #eaffff, transparent),
+      linear-gradient(143deg, #fff8ef 0%, rgb(var(--foil-cool)) 12%, #c5edff 24%,
+        rgb(var(--foil-violet)) 37%, rgb(var(--foil-rose)) 51%, rgb(var(--foil-gold)) 64%,
+        #fff7e9 73%, rgb(var(--foil-cool)) 86%, #eefaff 100%);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+}
+
+.printing-foil[data-foil-mode='standard'] {
+  --foil-grain: .26;
+  --foil-prism: .84;
+  --foil-specular: .79;
+  --foil-edge-size: 2.5px;
+}
+.printing-foil[data-foil-mode='inspection'] {
+  --foil-grain: .36;
+  --foil-prism: .95;
+  --foil-specular: .92;
+  --foil-edge-size: 3px;
+}
+.printing-foil[data-foil-finish='nova'] {
+  --foil-cool: 224 177 255;
+  --foil-violet: 155 111 255;
+  --foil-rose: 255 114 167;
+  --foil-gold: 255 194 83;
+}
+.card-drawer-art-button .printing-foil, .card-art-viewer .printing-foil { border-radius: 8px; }
+:is(.collection-printing-thumb, .pb-printing-thumb) .printing-foil {
+  --foil-grain: .035;
+  --foil-specular: .41;
+  --foil-edge-size: 1.4px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .printing-foil[data-foil-mode='inspection'][data-foil-glint] .printing-foil-light::after {
+    animation: printing-foil-glint 510ms ease-out;
+  }
+}
+@keyframes printing-foil-glint {
+  0% { transform: translate(-166%, -44%) rotate(var(--foil-angle)); opacity: .10; }
+  48% { opacity: 1; }
+  100% { transform: translate(-50%, -50%) rotate(var(--foil-angle)); opacity: var(--foil-specular); }
+}
+@media (prefers-reduced-motion: no-preference) and (any-hover: hover) {
+  .foil-inspection-art {
+    transform: perspective(850px) rotateX(var(--foil-tilt-x, 0deg)) rotateY(var(--foil-tilt-y, 0deg));
+    transition: transform 160ms ease-out;
+  }
+  .foil-inspection-art[data-foil-active] { transition-duration: 70ms; }
+  .foil-art[data-foil-active] > .printing-foil[data-foil-mode='standard'] {
+    --foil-prism: .93;
+    --foil-specular: .9;
+  }
+  .foil-art[data-foil-active] > .printing-foil[data-foil-mode='inspection'] {
+    --foil-prism: 1;
+    --foil-specular: 1;
+  }
+}

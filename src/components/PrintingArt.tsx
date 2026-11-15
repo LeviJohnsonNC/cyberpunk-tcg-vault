@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { getPrintingArt, prioritizePrintingArt } from '../lib/printingArt';
-import { isIconicPrinting, type FoilMode } from '../lib/iconicFoil';
-import { IconicFoil } from './IconicFoil';
+import { printingFoilFinish, type FoilMode } from '../lib/printingFoil';
+import { PrintingFoil } from './PrintingFoil';
 import { CARD_BACK } from './bits';
 
 const artRequests = new WeakMap<Element, (visible: boolean) => void>();
@@ -67,10 +67,11 @@ export function PrintingArt({ slug, printingId, alt, pocket = false, inline = fa
 
   const loading = art?.printingId !== printingId;
   const src = loading ? null : art.src;
-  const foilMode = foil !== 'off' && isIconicPrinting(printingId) ? foil : undefined;
+  const finish = foil === 'off' ? undefined : printingFoilFinish(printingId);
+  const foilMode = finish && foil !== 'off' ? foil : undefined;
   const loaded = !!src && ready?.printingId === printingId && ready.src === src;
-  const surface = foilMode && loaded ? <IconicFoil mode={foilMode} glintOnOpen={glintOnOpen} /> : null;
-  const foilClass = surface ? ' iconic-art' : '';
+  const surface = finish && foilMode && loaded ? <PrintingFoil finish={finish} mode={foilMode} glintOnOpen={glintOnOpen} /> : null;
+  const foilClass = surface ? ' foil-art' : '';
   const img = (
     <img
       key={printingId}
@@ -107,7 +108,7 @@ export function PrintingArt({ slug, printingId, alt, pocket = false, inline = fa
   }
   return (
     <figure className={`drawer-printing-art${foilMode === 'inspection' ? '' : foilClass}`}>
-      {foilMode === 'inspection' ? <span className={`iconic-inspection-art${foilClass}`}>{img}{surface}</span> : <>{img}{surface}</>}
+      {foilMode === 'inspection' ? <span className={`foil-inspection-art${foilClass}`}>{img}{surface}</span> : <>{img}{surface}</>}
       <figcaption className="tiny muted" role="status">
         {loading ? 'Loading printing art…' : !src ? 'Art unavailable for this printing' : ''}
       </figcaption>

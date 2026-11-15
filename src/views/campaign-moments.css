@@ -25,7 +25,7 @@
     0 0 var(--pack-halo, 10px) color-mix(in srgb, var(--pack-light, transparent) 35%, transparent),
     0 8px 16px var(--play-shadow, var(--color-canvas-deep));
 }
-.campaign-mode .campaign-reward-art[data-iconic-surface] {
+.campaign-mode .campaign-reward-art[data-foil-surface] {
   --pack-light: var(--color-divider);
   --pack-foil: transparent;
   --pack-halo: 0;
