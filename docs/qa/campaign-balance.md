@@ -59,6 +59,39 @@ CAMPAIGN_ROUTE_CHECKPOINTS=/tmp/act-three-route.json CAMPAIGN_REPLAY_RETRIES_ONL
 
 The saved checkpoints also support Last Call comparisons against decks that actually reached the table. Select `CAMPAIGN_ENCOUNTERS=9` and omit the replay-edit flags. The benchmark still needs to reach the Last Call goal for each route: fewer than 10% wins with untouched starters and around 30–45% with well-upgraded decks. One early Chrome Fang and Memory Relapse trial gave 1/5 and 0/5 untouched wins on seeds 208–212. With fresh seeds 216–223 it gave both starters 4/8 untouched wins. A Red/Yellow trial scored 9/10 untouched Embracing Power wins on seeds 278–287. These trials have no production tuning.
 
+### Last Call with decks earned during a run
+
+Capture each route's first arrival at Last Call to compare the actual earned deck with its original retail starter. `CAMPAIGN_REPLAY_ATTEMPT=1` filters out repeats at the boss. `CAMPAIGN_REPLAY_COMPARE_STARTER=1` adds the untouched deck on the same shuffles. The report uses `shuffle: 0` for the route's original match and numbered reshuffles of each saved deck for the remaining comparisons. Several shuffles of one earned deck still represent one reward history.
+
+```sh
+CAMPAIGN_FIRST_SEED=362 CAMPAIGN_SEEDS=4 CAMPAIGN_SEATS=player \
+  CAMPAIGN_MAX_ATTEMPTS=5 CAMPAIGN_CHECKPOINT_STAGE=9 CAMPAIGN_ENCOUNTERS=9 \
+  CAMPAIGN_POLICIES=balanced \
+  node scripts/benchmark-campaign.mjs /tmp/last-call-routes.json
+CAMPAIGN_ROUTE_CHECKPOINTS=/tmp/last-call-routes.json CAMPAIGN_REPLAY_ATTEMPT=1 \
+  CAMPAIGN_REPLAY_COMPARE_STARTER=1 CAMPAIGN_REPLAY_SHUFFLES=3 CAMPAIGN_SEATS=player \
+  CAMPAIGN_ENCOUNTERS=9 CAMPAIGN_POLICIES=balanced CAMPAIGN_TRACE=1 \
+  node scripts/benchmark-campaign.mjs /tmp/last-call-pairs.json
+```
+
+In trace mode, the rival's main-phase passes record its own visible hand and legal card plays. This helps tell apart a missing answer and an affordable play that the rival held. The display and AI still use their normal filtered views.
+
+On the post-Red Line baseline (`4052ed5`), the balanced policy played from First Call with a cap of five attempts per table. The Heist reached Last Call in 8/14 routes and cleared it in 7/14. Embracing Power reached and cleared it in 9/10. The cleared runs took 2–18 losses for The Heist and 2–8 for Embracing Power. Only one Heist route exhausted its attempts at Sato. Six stopped at earlier encounters.
+
+The Last Call trial exchanged two Satori for two Riot Shields. A Shield adds a blocker and raises the rival's Go Solo cost, which tests whether Sato can buy time against fast attackers and Goro. Both versions use the production AI and the same match seeds. Set `CAMPAIGN_TRIALS` to a file containing `{"9":{"cards":{"satori-sword-of-saburo":-2,"riot-shield":2}}}` to repeat the trial.
+
+| Route seeds and deck policy | Sato's list | The Heist starter | The Heist earned | Embracing Power starter | Embracing Power earned |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 362–367, balanced | Current | 9/15 | 6/15 | 7/15 | 9/15 |
+| 362–367, balanced | Riot Shield | 11/15 | 7/15 | 8/15 | 7/15 |
+| 380–387, balanced | Current | 4/11 | 3/11 | 13/20 | 15/20 |
+| 380–387, balanced | Riot Shield | 6/11 | 0/11 | 11/20 | 14/20 |
+| 390–391, boss-ready | Current | 2/6 | 3/6 | 1/6 | 5/6 |
+
+The first two rows use three shuffles per earned deck. The fresh sample uses five shuffles for seeds 380–383 and three for the additional Heist seeds 384–387, with three distinct earned Heist decks and four for Embracing Power. In the 50 trial games on seeds 380–383, Sato sold a Shield in 20 and equipped one in eight. The two boss-ready reward histories per starter are a check on deck construction. They used more cheap plays than the balanced decks in the development sample, and the earned lists won more than the starters. The sample is too small to establish the win rates or to attribute the improvement to the curve alone.
+
+The trial failed the Last Call targets of under 10% starter wins and around 30–45% earned wins on both routes. Keep the current Sato list and AI. Chromium automated checks finished Last Call from saved earned decks on both routes and checked the loss pack, workbench, rematch, victory report, and room claim after reload. Full human playthroughs are still pending.
+
 ### Night Drive trials
 
 On seeds 146–153 the live list lost 15 of 16 games to untouched starters and 12 of 16 to edited decks. The trials compared cheaper bodies and a stronger midgame with a separate mulligan and Gear-host profile. Early-body variants repeatedly made The Heist's matchup tougher while Embracing Power swept its untouched games on seeds 154–159. A mixed list with Emergency Atlus, Dexter, Gilded Mato-N and MaxTac AV gave both starters a reason to edit on seeds 160–163. That advantage reversed for Embracing Power on fresh seeds.
