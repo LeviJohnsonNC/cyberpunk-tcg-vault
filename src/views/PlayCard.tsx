@@ -1,20 +1,37 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useSyncExternalStore } from 'react';
 import { CARD_BACK, Pip, Rules } from '../components/bits';
 import eddiesBack from '../assets/play/eddies-back.webp';
 import legendBack from '../assets/play/legend-back.webp';
-import { imageUrl } from '../lib/data';
+import { getTableArt, subscribeTableArt, tableArtFailedToRender, tableArtSlug } from '../lib/play/cardArt';
 import { vaultCard } from '../lib/play/cardDisplay';
 import { powerExplanation } from '../lib/play/tacticalInfo';
 import type { CardView } from '../lib/play/protocol';
+import './play-card-face.css';
 
-/** Table art loads at once: every card on the table is in view, and a late image would fly as a card back. */
 export function CardFace({ card }: { card: CardView }) {
-  const slug = vaultCard(card)?.slug;
-  const [failed, setFailed] = useState<string>();
-  const back = card.zone === 'eddieArea' ? eddiesBack
-    : card.zone === 'legendArea' && card.faceDown && !slug ? legendBack : CARD_BACK;
-  return card.zone !== 'eddieArea' && slug && failed !== slug ? <img className="card-art" src={imageUrl(slug)} alt="" decoding="async" onError={() => setFailed(slug)} />
-    : <img className="card-art" src={back} data-card-back="" alt="" />;
+  const slug = tableArtSlug(card);
+  const subscribe = useCallback((listener: () => void) => subscribeTableArt(slug, listener), [slug]);
+  const src = useSyncExternalStore(subscribe, () => getTableArt(slug), () => undefined);
+  const known = !!card.definitionId || (!card.faceDown && !!card.cardName);
+  if (card.zone === 'eddieArea' || !known) {
+    const back = card.zone === 'eddieArea' ? eddiesBack
+      : card.zone === 'legendArea' && card.faceDown ? legendBack : CARD_BACK;
+    return <img className="card-art" src={back} data-card-back="" alt="" />;
+  }
+  if (src && slug) return <img className="card-art" src={src} alt="" onError={() => tableArtFailedToRender(slug, src)} />;
+  const printing = vaultCard(card);
+  const cost = card.effectiveCost ?? card.cost;
+  const showPower = card.type === 'unit' || card.type === 'legend' || printing?.type === 'Unit' || printing?.type === 'Legend';
+  return <span className="card-art play-face-placeholder" data-face-placeholder="" data-color={printing?.color} aria-hidden="true">
+    <span className="play-face-content">
+      <span className="play-face-type">{printing?.type ?? card.type ?? 'Card'}</span>
+      <strong>{printing?.display ?? card.cardName ?? 'Revealed card'}</strong>
+      <span className="play-face-stats">
+        {cost != null && <span>{cost} €$</span>}
+        {showPower && <span>{card.effectivePower} PWR</span>}
+      </span>
+    </span>
+  </span>;
 }
 
 export function CardInspection({ card, cards = [], hostName, shortcuts, onClose }: {

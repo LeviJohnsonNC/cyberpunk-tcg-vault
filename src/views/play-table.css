@@ -153,22 +153,6 @@
 .play-card:disabled { cursor: default; }
 .play-card-shell[data-dragging="true"] > .play-card { opacity: .28; }
 
-.play-art-fallback { display: none; }
-.play-card-art:has(img[data-card-back]) .play-art-fallback {
-  position: absolute;
-  inset: auto 3px 3px;
-  display: grid;
-  gap: 2px;
-  padding: 4px 3px;
-  text-align: center;
-  color: var(--color-text-muted);
-  background: var(--color-canvas-deep);
-  border-block-start: 2px solid var(--play-card-color, var(--color-divider));
-  border-radius: 2px;
-  font: 500 9px/1.1 var(--font-mono);
-  text-transform: uppercase;
-}
-.play-art-fallback b { color: var(--color-text); font: 600 10px/1.15 var(--font-ui); text-transform: none; overflow-wrap: anywhere; }
 .play-card[data-color="Blue"] { --play-card-color: var(--color-card-blue); }
 .play-card[data-color="Red"] { --play-card-color: var(--color-card-red); }
 .play-card[data-color="Yellow"] { --play-card-color: var(--color-card-yellow); }

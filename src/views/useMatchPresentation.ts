@@ -1,6 +1,8 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { beatDuration } from '../lib/play/matchPresentation';
 import type { MatchSnapshot } from '../lib/play/protocol';
+import { preloadFaces } from '../lib/play/cardArt';
+import { visibleCards } from '../lib/play/matchView';
 
 function subscribeMotion(notify: () => void) {
   const query = matchMedia('(prefers-reduced-motion: reduce)');
@@ -22,6 +24,15 @@ export function useMatchPresentation(snapshot?: MatchSnapshot) {
   const playing = !!snapshot && !reduced && index < beats.length;
   const beat = playing ? beats[index] : undefined;
   function skip() { setProgress({ key, index: beats.length }); }
+
+  useEffect(() => {
+    if (!snapshot || !beat) return;
+    const feedback = snapshot.presentation?.feedback;
+    const rivalBeats = snapshot.presentation?.beats ?? [];
+    const ownBeat = beat === feedback;
+    const next = rivalBeats[ownBeat ? 0 : rivalBeats.indexOf(beat) + 1];
+    return preloadFaces([...visibleCards(next?.view ?? snapshot.view), ...(next?.peeks ?? snapshot.peeks)]);
+  }, [snapshot, beat]);
 
   useEffect(() => {
     if (!beats.length) return;

@@ -118,6 +118,7 @@
   opacity: .64;
   mask-image: linear-gradient(90deg, transparent, black 54%, transparent 100%);
 }
+.play-card-menu-title .play-face-placeholder { display: none; }
 .play-card-menu-title .btn {
   flex: none;
   justify-content: center;

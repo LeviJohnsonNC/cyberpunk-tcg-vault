@@ -67,8 +67,7 @@ export function PlaySetup({ scope, draft, savedDecks, initialRival, initialOppon
     selected === 'import' ? imported?.deck : curated?.deck ?? saved.find(choice => choice.key === selected)?.deck;
   useEffect(() => {
     if (!yourDeck || !rival) return;
-    const timer = window.setTimeout(() => preloadArt([...yourDeck.legends, ...Object.keys(yourDeck.cards), ...rival.legends, ...Object.keys(rival.cards)]), 250);
-    return () => window.clearTimeout(timer);
+    return preloadArt([...yourDeck.legends, ...Object.keys(yourDeck.cards)]);
   }, [yourDeck, rival]);
 
   const issues = rival ? (selected === 'import' ? imported?.issues ?? [] : opponentIssues(rival)) : [];

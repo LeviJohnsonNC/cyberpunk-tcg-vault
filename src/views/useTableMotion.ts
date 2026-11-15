@@ -154,8 +154,9 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
 
     const arrivals = new Map<string, number>();
     function fly(piece: Piece, from: Spot, options: { delay?: number; back?: string; showcase?: boolean; duration?: number; cue?: TableCue } = {}) {
-      if (piece.el.dataset.cardId) arrivals.set(piece.el.dataset.cardId, (options.delay ?? 0) + time(options.showcase ? 1080 : options.duration ?? 420));
-      if (options.cue) say(options.cue, (options.delay ?? 0) + time(options.showcase ? 1080 : (options.duration ?? 420) * .8), piece.zone.endsWith('rival') ? .24 : -.24);
+      const showcase = options.showcase && !piece.el.querySelector('[data-face-placeholder]');
+      if (piece.el.dataset.cardId) arrivals.set(piece.el.dataset.cardId, (options.delay ?? 0) + time(showcase ? 1080 : options.duration ?? 420));
+      if (options.cue) say(options.cue, (options.delay ?? 0) + time(showcase ? 1080 : (options.duration ?? 420) * .8), piece.zone.endsWith('rival') ? .24 : -.24);
       const to = piece.spot;
       const wrap = document.createElement('div');
       wrap.className = 'play-flight';
@@ -176,7 +177,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       const end = restingTransform(piece.el.parentElement);
       const delay = options.delay ?? 0;
       const animations: Animation[] = [];
-      if (options.showcase) {
+      if (showcase) {
         const scale = Math.min(2.1, 250 / to.w);
         const stage = `translate(${table!.offsetWidth / 2 - to.x}px, ${table!.offsetHeight * 0.4 - to.y}px) scale(${scale})`;
         animations.push(wrap.animate([

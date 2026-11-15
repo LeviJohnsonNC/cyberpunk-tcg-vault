@@ -9,6 +9,7 @@ import { ENCOUNTERS, ENVIRONMENTS, campaignDeckIssues, pendingCampaignPack, type
 import { readCampaign, startCampaign, resetCampaign, chooseReward, saveCampaignDeck, claimEnvironment, equipEnvironment, openCampaignPack, revealCampaignSlot, showCampaignBonus, advanceCampaignScene, finishCampaignPack, acknowledgeCampaignAct, acknowledgeCampaignResult } from '../lib/play/campaignStorage';
 import type { CampaignWorkerResponse } from '../lib/play/campaign.worker';
 import type { MatchSnapshot, Move } from '../lib/play/protocol';
+import { preloadArt } from '../lib/play/cardArt';
 import { useMatchPresentation } from './useMatchPresentation';
 import { useTableSound } from './useTableSound';
 import { PlayTable } from './PlayTable';
@@ -375,6 +376,10 @@ export function CampaignMode({ scope, exit, openInBuilder, preparationOnly = fal
   const inspectedPrinting = PRINTING_INDEX.get(inspected?.printingId ?? '')?.printing;
   const equippedSlot = run && inspected ? run.deck.legends.indexOf(inspected.slug) : -1;
   const tableOpen = !preparationOnly && showTable && !!snapshot && snapshot.matchId === run?.match?.summary.matchId && !newRunFrom;
+  const matchDeck = tableOpen ? run?.deck : undefined;
+  useEffect(() => {
+    if (matchDeck) return preloadArt([...matchDeck.legends, ...Object.keys(matchDeck.cards)]);
+  }, [matchDeck]);
   const resultOpen = tableOpen && !!snapshot?.view.gameEnded && !presentation.playing;
   const editable = run && !run.resultPending && !actPending && ['preparing', 'upgrading'].includes(run.phase);
   const workbench = editable && (surface === 'workbench' || surface === 'new-cards');
