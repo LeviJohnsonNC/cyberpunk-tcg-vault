@@ -10,13 +10,14 @@ export const TABS = [
 ] as const;
 export type PrimaryTab = (typeof TABS)[number]['id'];
 export type TabId = PrimaryTab | 'about' | 'upgrade' | 'shared';
-type Route = { tab: TabId; deck?: string };
+type Route = { tab: TabId; deck?: string; match?: string };
 
 const readHash = (): Route => {
   const [path, query] = window.location.hash.replace(/^#\/?/, '').split('?');
   const tab = path === 'about' || path === 'upgrade' || path === 'shared'
     ? path : TABS.find((item) => item.id === path)?.id ?? 'collection';
-  return { tab, deck: new URLSearchParams(query).get('deck') ?? undefined };
+  const params = new URLSearchParams(query);
+  return { tab, deck: params.get('deck') ?? undefined, match: tab === 'play' ? params.get('match') ?? undefined : undefined };
 };
 
 const scrollKey = ({ tab, deck }: Route) => tab === 'shared' ? `shared:${deck ?? ''}` : tab;
@@ -41,7 +42,7 @@ export function useVaultNavigation(scope: string, closeOverlays: () => void) {
     const navigate = () => {
       const next = readHash();
       const current = currentRoute.current;
-      if (next.tab === current.tab && next.deck === current.deck) return;
+      if (next.tab === current.tab && next.deck === current.deck && next.match === current.match) return;
       if (mobile) positions.current.set(scrollKey(current), window.scrollY);
       closeOverlays();
       currentRoute.current = next;

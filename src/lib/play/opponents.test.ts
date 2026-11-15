@@ -3,13 +3,13 @@ import { formatDeckText, formatMeleeDeck } from '../deckDraft';
 import { deckFromRecommended } from '../decks';
 import { curatedOpponents, IMPORT_LIMIT, opponentIssues, readOpponentText } from './opponents';
 import { prepareMatchDeck } from './matchDeck';
-import { CARDS } from '../data';
+import { CARDS, RECOMMENDED } from '../data';
 import { engineCardId } from './engineSession';
 import { isEngineSupported } from './engineCards';
 
 describe('opponent lists', () => {
   it('offers every curated list as an independent, legal playable snapshot', () => {
-    expect(curatedOpponents).toHaveLength(12);
+    expect(curatedOpponents.map(({ key }) => key)).toEqual(RECOMMENDED.map(({ id }) => `curated:${id}`));
     for (const { deck } of curatedOpponents) {
       expect(opponentIssues(deck)).toEqual([]);
       expect(prepareMatchDeck(deck).mainDeck.length).toBeGreaterThanOrEqual(40);

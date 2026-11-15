@@ -7,6 +7,7 @@
 .opponent-search { width: 100%; margin-top: var(--space-3); }
 .opponent-result-count, .opponent-size, .opponent-footnote { font: 400 11px/1.5 var(--font-mono); color: var(--color-text-muted); }
 .opponent-rows { display: grid; gap: 8px; min-width: 0; margin: 0; padding: 4px; border: 0; max-height: min(600px, 60vh); overflow-y: auto; scrollbar-color: var(--color-divider) transparent; }
+#opponents-panel-curated .opponent-rows { max-height: none; overflow: visible; }
 .opponent-row { display: grid; grid-template-columns: auto 75px minmax(0, 1fr) auto; gap: var(--space-3); align-items: center; padding: var(--space-3); border: 1px solid var(--color-divider); background: var(--color-canvas); border-radius: var(--radius-sm); cursor: pointer; min-height: 88px; }
 .opponent-row:hover { background: var(--color-surface-raised); }
 .opponent-row[data-selected="true"] { border-color: var(--color-accent); box-shadow: inset 3px 0 var(--color-accent); background: color-mix(in srgb, var(--color-accent) 7%, var(--color-canvas)); }

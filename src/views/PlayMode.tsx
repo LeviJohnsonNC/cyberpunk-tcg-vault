@@ -27,13 +27,14 @@ type Confirm = 'replace' | 'restart' | 'concede';
 
 type Props = {
   scope: string; draft?: DeckDraft; saved?: MatchSummary; initialRival?: string; initialOpponent?: Deck; savedDecks: Deck[]; rememberRival: (id: string) => void;
+  requestedMatch?: string; onLeaveMatch: () => void;
   onCheckpoint: (snapshot: MatchSnapshot, draft?: DeckDraft) => void; onEdit: () => void; onCampaignDeck: (deck: Deck) => void;
   onFreePlayReset: () => void; preparationOnly?: boolean;
 };
 
 export default function PlayMode(props: Props) {
   const [freePlaySession, setFreePlaySession] = useState(0);
-  const handoff = !!(props.draft || props.initialOpponent);
+  const handoff = !!(props.draft || props.initialOpponent || props.saved && props.requestedMatch === props.saved.matchId);
   const [mode, setMode] = useState<'campaign' | 'free'>(() => {
     if (handoff) return 'free';
     try {
@@ -44,6 +45,7 @@ export default function PlayMode(props: Props) {
   });
   useEffect(() => { if (handoff) try { localStorage.setItem(`cptv.playMode:${props.scope}`, 'free'); } catch { /* optional preference */ } }, [handoff, props.scope]);
   const choose = (next: 'campaign' | 'free') => {
+    if (next === 'campaign') props.onLeaveMatch();
     setMode(next);
     try { localStorage.setItem(`cptv.playMode:${props.scope}`, next); } catch { /* optional preference */ }
   };
@@ -55,10 +57,10 @@ export default function PlayMode(props: Props) {
     }} />}</>;
 }
 
-function FreePlayMode({ scope, draft, saved, initialRival, initialOpponent, savedDecks, rememberRival, onCheckpoint, onEdit, onFreePlayReset }: Props) {
+function FreePlayMode({ scope, draft, saved, requestedMatch, initialRival, initialOpponent, savedDecks, rememberRival, onCheckpoint, onEdit, onFreePlayReset, onLeaveMatch }: Props) {
   const [environment, setEnvironment] = useState<Environment>();
   useEffect(() => { let active = true; void readCampaign(scope).then(value => { if (active) setEnvironment(value.profile.equipped); }).catch(() => {}); return () => { active = false; }; }, [scope]);
-  const [resume] = useState(!draft && !!saved);
+  const [resume] = useState(() => !draft && !initialOpponent && !!saved && (!saved.ended || requestedMatch === saved.matchId));
   const [storedDraft] = useState(() => readDeckDraft(scope));
   const [resumeAttempt, setResumeAttempt] = useState(0);
   const [snapshot, setSnapshot] = useState<MatchSnapshot>();
@@ -79,6 +81,8 @@ function FreePlayMode({ scope, draft, saved, initialRival, initialOpponent, save
   const hubDraft = draft ?? saved?.draft ?? storedDraft;
   const pendingStart = useRef<{ draft: DeckDraft; rival: Deck; skill: RivalSkill; key: string; contractId?: string } | undefined>(undefined);
   const matchId = snapshot?.matchId;
+  // Keep the entry request fixed while the player moves between the table and the lobby.
+  const [requestedOnEntry] = useState(requestedMatch);
   const presentation = useMatchPresentation(snapshot);
   const sound = useTableSound();
 
@@ -101,6 +105,7 @@ function FreePlayMode({ scope, draft, saved, initialRival, initialOpponent, save
 
   function openCircuit() {
     presentation.playback?.skip();
+    onLeaveMatch();
     // Returning to this table is a resume, even if it was left during setup.
     setSnapshot(current => current?.openingDeal ? { ...current, openingDeal: undefined } : current);
     setProgress(undefined); setProgressError(undefined); setLobby(true);
@@ -142,18 +147,22 @@ function FreePlayMode({ scope, draft, saved, initialRival, initialOpponent, save
     if (!resume) return;
     let active = true;
     void resumePlayMatch(scope).then((next) => {
-      if (active) {
+      if (!active) { next.close(); return; }
+      if (next.opening.view.gameEnded && requestedOnEntry !== next.opening.matchId) {
+        next.close();
+        setLobby(true);
+      } else {
         client.current = next;
         setSnapshot(next.opening);
-        setBusy(false);
-      } else next.close();
+      }
+      setBusy(false);
     }).catch((cause: unknown) => {
       if (!active) return;
       setError(cause instanceof Error ? cause.message : 'The saved match could not be opened.');
       setBusy(false);
     });
     return () => { active = false; };
-  }, [resume, resumeAttempt, scope]);
+  }, [resume, resumeAttempt, scope, requestedOnEntry]);
 
   async function run(action: (isCurrent: () => boolean) => Promise<MatchSnapshot>, startedDraft?: DeckDraft) {
     if (locked.current) return;
@@ -218,7 +227,7 @@ function FreePlayMode({ scope, draft, saved, initialRival, initialOpponent, save
             {live && <button type="button" className="btn danger-ghost" disabled={busy || presentation.playing} onClick={() => setConfirm('concede')}>Concede</button>}
           </>} />
       </> : !resume || lobby ? progress ? <CircuitHub scope={scope} progress={progress} draft={hubDraft} savedDecks={savedDecks} initialRival={initialRival} initialOpponent={initialOpponent}
-        busy={busy || equipping} error={error ?? progressError} equip={equip} onEdit={onEdit} onResume={snapshot ? () => setLobby(false) : undefined}
+        busy={busy || equipping} error={error ?? progressError} equip={equip} onEdit={onEdit} onResume={snapshot && !snapshot.view.gameEnded ? () => setLobby(false) : undefined}
         onReset={() => { setResetError(undefined); setResetOpen(true); }}
         onStart={(draft, rival, skill, key, contractId) => { pendingStart.current = { draft, rival, skill, key, contractId }; start(); }} />
         : <div className="panel" role="status"><h1>Opening the Circuit</h1>{progressError ? <><p className="play-error">{progressError}</p><button className="btn" onClick={() => setProgressAttempt(value => value + 1)}>Try again</button><button className="btn quiet" onClick={onEdit}>Back to draft</button></> : <p>Checking your standing…</p>}</div>

@@ -252,7 +252,7 @@ export default function App() {
         {(showSection('builder') || (route.tab === 'play' && (matchDraft || (savedMatch && readDeckDraft(scope))))) && <Activity mode={route.tab === 'builder' ? 'visible' : 'hidden'}><DeckBuilder mobile={mobile} onOpen={showCard} initialDeck={route.tab === 'builder' ? route.deck : undefined} onConsumeDeck={consumeDeck}
           onResume={PlayMode && !mobile && savedMatch ? () => {
             setPlayDraft(undefined);
-            go('play');
+            window.location.hash = `/play?match=${encodeURIComponent(savedMatch.matchId)}`;
           } : undefined} resumeEnded={savedMatch?.ended}
           onPlayAgainst={PlayMode && !mobile ? (draft) => {
             setPlayDraft({ scope, draft: structuredClone(draft), opponent: structuredClone(draft.deck) });
@@ -270,7 +270,9 @@ export default function App() {
         {route.tab === 'play' && (PlayMode && store.ready && (mobile || matchInfo)
           ? <Suspense fallback={<p className="callout" role="status">Opening Play Mode…</p>}>
             <MatchRadioContainer.Provider value={desktopPlay ? setMatchRadioContainer : undefined}>
-              <PlayMode key={scope} scope={scope} preparationOnly={mobile} draft={matchDraft} saved={savedMatch} initialRival={playRival?.scope === scope ? playRival.id : undefined}
+              <PlayMode key={scope} scope={scope} preparationOnly={mobile} draft={matchDraft} saved={savedMatch} requestedMatch={route.match}
+                onLeaveMatch={() => { if (route.match) window.location.replace('#/play'); }}
+                initialRival={playRival?.scope === scope ? playRival.id : undefined}
                 savedDecks={store.decks} initialOpponent={playDraft?.scope === scope ? playDraft.opponent : undefined}
                 rememberRival={(id) => setPlayRival({ scope, id })} onCheckpoint={acceptMatch} onEdit={returnToDraft}
                 onFreePlayReset={() => {
