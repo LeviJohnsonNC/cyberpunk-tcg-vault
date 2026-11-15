@@ -61,7 +61,8 @@ export default function App() {
   const checkMatch = !mobile || playPage;
   const [playDraft, setPlayDraft] = useState<{ scope: string; draft: DeckDraft; opponent?: DeckDraft['deck']; curatedId?: string }>();
   const [playRival, setPlayRival] = useState<{ scope: string; id: string }>();
-  const [matchLookup, setMatchLookup] = useState<{ scope: string; saved?: MatchSummary; failed?: boolean }>();
+  const [matchLookup, setMatchLookup] = useState<{ scope: string; saved?: MatchSummary }>();
+  const acceptPlayEntryMatch = useCallback((saved?: MatchSummary) => setMatchLookup({ scope, saved }), [scope]);
   const matchInfo = matchLookup?.scope === scope ? matchLookup : undefined;
   const savedMatch = matchInfo?.saved;
   const playHandoff = playDraft?.scope === scope ? playDraft : undefined;
@@ -99,7 +100,7 @@ export default function App() {
         setMatchLookup({ scope, saved });
         if (!mobile && saved && !saved.ended && !window.location.hash) window.location.hash = playHref();
       } catch {
-        if (active) setMatchLookup((previous) => previous?.scope === scope && previous.saved ? previous : { scope, failed: true });
+        if (active) setMatchLookup((previous) => previous?.scope === scope && previous.saved ? previous : { scope });
       }
     };
     void refresh();
@@ -283,7 +284,7 @@ export default function App() {
           ? <Suspense fallback={<p className="callout" role="status">Opening Play Mode…</p>}>
             <MatchRadioContainer.Provider value={desktopPlay ? setMatchRadioContainer : undefined}>
               <PlayMode key={scope} scope={scope} mode={route.playMode} preparationOnly={mobile} draft={matchDraft} saved={savedMatch}
-                matchUnavailable={matchInfo.failed} requestedMatch={route.match}
+                onMatchRead={acceptPlayEntryMatch} requestedMatch={route.match}
                 onLeaveMatch={() => { if (route.match) window.location.replace(playHref('free')); }}
                 initialRival={playRival?.scope === scope ? playRival.id : undefined}
                 savedDecks={store.decks} initialOpponent={playHandoff?.opponent} initialCuratedId={playHandoff?.curatedId}

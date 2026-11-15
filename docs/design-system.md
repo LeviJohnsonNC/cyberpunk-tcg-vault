@@ -125,6 +125,8 @@ Keep trigger and menu appearance in the shared component. Screen CSS can set wid
 
 ## Play Mode
 
+**Choose Your Night** is the first Play screen when neither mode has saved progress. Use two equally weighted photographic panels, Free Play first and Campaign second. Each panel offers one full-surface action with a visible label and keyboard focus, uncluttered display copy, and a clipped outline. Stack the panels on phones and label Free Play’s desktop availability in place of its action.
+
 Play Mode is the one screen where the cards are the interface. The table is the focal point, so it takes the expressive budget: no masthead, a slim title row, and everything else in service of reading the board.
 
 **Layout** (`PlayTable.tsx`, `PlayMat.tsx`, `play-table.css`). Two crews face each other across the Gigs. From the top: the rival bench (piles, a hand of card backs, Eddies, Legends), the rival field, both Gig areas, the command bar, your field, then your bench with the hand between your crew and your piles. One measure, `--play-card-width`, sizes the whole table from the viewport so both fields, the Gigs and the hand stay in view without page scroll at laptop heights. Rows never scroll: a crowded field or hand overlaps its cards. Cards show art, not captions; the name lives in the accessible label, the hover close-up and the missing-art fallback.
