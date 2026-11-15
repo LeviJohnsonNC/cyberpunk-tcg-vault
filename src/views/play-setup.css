@@ -112,9 +112,16 @@
   content: ''; position: absolute; z-index: -1; inset: 0;
   background: linear-gradient(90deg, var(--color-surface) 52%, transparent 92%), linear-gradient(0deg, var(--color-surface), transparent 37%);
 }
+.opponent-selected-heading > :is(.campaign-rival-portrait, .free-play-rival-portrait) {
+  position: absolute; z-index: -2;
+  inset-block-start: var(--space-1); inset-inline-end: 0;
+  /* Keep the top of the source visible and let the shoulders fade below the heading. */
+  height: min(130%, 46cqi, 160px);
+  width: auto; aspect-ratio: 1;
+  border-radius: 4px;
+  mask-image: linear-gradient(90deg, transparent, var(--color-surface) 24%);
+}
 .opponent-selected-heading > .campaign-rival-portrait {
-  position: absolute; z-index: -2; right: 0; top: -20px;
-  width: min(235px, 46%);
   background-image: url('../assets/play/last-call-rival-atlas-detail.webp');
 }
 .opponent-selected-heading .play-eyebrow { margin: 0 0 3px; color: var(--color-accent); }
@@ -198,13 +205,4 @@
   width: 100%;
   height: auto;
   object-fit: cover;
-}
-.opponent-selected-heading > .free-play-rival-portrait {
-  position: absolute;
-  z-index: -2;
-  right: 0;
-  top: -25px;
-  width: min(235px, 46%);
-  height: auto;
-  border-radius: 4px;
 }
