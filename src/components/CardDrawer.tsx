@@ -82,7 +82,8 @@ function ArtworkViewer({ card, printing, onClose }: { card: Card; printing: Prin
   }, []);
   return (
     <dialog ref={dialog} className="card-art-viewer" aria-label={`Artwork for ${card.display}`}
-      onClose={onClose} onCancel={(event) => event.stopPropagation()}
+      onClose={(event) => { if (!event.currentTarget.open) onClose(); }}
+      onCancel={(event) => event.stopPropagation()}
       onClick={(event) => { if (event.target === event.currentTarget) dialog.current?.close(); }}>
       <button type="button" className="iconbtn" aria-label="Close artwork" onClick={() => dialog.current?.close()}>×</button>
       <PrintingArt slug={card.slug} printingId={printing.id} alt={`${card.display}, ${printingLabel(printing.id)}`} />
