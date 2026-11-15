@@ -192,3 +192,19 @@
 @media (prefers-reduced-motion: no-preference) {
   .opponent-row { transition: background-color 150ms, border-color 150ms, box-shadow 150ms; }
 }
+
+.opponent-row-art .free-play-rival-portrait {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+.opponent-selected-heading > .free-play-rival-portrait {
+  position: absolute;
+  z-index: -2;
+  right: 0;
+  top: -25px;
+  width: min(235px, 46%);
+  height: auto;
+  border-radius: 4px;
+}

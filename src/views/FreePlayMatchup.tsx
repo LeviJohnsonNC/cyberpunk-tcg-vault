@@ -8,7 +8,7 @@ import type { freePlayRoster } from '../lib/play/freePlayRoster';
 import { deckColors, deckSize } from '../lib/play/opponents';
 import type { RivalSkill } from '../lib/play/protocol';
 import type { Deck } from '../lib/store';
-import { CampaignRivalPortrait } from './CampaignRivalPortrait';
+import { FreePlayRivalPortrait } from './FreePlayRivalPortrait';
 
 function DecklistDialog({ deck }: { deck: Deck }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -65,7 +65,7 @@ export function FreePlayMatchup({ heading, playerKey, playerDeck, choices, choos
     <DeckIssues title="Your deck needs fixes" issues={playerIssues} />
     {rival ? <>
       <header className="opponent-selected-heading" key={rival.name} data-portrait={!!curated?.portrait || undefined}>
-        {curated?.portrait && <CampaignRivalPortrait encounter={curated.portrait.encounter} />}
+        {curated?.portrait && <FreePlayRivalPortrait portrait={curated.portrait} />}
         <p className="play-eyebrow">{label}</p>
         <h3>{rival.name}</h3>
         {(colors.length > 0 || curated?.label) && <p className="opponent-style">

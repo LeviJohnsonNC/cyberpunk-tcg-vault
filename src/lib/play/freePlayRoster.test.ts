@@ -6,7 +6,7 @@ import { curatedOpponents } from './opponents';
 describe('Free Play rival browser', () => {
   it('features the six intended portrait matches without removing or changing curated decks', () => {
     const { rows, counts } = browseRivals('', 'all', 'recommended');
-    expect(rows.slice(0, 6).map(row => [row.id, row.portrait?.encounter, row.portrait?.alias])).toEqual([
+    expect(rows.slice(0, 6).map(row => [row.id, row.portrait && 'encounter' in row.portrait ? row.portrait.encounter : undefined, row.portrait?.alias])).toEqual([
       ['heist-reloaded', 'dead-drop', 'Latch'],
       ['chrome-syndicate', 'chrome-debt', 'Ledger'],
       ['nomad-convoy', 'night-drive', 'Switchback'],
@@ -14,7 +14,11 @@ describe('Free Play rival browser', () => {
       ['mosh-pit', 'mosh-pit', 'Feedback'],
       ['smasher-surge', 'red-line', 'Brake'],
     ]);
-    expect(rows.slice(6).every(row => !row.portrait)).toBe(true);
+    const assets = import.meta.glob('../../assets/play/free-play-rivals/*.webp');
+    const mapped = rows.slice(6).map(({ portrait }) => portrait && 'art' in portrait ? portrait.art : '');
+    expect(new Set(mapped).size).toBe(mapped.length);
+    for (const art of mapped) expect(assets).toHaveProperty([`../../assets/play/free-play-rivals/${art}.webp`]);
+    expect(new Set(rows.map(row => row.portrait?.alias)).size).toBe(rows.length);
     expect(new Set(rows.map(row => row.deck))).toEqual(new Set(curatedOpponents.map(row => row.deck)));
     expect(counts.all).toBe(curatedOpponents.length);
     expect(counts.meta + counts.budget + counts.brew).toBe(counts.all);
@@ -27,6 +31,7 @@ describe('Free Play rival browser', () => {
     expect(browseRivals('brake', 'budget', 'recommended').rows).toEqual([]);
     expect(browseRivals('Judy Alvarez', 'all', 'recommended').rows.map(row => row.id)).toContain('lowball-netrun-plus');
     expect(browseRivals('BBG', 'meta', 'recommended').rows.map(row => row.id)).toEqual(['baby-girl-bbg']);
+    expect(browseRivals('Aftercare', 'meta', 'recommended').rows.map(row => row.id)).toEqual(['baby-girl-bbg']);
   });
 
   it('sorts alphabetically in either direction and ranks popularity by exact Legend crews', () => {

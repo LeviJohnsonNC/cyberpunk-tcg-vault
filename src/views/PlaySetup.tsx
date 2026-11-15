@@ -10,7 +10,7 @@ import { browseRivals, freePlayRoster, rivalCategories, rivalMatchesSearch, riva
 import { DEFAULT_PLAY_DECK_KEY, curatedOpponents, deckColors, IMPORT_LIMIT, opponentIssues, readOpponentText } from '../lib/play/opponents';
 import type { RivalSkill } from '../lib/play/protocol';
 import type { Deck } from '../lib/store';
-import { CampaignRivalPortrait } from './CampaignRivalPortrait';
+import { FreePlayRivalPortrait } from './FreePlayRivalPortrait';
 import { FreePlayMatchup } from './FreePlayMatchup';
 import './play-setup.css';
 
@@ -31,7 +31,7 @@ function RivalTile({ row, source, selected, choose }: { row: RivalTileData; sour
   return <label className="opponent-row" data-selected={selected}>
     <input className="sr-only" type="radio" name={`opponent-${source}`} checked={selected} onChange={() => choose(key)} />
     <span className="opponent-row-art" aria-hidden="true">
-      {portrait ? <CampaignRivalPortrait encounter={portrait.encounter} /> : deck.legends[0] && <CardImg slug={deck.legends[0]} alt="" />}
+      {portrait ? <FreePlayRivalPortrait portrait={portrait} fallback={deck.legends[0]} /> : deck.legends[0] && <CardImg slug={deck.legends[0]} alt="" />}
     </span>
     <span className="opponent-row-copy"><small>{portrait?.alias ?? category}</small><strong>{deck.name}</strong>{label && <span>{label}</span>}</span>
     <span className="opponent-row-meta">
