@@ -54,7 +54,8 @@ export function PlaySetup({ scope, draft, savedDecks, initialRival, initialOppon
   }, [yourDeck, rival]);
   const issues = rival ? (selected === 'import' ? imported?.issues ?? [] : opponentIssues(rival)) : [];
   const yourIssues = yourDeck ? opponentIssues(yourDeck) : [];
-  const rows = (source === 'curated' ? curatedOpponents : saved).filter(({ deck, label }) => `${deck.name} ${label} ${deck.legends.map(s => BY_SLUG.get(s)?.display).join(' ')}`.toLowerCase().includes(search.toLowerCase()));
+  const query = search.trim().toLowerCase();
+  const rows = (source === 'curated' ? curatedOpponents : saved).filter(({ deck, label, category }) => `${deck.name} ${label} ${category} ${deck.legends.map(s => BY_SLUG.get(s)?.display).join(' ')}`.toLowerCase().includes(query));
   const chooseSource = (value: Source) => { setSource(value); setSearch(''); };
   const editText = (value: string) => { fileRead.current++; setText(value); setImported(undefined); setFileError(''); if (selected === 'import') setSelected(''); };
   async function loadFile(input: HTMLInputElement) {
