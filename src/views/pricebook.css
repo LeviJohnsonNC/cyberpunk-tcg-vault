@@ -160,7 +160,6 @@
 .pb-source { margin: 0; padding: var(--space-3) 0; border-top: 1px dashed var(--color-divider); font: 400 11px/1.5 var(--font-mono); color: var(--color-text-faint); }
 .pb-trend { border-top: 1px dashed var(--color-divider); }
 .pb-trend-summary { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 var(--space-2); color: var(--color-text-muted); font-size: 12px; }
-.pb-trend-summary > span span { white-space: nowrap; }
 .pb-trend-value { font-size: 24px; color: var(--color-ticket); white-space: nowrap; }
 .pb-trend-change, .pb-trend-note { margin: var(--space-1) 0; color: var(--color-text-muted); font-size: 12px; line-height: 1.4; }
 .pb-trend-change[data-direction="1"] { color: var(--color-basis-market); }
@@ -172,13 +171,13 @@
 .pb-trend-plot svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .pb-trend-grid { fill: none; stroke: var(--color-divider); stroke-width: 1; }
 .pb-trend-line { fill: none; stroke: var(--color-accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pb-trend-dots { fill: none; stroke: var(--color-accent); stroke-width: 4; stroke-linecap: round; }
 .pb-trend-point {
   position: absolute; transform: translate(-50%, -50%); width: 36px; height: 36px; border: 0; border-radius: 50%;
   background: transparent; display: grid; place-items: center; padding: 0; cursor: pointer;
 }
-.pb-trend-point::after { content: ''; width: 8px; height: 8px; border: 2px solid var(--color-accent); border-radius: 50%; background: var(--color-surface); }
-.pb-trend-point[data-missing]::after { border-color: var(--color-text-faint); border-radius: 1px; height: 2px; }
-.pb-trend-point[aria-pressed="true"]::after { background: var(--color-ticket); border-color: var(--color-ticket); box-shadow: 0 0 0 3px var(--color-accent-deep); }
+.pb-trend-point::after { content: ''; width: 8px; height: 8px; border: 2px solid var(--color-ticket); border-radius: 50%; background: var(--color-ticket); box-shadow: 0 0 0 3px var(--color-accent-deep); }
+.pb-trend-point[data-missing]::after { border-radius: 1px; height: 2px; }
 .pb-trend-point:focus-visible { z-index: 1; }
 .pb-trend-axis { display: flex; grid-column: 2; justify-content: space-between; margin-bottom: var(--space-2); color: var(--color-text-muted); font: 400 11px/1.3 var(--font-mono); }
 .pb-trend-method { margin-top: var(--space-2); }
