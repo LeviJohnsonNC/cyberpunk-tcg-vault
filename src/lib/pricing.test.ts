@@ -127,11 +127,17 @@ describe('price generator (scripts/price-build.mjs)', () => {
     expect(out.ambiguous).toEqual([expect.objectContaining({ printingId: 'amb', finishes: ['Normal', 'Foil'] })]);
   });
   it('treats a repeated identical row as one match, and keeps only market and low (no mid)', () => {
-    expect(out.printings.b1).toEqual({ market: 14.52, low: 13, finish: 'Foil', url: 'u2' });
-    expect(out.printings.r1).toEqual({ market: null, low: 25, finish: 'Foil', url: 'u1' });
+    expect(out.printings.b1).toEqual({ market: 14.52, low: 13, productId: 2, finish: 'Foil', url: 'u2' });
+    expect(out.printings.r1).toEqual({ market: null, low: 25, productId: 1, finish: 'Foil', url: 'u1' });
   });
   it('pairs Retail and Beta twins by card, rarity and collector number (β011 and plain 001 styles)', () => {
     expect(out.pairs).toEqual({ r1: 'b1', pr: 'pb' });
+  });
+  it('retains a verified product identity when its current quotes are empty', () => {
+    const empty = { ...rows[0], market: null, low: null };
+    expect(buildPrices(cat, [empty]).printings.r1).toEqual({
+      market: null, low: null, productId: 1, finish: 'Foil', url: 'u1',
+    });
   });
   it('gives an unlisted Nova Rare no quote at all', () => {
     expect(out.printings.nova).toBeUndefined();

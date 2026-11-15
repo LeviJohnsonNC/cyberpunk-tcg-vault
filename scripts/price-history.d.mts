@@ -9,3 +9,7 @@ export function archiveQuotes(
   printings: Record<string, { productId?: number; url?: string | null; finish?: string | null }>,
   rows: { productId: number; subTypeName: string; marketPrice: number | null; lowPrice: number | null }[],
 ): Record<string, Quote>;
+
+type DailyArchive = { version: 1; dates: string[]; quotes: Record<string, [number, number | null, number | null][]> };
+export function retainDaily(archive: DailyArchive, snapshots: Snapshot[]): DailyArchive;
+export function saveDaily(path: URL | string, snapshots: Snapshot[]): Promise<void>;

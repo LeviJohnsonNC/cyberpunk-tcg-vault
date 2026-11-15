@@ -1,19 +1,23 @@
 // Pure pricing selectors for the Price Book. No React, so they're unit-testable.
-import { BY_SLUG, PRINTING_INDEX, printingLabel, rarityRank, valueHolding, type Card, type HoldingBasis, type Printing } from './data';
+import { BY_SLUG, CARDS, PRINTING_INDEX, printingLabel, rarityRank, valueHolding, type Card, type HoldingBasis, type Printing } from './data';
 import type { Entry } from './store';
 
 export type Basis = HoldingBasis;
 
-export interface Line {
-  entry: Entry;
+export interface PriceLine {
+  printingId: string;
   card: Card;
   printing: Printing | undefined;
   rarity: string; // printing rarity (Iconic, Nova...) falling back to the card's base rarity
   unit: number | null; // CAD per copy; null = unpriced
-  total: number | null; // CAD for the position; null = unpriced
   basis: Basis | null;
   url: string | null;
   sourcePrintingId: string | null; // differs from the holding for a Beta proxy
+}
+
+export interface Line extends PriceLine {
+  entry: Entry;
+  total: number | null; // CAD for the position; null = unpriced
 }
 
 export interface Group {
@@ -80,37 +84,42 @@ function group(lines: Line[], key: (l: Line) => string): Group[] {
   return [...m.values()];
 }
 
+function priceLine(card: Card, printingId: string, printing?: Printing): PriceLine {
+  const quote = valueHolding(printingId);
+  return {
+    printingId, card, printing,
+    rarity: printing?.rarity ?? card.rarity,
+    unit: quote?.cad ?? null,
+    basis: quote?.basis ?? null,
+    url: quote?.url ?? null,
+    sourcePrintingId: quote?.sourcePrintingId ?? null,
+  };
+}
+
+export function catalogPrices(): PriceLine[] {
+  return CARDS.flatMap((card) => card.printings.map((printing) => priceLine(card, printing.id, printing)));
+}
+
 export function holdingLines(entries: Entry[]): Line[] {
   const lines: Line[] = [];
   for (const entry of entries) {
     const card = BY_SLUG.get(entry.slug);
     if (!card || entry.qty <= 0) continue;
-    const v = valueHolding(entry.printingId);
-    const printing = PRINTING_INDEX.get(entry.printingId)?.printing;
-    lines.push({
-      entry,
-      card,
-      printing,
-      rarity: printing?.rarity ?? card.rarity,
-      unit: v ? v.cad : null,
-      total: v ? v.cad * entry.qty : null,
-      basis: v?.basis ?? null,
-      url: v?.url ?? null,
-      sourcePrintingId: v?.sourcePrintingId ?? null,
-    });
+    const row = priceLine(card, entry.printingId, PRINTING_INDEX.get(entry.printingId)?.printing);
+    lines.push({ ...row, entry, total: row.unit == null ? null : row.unit * entry.qty });
   }
   return lines;
 }
 
 const filterValue = {
-  color: (line: Line) => line.card.color,
-  rarity: (line: Line) => line.rarity,
-  type: (line: Line) => line.card.type,
-  set: (line: Line) => line.printing?.set ?? UNSPECIFIED_SET,
-  basis: (line: Line) => line.basis ?? 'Unpriced',
+  color: (line: PriceLine) => line.card.color,
+  rarity: (line: PriceLine) => line.rarity,
+  type: (line: PriceLine) => line.card.type,
+  set: (line: PriceLine) => line.printing?.set ?? UNSPECIFIED_SET,
+  basis: (line: PriceLine) => line.basis ?? 'Unpriced',
 };
 
-export function filterOptions(lines: Line[]) {
+export function filterOptions(lines: PriceLine[]) {
   return Object.fromEntries(FILTERS.map(({ key }) => {
     const values = [...new Set(lines.map(filterValue[key]))];
     values.sort((a, b) => (key === 'rarity' ? rarityRank(a) - rarityRank(b)
@@ -119,7 +128,7 @@ export function filterOptions(lines: Line[]) {
   })) as Record<FilterKey, { value: string; label: string }[]>;
 }
 
-export function filterHoldings(lines: Line[], query: string, filters: PriceFilters) {
+export function filterHoldings<T extends PriceLine>(lines: T[], query: string, filters: PriceFilters) {
   const normalize = (value: string) => value.toLowerCase().replace(/β/g, 'b').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   const terms = normalize(query).split(/\s+/).filter(Boolean);
   return lines.filter((line) => {
@@ -127,7 +136,7 @@ export function filterHoldings(lines: Line[], query: string, filters: PriceFilte
     if (!terms.length) return true;
     const number = line.printing?.num ?? '';
     const search = normalize([line.card.name, line.card.sub, line.card.display, line.printing?.set,
-      printingLabel(line.entry.printingId, false), number.replace(/^([βb]?)0+(?=\d)/i, '$1')].join(' '));
+      printingLabel(line.printingId, false), number.replace(/^([βb]?)0+(?=\d)/i, '$1')].join(' '));
     return terms.every((term) => search.includes(term));
   });
 }

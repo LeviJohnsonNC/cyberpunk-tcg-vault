@@ -59,3 +59,40 @@ export function archiveQuotes(printings, rows) {
   }
   return Object.fromEntries([...matches].filter(([, quote]) => quote !== null));
 }
+
+// Store dates once and keep sparse observations by exact printing ID so a drawer can read one series.
+export function retainDaily(archive, snapshots) {
+  const observed = snapshots.filter((snapshot) => Object.keys(snapshot.quotes).length > 0);
+  const dates = [...new Set([...archive.dates, ...observed.map(({ date }) => date)])].sort();
+  const indexes = new Map(dates.map((date, index) => [date, index]));
+  const quotes = new Map();
+  for (const [id, points] of Object.entries(archive.quotes)) {
+    quotes.set(id, new Map(points.map(([index, market, low]) => [indexes.get(archive.dates[index]), [market, low]])));
+  }
+  for (const { date, quotes: snapshot } of observed) {
+    const index = indexes.get(date);
+    for (const [id, quote] of Object.entries(snapshot)) {
+      if (!quotes.has(id)) quotes.set(id, new Map());
+      quotes.get(id).set(index, quote);
+    }
+  }
+  return {
+    version: 1,
+    dates,
+    quotes: Object.fromEntries([...quotes].sort(([a], [b]) => a.localeCompare(b)).map(([id, points]) => [
+      id, [...points].sort(([a], [b]) => a - b).map(([index, quote]) => [index, ...quote]),
+    ])),
+  };
+}
+
+export async function saveDaily(path, snapshots) {
+  let archive = { version: 1, dates: [], quotes: {} };
+  try {
+    archive = JSON.parse(await readFile(path, 'utf8'));
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  if (archive.version !== 1 || !Array.isArray(archive.dates) || !archive.quotes) throw new Error('Invalid daily price archive');
+  const next = retainDaily(archive, snapshots);
+  if (JSON.stringify(next) !== JSON.stringify(archive)) await writeFile(path, JSON.stringify(next) + '\n');
+}

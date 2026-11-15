@@ -54,8 +54,8 @@ export function buildPrices(cardList, rows) {
       const r = hits[0];
       const market = pos(r.market);
       const low = pos(r.low);
-      if (market == null && low == null) continue;
-      printings[p.id] = { market, low, finish: r.finish ?? null, url: r.url ?? null };
+      // Retain the verified product identity for archive lookups even if the current quote is empty.
+      printings[p.id] = { market, low, productId: r.productId, finish: r.finish ?? null, url: r.url ?? null };
     }
   }
   const pairs = {};
