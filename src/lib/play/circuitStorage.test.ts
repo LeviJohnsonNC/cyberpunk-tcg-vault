@@ -7,7 +7,7 @@ import { emptyProfile, generateReward } from './campaign';
 import { createMatchController, type StoredMatch } from './workerController';
 import { prepareMatchDeck } from './matchDeck';
 import { curatedOpponents } from './opponents';
-import type { MatchResponse, MatchSnapshot } from './protocol';
+import type { MatchAction, MatchResponse, MatchSnapshot } from './protocol';
 
 function fixture() {
   const deck = prepareMatchDeck(curatedOpponents.find(item => item.key === 'curated:heist-reloaded')!.deck);
@@ -46,6 +46,26 @@ describe('atomic Circuit storage', () => {
     for (let i = 0; i < 3; i++) await updateSavedMatch(scope, previous => { expect(previous?.circuitReceipt?.earned).toBe(225); return { response: response(snapshot) }; });
     expect(await readCircuitProgress(scope)).toEqual(expected);
     expect(await readMatchSummary(scope)).toMatchObject({ matchId: snapshot.matchId, ended: true });
+  });
+  it('returns the saved practice rival key on start, resume and rematch', async () => {
+    const scope = 'practice-rival-identity';
+    const deck = prepareMatchDeck(curatedOpponents.find(item => item.key === 'curated:heist-reloaded')!.deck);
+    const rivalKey = 'curated:baby-girl-bbg';
+    const rival = prepareMatchDeck(curatedOpponents.find(item => item.key === rivalKey)!.deck);
+    const run = (action: MatchAction) =>
+      updateSavedMatch(scope, previous => {
+        const controller = createMatchController(previous);
+        const response = controller.respond({ id: 1, action });
+        return { response, saved: action.type !== 'resume' && 'snapshot' in response ? controller.save(response.snapshot) : undefined };
+      });
+    const started = await run({ type: 'start', setup: { player: deck, rival, circuit: { version: 1, rivalKey } } });
+    if (!('snapshot' in started)) throw new Error(started.error);
+    expect(started.snapshot.circuit).toMatchObject({ rivalKey, contractId: undefined });
+    const resumed = await run({ type: 'resume' });
+    expect(resumed).toMatchObject({ snapshot: { matchId: started.snapshot.matchId, circuit: { rivalKey } } });
+    const rematched = await run({ type: 'rematch', matchId: started.snapshot.matchId, stateID: started.snapshot.view.stateID });
+    expect(rematched).toMatchObject({ snapshot: { circuit: { rivalKey } } });
+    if ('snapshot' in rematched) expect(rematched.snapshot.matchId).not.toBe(started.snapshot.matchId);
   });
   it('serializes competing tab settlements without double awarding', async () => {
     const { saved, snapshot } = fixture(), scope = 'two-tabs';

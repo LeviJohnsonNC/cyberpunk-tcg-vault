@@ -34,6 +34,18 @@ describe('Free Play rival browser', () => {
     expect(browseRivals('Aftercare', 'meta', 'recommended').rows.map(row => row.id)).toEqual(['baby-girl-bbg']);
   });
 
+  it('has distinct win and loss artwork for every curated rival', () => {
+    const assets = import.meta.glob('../../assets/play/results/*.webp');
+    for (const { id, portrait } of freePlayRoster) {
+      expect(portrait, id).toBeDefined();
+      if (!portrait) continue;
+      const artKey = 'encounter' in portrait ? portrait.encounter : portrait.art;
+      for (const outcome of ['win', 'loss']) {
+        expect(assets, `${id} ${outcome}`).toHaveProperty([`../../assets/play/results/${artKey}-${outcome}.webp`]);
+      }
+    }
+  });
+
   it('sorts alphabetically in either direction and ranks popularity by exact Legend crews', () => {
     const names = browseRivals('', 'all', 'nameAsc').rows.map(row => row.deck.name);
     expect(names).toEqual(names.slice().sort((a, b) => a.localeCompare(b)));

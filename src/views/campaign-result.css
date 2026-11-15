@@ -29,6 +29,10 @@
   height: 100%;
 }
 .campaign-result-art img { object-fit: cover; object-position: center 38%; }
+.campaign-result-art img.free-play-rival-portrait { object-position: center 33%; }
+.campaign-match-result[data-practice] .campaign-result-art:empty {
+  background: url('../assets/play/afterlife-back-room.webp') 30% center / cover no-repeat;
+}
 .campaign-result-art .campaign-rival-portrait {
   position: absolute;
   inset: 0 auto auto 0;
@@ -119,6 +123,16 @@
 }
 .campaign-result-actions .btn { min-height: 40px; margin-block-start: 3px; }
 .campaign-result-actions > p { margin: 0; color: var(--color-text-muted); font-size: 13px; }
+.practice-result-links { display: flex; flex-wrap: wrap; gap: 4px 8px; }
+.practice-result-rewards { margin-block-start: 9px; }
+.practice-result-rewards > summary {
+  width: fit-content;
+  padding: 8px 10px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+.practice-result-rewards > summary strong { margin-inline-start: 6px; color: var(--color-ticket); }
 
 .al-dialog.campaign-match-report {
   width: min(1120px, calc(100vw - 30px));

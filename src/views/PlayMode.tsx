@@ -226,13 +226,17 @@ function FreePlayMode({ scope, draft, saved, requestedMatch, initialRival, initi
   }
 
   const live = snapshot && !(presentation.displayed ?? snapshot).view.gameEnded;
+  const practice = !snapshot?.circuit?.contractId;
+  const practiceResult = snapshot && !lobby && practice && !live;
   return (
-    <section className="play-mode" data-finish={progress?.finish ?? 'afterlife'} data-environment={environment ?? 'default'} onPointerDownCapture={sound.unlock} onKeyDownCapture={sound.unlock}>
-      <ReactiveRoom />
+    <section className="play-mode" data-practice-result={practiceResult || undefined}
+      data-finish={progress?.finish ?? 'afterlife'} data-environment={environment ?? 'default'} onPointerDownCapture={sound.unlock} onKeyDownCapture={sound.unlock}>
+      {!practiceResult && <ReactiveRoom />}
       {snapshot && !lobby ? <>
         <PlayTable key={snapshot.matchId} scope={scope} snapshot={presentation.displayed ?? snapshot} names={snapshot.names}
           playback={presentation.playback} feedback={presentation.feedback} reduced={presentation.reduced} cue={sound.cue}
           busy={busy || presentation.playing} error={error} send={send} rematch={rematch} edit={onEdit} circuit={openCircuit}
+          practiceLobby={practice ? openCircuit : undefined}
           navigation={<button type="button" className="btn quiet" disabled={busy} onClick={openCircuit}>Free Play lobby</button>}
           audio={<><button type="button" className="btn quiet" aria-label="Table sound" aria-pressed={sound.enabled}
             onClick={sound.toggle}>Game effects <b>{sound.enabled ? 'On' : 'Off'}</b></button>

@@ -1,13 +1,13 @@
-.app--play.page:has(.campaign-mode[data-campaign-board]) {
+.app--play.page:has(:is(.campaign-mode[data-campaign-board], .play-mode[data-practice-result])) {
   --campaign-board-shell: 61px;
   position: relative;
   max-width: none;
   padding: 0;
 }
-.play-mode-tabs:has(+ .campaign-mode[data-campaign-board]) { display: none; }
+.play-mode-tabs:has(+ :is(.campaign-mode[data-campaign-board], .play-mode[data-practice-result])) { display: none; }
 .campaign-mode[data-campaign-board] .campaign-hub { max-width: none; padding: 0; }
 .campaign-mode[data-campaign-board] .campaign-hub > .play-error { margin: 12px auto; max-width: min(94%, 1360px); }
-.app--play:has(.campaign-mode[data-campaign-board]) > :is(.radio-dock, .afterhours-radio) {
+.app--play:has(:is(.campaign-mode[data-campaign-board], .play-mode[data-practice-result])) > :is(.radio-dock, .afterhours-radio) {
   position: absolute;
   left: auto;
   right: clamp(14px, 2.5vw, 34px);
@@ -258,7 +258,9 @@
 .campaign-board-archive { padding: 0; list-style: none; }
 .campaign-board-archive li { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 12px 0; border-top: 1px solid var(--color-divider); }
 
-@media (max-width: 1100px) { .app--play.page:has(.campaign-mode[data-campaign-board]) { --campaign-board-shell: 104px; } }
+@media (max-width: 1100px) {
+  .app--play.page:has(:is(.campaign-mode[data-campaign-board], .play-mode[data-practice-result])) { --campaign-board-shell: 104px; }
+}
 @media (min-width: 1050px) {
   .campaign-board[data-act='1']::after {
     content: '';

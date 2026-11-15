@@ -133,7 +133,8 @@ export async function updateSavedMatch(
                 circuitStore.put(settled.progress, scope);
               }
             }
-            response.snapshot.circuit = { contractId: match.setup.circuit.contractId, skill: match.setup.rivalSkill ?? 'standard', receipt };
+            const { contractId, rivalKey } = match.setup.circuit;
+            response.snapshot.circuit = { contractId, rivalKey, skill: match.setup.rivalSkill ?? 'standard', receipt };
           }
         }
         if (result.saved) {
