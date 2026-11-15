@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { CardImg } from '../components/bits';
+import { PrintingArt } from '../components/PrintingArt';
 import { VaultSelect } from '../components/VaultSelect';
-import { BY_SLUG, CARDS, editionPrinting, isUnspecified, printingLabel, unspecifiedId } from '../lib/data';
+import { BY_SLUG, CARDS, editionPrinting, isUnspecified, normalizePrinting, printingLabel, unspecifiedId } from '../lib/data';
 import { useStore, type Entry } from '../lib/store';
 import { cloudEnabled } from '../lib/supabase';
 
@@ -62,10 +63,10 @@ export function PhotoScanIntake() {
         for (const m of data.matches ?? []) {
           const c = BY_SLUG.get(m.slug);
           if (!c) continue;
-          const ex = found.find((f) => f.slug === m.slug);
+          const printingId = normalizePrinting(c.slug, m.printingId);
+          const ex = found.find((f) => f.slug === c.slug && f.printingId === printingId);
           if (ex) ex.qty += m.qty;
-          // The scanner reads names, not printings, so every match starts as "Printing unspecified".
-          else found.push({ key: `${m.slug}-${Date.now()}-${found.length}`, slug: c.slug, qty: m.qty, printingId: unspecifiedId(c.slug), confidence: m.confidence ?? 0.8, read: m.read ?? '', on: true });
+          else found.push({ key: `${m.slug}-${Date.now()}-${found.length}`, slug: c.slug, qty: m.qty, printingId, confidence: m.confidence ?? 0.8, read: m.read ?? '', on: true });
         }
         if (data.unmatched?.length) toast(`Couldn't match: ${data.unmatched.slice(0, 5).join(', ')}`, 'err');
         if (typeof data.remaining === 'number') toast(`${data.remaining} scans left today`);
@@ -99,8 +100,9 @@ export function PhotoScanIntake() {
       const copy: ScanRow = { ...r, key: `${r.key}-s${Date.now()}`, qty: 1, printingId: unspecifiedId(r.slug) };
       return [...rows.slice(0, i), { ...r, qty: r.qty - 1 }, copy, ...rows.slice(i + 1)];
     });
-  const setAllEdition = (edition: 'Retail' | 'Beta' | null) =>
-    setScan((rows) => rows.map((r) => ({ ...r, printingId: edition ? editionPrinting(r.slug, edition)?.id ?? r.printingId : unspecifiedId(r.slug) })));
+  const fillEdition = (edition: 'Retail' | 'Beta') =>
+    setScan((rows) => rows.map((row) => isUnspecified(row.printingId)
+      ? { ...row, printingId: editionPrinting(row.slug, edition)?.id ?? row.printingId } : row));
   const unspecifiedCount = scan.filter((s) => s.on && isUnspecified(s.printingId)).reduce((a, s) => a + s.qty, 0);
 
   const scanTotal = scan.filter((row) => row.on).reduce((total, row) => total + row.qty, 0);
@@ -132,7 +134,7 @@ export function PhotoScanIntake() {
               <ol>
                 <li>Lay cards flat with space between them.</li>
                 <li>Shoot straight down in good light.</li>
-                <li>Keep every card name readable and in frame.</li>
+                <li>Keep card names and collector numbers readable.</li>
               </ol>
             </figcaption>
           </figure>
@@ -153,11 +155,11 @@ export function PhotoScanIntake() {
             <button className="btn quiet sm" onClick={() => setScan([])} disabled={committing || !!scanning}>Discard</button>
             <button className="btn sm" onClick={commitScan} disabled={!collectionReady || committing || !!scanning || scanTotal === 0}>{committing ? "Saving…" : `Add ${scanTotal} to vault`}</button>
           </div>
-          <div className="row scan-bulk" role="group" aria-label="Set printing for every match">
-            <span className="tiny muted">Printing for all:</span>
-            <button className="chip" onClick={() => setAllEdition('Retail')}>Retail</button>
-            <button className="chip" onClick={() => setAllEdition('Beta')}>Beta</button>
-            <button className="chip" onClick={() => setAllEdition(null)}>Unspecified</button>
+          <div className="row scan-bulk" role="group" aria-label="Fill unspecified printings">
+            <span className="tiny muted">Fill unspecified:</span>
+            <button className="chip" onClick={() => fillEdition('Retail')}>Retail</button>
+            <button className="chip" onClick={() => fillEdition('Beta')}>Beta</button>
+            <button className="chip" onClick={() => setScan((rows) => rows.map((row) => ({ ...row, printingId: unspecifiedId(row.slug) })))}>Clear printings</button>
             <span className="tiny muted">Unspecified copies count for deck building but stay unpriced until you set them.</span>
           </div>
           <div className="result-list">
@@ -166,7 +168,10 @@ export function PhotoScanIntake() {
               return (
                 <div key={s.key} className="scan-row" style={{ opacity: s.on ? 1 : 0.45 }}>
                   <input type="checkbox" checked={s.on} onChange={(e) => editScan(s.key, { on: e.target.checked })} style={{ accentColor: 'var(--color-accent)' }} aria-label="Include this match" />
-                  <CardImg className="thumb" slug={s.slug} alt="" />
+                  <div className="scan-printing-art">
+                    {isUnspecified(s.printingId) ? <CardImg slug={s.slug} alt="" />
+                      : <PrintingArt slug={s.slug} printingId={s.printingId} alt="" inline />}
+                  </div>
                   <div>
                     <VaultSelect className="scan-card-select" aria-label="Card" value={s.slug}
                       onValueChange={(value) => editScan(s.key, { slug: value, printingId: unspecifiedId(value) })}
