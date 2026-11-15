@@ -40,6 +40,9 @@ const trials = process.env.CAMPAIGN_TRIALS ? JSON.parse(readFileSync(process.env
 const checkpointPath = process.env.CAMPAIGN_ROUTE_CHECKPOINTS;
 const replayEdits = process.env.CAMPAIGN_REPLAY_EDITS;
 const replayRetriesOnly = process.env.CAMPAIGN_REPLAY_RETRIES_ONLY === '1';
+const replayAttempt = Number(process.env.CAMPAIGN_REPLAY_ATTEMPT ?? 0);
+const compareStarter = process.env.CAMPAIGN_REPLAY_COMPARE_STARTER === '1';
+const replayShuffles = Number(process.env.CAMPAIGN_REPLAY_SHUFFLES ?? 1);
 if (replayEdits && (!checkpointPath || !['one', 'two'].includes(replayEdits))) {
   throw new Error('CAMPAIGN_REPLAY_EDITS requires route checkpoints and must be one or two.');
 }
@@ -49,6 +52,12 @@ if (!Number.isSafeInteger(checkpointStage) || checkpointStage < 0 || (checkpoint
 }
 if (checkpointPath && maxAttempts) throw new Error('Replay route checkpoints with CAMPAIGN_MAX_ATTEMPTS unset.');
 if (replayRetriesOnly && !checkpointPath) throw new Error('CAMPAIGN_REPLAY_RETRIES_ONLY requires route checkpoints.');
+if (!Number.isSafeInteger(replayAttempt) || replayAttempt < 0 || (replayAttempt && !checkpointPath) || (replayAttempt === 1 && replayRetriesOnly)) {
+  throw new Error('CAMPAIGN_REPLAY_ATTEMPT selects a one-based attempt from saved route checkpoints.');
+}
+if (!Number.isSafeInteger(replayShuffles) || replayShuffles < 1 || (!checkpointPath && (compareStarter || replayShuffles > 1))) {
+  throw new Error('Starter comparisons and additional replay shuffles require route checkpoints.');
+}
 const vite = await createServer({ server: { middlewareMode: true, ws: false }, appType: 'custom', logLevel: 'error' });
 try {
   const { LocalEngine, SeededRNG } = await vite.ssrLoadModule('/vendor/cyberpunk-engine/engine.mjs');
@@ -197,9 +206,19 @@ try {
         const visibleName = id => visibleCards.find(card => card.instanceId === id)?.cardName ?? undefined;
         const targetIds = move.args?.targetIds ?? move.args?.cardIds
           ?? [move.args?.defenderId ?? move.args?.attachToId ?? move.args?.blockerId];
+        const passMain = !reference && move.move === 'passPhase' && table.gamePhase === 'main'
+          && table.activePlayerId === active && !table.attackState;
+        const play = passMain && table.prompt.availableMoves.find(({ moveId }) => moveId === 'playCard');
         actions.push({ turn: table.turnNumber, side: reference ? 'reference' : 'rival', move: move.move,
           card: visibleName(move.args?.cardId ?? move.args?.attackerId ?? move.args?.legendId),
-          targets: targetIds.map(visibleName).filter(Boolean), gigs: table.players[active].gigCount });
+          targets: targetIds.map(visibleName).filter(Boolean), gigs: table.players[active].gigCount,
+          ...(passMain && {
+            phase: table.gamePhase,
+            hand: table.players[active].zones.hand.map(card => card.cardName),
+            playable: play?.inputSpec.type === 'playCard'
+              ? [...new Set(play.inputSpec.candidates.map(({ cardId }) => visibleName(cardId)).filter(Boolean))] : [],
+          }),
+        });
       }
       const result = engine.processCommand({ commandID: String(commands), move: move.move, input: move.args ? { args: move.args } : undefined }, active);
       if (!result.success) { error = `${active} ${move.move}: ${result.error}`; break; }
@@ -220,7 +239,7 @@ try {
   const checkpoints = [];
   const matchCache = new Map();
 
-  function benchmarkMatch(run, original, name, seed, seat, referenceSlots) {
+  function benchmarkMatch(run, original, name, seed, seat, referenceSlots, shuffle = 0) {
     const { encounter, starter, attempts } = run;
     const stageTrial = trials[encounter + 1];
     const trial = stageTrial?.byStarter?.[starter] ?? stageTrial;
@@ -239,13 +258,14 @@ try {
     const trialPlan = trial?.profile ? `trial:${encounter + 1}:${starter}` : undefined;
     if (trialPlan) CAMPAIGN_RIVAL_PLANS[trialPlan] = trial.profile;
     const plan = useRivalPlan ? trialPlan ?? trial?.plan ?? encounterRivalPlan(run) : undefined;
-    const firstAttemptSeed = `campaign-calibration:${starter}:${seed}:${encounter}`;
+    const firstAttemptSeed = `campaign-calibration:${starter}:${seed}:${encounter}${shuffle ? `:replay:${shuffle}` : ''}`;
     const seedKey = attempts ? `${firstAttemptSeed}:retry:${attempts}` : firstAttemptSeed;
     const replaced = Object.entries(original).reduce((n, [slug, qty]) => n + Math.max(0, qty - (run.deck.cards[slug] ?? 0)), 0);
     const key = JSON.stringify([seedKey, seat, skill, plan, run.deck.legends, run.deck.cards, rival.legends, rival.cards, referenceSlots]);
     if (!matchCache.has(key)) matchCache.set(key, play(run, rival, skill, plan, seat, seedKey, referenceSlots));
     const result = { starter, policy: name, seed, seat, encounter: encounter + 1, opponent: rival.name, skill, plan, replaced,
       ...((maxAttempts || checkpointPath) && { attempt: attempts + 1, retryPacksBefore: run.retryPacks ?? 0 }),
+      ...(checkpointPath && { shuffle }),
       ...(trace && { deck: run.deck.cards, deckStats: compositionPenalty(run.deck.cards).stats }),
       ...matchCache.get(key) };
     results.push(result);
@@ -297,12 +317,18 @@ try {
     const entries = JSON.parse(readFileSync(checkpointPath, 'utf8')).checkpoints;
     if (!entries?.length) throw new Error('No route checkpoints were saved.');
     for (const { state, seed, seat, policy } of entries) {
-      if ((replayRetriesOnly && !state.attempts) || !encounters.includes(state.encounter + 1) || !starters.includes(state.starter)
+      if ((replayRetriesOnly && !state.attempts) || (replayAttempt && state.attempts + 1 !== replayAttempt)
+          || !encounters.includes(state.encounter + 1) || !starters.includes(state.starter)
           || !policies.includes(policy) || !referenceSeats.includes(seat)) continue;
       const initial = newCampaign(state.starter, state.id, state.seed, balanceVersions[balance]);
       const run = { ...state, opponents: initial.opponents, balanceVersion: initial.balanceVersion };
       if (balance === 'legacy') { delete run.balanceVersion; run.opponents = []; }
-      benchmarkMatch(run, initial.deck.cards, policy, seed, seat);
+      for (let shuffle = 0; shuffle < replayShuffles; shuffle++) {
+        benchmarkMatch(run, initial.deck.cards, policy, seed, seat, undefined, shuffle);
+        if (compareStarter) {
+          benchmarkMatch({ ...run, deck: initial.deck }, initial.deck.cards, `${policy}+starter`, seed, seat, undefined, shuffle);
+        }
+      }
       const encounterId = ENCOUNTERS[run.encounter].id;
       if (replayEdits && (encounterId === 'red-line' || encounterId === 'hostile-takeover')) {
         const edited = structuredClone(run);
@@ -319,9 +345,11 @@ try {
         }
         const issues = campaignDeckIssues(edited, edited.deck);
         if (issues.length) throw new Error(issues.join(' '));
-        const result = benchmarkMatch(edited, initial.deck.cards, `${policy}+${replayEdits}-swap`, seed, seat, slots);
-        result.replaySwaps = suggestions.length;
-        if (trace) result.replayEdits = suggestions;
+        for (let shuffle = 0; shuffle < replayShuffles; shuffle++) {
+          const result = benchmarkMatch(edited, initial.deck.cards, `${policy}+${replayEdits}-swap`, seed, seat, slots, shuffle);
+          result.replaySwaps = suggestions.length;
+          if (trace) result.replayEdits = suggestions;
+        }
       }
     }
     if (!results.length) throw new Error('No route checkpoints matched the requested sweep.');
@@ -353,7 +381,9 @@ try {
       }
     }
   }
-  const reportedPolicies = replayEdits ? policies.flatMap(name => [name, `${name}+${replayEdits}-swap`]) : policies;
+  const reportedPolicies = policies.flatMap(name => [
+    name, ...(compareStarter ? [`${name}+starter`] : []), ...(replayEdits ? [`${name}+${replayEdits}-swap`] : []),
+  ]);
   for (const [index, encounter] of ENCOUNTERS.entries()) {
     const played = results.filter(result => result.encounter === index + 1);
     if (!played.length) continue;
@@ -377,6 +407,7 @@ try {
     firstSeed, seedCount, policies: reportedPolicies, encounters: routeEncounters,
     playerSkill, fixedRivalSkill, useRivalPlan, retryPacks, referenceSeats, balance, trials, results,
     ...(maxAttempts && { maxAttempts, routes }), ...(checkpointStage && { checkpoints }),
+    ...(checkpointPath && { replayAttempt, replayShuffles, compareStarter }),
   }, null, 2) + '\n');
   if (results.some(result => result.error)) process.exitCode = 1;
 } finally { await vite.close(); }
