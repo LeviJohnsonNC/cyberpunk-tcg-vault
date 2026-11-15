@@ -398,7 +398,7 @@ function CatalogPriceBook({ onOpen }: Pick<PriceBookProps, 'onOpen'>) {
   const goPage = (next: number) => { setPage(next); heading.current?.focus(); };
   return <>
     <div className="pb-catalog-masthead">
-      <Masthead eyebrow="The Afterlife / Night Market" title="Price Book" sub={`Current prices by printing · ${getCurrency()}`} />
+      <Masthead eyebrow="The Afterlife / Night Market" title="Price Book" sub={`Prices as of ${asOf} · ${getCurrency()}`} />
       <MetricStrip items={[
         { label: 'Market', value: market },
         { label: 'Estimates', value: estimates },
@@ -418,7 +418,7 @@ function CatalogPriceBook({ onOpen }: Pick<PriceBookProps, 'onOpen'>) {
           setQuery={(value) => { setQuery(value); setPage(0); }} filters={filters} options={options}
           changeFilter={(key, value) => { setFilters((previous) => ({ ...previous, [key]: value })); setPage(0); }} />
         <div className="pb-filter-results">
-          <span role="status" className="pb-count">{shown.length ? `${start + 1}–${start + shown.length} of ${visible.length} printings` : '0 matching printings'}</span>
+          <span role="status" className="pb-count">{visible.length === 1 ? '1 printing' : shown.length ? `${start + 1}–${start + shown.length} of ${visible.length} printings` : '0 matching printings'}</span>
           {filtered && <button type="button" className="pb-text-action" onClick={() => {
             setQuery(''); setFilters({}); setPage(0); search.current?.focus();
           }}>Clear all</button>}
@@ -456,7 +456,7 @@ function CatalogPriceBook({ onOpen }: Pick<PriceBookProps, 'onOpen'>) {
         <button type="button" className="pb-btn" disabled={start + shown.length >= visible.length} onClick={() => goPage(page + 1)}>Next</button>
       </nav>}
     </section>
-    <p className="pb-source">Source {PRICES.source} · Prices as of {asOf} · {getCurrency()}</p>
+    <p className="pb-source">Source {PRICES.source} · {getCurrency()}</p>
   </>;
 }
 

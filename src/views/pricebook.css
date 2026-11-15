@@ -272,8 +272,12 @@
 .pb-catalog-price.pb-dim { color: var(--color-text-muted); }
 .pb-catalog-pagination { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: var(--space-3); padding: var(--space-4); font: 12px var(--font-mono); }
 @media (max-width: 760px) {
+  .pb-view-tabs { margin-top: var(--space-3); }
   .pb-catalog-masthead { grid-template-columns: minmax(0, 1fr); }
   .pb-catalog-masthead .al-strip { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .pb-catalog-masthead .al-strip > div { flex-direction: column; align-items: flex-start; gap: 3px; padding: var(--space-2) var(--space-3); }
+  .pb-catalog-masthead .al-strip > div + div { border-top: 0; border-inline-start: 1px dashed var(--color-ticket-muted); }
+  .pb-catalog-masthead .al-strip dt { font-size: 11px; }
   .pb-catalog-rows .pb-row { grid-template-columns: minmax(0, 1fr) minmax(62px, auto); gap: 5px var(--space-2); }
   .pb-catalog-rows .pb-row > .pb-id-text { grid-row: span 2; }
   .pb-catalog-rows .pb-row > .pb-c-basis { display: block; grid-column: 2; text-align: right; }
