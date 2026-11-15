@@ -132,15 +132,15 @@ export function PlaySetup({ scope, draft, savedDecks, initialRival, initialOppon
               </div>
             </div>}
             {tab.id === 'curated' && sort === 'popularity' && <p className="opponent-popularity">{communityPopularityLabel}</p>}
-                <p className={tab.id === 'curated' ? 'sr-only' : 'opponent-result-count'} role="status">{rows.length} {rows.length === 1 ? 'deck' : 'decks'}</p>
-                {rows.length ? <fieldset className="opponent-rows" disabled={busy}>
-                  <legend className="sr-only">Rival deck</legend>
-                  {rows.map(row => <RivalTile key={row.key} row={row} source={tab.id} selected={selected === row.key} choose={setSelected} />)}
-                </fieldset> : <div className="opponent-empty">
-                  <h3>{tab.id === 'saved' && !saved.length ? 'No saved decks yet' : 'No matching decks'}</h3>
-                  {tab.id === 'saved' && !saved.length ? <p>Save a deck in Deck Builder, choose a curated rival, or import a list.</p> :
-                    <button type="button" className="btn quiet" onClick={() => { setSearch(''); if (tab.id === 'curated') setCategory('all'); }}>Clear search and filters</button>}
-                </div>}
+            <p className={tab.id === 'curated' ? 'sr-only' : 'opponent-result-count'} role="status">{rows.length} {rows.length === 1 ? 'deck' : 'decks'}</p>
+            {rows.length ? <fieldset className="opponent-rows" disabled={busy}>
+              <legend className="sr-only">Rival deck</legend>
+              {rows.map(row => <RivalTile key={row.key} row={row} source={tab.id} selected={selected === row.key} choose={setSelected} />)}
+            </fieldset> : <div className="opponent-empty">
+              <h3>{tab.id === 'saved' && !saved.length ? 'No saved decks yet' : 'No matching decks'}</h3>
+              {tab.id === 'saved' && !saved.length ? <p>Save a deck in Deck Builder, choose a curated rival, or import a list.</p> :
+                <button type="button" className="btn quiet" onClick={() => { setSearch(''); if (tab.id === 'curated') setCategory('all'); }}>Clear search and filters</button>}
+            </div>}
           </>}
         </div>;
       })}

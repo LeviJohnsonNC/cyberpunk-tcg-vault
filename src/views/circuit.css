@@ -11,10 +11,11 @@
 }
 .play-mode:not([data-finish="afterlife"]) .play-table::before { content: ''; position: absolute; inset: 4px; pointer-events: none; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--circuit-tone) 35%, transparent); background: linear-gradient(135deg, var(--circuit-tone) 0 1%, transparent 1% 99%, var(--circuit-tone) 99%); opacity: .55; }
 .play-mode:not([data-finish="afterlife"]) .play-gigs { border-color: color-mix(in srgb, var(--circuit-tone) 50%, var(--color-divider)); }
+.play-mode-tabs:has(+ .play-mode .circuit-hub) { max-width: 1580px; padding-inline: 0; margin-block: 7px; }
 .circuit-hub { max-width: 1580px; margin: 12px auto 40px; }
 .circuit-hero {
   position: relative; isolation: isolate;
-  min-height: clamp(132px, 17vh, 158px);
+  min-height: clamp(132px, 16vh, 156px);
   padding: 12px clamp(16px, 2.3vw, 36px);
   display: flex; align-items: center; justify-content: space-between; gap: 20px;
   border: 1px solid var(--play-edge);

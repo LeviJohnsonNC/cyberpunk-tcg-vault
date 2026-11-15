@@ -120,7 +120,8 @@
 .opponent-selected-heading .play-eyebrow { margin: 0 0 3px; color: var(--color-accent); }
 .opponent-selected-heading h3 { font-size: clamp(29px, 2.7vw, 47px); }
 .opponent-style { margin: 5px 0 0; color: var(--color-text); font-size: 13px; overflow-wrap: anywhere; }
-.opponent-style strong { color: var(--color-ticket); font-weight: 500; }
+.opponent-style > span { display: inline-flex; align-items: center; gap: 3px; margin-right: 8px; }
+.opponent-style .pip { margin: 0; }
 .opponent-brief { display: grid; gap: 10px; align-items: start; }
 .opponent-crew { display: grid; grid-template-columns: repeat(3, minmax(0, 88px)); gap: 8px; margin: 0; padding: 0; list-style: none; }
 .opponent-crew li { min-width: 0; }
@@ -172,6 +173,12 @@
 .opponent-empty { padding: var(--space-5) var(--space-3); text-align: center; }
 .opponent-opened { width: 100%; margin-bottom: 10px; text-align: left; overflow-wrap: anywhere; }
 .opponent-opened[aria-pressed="true"] { border-color: var(--color-accent); }
+@media (min-width: 1121px) and (max-height: 849px) {
+  .opponent-matchup, .opponent-library { padding: 12px; }
+  .opponent-selected-heading { min-height: 78px; }
+  .opponent-crew { grid-template-columns: repeat(3, minmax(0, 77px)); }
+  .opponent-start { min-height: 46px; }
+}
 @media (max-width: 1120px) {
   .opponent-rows { grid-template-columns: minmax(0, 1fr); }
   .opponent-row { gap: 12px; }

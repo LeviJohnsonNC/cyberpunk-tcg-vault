@@ -1,5 +1,5 @@
 import { useId, useRef, type Ref } from 'react';
-import { CardImg } from '../components/bits';
+import { CardImg, Pip } from '../components/bits';
 import { VaultSelect } from '../components/VaultSelect';
 import { BY_SLUG } from '../lib/data';
 import { totalCopies } from '../lib/deckDraft';
@@ -51,7 +51,7 @@ export function FreePlayMatchup({ heading, playerKey, playerDeck, choices, choos
   playerIssues: string[]; rivalIssues: string[]; busy: boolean; canStart: boolean; start: () => void;
 }) {
   const label = selected === 'mirror' ? 'Mirror match' : selected === 'import' ? 'Imported rival' : selected === 'external' ? 'Opened rival' : 'Rival deck';
-  const colors = rival ? deckColors(rival).join(' / ') : '';
+  const colors = rival ? deckColors(rival) : [];
   return <aside className="panel opponent-matchup" aria-labelledby="opponent-matchup-title" data-ready={canStart || undefined}>
     <header className="opponent-matchup-head">
       <h2 ref={heading} id="opponent-matchup-title" tabIndex={-1}>The matchup</h2>
@@ -68,7 +68,9 @@ export function FreePlayMatchup({ heading, playerKey, playerDeck, choices, choos
         {curated?.portrait && <CampaignRivalPortrait encounter={curated.portrait.encounter} />}
         <p className="play-eyebrow">{label}</p>
         <h3>{rival.name}</h3>
-        {(colors || curated?.label) && <p className="opponent-style">{colors && <strong>{colors}</strong>}{colors && curated?.label && ' · '}{curated?.label}</p>}
+        {(colors.length > 0 || curated?.label) && <p className="opponent-style">
+          {curated ? <>{colors.length > 0 && <span role="img" aria-label={colors.join(' / ')}>{colors.map(color => <Pip key={color} color={color} bare />)}</span>}{curated.label}</> : colors.join(' / ')}
+        </p>}
       </header>
       <div className="opponent-brief" data-summary={!!curated?.summary || undefined}>
         {rival.legends.length > 0 && <ul className="opponent-crew" aria-label="Rival Legends">
