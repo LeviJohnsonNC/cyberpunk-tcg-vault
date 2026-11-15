@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { archiveQuotes, priceSnapshot, retainDaily, retainWeekly, weekStart } from '../../scripts/price-history.mjs';
-import { priceTrend } from './priceTrend';
+import { priceTrend, priceTrendPaths } from './priceTrend';
 import type { DailyPriceArchive, PriceSnapshot } from './priceSnapshots';
 import type { Line } from './pricebook';
 
@@ -8,6 +8,20 @@ const line = (printingId: string, qty: number) => ({ entry: { printingId, qty } 
 const snapshot = (date: string, quotes: PriceSnapshot['quotes']): PriceSnapshot => ({ date, quotes });
 
 describe('price trend', () => {
+  it('joins observed points with bounded curves and dashes across changes in coverage', () => {
+    const points = [
+      { x: 0, y: 10, connect: false },
+      { x: 6, y: 4, connect: true },
+      { x: 15, y: 13, connect: false },
+      { x: 21, y: 13, connect: false },
+    ];
+    expect(priceTrendPaths(points)).toEqual({
+      solid: 'M0,10 C2,8 4,4 6,4 ',
+      dashed: 'M6,4 C9,4 12,13 15,13 C17,13 19,13 21,13 ',
+    });
+    expect(priceTrendPaths(points.slice(0, 1))).toEqual({ solid: '', dashed: '' });
+  });
+
   it('adds exact Retail market quotes when they appear and compares the same copies at both ends', () => {
     const lines = [line('retail', 3), line('stable', 2), line('listing', 1)];
     const archive: DailyPriceArchive = {

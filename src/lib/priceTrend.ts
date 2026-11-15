@@ -62,3 +62,26 @@ export function priceTrend(lines: Line[], archive: DailyPriceArchive, latest: Pr
 
   return { points, change, start: days[0].date, end: latest.date };
 }
+
+export function priceTrendPaths(points: readonly { x: number; y: number; connect: boolean }[]) {
+  const slopes = points.slice(1).map((point, index) => (point.y - points[index].y) / (point.x - points[index].x));
+  const tangents = points.map((_, index) => {
+    const before = slopes[index - 1] ?? slopes[index] ?? 0;
+    const after = slopes[index] ?? before;
+    // Keep the handles within the surrounding values. A reversal has a flat tangent.
+    return Math.sign(before) === Math.sign(after) ? Math.sign(before) * Math.min(Math.abs(before), Math.abs(after)) : 0;
+  });
+  const paths = { solid: '', dashed: '' };
+  let previousStroke: keyof typeof paths | undefined;
+  for (const [index, point] of points.slice(1).entries()) {
+    const previous = points[index];
+    const handle = (point.x - previous.x) / 3;
+    const stroke = point.connect ? 'solid' : 'dashed';
+    if (stroke !== previousStroke) paths[stroke] += `M${previous.x},${previous.y} `;
+    const outgoing = `${previous.x + handle},${previous.y + tangents[index] * handle}`;
+    const incoming = `${point.x - handle},${point.y - tangents[index + 1] * handle}`;
+    paths[stroke] += `C${outgoing} ${incoming} ${point.x},${point.y} `;
+    previousStroke = stroke;
+  }
+  return paths;
+}
