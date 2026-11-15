@@ -12,7 +12,7 @@ import type { RivalSkill } from '../lib/play/protocol';
 import { PlayResetMenu } from './PlayResetMenu';
 import { PlaySetup } from './PlaySetup';
 
-const tabs = [{ id: 'practice', label: 'Free Play' }, { id: 'locker', label: 'Your locker' }, { id: 'record', label: 'Match record' }] as const;
+const tabs = [{ id: 'practice', label: 'Find Match' }, { id: 'locker', label: 'Your Locker' }, { id: 'record', label: 'Match Record' }] as const;
 type HubTab = typeof tabs[number]['id'] | 'circuit';
 const markNames: Record<CircuitMark, string> = { clear: 'Contract cleared', bonus: 'Bonus objective', masterful: 'Masterful win' };
 
@@ -30,14 +30,14 @@ function Marks({ marks = [] }: { marks?: CircuitMark[] }) {
   return <span className="circuit-marks" role="img" aria-label={`${marks.length} of 3 marks earned`}>{(['clear', 'bonus', 'masterful'] as const).map(mark =>
     <span key={mark} data-earned={marks.includes(mark)} title={`${markNames[mark]}${marks.includes(mark) ? ' · earned' : ''}`} aria-hidden="true">◆</span>)}</span>;
 }
-export function ReputationBar({ rep, before }: { rep: number; before?: number }) {
+export function ReputationBar({ rep, before, compact = false }: { rep: number; before?: number; compact?: boolean }) {
   const index = rankIndex(rep), rank = CIRCUIT_RANKS[index], next = CIRCUIT_RANKS[index + 1];
   const percent = next ? Math.min(100, (rep - rank.rep) / (next.rep - rank.rep) * 100) : 100;
   const start = before == null ? percent : next ? Math.max(0, (before - rank.rep) / (next.rep - rank.rep) * 100) : 0;
-  return <div className="circuit-reputation"><div><strong>{rank.name}</strong><span>{next ? `${rep} / ${next.rep} REP` : `${rep} REP · Top rank`}</span></div>
+  return <div className="circuit-reputation" data-compact={compact || undefined}><div><strong>{rank.name}</strong><span>{next ? `${rep} / ${next.rep} REP` : `${rep} REP · Top rank`}</span></div>
     <div className="circuit-rep-track" role="progressbar" aria-label={`Reputation toward ${next?.name ?? rank.name}`} aria-valuenow={rep} aria-valuemin={rank.rep} aria-valuemax={next?.rep ?? rep}>
       <span style={{ '--rep-from': `${start}%`, width: `${percent}%` } as CSSProperties} data-animate={before != null} />
-    </div><small>{next ? `${next.rep - rep} REP to ${next.name}` : rank.line}</small>
+    </div>{!compact && <small>{next ? `${next.rep - rep} REP to ${next.name}` : rank.line}</small>}
   </div>;
 }
 
@@ -76,8 +76,8 @@ function Record({ progress }: { progress: CircuitProgress }) {
   </section>;
 }
 
-export function CircuitHub({ scope, progress, draft, savedDecks, initialRival, initialOpponent, busy, error, onStart, onResume, onReset, onEdit, equip }: {
-  scope: string; progress: CircuitProgress; draft?: DeckDraft; savedDecks: Deck[]; initialRival?: string; initialOpponent?: Deck; busy: boolean; error?: string;
+export function CircuitHub({ scope, progress, draft, savedDecks, initialRival, initialOpponent, initialCuratedId, busy, error, onStart, onResume, onReset, onEdit, equip }: {
+  scope: string; progress: CircuitProgress; draft?: DeckDraft; savedDecks: Deck[]; initialRival?: string; initialOpponent?: Deck; initialCuratedId?: string; busy: boolean; error?: string;
   onStart: (draft: DeckDraft, rival: Deck, skill: RivalSkill, key: string, contractId?: string) => void;
   onResume?: () => void; onReset: () => void; onEdit: () => void; equip: (finish: TableFinish) => void;
 }) {
@@ -95,16 +95,25 @@ export function CircuitHub({ scope, progress, draft, savedDecks, initialRival, i
   const rank = rankIndex(progress.rep), marks = circuitMarks(progress), clears = CIRCUIT_CONTRACTS.filter(item => contractCleared(progress, item.id)).length;
   const contractIndex = CIRCUIT_CONTRACTS.indexOf(contract);
   return <div className="circuit-hub">
-    <header className="circuit-hero"><Masthead eyebrow="The Afterlife / Open table" title="Free Play" sub="Bring any deck. Choose any rival." />
+    <div className="circuit-hero">
+      <Masthead eyebrow="The Afterlife / Open table" title="Free Play" sub="Your deck. Your rival." />
+      <div className="circuit-credential">
+        <CircuitSeal level={rank} />
+        <div><span>Current standing</span><ReputationBar rep={progress.rep} compact /></div>
+      </div>
+    </div>
+    <div className="circuit-lobby-bar">
+      <ViewTabs id="circuit-hub" label="Free Play views" tabs={tabs} value={tab} onChange={setTab} />
+      <dl className="circuit-lobby-stats">
+        <div><dt>{progress.wins === 1 ? 'Win' : 'Wins'}</dt><dd>{progress.wins}</dd></div>
+        <div><dt>Streak</dt><dd>{progress.streak}</dd></div>
+      </dl>
       <div className="circuit-hero-actions">
         {onResume && <button type="button" className="btn" disabled={busy} onClick={onResume}>Return to match</button>}
-        <PlayResetMenu mode="Free Play" disabled={busy} onReset={onReset} />
         <button type="button" className="btn quiet" disabled={busy} onClick={onEdit}>Deck Builder</button>
+        <PlayResetMenu mode="Free Play" disabled={busy} onReset={onReset} />
       </div>
-      <div className="circuit-credential"><CircuitSeal level={rank} /><div><span>Current standing</span><strong>{CIRCUIT_RANKS[rank].name}</strong><small>{CIRCUIT_RANKS[rank].line}</small></div></div>
-    </header>
-    <div className="circuit-standing"><ReputationBar rep={progress.rep} /><dl><div><dt>Contracts</dt><dd>{clears}<small>/6</small></dd></div><div><dt>Marks</dt><dd>{marks}<small>/18</small></dd></div><div><dt>Wins</dt><dd>{progress.wins}</dd></div><div><dt>Win streak</dt><dd>{progress.streak}</dd></div></dl></div>
-    <ViewTabs id="circuit-hub" label="Play Mode" tabs={tabs} value={tab} onChange={setTab} />
+    </div>
     {error && <p className="play-error" role="alert">{error}</p>}
     <div id={`circuit-hub-panel-${tab}`} role="tabpanel" aria-labelledby={tab === 'circuit' ? undefined : `circuit-hub-tab-${tab}`} aria-label={tab === 'circuit' ? 'Classic Circuit' : undefined}>
       {tab === 'circuit' && <><button className="btn quiet" onClick={() => setTab('record')}>← Match record</button><div className="circuit-board">
@@ -134,7 +143,7 @@ export function CircuitHub({ scope, progress, draft, savedDecks, initialRival, i
           <details className="circuit-briefing"><summary>Read the briefing</summary><p>{contract.briefing}</p><p>All rival levels play from public information. Standard rules, best of one. No card or stat bonuses.</p></details>
         </aside>
       </div></>}
-      {tab === 'practice' && <PlaySetup scope={scope} draft={draft} savedDecks={savedDecks} initialRival={initialRival} initialOpponent={initialOpponent} busy={busy} onStart={onStart} />}
+      {tab === 'practice' && <PlaySetup scope={scope} draft={draft} savedDecks={savedDecks} initialRival={initialRival} initialOpponent={initialOpponent} initialCuratedId={initialCuratedId} busy={busy} onStart={onStart} />}
       {tab === 'locker' && <Locker progress={progress} busy={busy} equip={equip} />}
       {tab === 'record' && <><Record progress={progress} /><div className="circuit-legacy-entry"><p>The original six-contract Circuit and its marks are still here.</p><button className="btn quiet" onClick={() => setTab('circuit')}>Open classic contracts</button></div></>}
     </div>

@@ -6,7 +6,7 @@ import { advanceRivalDialogue, rivalResult } from '../lib/play/rivalDialogue';
 import type { CardView, MatchReport, MatchSnapshot } from '../lib/play/protocol';
 import { vaultCard } from '../lib/play/cardDisplay';
 import { CardFace, CardInspection } from './PlayCard';
-import { CampaignRivalPortrait } from './CampaignStory';
+import { CampaignRivalPortrait } from './CampaignRivalPortrait';
 import './campaign-result.css';
 
 const illustrations = import.meta.glob<string>('../assets/play/results/*.webp', { eager: true, import: 'default', query: '?url' });

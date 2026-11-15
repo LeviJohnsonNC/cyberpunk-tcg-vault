@@ -1,0 +1,7 @@
+.campaign-rival-portrait {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: var(--color-surface) url('../assets/play/last-call-rival-atlas.webp') var(--portrait-x) var(--portrait-y) / 300% 300% no-repeat;
+}

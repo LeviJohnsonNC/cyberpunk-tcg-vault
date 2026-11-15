@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { ENCOUNTERS, type CampaignRun, type EncounterId } from '../lib/play/campaign';
 import { campaignChapters, campaignInvitation, unlockedCampaignChapters } from '../lib/play/campaignStory';
 import { contractScenes, type CampaignSceneBeat } from '../lib/play/campaignScenes';
@@ -19,15 +19,10 @@ import invitation from '../assets/play/last-call-afterlife.webp';
 import compactInvitation from '../assets/play/last-call-afterlife-compact.webp';
 import { PlayOptionsMenu } from './PlayResetMenu';
 import ledger from '../assets/play/last-call-ledger.webp';
+import { CampaignRivalPortrait } from './CampaignRivalPortrait';
 import './campaign-story.css';
 import './campaign-invitation.css';
 import './campaign-scenes.css';
-
-export function CampaignRivalPortrait({ encounter }: { encounter: EncounterId }) {
-  const index = ENCOUNTERS.findIndex(contract => contract.id === encounter);
-  const style = { '--portrait-x': `${index % 3 * 50}%`, '--portrait-y': `${Math.floor(index / 3) * 50}%` } as CSSProperties;
-  return <span className="campaign-rival-portrait" style={style} aria-hidden="true" />;
-}
 
 export function CampaignInvitation({ scope, proceed, onBack, onReset, busy }: {
   scope: string; proceed: () => void; onBack?: () => void; onReset?: () => void; busy: boolean;

@@ -54,12 +54,13 @@ export default function App() {
     setFeedbackOpen(false);
   }, []);
   const { route, visited, mobile, consumeDeck } = useVaultNavigation(scope, closeOverlays);
-  const [playDraft, setPlayDraft] = useState<{ scope: string; draft: DeckDraft; opponent?: DeckDraft['deck'] }>();
+  const [playDraft, setPlayDraft] = useState<{ scope: string; draft: DeckDraft; opponent?: DeckDraft['deck']; curatedId?: string }>();
   const [playRival, setPlayRival] = useState<{ scope: string; id: string }>();
   const [matchLookup, setMatchLookup] = useState<{ scope: string; saved?: MatchSummary; failed?: boolean }>();
   const matchInfo = matchLookup?.scope === scope ? matchLookup : undefined;
   const savedMatch = matchInfo?.saved;
-  const matchDraft = playDraft?.scope === scope ? playDraft.draft : undefined;
+  const playHandoff = playDraft?.scope === scope ? playDraft : undefined;
+  const matchDraft = playHandoff?.draft;
   const requestSignIn = () => {
     if (mobile) {
       menu.current?.showModal();
@@ -126,9 +127,9 @@ export default function App() {
     window.location.hash = `/${tab}${deck ? `?deck=${encodeURIComponent(deck)}` : ''}`;
   };
 
-  function practiceAgainst(opponent: Deck) {
+  function practiceAgainst(opponent: Deck, curatedId?: string) {
     const draft = readDeckDraft(scope) ?? { deck: newDeck(), dirty: false };
-    setPlayDraft({ scope, draft: structuredClone(draft), opponent: structuredClone(opponent) });
+    setPlayDraft({ scope, draft: structuredClone(draft), opponent: structuredClone(opponent), curatedId });
     go('play');
   }
 
@@ -273,7 +274,7 @@ export default function App() {
               <PlayMode key={scope} scope={scope} preparationOnly={mobile} draft={matchDraft} saved={savedMatch} requestedMatch={route.match}
                 onLeaveMatch={() => { if (route.match) window.location.replace('#/play'); }}
                 initialRival={playRival?.scope === scope ? playRival.id : undefined}
-                savedDecks={store.decks} initialOpponent={playDraft?.scope === scope ? playDraft.opponent : undefined}
+                savedDecks={store.decks} initialOpponent={playHandoff?.opponent} initialCuratedId={playHandoff?.curatedId}
                 rememberRival={(id) => setPlayRival({ scope, id })} onCheckpoint={acceptMatch} onEdit={returnToDraft}
                 onFreePlayReset={() => {
                   setPlayDraft(previous => previous?.scope === scope ? undefined : previous);

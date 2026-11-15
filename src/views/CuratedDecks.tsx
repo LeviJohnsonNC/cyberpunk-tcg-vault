@@ -5,7 +5,7 @@ import { BY_SLUG, COLORS, RECOMMENDED, type Color } from '../lib/data';
 import { estimateText } from '../lib/currency';
 import { CLOSE_THRESHOLD, completion, deckFromRecommended, costRank, matchesFilter, validate, type BuildFilter } from '../lib/decks';
 import { useStore, type Deck } from '../lib/store';
-import communityMeta from '../data/community-meta.json';
+import { communityCrewMatches, communityPopularityLabel } from '../lib/communityPopularity';
 
 const KIND_LABEL = { budget: 'Budget', meta: 'Community meta', brew: 'Brew' } as const;
 const LS_KEY = 'cptv.meta.filters.v1';
@@ -25,14 +25,11 @@ interface Filters {
 }
 
 const DEFAULTS: Filters = { build: 'all', colors: [], sort: 'fit' };
-const crewCounts: Readonly<Record<string, number>> = communityMeta.crews;
 const LISTS = RECOMMENDED.map((deck) => ({
   deck,
   legal: validate({ ...deck, sideboard: {} }).legal,
-  crewMatches: crewCounts[[...deck.legends].sort().join('/')] ?? 0,
+  crewMatches: communityCrewMatches(deck.legends),
 }));
-const deckCount = new Intl.NumberFormat('en-CA').format(communityMeta.deckCount);
-const asOf = new Intl.DateTimeFormat('en-CA', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(communityMeta.asOf));
 const needsVault = (sort: SortKey) => sort === 'fit' || sort === 'cost';
 
 function loadFilters(): Filters {
@@ -48,7 +45,7 @@ function loadFilters(): Filters {
   }
 }
 
-export function CuratedDecks({ onOpen, openInBuilder, onPlayAgainst }: { onOpen: (slug: string) => void; openInBuilder: (id: string) => void; onPlayAgainst?: (deck: Deck) => void }) {
+export function CuratedDecks({ onOpen, openInBuilder, onPlayAgainst }: { onOpen: (slug: string) => void; openInBuilder: (id: string) => void; onPlayAgainst?: (deck: Deck, curatedId: string) => void }) {
   const { owned, collectionReady, collectionError, retryCollection } = useStore();
   const [f, setF] = useState<Filters>(loadFilters);
   const set = (patch: Partial<Filters>) => {
@@ -115,7 +112,7 @@ export function CuratedDecks({ onOpen, openInBuilder, onPlayAgainst }: { onOpen:
       </div>
       <p className="meta-list-count" role="status">{shown.length} of {LISTS.length} decks</p>
       {sort === 'popularity' && <p className="meta-popularity-source">
-        Ranked by how often all three Legends appear together in {deckCount} public Constructed decks from the 30 days ending {asOf}.
+        {communityPopularityLabel}
       </p>}
       {shown.length === 0 ? (
         <div className="panel meta-state">
@@ -154,7 +151,7 @@ export function CuratedDecks({ onOpen, openInBuilder, onPlayAgainst }: { onOpen:
                   <div className="meta-curated-action">
                     <button className="btn meta-open-draft" onClick={() => openInBuilder(d.id)}>Open draft<span> in Deck Builder</span></button>
                     <p>Edit and save in Deck Builder.</p>
-                    {onPlayAgainst && <button className="btn quiet" onClick={() => { const deck = deckFromRecommended(d.id); if (deck) onPlayAgainst(deck); }}>Play against this deck</button>}
+                    {onPlayAgainst && <button className="btn quiet" onClick={() => { const deck = deckFromRecommended(d.id); if (deck) onPlayAgainst(deck, d.id); }}>Play against this deck</button>}
                   </div>
                 </div>
                 <div className="meta-curated-detail-row">

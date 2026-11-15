@@ -7,7 +7,7 @@ import type { RivalDialogueState } from '../lib/play/rivalDialogue';
 import type { StarterKey } from '../lib/starters';
 import type { CampaignInspect } from './CampaignHub';
 import { CampaignRewardArt } from './CampaignRewardArt';
-import { CampaignRivalPortrait } from './CampaignStory';
+import { CampaignRivalPortrait } from './CampaignRivalPortrait';
 import latch from '../assets/play/latch-dossier.webp';
 import './campaign-rival-dossier.css';
 

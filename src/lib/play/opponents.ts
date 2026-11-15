@@ -7,7 +7,7 @@ export const IMPORT_LIMIT = 128_000;
 export const DEFAULT_PLAY_DECK_KEY = 'curated:heist-reloaded';
 
 export const curatedOpponents = RECOMMENDED.map(list => ({
-  key: `curated:${list.id}`, label: list.archetype, category: { meta: 'Community meta', budget: 'Budget', brew: 'Brew' }[list.kind],
+  id: list.id, kind: list.kind, key: `curated:${list.id}`, label: list.archetype, category: { meta: 'Community meta', budget: 'Budget', brew: 'Brew' }[list.kind],
   deck: { id: `rival:${list.id}`, name: list.name, legends: [...list.legends], cards: { ...list.cards }, sideboard: {}, notes: list.summary, updatedAt: '' } as Deck,
 }));
 export function deckColors(deck: Deck) {
