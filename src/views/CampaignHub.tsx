@@ -60,9 +60,9 @@ export function CampaignTimeline({ run }: { run: CampaignRun }) {
   </div>;
 }
 
-export function CampaignHubTools({ run, profile, busy, soundEnabled, toggleSound, newRun, reset, exit, equipRoom, openInBuilder }: {
+export function CampaignHubTools({ run, profile, busy, soundEnabled, toggleSound, newRun, reset, equipRoom, openInBuilder }: {
   run: CampaignRun; profile: CampaignProfile; busy: boolean; soundEnabled: boolean; toggleSound: () => void;
-  newRun: () => void; reset: () => void; exit?: () => void; equipRoom: (room: Environment) => void; openInBuilder: (deck: Deck) => void;
+  newRun: () => void; reset: () => void; equipRoom: (room: Environment) => void; openInBuilder: (deck: Deck) => void;
 }) {
   const archive = useRef<HTMLDialogElement>(null);
   const rooms = useRef<HTMLDialogElement>(null);
@@ -74,7 +74,6 @@ export function CampaignHubTools({ run, profile, busy, soundEnabled, toggleSound
       { label: soundEnabled ? 'Turn game effects off' : 'Turn game effects on', onSelect: toggleSound },
       ...(profile.environments.length && run.phase !== 'claimingFinish' ? [{ label: 'Unlocked rooms', onSelect: () => rooms.current?.showModal() }] : []),
       ...(history.length ? [{ label: 'Previous runs', onSelect: () => archive.current?.showModal() }] : []),
-      ...(exit ? [{ label: 'Free Play', onSelect: exit, disabled: busy }] : []),
       ...(run.phase !== 'claimingFinish' && !(run.phase === 'rewardPending' && run.completedAt) ? [{ label: 'Start a new campaign', onSelect: newRun, disabled: busy }] : []),
       { label: 'Reset campaign', onSelect: reset, disabled: busy, danger: true },
     ]} />

@@ -4,7 +4,6 @@
   max-width: none;
   padding: 0;
 }
-.play-mode-tabs:has(+ :is(.campaign-mode[data-campaign-board], .play-mode[data-practice-result])) { display: none; }
 .campaign-mode[data-campaign-board] .campaign-hub { max-width: none; padding: 0; }
 .campaign-mode[data-campaign-board] .campaign-hub > .play-error { margin: 12px auto; max-width: min(94%, 1360px); }
 .app--play:has(:is(.campaign-mode[data-campaign-board], .play-mode[data-practice-result])) > :is(.radio-dock, .afterhours-radio) {
