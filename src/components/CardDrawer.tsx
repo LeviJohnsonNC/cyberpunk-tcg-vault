@@ -86,7 +86,7 @@ function ArtworkViewer({ card, printing, onClose }: { card: Card; printing: Prin
       onCancel={(event) => event.stopPropagation()}
       onClick={(event) => { if (event.target === event.currentTarget) dialog.current?.close(); }}>
       <button type="button" className="iconbtn" aria-label="Close artwork" onClick={() => dialog.current?.close()}>×</button>
-      <PrintingArt slug={card.slug} printingId={printing.id} alt={`${card.display}, ${printingLabel(printing.id)}`} />
+      <PrintingArt foil="inspection" slug={card.slug} printingId={printing.id} alt={`${card.display}, ${printingLabel(printing.id)}`} />
     </dialog>
   );
 }
@@ -183,7 +183,7 @@ function CardDetails({ card, onClose, initialPrinting, identify }: { card: Card;
           <div className="card-drawer-art">
             <button ref={artworkTrigger} type="button" className="card-drawer-art-button" aria-label={`Enlarge artwork for ${artAlt}`}
               aria-haspopup="dialog" onClick={() => setArtworkOpen(true)}>
-              <PrintingArt key={printing.id} slug={slug} printingId={printing.id} alt="" inline />
+              <PrintingArt foil="standard" key={printing.id} slug={slug} printingId={printing.id} alt="" inline />
             </button>
           </div>
           <div className="card-drawer-holding">

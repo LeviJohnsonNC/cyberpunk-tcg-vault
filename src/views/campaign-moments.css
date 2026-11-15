@@ -25,6 +25,11 @@
     0 0 var(--pack-halo, 10px) color-mix(in srgb, var(--pack-light, transparent) 35%, transparent),
     0 8px 16px var(--play-shadow, var(--color-canvas-deep));
 }
+.campaign-mode .campaign-reward-art[data-iconic-surface] {
+  --pack-light: var(--color-divider);
+  --pack-foil: transparent;
+  --pack-halo: 0;
+}
 .campaign-reward-art .printing-inline { display: block; position: relative; height: 100%; border-radius: inherit; }
 .campaign-mode .campaign-reward-art img { display: block; width: 100%; height: 100%; border-radius: inherit; }
 .campaign-reward-art .printing-inline small {

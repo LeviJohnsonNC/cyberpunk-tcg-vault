@@ -388,7 +388,7 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
               <span className="campaign-tabletop-rest" aria-hidden="true">
                 <span className="campaign-tabletop-card">
                   {(!face || turning) && <img className="campaign-tabletop-back" src={CARD_BACK} alt="" />}
-                  {(face || turning) && <span className="campaign-tabletop-front"><CampaignRewardArt pull={item} alt="" exact showNameWhileLoading /></span>}
+                  {(face || turning) && <span className="campaign-tabletop-front"><CampaignRewardArt foil="off" pull={item} alt="" exact showNameWhileLoading /></span>}
                 </span>
               </span>
             </button>;

@@ -7,6 +7,7 @@ import { getCurrency, money, moneyOr, toDisplay } from '../lib/currency';
 import { buildPriceBook, catalogPrices, FILTERS, filterHoldings, filterOptions, sortLines, summarizeHoldings, toCsv, type Basis, type FilterKey, type Group, type Line, type PriceFilters, type SortKey } from '../lib/pricebook';
 import { useStore } from '../lib/store';
 import { CardImg } from '../components/bits';
+import { isIconicPrinting } from '../lib/iconicFoil';
 import { PrintingArt } from '../components/PrintingArt';
 import { Masthead, MetricStrip, ViewTabs } from '../components/ui';
 import './pricebook.css';
@@ -254,7 +255,9 @@ function HoldingsPriceBook({ mobile, onOpen, goAdd }: PriceBookProps) {
                   onOpen(l.card.slug, l.printing?.id, !l.printing, event.currentTarget.querySelector('button.pb-name') ?? undefined);
                 }}>
                   <span role="cell" className="pb-id">
-                    <CardImg slug={l.card.slug} className="pb-thumb" alt="" />
+                    {l.printing && isIconicPrinting(l.printing.id)
+                      ? <span className="pb-thumb pb-printing-thumb"><PrintingArt slug={l.card.slug} printingId={l.printing.id} alt="" pocket /></span>
+                      : <CardImg slug={l.card.slug} className="pb-thumb" alt="" />}
                     <span className="pb-id-text">
                       <button className="pb-name" aria-label={`Open ${l.card.display}, ${printingLabel(l.entry.printingId, false)}`}
                         onClick={(event) => { event.stopPropagation(); onOpen(l.card.slug, l.printing?.id, !l.printing, event.currentTarget); }}>{l.card.name}</button>

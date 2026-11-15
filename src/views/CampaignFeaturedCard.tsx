@@ -21,7 +21,7 @@ export function CampaignFeaturedCard({ pull, buttonRef, discovery = false, inspe
     <button ref={buttonRef} type="button" className="campaign-tabletop-feature" onClick={inspect}
       aria-label={`Inspect ${BY_SLUG.get(pull.slug)?.display ?? pull.slug}`}>
       <span className="campaign-tabletop-pose">
-        <CampaignRewardArt pull={pull} alt="" exact showNameWhileLoading onReady={src => setReady({ id: pull.printing?.id, src })} />
+        <CampaignRewardArt foil="off" pull={pull} alt="" exact showNameWhileLoading onReady={src => setReady({ id: pull.printing?.id, src })} />
         <span className="campaign-material-bloom" aria-hidden="true" />
         <span className="campaign-material-edge" aria-hidden="true" />
         <span className="campaign-material-sheen" aria-hidden="true" />
