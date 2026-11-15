@@ -2,24 +2,39 @@ import { useEffect, useRef } from 'react';
 import type { FoilMode } from '../lib/iconicFoil';
 import './iconic-foil.css';
 
-export function IconicFoil({ mode }: { mode: Exclude<FoilMode, 'off'> }) {
+export function IconicFoil({ mode, glintOnOpen }: { mode: Exclude<FoilMode, 'off'>; glintOnOpen: boolean }) {
   const surface = useRef<HTMLSpanElement>(null);
   useEffect(() => {
-    const art = surface.current?.parentElement;
-    if (!art || mode === 'compact') return;
+    const foil = surface.current;
+    const art = foil?.parentElement;
+    if (!foil || !art || mode === 'compact') return;
     // The viewer tilts the inner surface. Measure the stationary figure to avoid drifting hit coordinates.
     const hitArea = mode === 'inspection' ? art.parentElement ?? art : art;
     const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
     let frame = 0;
     let point: { x: number; y: number };
-    const reset = () => {
+    const resetLighting = () => {
       if (frame) window.cancelAnimationFrame(frame);
       frame = 0;
       delete art.dataset.foilActive;
       for (const property of ['--foil-x', '--foil-y', '--foil-tilt-x', '--foil-tilt-y']) art.style.removeProperty(property);
     };
+    const stopGlint = () => { delete foil.dataset.foilGlint; };
+    const stopMotion = () => {
+      resetLighting();
+      stopGlint();
+    };
+    const glintEnded = (event: AnimationEvent) => {
+      if (event.animationName === 'iconic-foil-glint') stopGlint();
+    };
+    const glint = mode === 'inspection' && glintOnOpen && !motion.matches && !document.hidden;
+    if (glint) {
+      foil.addEventListener('animationend', glintEnded);
+      foil.dataset.foilGlint = '';
+    }
     const move = (event: PointerEvent) => {
       if (event.pointerType !== 'mouse' || motion.matches || document.hidden) return;
+      if (foil.hasAttribute('data-foil-glint')) stopGlint();
       point = { x: event.clientX, y: event.clientY };
       if (frame) return;
       frame = window.requestAnimationFrame(() => {
@@ -38,26 +53,29 @@ export function IconicFoil({ mode }: { mode: Exclude<FoilMode, 'off'> }) {
       });
     };
     const resetTouch = (event: PointerEvent) => {
-      if (event.pointerType !== 'mouse') reset();
+      if (event.pointerType !== 'mouse') resetLighting();
     };
     hitArea.addEventListener('pointerdown', resetTouch);
     hitArea.addEventListener('pointermove', move, { passive: true });
-    hitArea.addEventListener('pointerleave', reset);
-    hitArea.addEventListener('pointercancel', reset);
-    document.addEventListener('visibilitychange', reset);
-    window.addEventListener('blur', reset);
-    motion.addEventListener?.('change', reset);
+    hitArea.addEventListener('pointerleave', resetLighting);
+    hitArea.addEventListener('pointercancel', resetLighting);
+    document.addEventListener('visibilitychange', stopMotion);
+    window.addEventListener('blur', stopMotion);
+    motion.addEventListener?.('change', stopMotion);
     return () => {
-      reset();
+      stopMotion();
+      if (glint) foil.removeEventListener('animationend', glintEnded);
       hitArea.removeEventListener('pointerdown', resetTouch);
       hitArea.removeEventListener('pointermove', move);
-      hitArea.removeEventListener('pointerleave', reset);
-      hitArea.removeEventListener('pointercancel', reset);
-      document.removeEventListener('visibilitychange', reset);
-      window.removeEventListener('blur', reset);
-      motion.removeEventListener?.('change', reset);
+      hitArea.removeEventListener('pointerleave', resetLighting);
+      hitArea.removeEventListener('pointercancel', resetLighting);
+      document.removeEventListener('visibilitychange', stopMotion);
+      window.removeEventListener('blur', stopMotion);
+      motion.removeEventListener?.('change', stopMotion);
     };
-  }, [mode]);
+  }, [mode, glintOnOpen]);
 
-  return <span ref={surface} aria-hidden="true" className="iconic-foil" data-foil-mode={mode} />;
+  return <span ref={surface} aria-hidden="true" className="iconic-foil" data-foil-mode={mode}>
+    <span className="iconic-foil-light" />
+  </span>;
 }
