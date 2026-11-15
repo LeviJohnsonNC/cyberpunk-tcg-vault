@@ -5,6 +5,12 @@
 
 .app--play.page { padding-block: var(--space-2); }
 
+.play-landing { max-width: 760px; margin: clamp(24px, 8vh, 96px) auto; padding: clamp(16px, 4vw, 36px); }
+.play-landing-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: var(--space-3); margin-top: var(--space-4); }
+.play-landing-options .btn { display: grid; justify-items: start; gap: var(--space-1); padding: var(--space-4); }
+.play-landing-options strong { color: var(--color-ticket); font: 800 24px/1 var(--font-display); }
+.play-landing-options span { color: var(--color-text-muted); white-space: normal; }
+
 .play-mode {
   --play-edge: color-mix(in srgb, var(--color-ticket) 25%, var(--color-divider));
   /* One measure sizes the whole table: the widest Unit card that still fits both crews, the Gigs and the hand in view. */

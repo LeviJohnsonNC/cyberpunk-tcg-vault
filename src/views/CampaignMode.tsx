@@ -41,8 +41,8 @@ function hasSeenIntro(key: string) {
   try { return localStorage.getItem(key) === 'seen'; } catch { return false; }
 }
 
-export function CampaignMode({ scope, exit, openInBuilder, preparationOnly = false }: {
-  scope: string; exit?: () => void; openInBuilder: (deck: Deck) => void; preparationOnly?: boolean;
+export function CampaignMode({ scope, openInBuilder, preparationOnly = false }: {
+  scope: string; openInBuilder: (deck: Deck) => void; preparationOnly?: boolean;
 }) {
   const introKey = `cptv.campaign.lastCallIntro:${scope}`;
   const [introSeen, setIntroSeen] = useState(() => hasSeenIntro(introKey));
@@ -390,7 +390,7 @@ export function CampaignMode({ scope, exit, openInBuilder, preparationOnly = fal
       : campaignRivalIntel(encounter.id, run.starter).counterplay
     : scenePending ? 'Next: The aftermath and your reward pack.' : undefined;
   const tools = run && profile && !choosingStarter && !tableOpen ? <CampaignHubTools run={run} profile={profile} busy={busy}
-    soundEnabled={sound.enabled} toggleSound={sound.toggle} newRun={openNewCampaign} reset={openReset} exit={exit}
+    soundEnabled={sound.enabled} toggleSound={sound.toggle} newRun={openNewCampaign} reset={openReset}
     equipRoom={room => void apply(() => equipEnvironment(scope, room), value => { setProfile(value.profile); sound.cue('reward-lock'); })}
     openInBuilder={openInBuilder} /> : null;
 
@@ -417,7 +417,6 @@ export function CampaignMode({ scope, exit, openInBuilder, preparationOnly = fal
       audio={<><button type="button" className="btn quiet" aria-pressed={sound.enabled} onClick={sound.toggle}>Game effects <b>{sound.enabled ? 'On' : 'Off'}</b></button>
         <label className="play-sound-level">FX volume <input type="range" aria-label="Game effects volume" min="0" max="1" step=".05" value={sound.volume} onChange={e => sound.changeVolume(Number(e.target.value))} /></label></>}
       controls={<>
-        {exit && <button className="btn quiet" onClick={exit}>Free Play</button>}
         {error && <button className="btn quiet" onClick={reloadSavedState}>{workerFailed.current ? 'Reload page' : 'Reload saved match'}</button>}
         {!snapshot.view.gameEnded && <button type="button" className="btn danger-ghost" disabled={busy || presentation.playing}
           onClick={() => setConcede(true)}>Concede</button>}

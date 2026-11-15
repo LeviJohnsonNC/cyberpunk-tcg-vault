@@ -70,6 +70,6 @@ export function PackMaterialPreview() {
         <button className="btn" onClick={() => setInspect(undefined)}>Close inspection</button>
         <CampaignFeaturedCard pull={inspect} inspect={() => setInspect(undefined)} />
       </div>}
-    </main> : <CampaignMode key={key} scope={scope} exit={() => setMode('compare')} openInBuilder={() => {}} />}
+    </main> : <CampaignMode key={key} scope={scope} openInBuilder={() => {}} />}
   </div>;
 }

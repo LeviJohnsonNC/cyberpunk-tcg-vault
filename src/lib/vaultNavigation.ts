@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { asPlayMode, type PlayModeId } from './playNavigation';
 
 export const TABS = [
   { id: 'collection', label: 'Collection' },
@@ -10,17 +11,21 @@ export const TABS = [
 ] as const;
 export type PrimaryTab = (typeof TABS)[number]['id'];
 export type TabId = PrimaryTab | 'about' | 'upgrade' | 'shared';
-type Route = { tab: TabId; deck?: string; match?: string };
+type Route = { tab: TabId; deck?: string; match?: string; playMode?: PlayModeId };
 
 const readHash = (): Route => {
   const [path, query] = window.location.hash.replace(/^#\/?/, '').split('?');
   const tab = path === 'about' || path === 'upgrade' || path === 'shared'
     ? path : TABS.find((item) => item.id === path)?.id ?? 'collection';
   const params = new URLSearchParams(query);
-  return { tab, deck: params.get('deck') ?? undefined, match: tab === 'play' ? params.get('match') ?? undefined : undefined };
+  return {
+    tab, deck: params.get('deck') ?? undefined,
+    match: tab === 'play' ? params.get('match') ?? undefined : undefined,
+    playMode: tab === 'play' ? asPlayMode(params.get('mode')) : undefined,
+  };
 };
 
-const scrollKey = ({ tab, deck }: Route) => tab === 'shared' ? `shared:${deck ?? ''}` : tab;
+const scrollKey = ({ tab, deck, playMode }: Route) => tab === 'shared' ? `shared:${deck ?? ''}` : tab === 'play' && playMode ? `play:${playMode}` : tab;
 const phone = () => window.matchMedia('(max-width: 760px)');
 const subscribePhone = (update: () => void) => {
   const query = phone();
@@ -42,7 +47,7 @@ export function useVaultNavigation(scope: string, closeOverlays: () => void) {
     const navigate = () => {
       const next = readHash();
       const current = currentRoute.current;
-      if (next.tab === current.tab && next.deck === current.deck && next.match === current.match) return;
+      if (next.tab === current.tab && next.deck === current.deck && next.match === current.match && next.playMode === current.playMode) return;
       if (mobile) positions.current.set(scrollKey(current), window.scrollY);
       closeOverlays();
       currentRoute.current = next;

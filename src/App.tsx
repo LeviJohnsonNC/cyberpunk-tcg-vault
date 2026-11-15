@@ -16,10 +16,12 @@ import { FeedbackDialog } from './components/Feedback';
 import { MatchRadioContainer } from './lib/play/matchRadio';
 import { MusicPlayer } from './components/MusicPlayer';
 import { MobileVaultNav } from './components/MobileVaultNav';
+import { PlayNavigation } from './components/PlayNavigation';
 import { CURRENCIES, getCurrency, setCurrency, type Currency } from './lib/currency';
 import { clearSampleDraft, newDeck, readDeckDraft, rememberDeckDraft, SAMPLE_DRAFT_OWNER, type DeckDraft } from './lib/deckDraft';
 import { TABS, useVaultNavigation, type TabId } from './lib/vaultNavigation';
 import { playPreviewEnabled } from './lib/play/playPreview';
+import { playHref } from './lib/playNavigation';
 import { readMatchSummary } from './lib/play/matchStorage';
 import { PENDING_DECK_KEY } from './lib/handoff';
 import type { MatchSnapshot, MatchSummary } from './lib/play/protocol';
@@ -49,11 +51,14 @@ export default function App() {
   const showCard = (slug: string, printingId?: string, identify?: boolean, opener?: HTMLElement) => setOpenCard({ slug, printingId, identify, opener });
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const closeOverlays = useCallback(() => {
+    document.querySelectorAll<HTMLElement>('#root .play-nav-menu:popover-open').forEach((popover) => popover.hidePopover());
     document.querySelectorAll<HTMLDialogElement>('#root dialog[open]').forEach((dialog) => dialog.close());
     setOpenCard(null);
     setFeedbackOpen(false);
   }, []);
   const { route, visited, mobile, consumeDeck } = useVaultNavigation(scope, closeOverlays);
+  const playPage = route.tab === 'play';
+  const checkMatch = !mobile || playPage;
   const [playDraft, setPlayDraft] = useState<{ scope: string; draft: DeckDraft; opponent?: DeckDraft['deck']; curatedId?: string }>();
   const [playRival, setPlayRival] = useState<{ scope: string; id: string }>();
   const [matchLookup, setMatchLookup] = useState<{ scope: string; saved?: MatchSummary; failed?: boolean }>();
@@ -85,14 +90,14 @@ export default function App() {
   }, [mobile, demo, toast]);
 
   useEffect(() => {
-    if (!PlayMode || mobile || !store.ready) return;
+    if (!PlayMode || !checkMatch || !store.ready) return;
     let active = true;
     const refresh = async () => {
       try {
         const saved = await readMatchSummary(scope);
         if (!active) return;
         setMatchLookup({ scope, saved });
-        if (saved && !saved.ended && !window.location.hash) window.location.hash = '/play';
+        if (!mobile && saved && !saved.ended && !window.location.hash) window.location.hash = playHref();
       } catch {
         if (active) setMatchLookup((previous) => previous?.scope === scope && previous.saved ? previous : { scope, failed: true });
       }
@@ -103,7 +108,7 @@ export default function App() {
       active = false;
       window.removeEventListener('focus', refresh);
     };
-  }, [mobile, scope, store.ready]);
+  }, [checkMatch, mobile, scope, store.ready]);
 
   useEffect(() => {
     const rail = nav.current;
@@ -120,7 +125,7 @@ export default function App() {
     const observer = new ResizeObserver(showActive);
     observer.observe(rail);
     return () => observer.disconnect();
-  }, [route.tab, mobile]);
+  }, [route.tab, route.playMode, mobile]);
 
   const go = (tab: TabId, deck?: string) => {
     if (tab !== 'play') setPlayDraft(undefined);
@@ -130,7 +135,12 @@ export default function App() {
   function practiceAgainst(opponent: Deck, curatedId?: string) {
     const draft = readDeckDraft(scope) ?? { deck: newDeck(), dirty: false };
     setPlayDraft({ scope, draft: structuredClone(draft), opponent: structuredClone(opponent), curatedId });
-    go('play');
+    window.location.hash = playHref('free');
+  }
+
+  function enterPlayFromNavigation() {
+    setPlayDraft(undefined);
+    menu.current?.close();
   }
 
   function acceptMatch(snapshot: MatchSnapshot, startedDraft?: DeckDraft) {
@@ -156,8 +166,8 @@ export default function App() {
     {CURRENCIES.map((c) => <button key={c} aria-pressed={currency === c} onClick={() => chooseCurrency(c)}>{c}</button>)}
   </span>;
   const showSection = (tab: TabId) => route.tab === tab || (mobile && visited.has(tab));
-  const playPage = route.tab === 'play';
   const desktopPlay = playPage && !mobile;
+  const navPlayMode = route.playMode ?? (route.match ? 'free' : undefined);
   // The browser pathname stays the same when switching Vault screens.
   const analyticsPath = `/${route.tab}`;
 
@@ -172,7 +182,8 @@ export default function App() {
           </a>
           {!mobile && <><nav className="navlinks" aria-label="Sections" ref={nav}>
             {TABS.filter((tab) => tab.id !== 'play' || PlayMode).map((t) => (
-              <button key={t.id} className="navlink" aria-current={route.tab === t.id ? 'page' : undefined} onClick={() => go(t.id)}>
+              t.id === 'play' ? <PlayNavigation key={t.id} active={playPage} mode={navPlayMode} onNavigate={enterPlayFromNavigation} />
+              : <button key={t.id} className="navlink" aria-current={route.tab === t.id ? 'page' : undefined} onClick={() => go(t.id)}>
                 {t.label}
               </button>
             ))}
@@ -217,7 +228,7 @@ export default function App() {
           <section className="vault-menu-setting vault-menu-sound" aria-labelledby="vault-menu-music">
             <h3 id="vault-menu-music">Music</h3><div ref={setMusicContainer} />
           </section>
-          {PlayMode && <button type="button" className="btn quiet vault-menu-feedback" onClick={() => { menu.current?.close(); go('play'); }}>Campaign</button>}
+          {PlayMode && <PlayNavigation active={playPage} mode={navPlayMode} mobile onNavigate={enterPlayFromNavigation} />}
           <button type="button" className="btn quiet vault-menu-feedback" onClick={() => { menu.current?.close(); setFeedbackOpen(true); }}>Send feedback</button>
         </div>
       </dialog>}
@@ -253,26 +264,27 @@ export default function App() {
         {(showSection('builder') || (route.tab === 'play' && (matchDraft || (savedMatch && readDeckDraft(scope))))) && <Activity mode={route.tab === 'builder' ? 'visible' : 'hidden'}><DeckBuilder mobile={mobile} onOpen={showCard} initialDeck={route.tab === 'builder' ? route.deck : undefined} onConsumeDeck={consumeDeck}
           onResume={PlayMode && !mobile && savedMatch ? () => {
             setPlayDraft(undefined);
-            window.location.hash = `/play?match=${encodeURIComponent(savedMatch.matchId)}`;
+            window.location.hash = playHref('free', savedMatch.matchId);
           } : undefined} resumeEnded={savedMatch?.ended}
           onPlayAgainst={PlayMode && !mobile ? (draft) => {
             setPlayDraft({ scope, draft: structuredClone(draft), opponent: structuredClone(draft.deck) });
-            go('play');
+            window.location.hash = playHref('free');
           } : undefined}
           onPlay={PlayMode && !mobile ? (draft) => {
             setPlayDraft({ scope, draft: structuredClone(draft) });
-            go('play');
+            window.location.hash = playHref('free');
           } : undefined} /></Activity>}
         {showSection('meta') && <Activity mode={route.tab === 'meta' ? 'visible' : 'hidden'}><MetaIntel onPlayAgainst={PlayMode && !mobile ? practiceAgainst : undefined} onOpen={showCard} openInBuilder={(id) => go('builder', id)} goAdd={() => go('add')} /></Activity>}
         {route.tab === 'add' && <AddCards onOpen={showCard} onSignIn={requestSignIn} />}
         {route.tab === 'about' && <HowItWorks openFeedback={() => setFeedbackOpen(true)} />}
         {route.tab === 'upgrade' && <UpgradePlanner onOpen={showCard} />}
         {route.tab === 'shared' && <SharedDeck onPlayAgainst={PlayMode && !mobile ? practiceAgainst : undefined} token={route.deck} onOpen={showCard} goAdd={() => go('add')} />}
-        {route.tab === 'play' && (PlayMode && store.ready && (mobile || matchInfo)
+        {playPage && (PlayMode && store.ready && matchInfo
           ? <Suspense fallback={<p className="callout" role="status">Opening Play Mode…</p>}>
             <MatchRadioContainer.Provider value={desktopPlay ? setMatchRadioContainer : undefined}>
-              <PlayMode key={scope} scope={scope} preparationOnly={mobile} draft={matchDraft} saved={savedMatch} requestedMatch={route.match}
-                onLeaveMatch={() => { if (route.match) window.location.replace('#/play'); }}
+              <PlayMode key={scope} scope={scope} mode={route.playMode} preparationOnly={mobile} draft={matchDraft} saved={savedMatch}
+                matchUnavailable={matchInfo.failed} requestedMatch={route.match}
+                onLeaveMatch={() => { if (route.match) window.location.replace(playHref('free')); }}
                 initialRival={playRival?.scope === scope ? playRival.id : undefined}
                 savedDecks={store.decks} initialOpponent={playHandoff?.opponent} initialCuratedId={playHandoff?.curatedId}
                 rememberRival={(id) => setPlayRival({ scope, id })} onCheckpoint={acceptMatch} onEdit={returnToDraft}
@@ -290,7 +302,7 @@ export default function App() {
                 }} />
             </MatchRadioContainer.Provider>
           </Suspense>
-          : PlayMode && (!store.ready || (!mobile && !matchInfo)) ? <p className="callout" role="status">Checking for a saved match…</p>
+          : PlayMode && (!store.ready || !matchInfo) ? <p className="callout" role="status">Checking for saved play progress…</p>
           : <section className="panel">
             <h1 className="panel-title">Play Mode</h1>
             <p>{!PlayMode ? 'Play Mode is currently in preview.'

@@ -16,6 +16,8 @@ import { PlayTable } from './PlayTable';
 import { useTableSound } from './useTableSound';
 import { useMatchPresentation } from './useMatchPresentation';
 import { useRivalDialogue, useRivalDialoguePreference } from './useRivalDialogue';
+import { rememberPlayMode, type PlayModeId } from '../lib/playNavigation';
+import { PlayLanding } from './PlayLanding';
 import './play-mode.css';
 import './play-tactics.css';
 import './circuit.css';
@@ -28,7 +30,8 @@ type Client = Awaited<ReturnType<typeof openPlayMatch>>;
 type Confirm = 'replace' | 'restart' | 'concede';
 
 type Props = {
-  scope: string; draft?: DeckDraft; saved?: MatchSummary; initialRival?: string; initialOpponent?: Deck; initialCuratedId?: string; savedDecks: Deck[]; rememberRival: (id: string) => void;
+  scope: string; mode?: PlayModeId; draft?: DeckDraft; saved?: MatchSummary; matchUnavailable?: boolean;
+  initialRival?: string; initialOpponent?: Deck; initialCuratedId?: string; savedDecks: Deck[]; rememberRival: (id: string) => void;
   requestedMatch?: string; onLeaveMatch: () => void;
   onCheckpoint: (snapshot: MatchSnapshot, draft?: DeckDraft) => void; onEdit: () => void; onCampaignDeck: (deck: Deck) => void;
   onFreePlayReset: () => void; preparationOnly?: boolean;
@@ -36,27 +39,15 @@ type Props = {
 
 export default function PlayMode(props: Props) {
   const [freePlaySession, setFreePlaySession] = useState(0);
-  const handoff = !!(props.draft || props.initialOpponent || props.saved && props.requestedMatch === props.saved.matchId);
-  const [mode, setMode] = useState<'campaign' | 'free'>(() => {
-    if (handoff) return 'free';
-    try {
-      const remembered = localStorage.getItem(`cptv.playMode:${props.scope}`);
-      if (remembered === 'free' || remembered === 'campaign') return remembered;
-    } catch { /* Use the current saved match when preferences are unavailable. */ }
-    return props.saved && !props.saved.ended ? 'free' : 'campaign';
-  });
-  useEffect(() => { if (handoff) try { localStorage.setItem(`cptv.playMode:${props.scope}`, 'free'); } catch { /* optional preference */ } }, [handoff, props.scope]);
-  const choose = (next: 'campaign' | 'free') => {
-    if (next === 'campaign') props.onLeaveMatch();
-    setMode(next);
-    try { localStorage.setItem(`cptv.playMode:${props.scope}`, next); } catch { /* optional preference */ }
-  };
-  return <>{!props.preparationOnly && <nav className="play-mode-tabs" aria-label="Play mode"><button className="btn" aria-current={mode === 'campaign' ? 'page' : undefined} onClick={() => choose('campaign')}>Campaign</button><button className="btn" aria-current={mode === 'free' ? 'page' : undefined} onClick={() => choose('free')}>Free Play</button>{mode === 'campaign' && <span className="play-mode-explainer">Grow an official starter through nine matches and earn a new room.</span>}</nav>}
-    {props.preparationOnly || mode === 'campaign' ? <CampaignMode scope={props.scope} preparationOnly={props.preparationOnly}
-      exit={props.preparationOnly ? undefined : () => choose('free')} openInBuilder={props.onCampaignDeck} /> : <FreePlayMode {...props} key={freePlaySession} onFreePlayReset={() => {
-      props.onFreePlayReset();
-      setFreePlaySession(session => session + 1);
-    }} />}</>;
+  const mode = props.mode ?? (props.draft || props.initialOpponent || props.requestedMatch ? 'free' : undefined);
+  useEffect(() => { if (mode) rememberPlayMode(props.scope, mode); }, [mode, props.scope]);
+  if (!mode) return <PlayLanding scope={props.scope} saved={props.saved} matchUnavailable={props.matchUnavailable} mobile={props.preparationOnly} />;
+  if (mode === 'campaign') return <CampaignMode scope={props.scope} preparationOnly={props.preparationOnly} openInBuilder={props.onCampaignDeck} />;
+  if (props.preparationOnly) return <section className="panel play-landing"><h1 className="panel-title">Free Play</h1><p>Open the Vault on a desktop to play a match.</p></section>;
+  return <FreePlayMode {...props} key={freePlaySession} onFreePlayReset={() => {
+    props.onFreePlayReset();
+    setFreePlaySession(session => session + 1);
+  }} />;
 }
 
 function FreePlayMode({ scope, draft, saved, requestedMatch, initialRival, initialOpponent, initialCuratedId, savedDecks, rememberRival, onCheckpoint, onEdit, onFreePlayReset, onLeaveMatch }: Props) {

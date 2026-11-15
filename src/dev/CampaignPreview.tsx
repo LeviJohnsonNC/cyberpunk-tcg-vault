@@ -84,12 +84,12 @@ export function Preview() {
   return <><nav style={{ padding: 12, display: 'flex', flexWrap: 'wrap', gap: 8, background: 'var(--color-canvas-deep)', position: 'relative', zIndex: 2 }} aria-label="QA fixtures"><strong>Visual QA · Fixture data</strong><button className="btn quiet" onClick={() => setStarter(starter === 'the-heist' ? 'embracing-power' : 'the-heist')}>{starter}</button>{['start', 'retry', 'pack', 'chase pack', 'material common', 'recruit', 'workshop', 'act2', 'act3', 'finale', 'complete'].map(state => <button className="btn quiet" key={state} onClick={() => void load(state)}>{state}</button>)}
     <label htmlFor="qa-contract">Contract <VaultSelect id="qa-contract" value={String(contract)} onValueChange={value => setContract(Number(value))}
       options={ENCOUNTERS.map((encounter, index) => ({ value: String(index), label: `${index + 1}. ${encounter.title}` }))} /></label>
-    <button className="btn quiet" onClick={() => void load('contract')}>Load contract</button><button className="btn quiet" onClick={() => setShowReport('win')}>Win report</button><button className="btn quiet" onClick={() => setShowReport('loss')}>Loss report</button><span role="status">{error}</span></nav>{showReport ? <ReportPreview key={`${contract}:${showReport}`} contract={contract} outcome={showReport} openPack={() => void load('chase pack')} /> : <CampaignMode key={key} scope={scope} exit={() => setError('Free Play navigation requested.')} openInBuilder={() => setError('Deck Builder handoff requested.')} />}</>;
+    <button className="btn quiet" onClick={() => void load('contract')}>Load contract</button><button className="btn quiet" onClick={() => setShowReport('win')}>Win report</button><button className="btn quiet" onClick={() => setShowReport('loss')}>Loss report</button><span role="status">{error}</span></nav>{showReport ? <ReportPreview key={`${contract}:${showReport}`} contract={contract} outcome={showReport} openPack={() => void load('chase pack')} /> : <CampaignMode key={key} scope={scope} openInBuilder={() => setError('Deck Builder handoff requested.')} />}</>;
 }
 if (import.meta.env.DEV || import.meta.env.VAULT_PLAY_PREVIEW) {
   const params = new URLSearchParams(location.search);
   const opener = params.has('opener');
   createRoot(document.getElementById('root')!).render(params.has('decisions') ? <PlayDecisionPreview /> : params.has('materials') ? <PackMaterialPreview /> : opener
-    ? <CampaignMode scope="qa:campaign-opener" exit={() => location.assign('./campaign-preview.html')} openInBuilder={() => {}} />
+    ? <CampaignMode scope="qa:campaign-opener" openInBuilder={() => {}} />
     : <Preview />);
 }
