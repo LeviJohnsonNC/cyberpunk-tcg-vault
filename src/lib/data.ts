@@ -59,6 +59,7 @@ export interface RecommendedDeck {
   name: string;
   kind: 'budget' | 'meta' | 'brew';
   source: string;
+  sourceUrl?: string;
   base?: string;
   colors: Color[];
   archetype: string;

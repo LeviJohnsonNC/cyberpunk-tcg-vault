@@ -5,7 +5,7 @@ Repo: `cyberpunk-tcg-vault`. A Night City-styled collection tracker, price book 
 - **Collection:** the full card database (152 cards, every printing) with search, sort and filters (colour, type, rarity, cost, sell tag) and one-click quantity edits.
 - **Price book:** TCGplayer market prices in USD or CAD (toggle in the header), with value by rarity and colour, a price-confidence flag on every card, trade-binder extras and CSV export.
 - **Deck builder:** pick a three-Legend crew and see per-colour RAM limits enforced live. It checks 40-50 card decks, the 3-copy cap and the 7-card sideboard, and shows the cost curve, sellable count, which cards you own versus need, and the CAD cost to finish the deck.
-- **Meta intel:** a rules primer, recent public deck data, 12 curated decks across all four colours with a "decks I can build" filter (all / 80%+ owned / fully owned), and **Built from your vault**: an instant, deterministic auto-builder that tries every Legend crew you own and returns the best three legal decks, with optional steering (colours, style, must-include cards) and priced upgrade suggestions. Signed-in users can **Refine with AI**: a language model tunes one build against your full pool and explains the game plan, mulligan and swaps. The model only proposes; the server repairs and re-validates its list, so the result is always legal and built from cards you own. Prices always come from our data, never the model.
+- **Meta intel:** a rules primer, recent public deck data, 17 curated decks across all four colours with a "decks I can build" filter (all / 80%+ owned / fully owned), and **Built from your vault**: an instant, deterministic auto-builder that tries every Legend crew you own and returns the best three legal decks, with optional steering (colours, style, must-include cards) and priced upgrade suggestions. Signed-in users can **Refine with AI**: a language model tunes one build against your full pool and explains the game plan, mulligan and swaps. The model only proposes; the server repairs and re-validates its list, so the result is always legal and built from cards you own. Prices always come from our data, never the model.
 - **Music:** an optional soundtrack player (never autoplays). Tracks live in `public/music/`, listed in `src/lib/playlist.ts`.
 - **Demo mode:** try everything with a sample collection, no sign-in, nothing saved.
 - **Feedback:** an in-app form (stored in Supabase) plus a How it works page.
@@ -23,7 +23,7 @@ Repo: `cyberpunk-tcg-vault`. A Night City-styled collection tracker, price book 
 | Front end | React 19 + Vite + TypeScript, hand-rolled CSS on shared tokens (`src/theme.css`, see `docs/design-system.md`) |
 | Auth + data | Supabase (Postgres + RLS) |
 | Photo scan | Vercel serverless function (`api/scan.ts`) → OpenRouter vision model |
-| Card, price and community deck data | Daily GitHub Actions refresh committed to `src/data/` |
+| Card, price and community deck data | Daily GitHub Actions refresh committed to `src/data/`. The refresh logs the five most popular community crews without a curated list. |
 
 ## Run locally
 

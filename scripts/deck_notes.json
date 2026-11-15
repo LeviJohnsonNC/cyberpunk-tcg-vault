@@ -338,5 +338,166 @@
   "weaknesses": "Low top end. Struggles once the Rival lands 8+ power Units.",
   "kind": "meta",
   "source": "Adapted from \"Ganger Surge Assault\", a featured community list on ExBurst."
+ },
+ "baby-girl-bbg": {
+  "confidence": "High · published tournament list",
+  "source": "Silverwolfen · 1st, Amberg Night City Showdown · Nov 14, 2026",
+  "summary": "Jackie makes small Gigs pay off, Hanako rewards matching their values, and Alt turns those same Gigs into cheaper Programs. This list buys time with removal before converting its extra cards into attacks.",
+  "plan": [
+   "Call Jackie early when a Blue Unit can turn a friendly Gig into a min Gig. Use Trust No One when it creates a meaningful draw or discount.",
+   "Use Peace Offering to make value-pairs for Hanako. Sequence Three Mouths, One Desire after making min Gigs and Alt’s discount before the expensive Program it will pay for.",
+   "Hold Pyramid Song for a min d4 and Towerfall for when your Street Cred is lower. Use Maman Brigitte on unequipped Units and preserve enough Programs to pay her discard.",
+   "Once the field is manageable, lead with a Program to let Jacked-In Voodoo Boy attack. Use Pepe when a value-pair lets the attack ready your Merc Legends."
+  ],
+  "mulligan": "Keep an early Blue Unit, a cheap sellable Program, and a way to set up min Gigs or draw. Send back hands stacked with expensive answers and no early play.",
+  "keyCards": [
+   [
+    "trust-no-one",
+    "Creates a min Gig and replaces itself when you control one."
+   ],
+   [
+    "three-mouths-one-desire",
+    "Turns min Gigs into extra cards."
+   ],
+   [
+    "pyramid-song",
+    "A min d4 unlocks both removal modes."
+   ],
+   [
+    "towerfall",
+    "Lower Street Cred unlocks both halves of the board clear."
+   ]
+  ],
+  "weaknesses": "Only 11 Units. Early attackers can pressure the thin board, and Gear protects targets from Maman Brigitte. High-power threats often need multiple effects.",
+  "kind": "meta",
+  "sourceUrl": "https://nightcitytracker.com/deck/01a1daae-cb26-77ec-9b0f-d98183cc5acf"
+ },
+ "smasher-river-viktor": {
+  "confidence": "High · published tournament list",
+  "source": "AnthonyGT · 1st, OtterCity Showdown · Nov 14, 2026",
+  "summary": "Viktor finds cheap Gear, River deploys it at Quick speed, and the equipped board holds until an Adrenaline Unit or Smasher can break through.",
+  "plan": [
+   "Call Viktor early when you need fuel. Sell spare Gear and use River to deploy another piece at Quick speed.",
+   "Put Mandibular Upgrade on a Unit worth keeping active as a blocker. Use Zetatech Faceplate to draw when your Gig values are all different and to set up mixed parity for Bootleg Black Sapphire Show.",
+   "Keep Adrenaline Converter’s two-Gig deficit condition in mind. Use Smasher’s Go Solo to remove a blocker and attack on the same turn."
+  ],
+  "mulligan": "Keep a cheap Gear, an early Unit, and enough sellable cards to develop the board. Ship hands with multiple finishers and no early play.",
+  "keyCards": [
+   [
+    "zetatech-faceplate",
+    "Turns spending an equipped card into Gig adjustment and can draw."
+   ],
+   [
+    "adrenaline-converter",
+    "Gives the equipped card Adrenaline when the rival leads by two or more Gigs."
+   ],
+   [
+    "mandibular-upgrade",
+    "Turns a body into a blocker."
+   ],
+   [
+    "bootleg-black-sapphire-show",
+    "Sells the top card and draws two when you have both even and odd Gigs."
+   ]
+  ],
+  "weaknesses": "Gear needs a suitable host. Removal that dodges combat can strand attachments, and Converter stops giving Adrenaline once the Gig deficit closes.",
+  "kind": "meta",
+  "sourceUrl": "https://nightcitytracker.com/deck/01a1db81-7d45-757e-ba5f-ade0c34d1a97"
+ },
+ "smasher-muamar-river": {
+  "confidence": "High · published tournament list",
+  "source": "Inza · 1st, Distrito Zero Bilbao Night City Showdown · Nov 14, 2026",
+  "summary": "Muamar protects a key fighter or draws a card on Call. River supplies cheap attachments, and MaxTac plus efficient Red Units let you set the terms of combat.",
+  "plan": [
+   "Develop a low-cost Unit and sell Gear you can spare. Use River to play cheap Gear when it changes a fight or supports your next turn.",
+   "Use Muamar’s Call protection to set up an important fight. Hold Safety Override when you expect a Unit to lose a fight and you can trade up.",
+   "Use MaxTac to slow same-turn attackers. When you are behind on Gigs, Adrenaline Converter can turn a fresh Unit into immediate pressure."
+  ],
+  "mulligan": "Keep a cheap Unit with a sellable Gear or Program and a follow-up threat. Return hands with expensive threats and reactive cards but no early board.",
+  "keyCards": [
+   [
+    "safety-override",
+    "Lets a friendly Unit take down an opposing fighter even when it loses combat."
+   ],
+   [
+    "maxtac-suppression-team",
+    "Keeps rival Units from attacking the turn they enter."
+   ],
+   [
+    "adrenaline-converter",
+    "Turns a two-Gig deficit into immediate attacks."
+   ],
+   [
+    "satori-sword-of-saburo",
+    "Refills your hand when the equipped Unit wins a fight."
+   ]
+  ],
+  "weaknesses": "Much of the interaction depends on bodies and combat. Removal that avoids fights can leave attachments without a host and the deck short on pressure.",
+  "kind": "meta",
+  "sourceUrl": "https://nightcitytracker.com/deck/01a1db2f-954b-7ae2-b05d-2c4d523b24e1"
+ },
+ "smasher-saburo-streetkid": {
+  "confidence": "High · published tournament list",
+  "source": "SquareDonut · 1st, AnGer Hobbystore Night City Showdown · Nov 14, 2026",
+  "summary": "Saburo raises Arasaka attack power, V recovers a Braindance Program, and Yorinobu brings an extra body into play. Riot Shield buys time for your stronger turns.",
+  "plan": [
+   "Use the opening turns to sell spare Gear and get an early body down. Call V when his trash-and-recover effect gives you a useful Braindance Program.",
+   "Use Riot Shield to block or tax opposing Go Solo. Pair Gigs for Pepe and look for the Street Cred condition before committing Gunpoint Diplomacy.",
+   "Use Yorinobu to recover a cheap Unit from the trash or deploy one from hand. Check whether Saburo’s attack bonus crosses a ten-power Gig-steal threshold."
+  ],
+  "mulligan": "Keep at least two sellables and a Unit you can develop on curve. Prefer an early blocker against fast Gear decks and avoid hands full of expensive Arasaka Units.",
+  "keyCards": [
+   [
+    "yorinobu-arasaka-steel-dragon",
+    "Brings a small Unit back from the trash or out of your hand."
+   ],
+   [
+    "riot-shield",
+    "Adds Blocker and raises the rival’s Go Solo cost."
+   ],
+   [
+    "gunpoint-diplomacy",
+    "Can open attacks into ready Units and push combat power."
+   ],
+   [
+    "carnage-at-the-colosseum",
+    "Rewards high Gigs and a strong friendly Unit with cheaper removal."
+   ]
+  ],
+  "weaknesses": "Several answers need a friendly Unit or favorable Street Cred. BBG can deny those conditions and return key Units to the deck.",
+  "kind": "meta",
+  "sourceUrl": "https://nightcitytracker.com/deck/01a1daef-026d-789c-a31a-094f16ba7622"
+ },
+ "smasher-padre-streetkid": {
+  "confidence": "High · published tournament list",
+  "source": "art3mis · 1st, SCUM Night City Showdown · Nov 14, 2026",
+  "summary": "Padre can spend a blocker or draw on Call, then copy a Gig value later. Industrial Assembly sets up high Gigs for Carnage while Peace Offering and Pepe reward pairs.",
+  "plan": [
+   "Develop a blocker and keep selling spare Programs or Gear. Use Padre’s Call to open an attack or to draw when the board is stable.",
+   "Raise a Gig to eight or more with Industrial Assembly when that discounts Carnage or gives you a draw. Use Peace Offering or Padre’s Spend when a value-pair is the stronger payoff.",
+   "Clear the path with Carnage or Bonnie and Clyde, then turn high-power Units or a Smasher Go Solo attack into multiple stolen Gigs."
+  ],
+  "mulligan": "Keep an affordable Unit with two sellables. Against slower decks, keep a Gig enabler if the rest of the hand already develops a board.",
+  "keyCards": [
+   [
+    "industrial-assembly",
+    "Creates or preserves an eight-plus Gig and can draw a card."
+   ],
+   [
+    "peace-offering",
+    "Copies a Gig value and replaces itself when you control a pair."
+   ],
+   [
+    "carnage-at-the-colosseum",
+    "High Gigs reduce its cost and a large friendly Unit gives it better targets."
+   ],
+   [
+    "memory-relapse",
+    "Keeps a rival Unit spent through its next ready step and can draw."
+   ]
+  ],
+  "weaknesses": "The deck spends time and cards setting Gig values. A rival can disrupt those values or remove your strongest Unit before Carnage turns that setup into board control.",
+  "kind": "meta",
+  "sourceUrl": "https://nightcitytracker.com/deck/01a1db41-80da-7556-ba52-a1e5e22b8dd0"
  }
 }

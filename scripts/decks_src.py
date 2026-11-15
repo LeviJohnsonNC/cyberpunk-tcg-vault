@@ -6,7 +6,13 @@ sample=json.load(open(pathlib.Path(__file__).parent.parent/'public/imports/levi-
 slug2d={c['slug']:c['display'] for c in cards.values()}
 owned={}
 for e in sample['entries']: owned[slug2d[e['slug']]]=owned.get(slug2d[e['slug']],0)+e['qty']
-def cad(n): r=prices['ref'].get(cards[n]['slug']); return round(r['usd']*FX,2) if r else 0
+def cad(n):
+    quotes = [prices['printings'].get(p['id'], {}) for p in cards[n]['printings']]
+    for basis in ('market', 'low'):
+        amounts = [q[basis] for q in quotes if q.get(basis) is not None]
+        if amounts:
+            return round(min(amounts) * FX, 2)
+    return 0
 DECKS=[
 dict(id='lowball-netrun',name='Lowball Netrun',tier='owned',colors=['Blue'],archetype='Mono Blue tempo-control',
  legends=['Jackie Welles: Pour One Out For Me','Alt Cunningham: Soulkiller Architect','V: Corporate Exile'],
@@ -77,6 +83,48 @@ dict(id='ganger-surge',name='Ganger Surge',tier='meta',colors=['Blue','Red'],arc
  cards={'Floor It':3,'Reboot Optics':3,"Dying Night: V's Pistol":3,'Mox Inciters':3,'Chrome Reverie':3,'All is Lost':3,'Mantis Blades':3,
   'Satori: Sword of Saburo':3,'La Llorona: Ghost of the Past':3,'Over the Edge':3,'6th Street Recruits':3,
   'Meredith Stout: Stone Cold Corpo':3,"Royce: Don't Call Me Simon":2,'Screw: Lovelorn Fool':2}),
+dict(id='baby-girl-bbg',name='Baby Girl (BBG Control)',tier="meta",colors=['Blue', 'Green'],archetype='Blue/Green min-Gig control',
+ legends=['Alt Cunningham: Soulkiller Architect', 'Hanako Arasaka: Daughter of the Emperor', 'Jackie Welles: Pour One Out For Me'],
+ cards={
+  'Jacked-In Voodoo Boy':3,'Pepe Najarro: Working Doubles':3,'Lizzy Wizzy: Delicate Weapon':2,'Maman Brigitte: Spirit of Death':3,
+  'Floor It':2,'Peace Offering':3,'Trust No One':3,'Take Control':2,
+  'Three Mouths, One Desire':3,'Chrome Reverie':3,'Nocturne OP55 N1':3,'Pyramid Song':3,
+  'Memory Relapse':2,'Les Élémens':3,'Towerfall':2,
+ }),
+dict(id='smasher-river-viktor',name='Smasher Gear (River / Viktor)',tier="meta",colors=['Red', 'Yellow'],archetype='Red/Yellow Gear midrange',
+ legends=['Adam Smasher: Ender of Legends', 'River Ward: Detective on the Hunt', 'Viktor Vektor: Sit Down and Relax'],
+ cards={
+  'Sketchy Ripper':2,'Dexter DeShawn: One Last Chance':2,'La Llorona: Ghost of the Past':2,'6th Street Recruits':2,
+  'Meredith Stout: Stone Cold Corpo':2,'MaxTac Suppression Team':1,'Heywood Ripperdoc':1,'Johnny Silverhand: Never Stop Fighting':3,
+  'Mandibular Upgrade':3,'Mantis Blades':3,'Adrenaline Converter':3,'Arasaka Emergency Radioport':2,
+  'Satori: Sword of Saburo':3,'Zetatech Faceplate':3,'Gorilla Arms':1,'Detonate':1,
+  'Live with the Aftermath':3,'Bootleg Black Sapphire Show':3,
+ }),
+dict(id='smasher-muamar-river',name='Smasher Gear (Muamar / River)',tier="meta",colors=['Red', 'Yellow'],archetype='Red/Yellow Gear combat',
+ legends=['Adam Smasher: Ender of Legends', 'Muamar Reyes: El Capitán', 'River Ward: Detective on the Hunt'],
+ cards={
+  'Augmented Negotiators':2,'Dexter DeShawn: One Last Chance':2,'6th Street Recruits':3,'Meredith Stout: Stone Cold Corpo':2,
+  'MaxTac Suppression Team':3,'Jackie Welles: Ride or Die Choom':1,'Johnny Silverhand: Never Stop Fighting':3,'Mantis Blades':3,
+  'Adrenaline Converter':3,'Satori: Sword of Saburo':3,'Zetatech Faceplate':3,'Detonate':2,
+  'Safety Override':3,'Live with the Aftermath':3,'Over the Edge':2,'Bootleg Black Sapphire Show':2,
+ }),
+dict(id='smasher-saburo-streetkid',name='Smasher / Saburo / Streetkid',tier="meta",colors=['Red', 'Green'],archetype='Red/Green Arasaka midrange',
+ legends=['Adam Smasher: Ender of Legends', 'Saburo Arasaka: Stubborn Patriarch', 'V: Streetkid'],
+ cards={
+  '6th Street Recruits':1,'Maelstrom Zealots':2,'Meredith Stout: Stone Cold Corpo':2,'Pepe Najarro: Working Doubles':3,
+  "Royce: Don't Call Me Simon":1,'Animals Wrecker':2,'Johnny Silverhand: Never Stop Fighting':2,'Yorinobu Arasaka: Steel Dragon':3,
+  'Mantis Blades':3,'Arasaka Emergency Radioport':1,'Riot Shield':2,'Satori: Sword of Saburo':3,
+  'Detonate':2,'Peace Offering':2,'Bonnie and Clyde':3,'Gunpoint Diplomacy':2,
+  'Memory Relapse':3,'Carnage at the Colosseum':3,
+ }),
+dict(id='smasher-padre-streetkid',name='Smasher / Padre / Streetkid',tier="meta",colors=['Red', 'Green'],archetype='Red/Green Gig midrange',
+ legends=['Adam Smasher: Ender of Legends', 'Padre: Man of the Cross', 'V: Streetkid'],
+ cards={
+  '6th Street Recruits':2,'Maelstrom Zealots':1,'Meredith Stout: Stone Cold Corpo':3,'Pepe Najarro: Working Doubles':3,
+  'Animals Wrecker':2,'Johnny Silverhand: Never Stop Fighting':1,'Yorinobu Arasaka: Steel Dragon':3,'Mantis Blades':3,
+  'Satori: Sword of Saburo':3,'Detonate':1,'Industrial Assembly':3,'Peace Offering':3,
+  'Synapse Burnout':3,'Bonnie and Clyde':3,'Memory Relapse':3,'Carnage at the Colosseum':3,
+ }),
 ]
 ok=True
 for d in DECKS:
@@ -109,6 +157,8 @@ for d in DECKS:
     rec.update(legends=[cards[l]['slug'] for l in d['legends']],cards={cards[k]['slug']:v for k,v in d['cards'].items()},
       kind=n['kind'],source=n['source'],confidence=n['confidence'],summary=n['summary'],plan=n['plan'],mulligan=n['mulligan'],
       keyCards=[{'slug':s_,'why':w} for s_,w in n['keyCards']],weaknesses=n['weaknesses'])
+    if n.get('sourceUrl'):
+        rec['sourceUrl'] = n['sourceUrl']
     assert all(kc['slug'] in {c['slug'] for c in cards.values()} for kc in rec['keyCards']), d['id']
     out.append(rec)
 if ok: json.dump(out,open(pathlib.Path(__file__).parent.parent/'src/data/decks.json','w'),ensure_ascii=False,indent=1)
