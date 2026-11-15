@@ -73,7 +73,7 @@ function UnspecifiedPrinting({ card, entry, onMoved }: { card: Card; entry: Entr
   );
 }
 
-function ArtworkViewer({ card, printing, onClose }: { card: Card; printing: Printing; onClose: () => void }) {
+function ArtworkViewer({ card, printing, touchOpening, onClose }: { card: Card; printing: Printing; touchOpening: boolean; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const node = dialog.current;
@@ -86,7 +86,7 @@ function ArtworkViewer({ card, printing, onClose }: { card: Card; printing: Prin
       onCancel={(event) => event.stopPropagation()}
       onClick={(event) => { if (event.target === event.currentTarget) dialog.current?.close(); }}>
       <button type="button" className="iconbtn" aria-label="Close artwork" onClick={() => dialog.current?.close()}>×</button>
-      <PrintingArt foil="inspection" slug={card.slug} printingId={printing.id} alt={`${card.display}, ${printingLabel(printing.id)}`} />
+      <PrintingArt foil="inspection" glintOnOpen={touchOpening} slug={card.slug} printingId={printing.id} alt={`${card.display}, ${printingLabel(printing.id)}`} />
     </dialog>
   );
 }
@@ -97,12 +97,13 @@ function CardDetails({ card, onClose, initialPrinting, identify }: { card: Card;
   const { slug } = card;
   const { entries, collectionReady } = useStore();
   const [printingId, setPrintingId] = useState(() => (card.printings.find((p) => p.id === initialPrinting) ?? defaultPrinting(card)).id);
-  const [artworkOpen, setArtworkOpen] = useState(false);
+  const [artworkOpening, setArtworkOpening] = useState<'touch' | 'standard' | null>(null);
   const remembered = useRef<Partial<Record<PrintingVariant, string>>>({});
   const drawer = useRef<HTMLDialogElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const identifyHeading = useRef<HTMLHeadingElement>(null);
   const artworkTrigger = useRef<HTMLButtonElement>(null);
+  const artworkTouchPress = useRef(false);
   const printing = card.printings.find((p) => p.id === printingId) ?? defaultPrinting(card);
   const variant = printingVariant(printing);
   const variants = printingVariants(card.printings);
@@ -182,7 +183,16 @@ function CardDetails({ card, onClose, initialPrinting, identify }: { card: Card;
         <section className="card-drawer-preview" aria-label="Selected printing">
           <div className="card-drawer-art">
             <button ref={artworkTrigger} type="button" className="card-drawer-art-button" aria-label={`Enlarge artwork for ${artAlt}`}
-              aria-haspopup="dialog" onClick={() => setArtworkOpen(true)}>
+              aria-haspopup="dialog"
+              onPointerDown={event => { artworkTouchPress.current = event.pointerType === 'touch'; }}
+              onPointerCancel={() => { artworkTouchPress.current = false; }}
+              onClick={event => {
+                // WebKit can report a touch activation click as a mouse even after a touch pointerdown.
+                const pointerType = (event.nativeEvent as PointerEvent).pointerType;
+                const touch = pointerType === 'touch' || (event.detail > 0 && artworkTouchPress.current);
+                artworkTouchPress.current = false;
+                setArtworkOpening(touch ? 'touch' : 'standard');
+              }}>
               <PrintingArt foil="standard" key={printing.id} slug={slug} printingId={printing.id} alt="" inline />
             </button>
           </div>
@@ -265,8 +275,8 @@ function CardDetails({ card, onClose, initialPrinting, identify }: { card: Card;
           </dl>
         </details>
       </div>
-      {artworkOpen && <ArtworkViewer card={card} printing={printing} onClose={() => {
-        setArtworkOpen(false);
+      {artworkOpening && <ArtworkViewer card={card} printing={printing} touchOpening={artworkOpening === 'touch'} onClose={() => {
+        setArtworkOpening(null);
         artworkTrigger.current?.focus({ preventScroll: true });
       }} />}
     </dialog>

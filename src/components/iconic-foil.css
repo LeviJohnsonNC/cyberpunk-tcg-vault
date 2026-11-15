@@ -1,4 +1,4 @@
-/* The foil is a lighting layer over the exact card face. Keep its palette local to the material. */
+/* Lighting sits over the loaded printing. Keep ornament inside the card's edge. */
 .iconic-art {
   position: relative;
   isolation: isolate;
@@ -10,68 +10,134 @@
   height: 100%;
 }
 .iconic-foil {
-  --foil-sheen: .6;
-  --foil-rim: .83;
-  --foil-edge-size: 1px;
-  --foil-prism: 0;
   position: absolute;
   inset: 0;
   z-index: 1;
   border-radius: inherit;
   pointer-events: none;
-  box-shadow: inset 0 0 0 1px rgb(218 239 231 / .5);
+  --foil-grain: .15;
+  --foil-prism: .39;
+  --foil-specular: .36;
+  --foil-rim: .95;
+  --foil-edge-size: 1.3px;
+  --foil-rest-x: 78%;
+  --foil-rest-y: 34%;
 }
 .iconic-foil::before, .iconic-foil::after {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  pointer-events: none;
 }
 .iconic-foil::before {
+  inset: 12% 5% 43%;
+  background: url('../assets/iconic-foil-grain.png') repeat 0 0 / 53px 53px;
+  opacity: var(--foil-grain);
+}
+.iconic-foil-light {
+  position: absolute;
+  inset: 14% 7% 45%;
+  overflow: hidden;
+  clip-path: ellipse(50% 50% at 50% 50%);
+}
+.iconic-foil-light::before, .iconic-foil-light::after {
+  content: '';
+  position: absolute;
+}
+.iconic-foil-light::before {
+  inset: 0;
   background:
-    radial-gradient(ellipse 13% 57% at calc(var(--foil-x, 77%) + 15%) calc(var(--foil-y, 31%) + 2%),
-      rgb(161 229 255 / calc(var(--foil-prism) * .5)), rgb(180 150 253 / calc(var(--foil-prism) * .39)) 27%,
-      rgb(255 134 185 / calc(var(--foil-prism) * .29)) 46%, rgb(255 225 155 / calc(var(--foil-prism) * .22)) 65%, transparent 100%),
-    radial-gradient(ellipse 22% 67% at var(--foil-x, 77%) var(--foil-y, 31%),
-      rgb(255 245 224 / .32), rgb(254 216 139 / .22) 33%, rgb(255 171 195 / .10) 66%, transparent 100%),
-    radial-gradient(ellipse 22% 58% at calc(var(--foil-x, 77%) + 10%) calc(var(--foil-y, 31%) + 9%),
-      rgb(109 246 208 / .24), rgb(142 214 252 / .12) 51%, transparent 100%),
-    radial-gradient(ellipse 15% 58% at 2% 41%, rgb(237 116 191 / .20), transparent 100%),
-    linear-gradient(166deg, rgb(190 222 236 / .10) 0%, transparent 24%),
-    url('../assets/iconic-foil-grain.png') repeat;
-  background-size: auto, auto, auto, auto, auto, 53px 53px;
-  opacity: var(--foil-sheen);
-  /* Printed rules occupy the lower face. The material is strongest above them. */
-  mask-image: linear-gradient(#000 0 45%, rgb(0 0 0 / .55) 63%, rgb(0 0 0 / .17) 83%, rgb(0 0 0 / .27));
+    radial-gradient(ellipse 21% 39% at calc(var(--foil-x, var(--foil-rest-x)) + 7%) calc(var(--foil-y, var(--foil-rest-y)) - 6%),
+      rgb(97 249 219 / .69), rgb(104 218 255 / .44) 33%, transparent 100%),
+    radial-gradient(ellipse 17% 32% at calc(var(--foil-x, var(--foil-rest-x)) - 6%) var(--foil-y, var(--foil-rest-y)),
+      rgb(229 126 190 / .63), rgb(173 130 246 / .49) 42%, transparent 100%),
+    radial-gradient(ellipse 21% 41% at calc(var(--foil-x, var(--foil-rest-x)) + 5%) calc(var(--foil-y, var(--foil-rest-y)) + 15%),
+      rgb(255 206 121 / .82), rgb(255 233 173 / .33) 49%, transparent 100%),
+    radial-gradient(ellipse 17% 21% at 11% 36%, rgb(248 95 167 / .56), rgb(176 103 236 / .26) 41%, transparent 100%);
+  opacity: var(--foil-prism);
+}
+.iconic-foil-light::after {
+  left: var(--foil-x, var(--foil-rest-x));
+  top: var(--foil-y, var(--foil-rest-y));
+  width: 23%;
+  height: 88%;
+  transform: translate(-50%, -50%) rotate(13deg);
+  background: linear-gradient(90deg, transparent 1%, rgb(255 139 199 / .25) 25%,
+    rgb(255 228 177 / .49) 43%, rgb(253 244 226 / .68) 53%, rgb(186 249 249 / .39) 65%, transparent 100%);
+  opacity: var(--foil-specular);
+}
+/* Limit the strong face light to the illustration and soften it before the name and rules. */
+@supports (mask-image: linear-gradient(#000, transparent)) {
+  .iconic-foil::before {
+    inset: 0;
+    mask-image: radial-gradient(ellipse 50% 42% at 67% 32%, #000 0%, rgb(0 0 0 / .44) 52%, transparent 100%);
+  }
+  .iconic-foil-light {
+    inset: 0;
+    clip-path: none;
+    mask-image: radial-gradient(ellipse 59% 41% at 51% 30%, #000 0 47%, rgb(0 0 0 / .78) 62%,
+      rgb(0 0 0 / .22) 85%, transparent 100%);
+  }
 }
 .iconic-foil::after {
-  border: var(--foil-edge-size) solid rgb(223 234 224 / .72);
+  border: var(--foil-edge-size) solid rgb(222 234 231 / .76);
   opacity: var(--foil-rim);
 }
 @supports (mask-composite: exclude) {
   .iconic-foil::after {
     padding: var(--foil-edge-size);
     border: 0;
-    background: linear-gradient(142deg, #ecf7fa 0%, #96dce3 14%, #a696c8 30%, #e8cbd3 45%,
-      #faf2d5 54%, #d3e4bc 68%, #98ccc8 83%, #e2f2f4 100%);
+    background:
+      radial-gradient(ellipse 29% 12% at 94% 2%, #fff7df, transparent),
+      radial-gradient(ellipse 24% 15% at 6% 98%, #daf7ff, transparent),
+      linear-gradient(143deg, #becad6 0%, #e6f7f9 11%, #88bcc8 22%, #af90c1 36%, #edb6cb 48%,
+        #eed3a5 59%, #f1ede4 67%, #93bdc4 84%, #e3e7ed 100%);
     mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     mask-composite: exclude;
   }
 }
 
-.iconic-foil[data-foil-mode='compact'] { --foil-sheen: .29; --foil-rim: .86; }
-.iconic-foil[data-foil-mode='standard'] { --foil-sheen: .54; --foil-edge-size: 1.5px; }
-.iconic-foil[data-foil-mode='inspection'] { --foil-sheen: .70; --foil-edge-size: 2.5px; --foil-prism: .58; }
+.iconic-foil[data-foil-mode='standard'] {
+  --foil-grain: .26;
+  --foil-prism: .47;
+  --foil-specular: .46;
+  --foil-edge-size: 1.5px;
+}
+.iconic-foil[data-foil-mode='inspection'] {
+  --foil-grain: .36;
+  --foil-prism: .72;
+  --foil-specular: .58;
+  --foil-edge-size: 2.25px;
+}
 .card-drawer-art-button .iconic-foil, .card-art-viewer .iconic-foil { border-radius: 8px; }
-.collection-printing-thumb .iconic-foil::before, .pb-printing-thumb .iconic-foil::before { opacity: .11; }
+:is(.collection-printing-thumb, .pb-printing-thumb) .iconic-foil {
+  --foil-grain: .035;
+  --foil-specular: .13;
+  --foil-edge-size: 1px;
+}
 
+@media (prefers-reduced-motion: no-preference) {
+  .iconic-foil[data-foil-mode='inspection'][data-foil-glint] .iconic-foil-light::after {
+    animation: iconic-foil-glint 510ms ease-out;
+  }
+}
+@keyframes iconic-foil-glint {
+  0% { transform: translate(-166%, -44%) rotate(13deg); opacity: .10; }
+  48% { opacity: .83; }
+  100% { transform: translate(-50%, -50%) rotate(13deg); opacity: var(--foil-specular); }
+}
 @media (prefers-reduced-motion: no-preference) and (any-hover: hover) {
   .iconic-inspection-art {
     transform: perspective(850px) rotateX(var(--foil-tilt-x, 0deg)) rotateY(var(--foil-tilt-y, 0deg));
     transition: transform 160ms ease-out;
   }
   .iconic-inspection-art[data-foil-active] { transition-duration: 70ms; }
-  .iconic-art[data-foil-active] > .iconic-foil[data-foil-mode='standard'] { --foil-sheen: .64; }
-  .iconic-art[data-foil-active] > .iconic-foil[data-foil-mode='inspection'] { --foil-sheen: .77; --foil-prism: 1; }
+  .iconic-art[data-foil-active] > .iconic-foil[data-foil-mode='standard'] {
+    --foil-prism: .55;
+    --foil-specular: .56;
+  }
+  .iconic-art[data-foil-active] > .iconic-foil[data-foil-mode='inspection'] {
+    --foil-prism: .91;
+    --foil-specular: .70;
+  }
 }
