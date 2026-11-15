@@ -36,7 +36,7 @@ function observeArt(element: Element, load: (visible: boolean) => void) {
   };
 }
 
-export function PrintingArt({ slug, printingId, alt, pocket = false, inline = false, foil = 'compact', fallback, placeholder, onReady }: { slug: string; printingId: string; alt: string; pocket?: boolean; inline?: boolean; foil?: FoilMode; fallback?: ReactNode; placeholder?: string; onReady?: (src: string) => void }) {
+export function PrintingArt({ slug, printingId, alt, pocket = false, inline = false, foil = 'compact', glintOnOpen = false, fallback, placeholder, onReady }: { slug: string; printingId: string; alt: string; pocket?: boolean; inline?: boolean; foil?: FoilMode; glintOnOpen?: boolean; fallback?: ReactNode; placeholder?: string; onReady?: (src: string) => void }) {
   const image = useRef<HTMLImageElement>(null);
   const [ready, setReady] = useState<{ printingId: string; src: string }>();
   const [art, setArt] = useState<{ printingId: string; src: string | null }>();
@@ -69,7 +69,7 @@ export function PrintingArt({ slug, printingId, alt, pocket = false, inline = fa
   const src = loading ? null : art.src;
   const foilMode = foil !== 'off' && isIconicPrinting(printingId) ? foil : undefined;
   const loaded = !!src && ready?.printingId === printingId && ready.src === src;
-  const surface = foilMode && loaded ? <IconicFoil mode={foilMode} /> : null;
+  const surface = foilMode && loaded ? <IconicFoil mode={foilMode} glintOnOpen={glintOnOpen} /> : null;
   const foilClass = surface ? ' iconic-art' : '';
   const img = (
     <img

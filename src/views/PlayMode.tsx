@@ -9,8 +9,6 @@ import { freePlaySkillKey } from '../lib/play/freePlayPreferences';
 import { type CircuitProgress, type TableFinish } from '../lib/play/circuit';
 import { openPlayMatch, resumePlayMatch } from '../lib/play/matchClient';
 import type { MatchSnapshot, MatchSummary, Move, RivalSkill } from '../lib/play/protocol';
-import { visibleCards } from '../lib/play/matchView';
-import { preloadFaces } from '../lib/play/cardArt';
 import { freePlayRivalProfile } from '../lib/play/freePlayDialogue';
 import { rivalDialogueLine, rivalResult } from '../lib/play/rivalDialogue';
 import { FreePlayRivalSeat } from './FreePlayRivalSeat';
@@ -142,11 +140,6 @@ function FreePlayMode({ scope, draft, saved, requestedMatch, initialRival, initi
   useLayoutEffect(() => {
     if (matchId) window.scrollTo({ top: 0, behavior: 'instant' });
   }, [matchId, lobby]);
-
-  // The whole rival turn arrives at once. Warm its art before the moves play.
-  useEffect(() => {
-    if (snapshot) preloadFaces([snapshot.view, ...(snapshot.presentation?.beats ?? []).map((beat) => beat.view)].flatMap(visibleCards));
-  }, [snapshot]);
 
   useEffect(() => () => {
     generation.current++;

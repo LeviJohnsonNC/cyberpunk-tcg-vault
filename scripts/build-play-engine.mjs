@@ -57,8 +57,12 @@ try {
   const code = chunk.code.replace(/^\/\/ .*vault-engine-[^/]+\/(submodules\/.*)$/gm, '// upstream/$1');
   writeFileSync(join(vendor, 'engine.mjs'), `/*! Generated from tcg-engines ${revision}\n\n${notices}\n*/\n${code}`);
   const { createCardCatalog } = await import(pathToFileURL(join(vendor, 'engine.mjs')).href + `?build=${Date.now()}`);
-  const supported = [...createCardCatalog().entries()].map(([, card]) => card).filter(card => card.legality === 'legal').map(card => card.slug).sort();
+  const legal = [...createCardCatalog().entries()].map(([, card]) => card).filter(card => card.legality === 'legal')
+    .sort((a, b) => a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0);
+  const supported = legal.map(card => card.slug);
   writeFileSync(join(vendor, 'card-slugs.json'), JSON.stringify(supported, null, 2) + '\n');
+  const art = Object.fromEntries(legal.flatMap(card => card.imageUrl ? [[card.slug, card.imageUrl]] : []));
+  writeFileSync(join(vendor, 'card-art.json'), JSON.stringify(art, null, 2) + '\n');
 
 } finally {
   rmSync(checkout, { recursive: true, force: true });

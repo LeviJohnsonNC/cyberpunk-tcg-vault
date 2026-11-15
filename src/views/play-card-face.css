@@ -1,0 +1,46 @@
+.play-face-placeholder {
+  --face-accent: var(--color-ticket-muted);
+  display: block;
+  position: relative;
+  container-type: inline-size;
+  min-width: 0;
+  aspect-ratio: 5 / 7;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--face-accent) 65%, transparent);
+  border-radius: inherit;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--face-accent) 20%, var(--color-canvas-deep)), var(--color-canvas-deep) 65%);
+  color: var(--color-ticket);
+  text-align: start;
+}
+.play-face-placeholder[data-color="Blue"] { --face-accent: var(--color-card-blue); }
+.play-face-placeholder[data-color="Green"] { --face-accent: var(--color-card-green); }
+.play-face-placeholder[data-color="Red"] { --face-accent: var(--color-card-red); }
+.play-face-placeholder[data-color="Yellow"] { --face-accent: var(--color-card-yellow); }
+.play-face-placeholder > .play-face-content {
+  position: absolute;
+  inset: 7%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2px;
+}
+.play-face-placeholder .play-face-content > strong {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  font: 800 clamp(8px, 14cqi, 26px)/.98 var(--font-display);
+  text-transform: uppercase;
+}
+.play-face-type, .play-face-stats {
+  color: var(--face-accent);
+  font: 600 clamp(6px, 9cqi, 12px)/1 var(--font-mono);
+  text-transform: uppercase;
+}
+.play-face-content .play-face-stats { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 4px; }
+@container (width < 45px) {
+  .play-face-placeholder .play-face-content > strong { -webkit-line-clamp: 2; }
+  .play-face-content :is(.play-face-type, .play-face-stats) { display: none; }
+}

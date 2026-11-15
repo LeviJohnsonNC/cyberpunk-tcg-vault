@@ -18,7 +18,6 @@ import { useTableDrag } from './useTableDrag';
 import { useTableMotion } from './useTableMotion';
 import { useMatchOpening } from './useMatchOpening';
 import { useMatchSound } from './useMatchSound';
-import { imageUrl } from '../lib/data';
 import { beatPace } from '../lib/play/matchMotion';
 import type { TableCue } from '../lib/play/tableSound';
 import { Rules } from '../components/bits';
@@ -82,7 +81,7 @@ function ContextMenu({ context, children, close }: { context: Context; children:
   const card = context.card.faceDown ? undefined : vaultCard(context.card);
   return createPortal(<div ref={ref} className="play-card-menu" role="dialog" aria-label={`Actions for ${context.card.cardName ?? 'Legend slot'}`}>
     <div className="play-card-menu-title">
-      {card && <img src={imageUrl(card.slug)} alt="" onError={event => { event.currentTarget.hidden = true; }} />}
+      {card && <CardFace card={context.card} />}
       <strong>{context.card.cardName ?? 'Face-down Legend'}</strong>
       <button type="button" className="btn quiet" aria-label="Close card actions" onClick={close}>×</button>
     </div>
@@ -373,7 +372,6 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
           else showMenu(card, event.currentTarget, intents);
         }}>
         <span className="play-card-art"><CardFace card={card} />
-          {printing && <span className="play-art-fallback" aria-hidden="true"><b>{name}</b>{printing.type}</span>}
           {power != null && <span className="play-power" aria-hidden="true">{power}</span>}
           {repriced && <span className="play-cost" aria-hidden="true">{cost} €$</span>}
           {!legendSlot && state && <small>{visibleRole ?? state}</small>}
