@@ -173,7 +173,7 @@ export function CuratedDecks({ onOpen, openInBuilder, onPlayAgainst }: { onOpen:
                       <div>
                         <h4>Mulligan</h4><p>{d.mulligan}</p>
                         <h4>Weak spots</h4><p>{d.weaknesses}</p>
-                        <h4>Source</h4><p>{d.source}</p>
+                        <h4>Source</h4><p>{d.sourceUrl ? <a href={d.sourceUrl} target="_blank" rel="noreferrer">{d.source}</a> : d.source}</p>
                         <p><b>Editorial confidence</b> · {d.confidence}</p>
                         {base && <p><b>Upgrade of</b> · {base}</p>}
                       </div>

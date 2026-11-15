@@ -90,10 +90,25 @@ export async function collectCommunityMeta(cards, now = new Date(), loadPage = f
   };
 }
 
+export function uncoveredCommunityCrews(stats, curated, limit = 5) {
+  const covered = new Set(curated.map(({ legends }) => [...legends].sort().join('/')));
+  return Object.entries(stats.crews)
+    .filter(([crew]) => !covered.has(crew))
+    .sort(([a, countA], [b, countB]) => countB - countA || a.localeCompare(b, 'en'))
+    .slice(0, limit);
+}
+
 export async function refreshCommunityMeta(cards) {
+  const curated = JSON.parse(await readFile(new URL('decks.json', DATA), 'utf8'));
   const stats = await collectCommunityMeta(cards);
   await writeFile(new URL('community-meta.json', DATA), JSON.stringify(stats, null, 2) + '\n');
   console.log(`Community meta updated from ${stats.deckCount} Constructed decks through ${stats.asOf}.`);
+  const names = new Map(cards.map(({ slug, display }) => [slug, display]));
+  const uncovered = uncoveredCommunityCrews(stats, curated);
+  if (uncovered.length) console.log('Most popular crews without a curated deck:');
+  for (const [crew, count] of uncovered) {
+    console.log(`  ${count}/${stats.deckCount} · ${crew.split('/').map(slug => names.get(slug) ?? slug).join(' / ')}`);
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
