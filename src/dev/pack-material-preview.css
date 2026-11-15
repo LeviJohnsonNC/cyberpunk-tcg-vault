@@ -1,7 +1,6 @@
 .material-preview-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; padding: 9px 12px; background: #150d18; color: #f6dca9; }
 .material-preview-tools strong { font-size: 12px; }
 .material-preview-tools .btn { padding: 5px 8px; min-height: 30px; font-size: 12px; }
-.material-preview-tools select { background: #241a27; color: #f6dca9; }
 .material-comparison { --tabletop-feature-width: 210px; padding: 28px 4vw 36px; }
 .material-comparison h1 { font-size: 46px; }
 .material-comparison > p { color: var(--color-ticket); max-width: 70ch; }

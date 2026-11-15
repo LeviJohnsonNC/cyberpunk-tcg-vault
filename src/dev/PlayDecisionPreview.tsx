@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { VaultSelect } from '../components/VaultSelect';
 import { PlayTable } from '../views/PlayTable';
 import { useMatchPresentation } from '../views/useMatchPresentation';
 import { CampaignRivalSeat } from '../views/CampaignRivalDossier';
@@ -31,7 +32,9 @@ export function PlayDecisionPreview() {
   return <div className="decision-preview" data-reduced={reduced || undefined}>
     <nav className="decision-preview-tools" aria-label="Decision fixtures">
       <button className="btn quiet" onClick={() => setExpanded(!expanded)}>{expanded ? 'Hide test controls' : 'Show test controls'}</button>
-      {expanded && <><strong>Engine fixtures · isolated test saves</strong><label>Position <select value={name} onChange={e => load(e.target.value as DecisionFixture)}>{decisionFixtures.map(item => <option key={item}>{item}</option>)}</select></label>
+      {expanded && <><strong>Engine fixtures · isolated test saves</strong>
+        <label htmlFor="qa-position">Position <VaultSelect id="qa-position" value={name} onValueChange={value => load(value as DecisionFixture)}
+          options={decisionFixtures.map(item => ({ value: item, label: item }))} /></label>
         <button className="btn quiet" onClick={() => load(name)}>Reset fixture</button><button className="btn quiet" onClick={() => { setFixture(resumeDecisionFixture()); setError(''); }}>Resume saved fixture</button>
         <label><input type="checkbox" checked={campaign} onChange={e => setCampaign(e.target.checked)} />Campaign presentation</label>
         <label><input type="checkbox" checked={reduced} onChange={e => { presentation.playback?.skip(); setReduced(e.target.checked); }} />Reduced motion</label>

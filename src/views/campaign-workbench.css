@@ -87,10 +87,11 @@
 .campaign-workbench-search-field::before, .campaign-workbench-search-field::after { position: absolute; content: ''; pointer-events: none; color: var(--color-text-muted); }
 .campaign-workbench-search-field::before { width: 11px; height: 11px; border: 1.5px solid currentColor; border-radius: 50%; inset: 13px auto auto 12px; }
 .campaign-workbench-search-field::after { width: 6px; height: 1.5px; background: currentColor; inset: 25px auto auto 23px; rotate: 45deg; }
-.campaign-workbench-search :is(input,select), .campaign-crew-editor select {
+.campaign-workbench-search input {
   width: 100%;
   min-height: 41px;
   padding: 5px 10px;
+  padding-inline-start: 36px;
   border: 1px solid var(--color-divider);
   border-radius: 5px;
   color: var(--color-text);
@@ -98,7 +99,11 @@
   font: inherit;
   font-size: 14px;
 }
-.campaign-workbench-search input { padding-inline-start: 36px; }
+.campaign-workbench-search .vault-select-trigger, .campaign-crew-editor .vault-select-trigger { min-height: 41px; font-size: 14px; }
+.campaign-crew-editor .vault-select-trigger { width: 100%; }
+@media (pointer: coarse) {
+  .campaign-workbench-search .vault-select-trigger, .campaign-crew-editor .vault-select-trigger { min-height: 44px; }
+}
 .campaign-workbench-results {
   max-height: max(245px, calc(100svh - var(--campaign-board-shell, 0px) - clamp(228px, 30vh, 335px)));
   overflow: auto;
@@ -224,6 +229,15 @@
 .campaign-crew-editor-slots > div { display: grid; justify-items: start; align-content: start; gap: 7px; min-width: 0; }
 .campaign-crew-editor-slots label { color: var(--color-ticket); font: 700 17px var(--font-display); }
 .campaign-crew-editor-slots small { color: var(--color-text-muted); }
+.campaign-crew-editor-slots .vault-select-trigger { height: 50px; padding: var(--space-1) var(--space-2); }
+.campaign-crew-editor-slots .vault-select-value {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
 .campaign-crew-editor-impact { padding-left: 18px; border-left: 1px solid var(--color-divider); }
 .campaign-crew-editor-impact h3 { margin: 0; color: var(--color-ticket); font: 800 28px/.95 var(--font-display); }
 .campaign-crew-warning { color: var(--color-ticket); }
@@ -283,6 +297,7 @@
   .campaign-workbench-search-field { flex-basis: 100%; }
   .campaign-workbench-filters .btn { min-height: 36px; padding-inline: 8px; font-size: 12px; }
   .campaign-crew-refill > div { flex-wrap: wrap; }
+  .campaign-crew-editor-slots .vault-select-trigger { gap: var(--space-1); font-size: 12px; }
   .campaign-workbench-results { max-height: none; overflow: visible; scrollbar-gutter: auto; padding-inline: 2px; }
   .campaign-crew-editor-impact { padding: 0; border: 0; }
 }

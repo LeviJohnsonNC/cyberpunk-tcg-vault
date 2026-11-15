@@ -13,6 +13,7 @@ The Vault's visual language. It's named for the Afterlife, the Night City merc b
 | `src/theme.css` | All tokens + self-hosted font imports |
 | `src/styles.css` | App shell and shared classes (panels, buttons, chips, inputs, tables, tags, drawer, deck-builder and meta pieces, toasts) |
 | `src/components/ui.tsx` + `ui.css` | Shared Afterlife components: `Masthead`, `MetricStrip`, `ConfirmDialog` |
+| `src/components/VaultSelect.tsx` + `vault-select.css` | Shared single-choice dropdown trigger, menu and option states |
 | `src/components/DeleteCollection.tsx` | Destructive flow pattern (button + confirm + backup) |
 | `src/views/pricebook.css` | Price Book-only pieces (marquee, holdings grid, rail) |
 
@@ -81,6 +82,7 @@ Fonts are self-hosted via `@fontsource` packages (imported in `theme.css`), so t
 | **Confirm dialog** | `<ConfirmDialog>` (`ui.tsx`) | Native `<dialog>`: focus trap, Esc and backdrop cancel, Cancel focused first. `tone="danger"` gives a red top rule and title. Use for every destructive action; offer an undo path (e.g. a backup download). |
 | **Panel** | `.panel`, `.panel.hot`, `.panel-title` | Quiet surface. `.hot` adds a cream top rule for the primary panel on a screen. Titles in condensed display caps; `.aside` for mono metadata on the right. |
 | **Buttons** | `.btn` (primary pink), `.btn.quiet` (neutral), `.btn.ghost` (pink outline), `.btn.danger` / `.btn.danger-ghost` | One primary per area. Destructive actions are always danger-ghost until confirmed. |
+| **Dropdowns** | `<VaultSelect>` (`VaultSelect.tsx`) | Single-choice fields, filters and sorts. Dark trigger, chevron, plum menu and pink highlight and selection mark. |
 | **Marquee** | `.pb-marquee` | Clipped corners, pink gradient, conic sunburst, halftone mask, SVG skyline, tilted card in a cream frame, cream ticket label. Fed by real data; has loading, empty and missing-art states. |
 | **Ticket** | `.pb-ticket` | Small cream label, mono caps, rotate(-2deg), hard ink shadow. |
 | **Metric strip** | `.pb-strip` (a `<dl>`) | Cream band, dashed dividers, label + context line on the left, display number on the right. Stacks vertically on phones. |
@@ -91,6 +93,14 @@ Fonts are self-hosted via `@fontsource` packages (imported in `theme.css`), so t
 | **View tabs** | `ViewTabs` and `.al-view-tabs` in shared UI | A pink selected state and a consistent focus ring for peer views. Arrow keys, Home and End switch tabs. |
 | **Action feedback** | `.al-action-feedback` | Put the result beside the action, including the destination or updated quantity when it matters. Use text and colour together. |
 | **Binder pockets** | `CollectionBinder` + `collection.css` | Full card artwork in quiet, aligned sleeves. The printing, owned count, and value sit below the image. The cream result strip anchors both Binder and List. |
+
+### Dropdowns
+
+Use `VaultSelect` for single-choice dropdowns throughout the Vault, including filters, drawers and modal dialogs. Give each control a visible label linked with `htmlFor` and `id`, or an `aria-label` when the surrounding UI makes the purpose clear. Use a labeled empty-value option for a selectable reset such as **All types**. Use a `placeholder` for a prompt before the user chooses a value.
+
+Keep trigger and menu appearance in the shared component. Screen CSS can set width, density and alignment. On laptop and phone widths, check the closed trigger and opened menu, long option names, selected and disabled states, keyboard selection, and Escape returning focus to the trigger. Inside a dialog, the menu must stay above its content and Escape must close the menu first.
+
+`npm run lint` rejects raw `<select>` JSX and runs in Vercel preview and production builds. The Price Book filters and card drawer history are reference implementations.
 
 ## Responsive behaviour
 

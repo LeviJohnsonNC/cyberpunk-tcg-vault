@@ -3,6 +3,7 @@
   "ignorePatterns": ["vendor/cyberpunk-engine/engine.mjs"],
   "plugins": ["react", "typescript", "oxc"],
   "rules": {
+    "react/forbid-elements": ["error", { "forbid": [{ "element": "select", "message": "Use VaultSelect from src/components/VaultSelect.tsx. See docs/design-system.md." }] }],
     "react/rules-of-hooks": "error",
     "react/only-export-components": ["warn", { "allowConstantExport": true }]
   }

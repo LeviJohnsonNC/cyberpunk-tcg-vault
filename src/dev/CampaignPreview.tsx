@@ -3,6 +3,7 @@ import { PackMaterialPreview } from './PackMaterialPreview';
 import { PlayDecisionPreview } from './PlayDecisionPreview';
 import { createRoot } from 'react-dom/client';
 import { useState } from 'react';
+import { VaultSelect } from '../components/VaultSelect';
 import { CampaignMatchResult } from '../views/CampaignMatchResult';
 import { BY_SLUG } from '../lib/data';
 import type { CardView, PlayerView } from '../lib/play/protocol';
@@ -80,9 +81,10 @@ export function Preview() {
       setKey(value => value + 1); setError(''); setShowReport(undefined);
     } catch (cause) { setError(String(cause)); }
   }
-  return <><nav style={{ padding: 12, display: 'flex', flexWrap: 'wrap', gap: 8, background: 'var(--color-canvas-deep)', position: 'relative', zIndex: 2 }} aria-label="QA fixtures"><strong>Visual QA · Fixture data</strong><button className="btn quiet" onClick={() => setStarter(starter === 'the-heist' ? 'embracing-power' : 'the-heist')}>{starter}</button>{['start', 'retry', 'pack', 'chase pack', 'material common', 'recruit', 'workshop', 'act2', 'act3', 'finale', 'complete'].map(state => <button className="btn quiet" key={state} onClick={() => void load(state)}>{state}</button>)}<label>Contract <select value={contract} onChange={event => setContract(Number(event.target.value))}>
-    {ENCOUNTERS.map((encounter, index) => <option key={encounter.id} value={index}>{index + 1}. {encounter.title}</option>)}
-  </select></label><button className="btn quiet" onClick={() => void load('contract')}>Load contract</button><button className="btn quiet" onClick={() => setShowReport('win')}>Win report</button><button className="btn quiet" onClick={() => setShowReport('loss')}>Loss report</button><span role="status">{error}</span></nav>{showReport ? <ReportPreview key={`${contract}:${showReport}`} contract={contract} outcome={showReport} openPack={() => void load('chase pack')} /> : <CampaignMode key={key} scope={scope} exit={() => setError('Free Play navigation requested.')} openInBuilder={() => setError('Deck Builder handoff requested.')} />}</>;
+  return <><nav style={{ padding: 12, display: 'flex', flexWrap: 'wrap', gap: 8, background: 'var(--color-canvas-deep)', position: 'relative', zIndex: 2 }} aria-label="QA fixtures"><strong>Visual QA · Fixture data</strong><button className="btn quiet" onClick={() => setStarter(starter === 'the-heist' ? 'embracing-power' : 'the-heist')}>{starter}</button>{['start', 'retry', 'pack', 'chase pack', 'material common', 'recruit', 'workshop', 'act2', 'act3', 'finale', 'complete'].map(state => <button className="btn quiet" key={state} onClick={() => void load(state)}>{state}</button>)}
+    <label htmlFor="qa-contract">Contract <VaultSelect id="qa-contract" value={String(contract)} onValueChange={value => setContract(Number(value))}
+      options={ENCOUNTERS.map((encounter, index) => ({ value: String(index), label: `${index + 1}. ${encounter.title}` }))} /></label>
+    <button className="btn quiet" onClick={() => void load('contract')}>Load contract</button><button className="btn quiet" onClick={() => setShowReport('win')}>Win report</button><button className="btn quiet" onClick={() => setShowReport('loss')}>Loss report</button><span role="status">{error}</span></nav>{showReport ? <ReportPreview key={`${contract}:${showReport}`} contract={contract} outcome={showReport} openPack={() => void load('chase pack')} /> : <CampaignMode key={key} scope={scope} exit={() => setError('Free Play navigation requested.')} openInBuilder={() => setError('Deck Builder handoff requested.')} />}</>;
 }
 if (import.meta.env.DEV || import.meta.env.VAULT_PLAY_PREVIEW) {
   const params = new URLSearchParams(location.search);

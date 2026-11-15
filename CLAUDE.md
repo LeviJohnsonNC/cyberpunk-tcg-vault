@@ -32,6 +32,7 @@ Run `npm run check` (lint + tests + typecheck/build) before committing. Tests li
 
 - Tokens live in `src/theme.css`. Use semantic tokens (`--color-*`, `--font-*`, `--space-*`, `--cut-*`); never hardcode hex values in components.
 - Build screens from the shared pieces: `Masthead`, `MetricStrip`, `ConfirmDialog` (`src/components/ui.tsx`) and the classes in `src/styles.css`.
+- Use `VaultSelect` (`src/components/VaultSelect.tsx`) for single-choice dropdowns. Lint rejects raw `<select>` elements. Review the opened menu as well as the trigger, including inside dialogs.
 - The Price Book (`src/views/PriceBook.tsx`, `src/views/pricebook.css`) is the reference implementation.
 - Destructive actions go through `ConfirmDialog` (see `DeleteCollection.tsx`).
 - Play Mode's table (`PlayTable.tsx`, `PlayMat.tsx`, `play-table.css`) is sized by `--play-card-width` and never scrolls. Movement between zones comes from `useTableMotion.ts`, planned by the pure, tested `src/lib/play/matchMotion.ts`: it reads only the player's filtered views and public beats, and is skipped under reduced motion. Every table piece needs `data-card-id` inside a `data-zone`; piles and the rival hand are `data-anchor` targets.
