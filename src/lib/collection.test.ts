@@ -18,13 +18,24 @@ describe('collection binder model', () => {
   });
 
   it('chooses a stable cover for mixed holdings and keeps unknown copies unpriced', () => {
-    const entries = [holding(unspecifiedId(card.slug), 3), holding(iconic.id, 2), holding(retail.id, 2)];
-    const row = collectionCard(card, entries, 7);
-    expect(row.cover?.printingId).toBe(retail.id);
-    expect(collectionCard(card, [...entries].reverse(), 7).cover).toEqual(row.cover);
+    const entries = [holding(unspecifiedId(card.slug), 3), holding(iconic.id, 2), holding(retail.id, 5)];
+    const row = collectionCard(card, entries, 10);
+    expect(row.cover?.printingId).toBe(iconic.id);
+    expect(collectionCard(card, [...entries].reverse(), 10).cover).toEqual(row.cover);
     expect(row.exact).toBeNull();
     expect(row.unknownCopies).toBe(3);
-    expect(row.value).toEqual({ copies: 7, unpriced: 3, knownCad: 2 * (valueHolding(iconic.id)!.cad + valueHolding(retail.id)!.cad) });
+    expect(row.value).toEqual({ copies: 10, unpriced: 3, knownCad: 2 * valueHolding(iconic.id)!.cad + 5 * valueHolding(retail.id)!.cad });
+  });
+
+  it('showcases a Judge-stamped printing from its event set without needing a price', () => {
+    const maman = BY_SLUG.get('maman-brigitte-spirit-of-death')!;
+    const standard = maman.printings.find((p) => p.num === '118')!;
+    const judge = maman.printings.find((p) => p.num === '037')!;
+    const nova = maman.printings.find((p) => p.num === '015')!;
+    const entries = [standard, nova, judge].map((printing) => ({ slug: maman.slug, printingId: printing.id, qty: 1 }));
+    expect(collectionCard(maman, entries, 3).cover?.printingId).toBe(judge.id);
+    expect(collectionCard(maman, entries.slice(0, 2), 2).cover?.printingId).toBe(nova.id);
+    expect(collectionCard(maman, [entries[0], { ...entries[2], qty: 0 }], 1).cover?.printingId).toBe(standard.id);
   });
 
   it('keeps unknown owned values last in both directions and separates buy estimates', () => {

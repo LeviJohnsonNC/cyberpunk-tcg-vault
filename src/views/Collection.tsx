@@ -5,6 +5,7 @@ import { collectionCard, collectionValue, compareCollection, type CollectionCard
 import { getCurrency, money, moneyOr } from '../lib/currency';
 import { useStore, type Entry } from '../lib/store';
 import { CardImg, Pip, RarityBadge } from '../components/bits';
+import { PrintingArt } from '../components/PrintingArt';
 import { Masthead, MetricStrip } from '../components/ui';
 import { DeleteCollection } from '../components/DeleteCollection';
 import { VaultSelect } from '../components/VaultSelect';
@@ -96,12 +97,16 @@ function CollectionList({ items, sort, setSort, onOpen }: {
         </thead>
         <tbody>
           {items.map((item) => {
-            const { card, qty, value, quote } = item;
+            const { card, qty, value, quote, cover, unknownCopies } = item;
+            const open = (opener?: HTMLElement) => onOpen(card.slug, cover?.printingId, !cover && unknownCopies > 0, opener);
             return (
-              <tr key={card.slug} className={qty ? undefined : 'unowned'} onClick={(e) => onOpen(card.slug, undefined, undefined, e.currentTarget.querySelector('button.cname') ?? undefined)}>
-                <td className="collection-art-cell"><CardImg className="thumb collection-thumb" slug={card.slug} alt="" /></td>
+              <tr key={card.slug} className={qty ? undefined : 'unowned'} onClick={(e) => open(e.currentTarget.querySelector('button.cname') ?? undefined)}>
+                <td className="collection-art-cell">{cover
+                  ? <span className="collection-thumb collection-printing-thumb"><PrintingArt slug={card.slug} printingId={cover.printingId} alt="" pocket /></span>
+                  : <CardImg className="thumb collection-thumb" slug={card.slug} alt="" />}
+                </td>
                 <td>
-                  <button className="cname" onClick={(e) => { e.stopPropagation(); onOpen(card.slug, undefined, undefined, e.currentTarget); }}>{card.name}</button>
+                  <button className="cname" onClick={(e) => { e.stopPropagation(); open(e.currentTarget); }}>{card.name}</button>
                   {card.sub && <div className="csub">{card.sub}</div>}
                 </td>
                 <td className="hide-sm"><Pip color={card.color} /></td>
