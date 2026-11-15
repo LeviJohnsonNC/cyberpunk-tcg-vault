@@ -1,37 +1,62 @@
 import { describe, expect, it } from 'vitest';
 import { archiveQuotes, priceSnapshot, retainDaily, retainWeekly, weekStart } from '../../scripts/price-history.mjs';
-import { priceTrend, type PriceSnapshot } from './priceTrend';
+import { priceTrend } from './priceTrend';
+import type { DailyPriceArchive, PriceSnapshot } from './priceSnapshots';
 import type { Line } from './pricebook';
 
 const line = (printingId: string, qty: number) => ({ entry: { printingId, qty } }) as Line;
 const snapshot = (date: string, quotes: PriceSnapshot['quotes']): PriceSnapshot => ({ date, quotes });
 
 describe('price trend', () => {
-  it('holds quantities and each quote source fixed through the Retail transition', () => {
-    const lines = [line('retail', 3), line('stable', 2), line('listing', 1), line('unpriced', 1)];
-    const old = snapshot('2026-10-14', { beta: [100, 80], stable: [50, 25], listing: [null, 200] });
-    const latest = snapshot('2026-11-13', { retail: [900, 800], beta: [110, 85], stable: [65, 30], listing: [500, 210], unpriced: [300, 200] });
-    const result = priceTrend(lines, [old, latest], latest, { retail: 'beta' });
-    expect(result).toMatchObject({ covered: 6, proxies: 3, listings: 1, start: '2026-10-14', end: '2026-11-13' });
-    expect(result.points).toEqual([
-      { date: '2026-10-14', cents: 600 },
-      { date: '2026-10-21', cents: null },
-      { date: '2026-10-28', cents: null },
-      { date: '2026-11-04', cents: null },
-      { date: '2026-11-13', cents: 670 },
+  it('adds exact Retail market quotes when they appear and compares the same copies at both ends', () => {
+    const lines = [line('retail', 3), line('stable', 2), line('listing', 1)];
+    const archive: DailyPriceArchive = {
+      dates: ['2026-10-14', '2026-10-15', '2026-11-12', '2026-11-13', '2026-11-14', '2026-11-15'],
+      quotes: {
+        beta: [[1, 100, 80], [2, 110, 85]],
+        stable: [[0, 1, null], [1, 50, 25], [2, 50, 25], [3, 55, 30], [4, 600, null], [5, 10, null]],
+        retail: [[2, null, 800], [3, 900, 800], [4, 800, 750]],
+        listing: [[1, null, 200], [4, 200, null]],
+      },
+    };
+    const latest = snapshot('2026-11-14', { retail: [950, 850], beta: [110, 85], stable: [65, 30], listing: [null, 210] });
+    const result = priceTrend(lines, archive, latest);
+    expect(result).toMatchObject({ start: '2026-10-15', end: '2026-11-14' });
+    expect(result.points).toHaveLength(31);
+    expect(result.points[0]).toEqual({ date: '2026-10-15', cents: 100, covered: 2, connect: false });
+    expect(result.points[1]).toEqual({ date: '2026-10-16', cents: null, covered: 0, connect: false });
+    expect(result.points.slice(-3)).toEqual([
+      { date: '2026-11-12', cents: 100, covered: 2, connect: false },
+      { date: '2026-11-13', cents: 2810, covered: 5, connect: false },
+      { date: '2026-11-14', cents: 2980, covered: 5, connect: true },
     ]);
-    expect(result.change).toMatchObject({ cents: 70, from: old.date, to: latest.date });
-    expect(result.change!.percent).toBeCloseTo(11.67, 2);
+    expect(result.change).toEqual({ cents: 30, percent: 30, from: '2026-10-15', to: latest.date, covered: 2 });
   });
 
-  it('omits change with one observation and keeps both a real zero change and a missing series distinct', () => {
-    const latest = snapshot('2026-11-13', { exact: [300, null] });
-    expect(priceTrend([line('exact', 1)], [], latest, {}).change).toBeNull();
-    const old = snapshot('2026-11-04', latest.quotes);
-    expect(priceTrend([line('exact', 1)], [old], latest, {}).change?.percent).toBe(0);
-    const missing = priceTrend([line('absent', 1)], [old], latest, {});
-    expect(missing.covered).toBe(0);
-    expect(missing.points.every(({ cents }) => cents === null)).toBe(true);
+  it('skips earlier days with no shared printings and breaks a line even when coverage counts match', () => {
+    const lines = [line('old', 2), line('current', 1), line('current', 1)];
+    const archive: DailyPriceArchive = {
+      dates: ['2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13'],
+      quotes: { old: [[0, 100, null], [1, 90, null], [3, 90, null]], current: [[2, 200, null]] },
+    };
+    const result = priceTrend(lines, archive, snapshot('2026-11-13', { current: [200, null] }));
+    expect(result.points.slice(-4)).toEqual([
+      { date: '2026-11-10', cents: 200, covered: 2, connect: false },
+      { date: '2026-11-11', cents: 180, covered: 2, connect: true },
+      { date: '2026-11-12', cents: 400, covered: 2, connect: false },
+      { date: '2026-11-13', cents: 400, covered: 2, connect: true },
+    ]);
+    expect(result.change).toEqual({ cents: 0, percent: 0, from: '2026-11-12', to: '2026-11-13', covered: 2 });
+  });
+
+  it('shows missing values and suppresses change with no shared quote dates', () => {
+    const archive: DailyPriceArchive = { dates: ['2026-11-12'], quotes: { old: [[0, 100, null]] } };
+    const latest = snapshot('2026-11-13', { current: [200, null] });
+    expect(priceTrend([line('old', 1), line('current', 1)], archive, latest).change).toBeNull();
+    const pastOnly = priceTrend([line('old', 1)], archive, latest);
+    expect(pastOnly.points.at(-1)).toMatchObject({ cents: null, covered: 0 });
+    expect(pastOnly.change).toBeNull();
+    expect(priceTrend([line('absent', 1)], archive, latest).points.every(({ cents }) => cents === null)).toBe(true);
   });
 });
 

@@ -1,8 +1,17 @@
-import history from '../data/price-history.json';
+import archive from '../data/printing-price-history.json';
 import { PRICES } from './data';
-import type { PriceSnapshot } from './priceTrend';
 
-export const weeklyPriceSnapshots = history.snapshots as unknown as PriceSnapshot[];
+export interface PriceSnapshot {
+  date: string;
+  quotes: Record<string, [market: number | null, low: number | null]>;
+}
+
+export interface DailyPriceArchive {
+  dates: string[];
+  quotes: Record<string, [day: number, market: number | null, low: number | null][]>;
+}
+
+export const dailyPriceArchive = archive as unknown as DailyPriceArchive;
 
 export const latestPriceSnapshot: PriceSnapshot = {
   date: PRICES.priceDate ?? PRICES.updatedAt.slice(0, 10),

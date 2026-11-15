@@ -1,14 +1,9 @@
-import type { PriceSnapshot } from './priceTrend';
+import type { DailyPriceArchive, PriceSnapshot } from './priceSnapshots';
 
 const DAY = 86_400_000;
 
 export type HistoryBasis = 'Market' | 'Low listing';
 export type HistoryRange = 'month' | 'all';
-
-export interface DailyPriceArchive {
-  dates: string[];
-  quotes: Record<string, [day: number, market: number | null, low: number | null][]>;
-}
 
 export function printingPriceHistory(id: string, archive: DailyPriceArchive, latest: PriceSnapshot, basis: HistoryBasis, range: HistoryRange) {
   const slot = basis === 'Market' ? 1 : 2;

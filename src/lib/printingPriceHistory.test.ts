@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { printingPriceHistory, type DailyPriceArchive } from './printingPriceHistory';
-import type { PriceSnapshot } from './priceTrend';
+import { printingPriceHistory } from './printingPriceHistory';
+import type { DailyPriceArchive, PriceSnapshot } from './priceSnapshots';
 
 const history: DailyPriceArchive = {
   dates: ['2026-10-14', '2026-10-21', '2026-10-22', '2026-11-04', '2026-11-13', '2026-11-14'],

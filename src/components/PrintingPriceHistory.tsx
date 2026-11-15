@@ -1,12 +1,10 @@
 import { useMemo, useState, type MouseEvent, type KeyboardEvent } from 'react';
-import archiveJson from '../data/printing-price-history.json';
 import { getCurrency, money } from '../lib/currency';
 import { FX } from '../lib/data';
-import { latestPriceSnapshot } from '../lib/priceSnapshots';
-import { printingPriceHistory, type DailyPriceArchive, type HistoryBasis, type HistoryRange } from '../lib/printingPriceHistory';
+import { dailyPriceArchive, latestPriceSnapshot } from '../lib/priceSnapshots';
+import { printingPriceHistory, type HistoryBasis, type HistoryRange } from '../lib/printingPriceHistory';
 import { VaultSelect } from './VaultSelect';
 
-const archive = archiveJson as unknown as DailyPriceArchive;
 const rangeOptions = [{ value: 'month', label: '30 days' }, { value: 'all', label: 'All time' }];
 const basisOptions = [{ value: 'Market', label: 'Market' }, { value: 'Low listing', label: 'Low listing' }];
 const dateLabel = (date: number | string, year = false) => new Date(date).toLocaleDateString('en-CA', {
@@ -18,12 +16,12 @@ export default function PrintingPriceHistory({ id, basis: preferred }: { id: str
   const [range, setRange] = useState<HistoryRange>('month');
   const [selectedBasis, setSelectedBasis] = useState<HistoryBasis>();
   const availability = useMemo(() => ({
-    Market: printingPriceHistory(id, archive, latestPriceSnapshot, 'Market', 'all').points.length > 0,
-    'Low listing': printingPriceHistory(id, archive, latestPriceSnapshot, 'Low listing', 'all').points.length > 0,
+    Market: printingPriceHistory(id, dailyPriceArchive, latestPriceSnapshot, 'Market', 'all').points.length > 0,
+    'Low listing': printingPriceHistory(id, dailyPriceArchive, latestPriceSnapshot, 'Low listing', 'all').points.length > 0,
   }), [id]);
   const alternative = preferred === 'Market' ? 'Low listing' : 'Market';
   const basis = selectedBasis ?? (availability[preferred] || !availability[alternative] ? preferred : alternative);
-  const series = useMemo(() => printingPriceHistory(id, archive, latestPriceSnapshot, basis, range), [id, basis, range]);
+  const series = useMemo(() => printingPriceHistory(id, dailyPriceArchive, latestPriceSnapshot, basis, range), [id, basis, range]);
   const { points } = series;
   const activeIndex = points.findIndex((point) => point.date === activeDate);
   const currentIndex = activeIndex < 0 ? points.length - 1 : activeIndex;

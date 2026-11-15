@@ -69,7 +69,7 @@ To test photo scanning locally, use `vercel dev` with the server env vars below.
 ### 3. GitHub Actions
 `.github/workflows/sync-data.yml` refreshes cards, prices, the USD→CAD rate and community deck statistics daily. The Learn charts count one entry per public Constructed deck updated in the latest 30 calendar days (UTC), using the three Legends and crew colours in the official Community Decks feed. The Curated Decks popularity sort counts how often each exact three-Legend crew appears in that same sample. A failed community refresh leaves the last successful snapshot available. Make sure **Settings → Actions → General → Workflow permissions** is set to **Read and write** so the bot can commit.
 
-The same sync retains one USD quote snapshot per week for Price Book trends. To backfill, extract the dated [TCGCSV archives](https://tcgcsv.com/faq) and pass their date directories to `node scripts/backfill-price-history.mjs <YYYY-MM-DD directory> ...`. The backfill matches Cyberpunk quotes by TCGplayer product ID and finish.
+The same sync retains daily USD quotes by exact printing for the Price Book trend and card drawer. To backfill, extract the dated [TCGCSV archives](https://tcgcsv.com/faq) and pass their date directories to `node scripts/backfill-daily-prices.mjs <YYYY-MM-DD directory> ...`. The backfill matches Cyberpunk quotes by TCGplayer product ID and finish.
 
 ## Google sign-in
 
@@ -88,6 +88,8 @@ Two separate questions, two functions in `src/lib/data.ts`:
 - **Beta proxy**: a Retail printing with only a higher listing (or none) is valued at its verified Beta twin's market price. Twins are the same card, rarity and collector number in the paired set (e.g. The Heist Retail #011 and Beta #β011), derived by the generator. The UI names the source printing.
 - **Low listing**: no market price for that printing, so its own cheapest listing.
 - **Unpriced**: none of the above. Promos, event and Nova Rare printings never borrow another printing's price. Totals show the priced subtotal plus the number of unpriced copies.
+
+The Price Book trend uses exact-printing market quotes with today’s quantities. Each day shows its own coverage. The change compares the copies with quotes on both the earliest comparable day in the window and the latest snapshot.
 
 **What would one playable copy cost to buy?** (`acquireQuote`, used by the Deck Builder, Meta Intel, auto-build suggestions, Refine and the Upgrade Planner)
 - The cheapest direct quote on a named printing: any market price beats any listing. The estimate names the printing, its basis and the TCGplayer link. Valuation proxies never count.
