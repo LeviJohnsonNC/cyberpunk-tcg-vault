@@ -47,6 +47,26 @@ export function match(name: string): { slug: string; score: number } | null {
   return best && best.score >= 0.72 ? best : null;
 }
 
+const PRINTINGS_BY_SLUG = new Map(CARD_NAMES.map(card => [card.slug, card.printings]));
+
+function collectorNumber(value: string) {
+  const match = value.trim().match(/^#?\s*(β|beta)?\s*([0-9]{1,3})([a-z]?)$/i);
+  if (!match) return null;
+  const [, beta, digits, suffix] = match;
+  return `${beta ? 'β' : ''}${Number(digits)}${suffix.toLowerCase()}`;
+}
+
+function identifyPrinting(slug: string, number: unknown, set: unknown): string | null {
+  if (typeof number !== 'string') return null;
+  const key = collectorNumber(number);
+  if (!key) return null;
+  const setKey = typeof set === 'string' ? norm(set) : '';
+  const candidates = (PRINTINGS_BY_SLUG.get(slug) ?? []).filter(
+    (printing) => collectorNumber(printing.num) === key && (!setKey || norm(printing.set) === setKey),
+  );
+  return candidates.length === 1 ? candidates[0].id : null;
+}
+
 async function authUser(token: string | undefined): Promise<{ id: string; email: string } | null> {
   if (!SB_URL || !SB_KEY || !token) return null;
   const r = await fetch(`${SB_URL}/auth/v1/user`, { headers: { apikey: SB_KEY, authorization: `Bearer ${token}` } });
@@ -65,18 +85,25 @@ async function bumpUsage(userId: string): Promise<number> {
   return Number(await r.json());
 }
 
-const PROMPT = `You are identifying physical Cyberpunk TCG cards (WeirdCo / CD PROJEKT RED, set "Welcome to Night City") in a photo.
+const sets = [...new Set(CARD_NAMES.flatMap(card => card.printings.map(printing => printing.set)))].sort();
+const PRINTING_INSTRUCTIONS = `Also read the actual collector number printed near the card edge, typically at the lower left. Use only the collector number (for example "012", "β012", or "004a"), including any Beta symbol or letter suffix. Keep a visible β prefix and distinguish it from an ordinary number. Return null if the collector number or its prefix is unclear. Do not infer it from the card's name, illustration, rarity, foiling, power, cost or rules text.
+Set "printing_set" only if a readable set or promo marking establishes one of these catalog labels: ${sets.join('; ')}. Otherwise return null. Do not guess the set from artwork or foil.`;
+const CARD_RESULT = `{"name":"<exact catalog name>","collector_number":<string or null>,"printing_set":<catalog label or null>,"count":<int>,"confidence":<0-1>,"read":"<text you actually read>"}`;
+
+const PROMPT = `You are identifying physical Cyberpunk TCG cards (WeirdCo / CD PROJEKT RED) in a photo, including starter cards and promos.
 Cards may be rotated sideways or upside down, sleeved, glossy, or partly overlapping. The card name is printed in bold capitals along the art, with an optional subtitle under it (e.g. "VIKTOR VEKTOR" / "YOU MIGHT FEEL A LITTLE PINCH").
-Count EVERY visible card, including duplicates. Only use names from this list (format "Name: Subtitle"):
+Count EVERY visible card, including duplicates. Group copies only when their card name, collector number, and identifiable set agree. Only use names from this list (format "Name: Subtitle"):
 {{NAMES}}
+${PRINTING_INSTRUCTIONS}
 Respond with JSON only:
-{"cards":[{"name":"<exact name from list>","count":<int>,"confidence":<0-1>,"read":"<text you actually read>"}],"unidentified":<int>}
+{"cards":[${CARD_RESULT}],"unidentified":<int>}
 If you cannot read a card well enough, add it to "unidentified" rather than guessing.`;
 
 const SINGLE_PROMPT = `Identify one physical Cyberpunk TCG card centered in a cropped camera frame. The frame may be empty or contain a blurry or partly visible card.
 Read the printed title and subtitle, and only identify the card if you can distinguish it from similar cards in this catalog:
 {{NAMES}}
-Respond with JSON only, using {"cards":[{"name":"<exact name from catalog>","count":1,"confidence":<0-1>,"read":"<text you actually read>"}],"unidentified":0}.
+${PRINTING_INSTRUCTIONS}
+Respond with JSON only, using {"cards":[${CARD_RESULT}],"unidentified":0}. When identified, set "count" to 1.
 If no single card is clearly identifiable, return {"cards":[],"unidentified":1}. Never infer a card from background objects.`;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -125,7 +152,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body: JSON.stringify({
         model: MODEL,
         temperature: 0,
-        max_tokens: 2500,
+        max_tokens: single ? 2500 : 4500,
         response_format: { type: 'json_object' },
         messages: [
           {
@@ -145,23 +172,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(502).json({ error: `Vision request failed: ${(e as Error).message}` });
   }
 
-  let parsed: { cards?: { name: string; count?: number; confidence?: number; read?: string }[]; unidentified?: number };
+  let parsed: { cards?: { name: string; count?: number; confidence?: number; read?: string; collector_number?: unknown; printing_set?: unknown }[]; unidentified?: number };
   try {
     parsed = JSON.parse(content.replace(/^```(?:json)?|```$/g, '').trim());
   } catch {
     return res.status(502).json({ error: 'Could not parse the model response. Try a clearer photo.' });
   }
 
-  const matches: { slug: string; qty: number; confidence: number; read: string }[] = [];
+  const matches: { slug: string; printingId: string | null; qty: number; confidence: number; read: string }[] = [];
   const unmatched: string[] = [];
   for (const c of parsed.cards ?? []) {
     const m = match(c.name || c.read || '');
     if (!m) { unmatched.push(c.name || c.read || '?'); continue; }
     const qty = Math.max(1, Math.min(30, Math.round(c.count ?? 1)));
     const conf = Math.min(1, (c.confidence ?? 0.8) * (m.score < 1 ? m.score : 1));
-    const ex = matches.find((x) => x.slug === m.slug);
+    const printingId = identifyPrinting(m.slug, c.collector_number, c.printing_set);
+    const ex = matches.find((x) => x.slug === m.slug && x.printingId === printingId);
     if (ex) ex.qty += qty;
-    else matches.push({ slug: m.slug, qty, confidence: conf, read: c.read ?? '' });
+    else matches.push({ slug: m.slug, printingId, qty, confidence: conf, read: c.read ?? '' });
   }
   return res.status(200).json({ matches, unmatched, unidentified: parsed.unidentified ?? 0, remaining, model: MODEL });
 }

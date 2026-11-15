@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CardImg } from '../components/bits';
+import { PrintingArt } from '../components/PrintingArt';
 import { IntakeIcon } from '../components/IntakeIcon';
 import { VaultSelect } from '../components/VaultSelect';
-import { BY_SLUG, editionPrinting, printingLabel, unspecifiedId } from '../lib/data';
+import { BY_SLUG, isUnspecified, normalizePrinting, printingLabel, unspecifiedId } from '../lib/data';
 import { createScanGate, scanCrop, scanFrameChanged } from '../lib/liveScan';
 import { useStore } from '../lib/store';
 import { cloudEnabled } from '../lib/supabase';
@@ -25,7 +26,7 @@ const SCAN_STATUS = {
 
 function captureFrame(video: HTMLVideoElement) {
   if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
-  // Leave a little room around the guide for the title and subtitle near the card edges.
+  // Leave a little room around the guide for the title, subtitle and collector number near the card edges.
   const crop = scanCrop(video.videoWidth, video.videoHeight, 0.05);
   const scale = Math.min(1, 1200 / crop.height);
   const canvas = document.createElement('canvas');
@@ -230,7 +231,7 @@ function LiveCamera({ token, restart }: { token?: string; restart: () => void })
         const match = data.matches?.[0];
         if (data.matches?.length === 1 && match.qty === 1 && match.confidence >= 0.65 && BY_SLUG.has(match.slug)
           && !data.unidentified && !data.unmatched?.length) {
-          const printingId = editionPrinting(match.slug, 'Retail')?.id ?? unspecifiedId(match.slug);
+          const printingId = normalizePrinting(match.slug, match.printingId);
           setStep({ kind: 'review', slug: match.slug, printingId });
         } else {
           setStep({ kind: 'no-match', image });
@@ -282,7 +283,10 @@ function LiveCamera({ token, restart }: { token?: string; restart: () => void })
       <p className="live-scan-status" role="status">{status}{added > 0 && <strong>{added} added this session</strong>}</p>
       {step.kind === 'review' && card ? (
         <div className="live-scan-review">
-          <CardImg slug={card.slug} alt="" className="live-scan-card-art" priority />
+          <div className="scan-printing-art">
+            {isUnspecified(step.printingId) ? <CardImg slug={card.slug} alt="" priority />
+              : <PrintingArt slug={card.slug} printingId={step.printingId} alt="" inline />}
+          </div>
           <div className="live-scan-match">
             <strong>{card.display}</strong>
             <VaultSelect aria-label="Printing to add" value={step.printingId} onValueChange={(printingId) => setStep({ ...step, printingId })}
@@ -303,7 +307,7 @@ function LiveCamera({ token, restart }: { token?: string; restart: () => void })
         <summary>View captured frame</summary>
         <img src={step.image} alt="Card frame sent for recognition" />
       </details>}
-      <p className="live-scan-note tiny muted">Standard Retail is preselected when available. Check the printing before adding.</p>
+      <p className="live-scan-note tiny muted">Keep the collector number in the guide. Choose the printing if you can verify it.</p>
     </>
   );
 }
