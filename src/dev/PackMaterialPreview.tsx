@@ -1,5 +1,6 @@
 /** Preview-only test bench: production components and isolated, deterministic rewards. */
 import { useEffect, useState } from 'react';
+import { VaultSelect } from '../components/VaultSelect';
 import { CARDS } from '../lib/data';
 import { newCampaign, emptyProfile } from '../lib/play/campaign';
 import { updateCampaign } from '../lib/play/campaignStorage';
@@ -51,7 +52,8 @@ export function PackMaterialPreview() {
       <button className="btn quiet" onClick={() => void load('iconic')}>Reveal Iconic Secret</button>
       <button className="btn quiet" onClick={() => void load('retry')}>Five-card retry</button>
       <button className="btn quiet" onClick={() => setMode('pack')}>Resume saved pack</button>
-      <label>Room <select value={act} onChange={e => setAct(Number(e.target.value))}><option value="1">Afterlife</option><option value="2">Rooftop</option><option value="3">Arasaka</option></select></label>
+      <label htmlFor="qa-room">Room <VaultSelect id="qa-room" value={String(act)} onValueChange={value => setAct(Number(value))}
+        options={[{ value: '1', label: 'Afterlife' }, { value: '2', label: 'Rooftop' }, { value: '3', label: 'Arasaka' }]} /></label>
       {mode === 'compare' && <><button className="btn quiet" onClick={() => setLabels(v => !v)}>{labels ? 'Hide labels' : 'Show labels'}</button>
         <button className="btn quiet" onClick={() => setColumns(v => v === 4 ? 8 : 4)}>{columns === 4 ? 'Eight across' : 'Four across'}</button></>}
       <label><input type="checkbox" checked={reduced} onChange={e => { setReduced(e.target.checked); setMaterialReducedMotion(e.target.checked); }} /> Reduced motion</label>

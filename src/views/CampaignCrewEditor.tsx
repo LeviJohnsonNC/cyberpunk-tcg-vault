@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { VaultSelect } from '../components/VaultSelect';
 import { BY_SLUG, CARDS, defaultPrinting, type Printing } from '../lib/data';
 import { totalCopies } from '../lib/deckDraft';
 import { COPY_MAX, MAIN_MAX, MAIN_MIN } from '../lib/decks';
@@ -13,7 +14,7 @@ export function CampaignCrewEditor({ run, printings, slot, incoming, busy, error
 }) {
   const [legends, setLegends] = useState(() => run.deck.legends.map((slug, index) => index === (slot ?? 0) && incoming
     && !run.deck.legends.some((item, i) => i !== index && BY_SLUG.get(item)?.name === BY_SLUG.get(incoming)?.name) ? incoming : slug));
-  const initialSlot = useRef<HTMLSelectElement>(null);
+  const initialSlot = useRef<HTMLButtonElement>(null);
   const [fill, setFill] = useState('');
   const [added, setAdded] = useState<Record<string, number>>({});
   const dialog = useRef<HTMLDialogElement>(null);
@@ -69,15 +70,13 @@ export function CampaignCrewEditor({ run, printings, slot, incoming, busy, error
               <button type="button" className="campaign-workbench-card-art" title={card.display} aria-label={`Inspect ${card.display}`} onClick={() => inspect(slug, printing?.id)}>
                 <CampaignRewardArt pull={{ slug, printing }} alt="" exact />
               </button>
-              <select ref={index === (slot ?? 0) ? initialSlot : undefined} id={`crew-slot-${index}`} value={slug} disabled={busy} onChange={event => {
-                const replacement = event.target.value;
-                setLegends(items => items.map((item, i) => i === index ? replacement : item));
-                setAdded({}); setFill('');
-              }}>
-                {legendPool.filter(item => item.slug === slug || !usedNames.has(item.name)).map(item => <option key={item.slug} value={item.slug}>
-                  {item.display} · {item.color}
-                </option>)}
-              </select>
+              <VaultSelect ref={index === (slot ?? 0) ? initialSlot : undefined} id={`crew-slot-${index}`} value={slug} disabled={busy}
+                options={legendPool.filter(item => item.slug === slug || !usedNames.has(item.name))
+                  .map(item => ({ value: item.slug, label: `${item.display} · ${item.color}` }))}
+                onValueChange={replacement => {
+                  setLegends(items => items.map((item, i) => i === index ? replacement : item));
+                  setAdded({}); setFill('');
+                }} />
               {slug !== current.slug && <small>Replaces {current.display}</small>}
             </div>;
           })}
@@ -107,10 +106,9 @@ export function CampaignCrewEditor({ run, printings, slot, incoming, busy, error
           <label htmlFor="crew-refill">Add from the reserve <small>{refillCount} compatible copies available</small></label>
           {targetCount > refillCount && <p className="campaign-crew-warning campaign-crew-shortfall">You need {targetCount - refillCount} more compatible {targetCount - refillCount === 1 ? 'copy' : 'copies'} in your reserve to play with this crew.</p>}
           <div>
-            <select id="crew-refill" value={nextCard} disabled={busy || total >= MAIN_MAX || !refillCount} onChange={event => setFill(event.target.value)}>
-              <option value="">Choose a card</option>
-              {candidates.filter(card => available(card.slug) > 0).map(card => <option key={card.slug} value={card.slug}>{card.display} · {available(card.slug)} available</option>)}
-            </select>
+            <VaultSelect id="crew-refill" value={nextCard} disabled={busy || total >= MAIN_MAX || !refillCount} onValueChange={setFill}
+              options={[{ value: '', label: 'Choose a card' }, ...candidates.filter(card => available(card.slug) > 0)
+                .map(card => ({ value: card.slug, label: `${card.display} · ${available(card.slug)} available` }))]} />
             <button type="button" className="btn quiet" disabled={busy || !addable} onClick={() => stageCopies(1)}>Add copy</button>
             {addable > 1 && <button type="button" className="btn quiet" disabled={busy} onClick={() => stageCopies(addable)}>Add {addable}</button>}
           </div>

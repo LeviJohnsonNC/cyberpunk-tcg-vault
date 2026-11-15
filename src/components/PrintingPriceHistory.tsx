@@ -4,8 +4,11 @@ import { getCurrency, money } from '../lib/currency';
 import { FX } from '../lib/data';
 import { latestPriceSnapshot } from '../lib/priceSnapshots';
 import { printingPriceHistory, type DailyPriceArchive, type HistoryBasis, type HistoryRange } from '../lib/printingPriceHistory';
+import { VaultSelect } from './VaultSelect';
 
 const archive = archiveJson as unknown as DailyPriceArchive;
+const rangeOptions = [{ value: 'month', label: '30 days' }, { value: 'all', label: 'All time' }];
+const basisOptions = [{ value: 'Market', label: 'Market' }, { value: 'Low listing', label: 'Low listing' }];
 const dateLabel = (date: number | string, year = false) => new Date(date).toLocaleDateString('en-CA', {
   month: 'short', day: 'numeric', year: year ? 'numeric' : undefined, timeZone: 'UTC',
 });
@@ -59,23 +62,20 @@ export default function PrintingPriceHistory({ id, basis: preferred }: { id: str
     <section className="card-drawer-history" aria-label="Price history">
       <header className="card-drawer-section-head">
         <h3>Price History</h3>
-        <select aria-label="Price history range" value={range} onChange={(event) => {
-          setRange(event.target.value as HistoryRange); setActiveDate(undefined);
-        }}>
-          <option value="month">30 days</option>
-          <option value="all">All time</option>
-        </select>
+        <VaultSelect aria-label="Price history range" value={range} options={rangeOptions} onValueChange={(value) => {
+          setRange(value as HistoryRange);
+          setActiveDate(undefined);
+        }} />
       </header>
       <div className="card-drawer-history-body">
         <div className="card-drawer-history-basis">
           {availability.Market && availability['Low listing'] ? (
-            <select aria-label="Historical price basis" value={basis} onChange={(event) => {
-              setSelectedBasis(event.target.value as HistoryBasis); setActiveDate(undefined);
-            }}>
-              <option>Market</option>
-              <option>Low listing</option>
-            </select>
-          ) : basis} · {currency}{currency === 'CAD' && ' · Current exchange rate'}
+            <VaultSelect aria-label="Historical price basis" value={basis} options={basisOptions} onValueChange={(value) => {
+              setSelectedBasis(value as HistoryBasis);
+              setActiveDate(undefined);
+            }} />
+          ) : <span>{basis}</span>}
+          <span>{currency}{currency === 'CAD' && ' · Current exchange rate'}</span>
         </div>
         {points.length < 2 ? (
           <div className="card-drawer-history-empty">

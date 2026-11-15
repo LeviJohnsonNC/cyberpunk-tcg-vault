@@ -1,5 +1,6 @@
 import { useRef, useState, type Ref } from 'react';
 import { ConfirmDialog } from '../components/ui';
+import { VaultSelect } from '../components/VaultSelect';
 import { BY_SLUG, CARDS, defaultPrinting, type Card, type Printing } from '../lib/data';
 import { MAIN_MAX, MAIN_MIN } from '../lib/decks';
 import { totalCopies } from '../lib/deckDraft';
@@ -19,6 +20,12 @@ const views: { id: ReserveView; label: string }[] = [
   { id: 'in-deck', label: 'In Deck' },
   { id: 'future', label: 'Future Options' },
   { id: 'legends', label: 'Legends' },
+];
+const reserveTypes = [{ value: '', label: 'All types' }, ...['Unit', 'Gear', 'Program'].map(type => ({ value: type, label: type }))];
+const reserveSorts = [
+  { value: 'relevance', label: 'Sort: Relevance' },
+  { value: 'cost', label: 'Sort: Cost' },
+  { value: 'name', label: 'Sort: Name' },
 ];
 
 type WorkbenchProps = {
@@ -210,12 +217,11 @@ export function CampaignWorkbench({ run, titleRef, busy, error, issues: savedIss
           <div className="campaign-workbench-search">
             <label className="campaign-workbench-search-field"><span className="sr-only">Search reserve</span><input type="search" value={query}
               onChange={event => { setQuery(event.target.value); if (results.current) results.current.scrollTop = 0; }} placeholder="Search cards…" /></label>
-            {view !== 'legends' && <label><span className="sr-only">Card type</span><select value={type} onChange={event => { setType(event.target.value); if (results.current) results.current.scrollTop = 0; }}>
-              <option value="">All types</option><option>Unit</option><option>Gear</option><option>Program</option>{view === 'latest' && <option>Legend</option>}
-            </select></label>}
-            <label><span className="sr-only">Sort cards</span><select value={sort} onChange={event => { setSort(event.target.value); if (results.current) results.current.scrollTop = 0; }}>
-              <option value="relevance">Sort: Relevance</option><option value="cost">Sort: Cost</option><option value="name">Sort: Name</option>
-            </select></label>
+            {view !== 'legends' && <VaultSelect aria-label="Card type" value={type}
+              options={view === 'latest' ? [...reserveTypes, { value: 'Legend', label: 'Legend' }] : reserveTypes}
+              onValueChange={value => { setType(value); if (results.current) results.current.scrollTop = 0; }} />}
+            <VaultSelect aria-label="Sort cards" value={sort} options={reserveSorts}
+              onValueChange={value => { setSort(value); if (results.current) results.current.scrollTop = 0; }} />
             <span className="sr-only" role="status">{visible.length} results</span>
           </div>
         </header>
