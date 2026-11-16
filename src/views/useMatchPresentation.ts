@@ -51,7 +51,8 @@ export function useMatchPresentation(snapshot?: MatchSnapshot) {
   }, [key, index, playing, beat, beats.length]);
   useEffect(() => {
     if (playing || !snapshot?.presentation) return;
-    const timer = setTimeout(() => setExpired(key), 2400);
+    // Keep the final card label and move summary available for the full popup animation.
+    const timer = setTimeout(() => setExpired(key), 3200);
     return () => clearTimeout(timer);
   }, [key, playing, snapshot?.presentation]);
 

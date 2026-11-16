@@ -63,30 +63,33 @@
 @keyframes play-impact-ring { 0% { opacity: 0; scale: .3; } 20% { opacity: 1; } 100% { opacity: 0; scale: 1.9; } }
 @keyframes play-impact-rays { 0% { opacity: 0; scale: .35; rotate: 0deg; } 22% { opacity: .95; } 100% { opacity: 0; scale: 1.25; rotate: 16deg; } }
 
-/* Numbers that rise from the card or zone they changed. */
-.play-floats { position: absolute; inset: -12px 0 auto; z-index: 40; display: flex; justify-content: center; gap: 6px; height: 0; pointer-events: none; }
+/* Move results overlay the mat and size to the whole label. */
+.play-floats { position: absolute; inset: -12px 0 auto; z-index: 40; display: flex; justify-content: center; pointer-events: none; }
 .play-float {
+  --play-float-accent: var(--color-ticket);
+  --play-float-time: 3s;
   position: absolute;
   inset: 34% auto auto 50%;
   z-index: 40;
   translate: -50% 0;
-  padding: 3px 9px 4px;
-  color: var(--color-ticket-ink);
-  background: var(--color-ticket);
-  font: 800 20px/1 var(--font-display);
+  padding: 4px 10px 5px;
+  border: 1px solid var(--play-float-accent);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas-deep);
+  color: var(--color-text);
+  box-shadow: 0 3px 12px var(--play-shadow);
+  font: 800 20px/1.1 var(--font-display);
   text-transform: uppercase;
   white-space: nowrap;
   pointer-events: none;
-  animation: play-float 1.7s ease-out both;
+  animation: play-float var(--play-float-time) linear both;
 }
 .play-floats .play-float { position: static; translate: none; }
-.play-float[data-tone="down"] { color: var(--color-accent-ink); background: var(--color-danger); }
+.play-float[data-tone="down"] { --play-float-accent: var(--color-danger); }
 @keyframes play-float {
-  0% { opacity: 0; transform: translateY(10px) scale(.7); }
-  12% { opacity: 1; transform: translateY(-5px) scale(1.12); }
-  22% { transform: translateY(-7px) scale(1); }
-  78% { opacity: 1; transform: translateY(-14px); }
-  100% { opacity: 0; transform: translateY(-34px); visibility: hidden; }
+  0% { opacity: 0; transform: translateY(3px); }
+  5%, 91% { opacity: 1; transform: translateY(-5px); }
+  100% { opacity: 0; transform: translateY(-10px); visibility: hidden; }
 }
 @keyframes play-float-still { to { visibility: hidden; } }
 
@@ -139,7 +142,7 @@
 
 /* The rolling die crosses the command bar; keep it above the bar and hold the result until it lands. */
 .play-table > .play-gig-roll-layer { z-index: 42; }
-.play-grid:has(.play-gig-roll[data-phase="air"]) .play-gigs .play-floats { display: none; }
+.play-grid:has(.play-gig-roll[data-phase="air"]) .play-gigs .play-floats[data-wait-for-roll] { display: none; }
 
 /* One line for the move being shown. */
 .play-move-receipt { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-3); }
@@ -180,6 +183,6 @@
   .play-playback-progress > span { transition: width 300ms ease; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .play-float { animation: play-float-still 1.7s steps(1, end) both; }
+  .play-float { animation: play-float-still var(--play-float-time) steps(1, end) both; }
   .play-turn-banner { display: none; }
 }

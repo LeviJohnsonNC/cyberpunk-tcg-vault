@@ -1,4 +1,4 @@
-import { useId, useRef, type CSSProperties, type PointerEvent, type ReactNode } from 'react';
+import { useId, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from 'react';
 import { CARD_BACK } from '../components/bits';
 import eddiesBack from '../assets/play/eddies-back.webp';
 import { zoneCards, zoneCount } from '../lib/play/matchView';
@@ -12,14 +12,23 @@ type CardTile = (card: CardView, label?: string, options?: { legendSlot?: boolea
 export interface Outcome { id: number; changes: MatchChange[] }
 type MatProps = Targeting & { snapshot: MatchSnapshot; renderCard: CardTile; outcome?: Outcome; rolls?: GigRoll[] };
 
-/** A short-lived number that rises from the zone it changed. */
-export function ZoneFloat({ outcome, seat, kinds }: { outcome?: Outcome; seat: Seat; kinds: MatchChange['kind'][] }) {
+/** Keep the latest result for this zone readable as subsequent moves play out. */
+export function ZoneFloat({ outcome, seat, kinds, waitForRoll }: {
+  outcome?: Outcome; seat: Seat; kinds: MatchChange['kind'][]; waitForRoll?: boolean;
+}) {
+  const [latest, setLatest] = useState<{ id: number; change?: MatchChange }>();
   const changes = outcome?.changes.filter((change) => change.seat === seat && !change.card) ?? [];
-  // One number per zone: the first kind that changed (Gigs before the Street Cred they carry).
-  const shown = kinds.flatMap((kind) => changes.filter((change) => change.kind === kind)).slice(0, 1);
-  if (!outcome || !shown.length) return null;
-  return <span className="play-floats" key={outcome.id} aria-hidden="true">{shown.map((change) =>
-    <span key={change.kind} className="play-float" data-tone={(change.amount ?? 0) < 0 ? 'down' : 'up'}>{change.kind === 'eddies' ? change.label.replace(' available', '') : change.label}</span>)}</span>;
+  // Show one change per zone, giving Gigs priority over the Street Cred they carry.
+  const change = kinds.map(kind => changes.find(item => item.kind === kind)).find(Boolean);
+  if (outcome && change && latest?.id !== outcome.id) setLatest({ id: outcome.id, change });
+  if (!latest?.change) return null;
+  const { id, change: shown } = latest;
+  return <span className="play-floats" key={id} aria-hidden="true" data-wait-for-roll={waitForRoll && outcome?.id === id || undefined}>
+    <span className="play-float" data-tone={(shown.amount ?? 0) < 0 ? 'down' : 'up'}
+      onAnimationEnd={() => setLatest(current => current?.id === id ? { id } : current)}>
+      {shown.kind === 'eddies' ? shown.label.replace(' available', '') : shown.label}
+    </span>
+  </span>;
 }
 
 function MatDie({ card, fixer = false, adjustmentSelected, effectIds, targetIds, chosenIds, onPick, dieDrag }: Targeting & { card: CardView; fixer?: boolean; adjustmentSelected?: boolean }) {
@@ -44,7 +53,7 @@ export function GigZones({ snapshot, outcome, adjustedGig, ...targeting }: Targe
       <h3 className="play-gig-count play-eyebrow">{seat === 'player' ? 'Your Gigs' : 'Rival Gigs'} <span>{view.gigCount}</span></h3>
       <div className="play-dice">{gigs.map((card) => <MatDie key={card.instanceId} card={card} adjustmentSelected={card.instanceId === adjustedGig} {...targeting} />)}</div>
       <span className="play-gig-cred" title="Street Cred is the total value of these Gig dice">Cred <b>{view.streetCred}</b></span>
-      <ZoneFloat outcome={outcome} seat={seat} kinds={['gigs', 'cred']} />
+      <ZoneFloat outcome={outcome} seat={seat} kinds={['gigs', 'cred']} waitForRoll={snapshot.gigRolls.length > 0} />
     </section>;
   })}</div>;
 }
