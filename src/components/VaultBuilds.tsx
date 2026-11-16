@@ -3,7 +3,8 @@ import { useMemo, useRef, useState } from 'react';
 import { VaultSelect } from './VaultSelect';
 import { BY_SLUG, CARDS, COLORS, type Color } from '../lib/data';
 import { money, estimateText, moneyOr } from '../lib/currency';
-import { autobuild, type Build, type Style } from '../lib/autobuild';
+import type { Build, Style } from '../lib/autobuild';
+import { useDeckTask } from '../lib/useDeckTask';
 import { newId, useStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
 import { CardImg, Pip } from './bits';
@@ -61,8 +62,9 @@ export function VaultBuilds({ onOpen, goAdd }: { onOpen: (slug: string) => void;
     [owned],
   );
   const required = useMemo(() => must.filter((slug) => ownedOptions.some((card) => card.slug === slug)), [must, ownedOptions]);
-  const result = useMemo(() => collectionReady && owned.size ? autobuild(owned, { colors, style, mustInclude: required }) : null,
+  const task = useMemo(() => collectionReady && owned.size ? { type: 'build' as const, owned, options: { colors, style, mustInclude: required } } : null,
     [collectionReady, owned, colors, style, required]);
+  const { result, pending, error, retry } = useDeckTask(task);
   const builds = result?.ok ? result.builds : [];
   const featured = builds.find((b) => crewKey(b) === selected) ?? builds[0];
   const activeRefineKey = featured && refineKey(featured, style, required);
@@ -190,6 +192,8 @@ export function VaultBuilds({ onOpen, goAdd }: { onOpen: (slug: string) => void;
             </div>
           )}
 
+          {pending && <p role="status">Finding decks from your cards…</p>}
+          {error && <div role="alert"><p>{error}</p><button className="btn quiet" onClick={retry}>Try again</button></div>}
           {featured && result?.ok && (
             <>
               <article className="meta-feature" aria-labelledby="meta-feature-title">

@@ -45,9 +45,7 @@ export function PrintingArt({ slug, printingId, alt, pocket = false, inline = fa
     let current = true;
     let started = false;
     const node = image.current;
-    if (node) node.fetchPriority = 'auto';
     const load = (visible: boolean) => {
-      if (visible && node) node.fetchPriority = 'high';
       if (started) {
         if (visible) prioritizePrintingArt(slug);
         return;

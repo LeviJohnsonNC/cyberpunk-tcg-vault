@@ -28,3 +28,7 @@ dist-ssr
 .env.local
 .env.*.local
 .vercel
+
+# Browser test artifacts
+playwright-report/
+test-results/

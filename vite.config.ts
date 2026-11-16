@@ -17,7 +17,7 @@ export default defineConfig({
     },
   }],
   // Isolated QA page is emitted only to Vercel previews, never production.
-  build: { rollupOptions: { input: { app: 'index.html', terms: 'terms.html', ...(preview ? { campaignQA: 'campaign-preview.html' } : {}) } } },
+  build: { manifest: true, rollupOptions: { input: { app: 'index.html', terms: 'terms.html', ...(preview ? { campaignQA: 'campaign-preview.html' } : {}) } } },
   define: {
     'import.meta.env.VAULT_PLAY_PREVIEW': JSON.stringify(preview),
   },
