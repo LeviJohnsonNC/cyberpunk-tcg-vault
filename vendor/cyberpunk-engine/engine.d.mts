@@ -3,6 +3,7 @@ import type { CardView, FightResult, Move, PlayerView, Seat } from '../../src/li
 interface Definition {
   id: string;
   legality: string;
+  type: string;
 }
 
 interface Catalog {
@@ -22,7 +23,7 @@ export type EngineEvent =
   | { type: 'attackResolved'; attackKind: string; attackerId: string; defenderId?: string; result?: FightResult }
   | { type: 'cardPlayed'; cardId: string }
   | { type: 'cardsDrawn'; playerId: Seat; count: number }
-  | { type: 'cardSold' | 'legendFlipped' | 'turnStarted'; playerId: Seat }
+  | { type: 'cardSold' | 'legendFlipped' | 'turnStarted' | 'legendsShuffled'; playerId: Seat }
   | { type: 'gigStolen'; fromPlayerId: Seat; toPlayerId: Seat }
   | { type: 'cardsRevealed'; cardIds: string[]; fromZone: string; audience: 'private' | 'public'; playerId: Seat; viewers?: Seat[] }
   | { type: 'gigDieRolled'; dieId: string; dieType: string; result: number; playerId: Seat; origin: 'gainGig' | 'reroll' }
@@ -90,5 +91,14 @@ export interface DeckStrategyProfile {
 
 /** Every strategy decides from the seat's filtered view. The tactical ones also need `engine` to look ahead. */
 export function chooseMove(view: PlayerView, rng: () => number, seat: Seat,
-  options?: { strategy?: 'greedy' | 'tactical' | 'tactical-ability-aware'; engine?: EngineHandle; profile?: DeckStrategyProfile }): Move | undefined;
-export function projectRevealedCardView(state: EngineState, instanceId: string): CardView | null;
+  options?: { strategy?: 'greedy' | 'tactical' | 'tactical-ability-aware'; engine?: EngineHandle; profile?: DeckStrategyProfile; deckTypePrior?: Readonly<Record<string, number>> }): Move | undefined;
+/** Printed details retained only after a legally observed reveal. */
+export interface EngineCardView extends CardView {
+  color: string;
+  classifications: string[];
+  hasSellTag: boolean;
+  keywords: string[];
+  triggerHints: string[];
+  abilityHints: unknown[];
+}
+export function projectRevealedCardView(state: EngineState, instanceId: string): EngineCardView | null;
