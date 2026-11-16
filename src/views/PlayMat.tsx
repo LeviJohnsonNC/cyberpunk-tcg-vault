@@ -109,11 +109,14 @@ function withGear(attached: CardView[], renderCard: CardTile, card: CardView) {
 }
 
 /** One side of the field: the Units a crew has in play, large enough to read. */
-export function SeatField({ seat, snapshot, active, renderCard, overlay, ...targeting }: MatProps & { seat: Seat; active: boolean; overlay?: ReactNode }) {
+export function SeatField({ seat, snapshot, active, renderCard, overlay, outcome, ...targeting }: MatProps & { seat: Seat; active: boolean; overlay?: ReactNode }) {
   const view = snapshot.view.players[seat];
   const { attached, units } = crew(view);
   const resolving = zoneCards(view, 'resolvingProgram');
+  const gigsGained = outcome?.changes.find(change => change.seat === seat && change.kind === 'gigs')?.amount ?? 0;
+  const crossingDuringRoll = view.gigCount - gigsGained < 7 && snapshot.gigRolls.some(roll => roll.seat === seat);
   return <section className="play-field" data-seat={seat} data-active={active} data-zone={`field:${seat}`} data-resolving={resolving.length > 0} data-empty={!units.length && !resolving.length && !overlay || undefined}
+    data-seven-gigs={view.gigCount >= 7 ? (crossingDuringRoll ? 'rolling' : 'true') : undefined}
     data-drop-zone={`field:${seat}`} data-drop-available={targeting.dropZones?.has(`field:${seat}`)} data-drop-over={targeting.dropOver === `field:${seat}`}
     aria-label={seat === 'player' ? 'Your field' : 'Rival field'}>
     <div className="play-field-cards">

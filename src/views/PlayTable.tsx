@@ -1,5 +1,7 @@
 import { useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import { createPortal, preload } from 'react-dom';
+import sevenGigPlayer from '../assets/play/field-seven-gigs-player.webp';
+import sevenGigRival from '../assets/play/field-seven-gigs-rival.webp';
 import { isReady, matchActions, type Picks } from '../lib/play/matchActions';
 import { activeStep, cardIntents, dropIntents, intentLabel, reorderPick, suggestPayment, updatePick, type Destination, type Intent } from '../lib/play/matchInteraction';
 import { visibleCards, zoneCards } from '../lib/play/matchView';
@@ -407,6 +409,9 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     busy={busy} error={error} onContinue={rematch} />;
   if (practiceLobby && view.gameEnded) return <PracticeMatchResult snapshot={snapshot}
     busy={busy} error={error} rematch={rematch} lobby={practiceLobby} edit={edit} quote={freePlay?.resultQuote?.text} />;
+
+  preload(sevenGigPlayer, { as: 'image', fetchPriority: 'low' });
+  preload(sevenGigRival, { as: 'image', fetchPriority: 'low' });
 
   return <div ref={grid} className="play-grid play-direct" data-match-id={snapshot.matchId} data-state-id={view.stateID} data-busy={busy} data-playback={!!playback} data-campaign={!!campaign}
     onKeyDown={(event) => {
