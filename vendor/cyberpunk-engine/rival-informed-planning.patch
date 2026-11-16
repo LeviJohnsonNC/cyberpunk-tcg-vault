@@ -1,0 +1,158 @@
+--- a/submodules/cyberpunk/packages/engine/src/automation/search/tactical.ts
++++ b/submodules/cyberpunk/packages/engine/src/automation/search/tactical.ts
+@@ -40,6 +40,8 @@
+   fallbackStrategy?: AIStrategy;
+   name?: string;
+   abilityAware?: boolean;
++  abilityWeight?: number;
++  reserveReplies?: boolean;
+   deckProfile?: DeckStrategyProfile;
+   /**
+    * Named heuristic lessons to turn off. Shipped behavior keeps every lesson
+@@ -67,6 +69,8 @@
+
+ interface TacticalScoringOptions {
+   abilityAware: boolean;
++  abilityWeight: number;
++  reserveReplies: boolean;
+   disabled: ReadonlySet<string>;
+ }
+
+@@ -127,6 +131,8 @@
+     (profile ? bindGreedyDeckProfile(greedyStrategy, profile) : greedyStrategy);
+   const scoring: TacticalScoringOptions = {
+     abilityAware: options.abilityAware === true,
++    abilityWeight: options.abilityWeight ?? 0,
++    reserveReplies: options.reserveReplies === true,
+     disabled: new Set(options.disabledHeuristics ?? []),
+   };
+
+@@ -311,7 +317,7 @@
+     scoring,
+     profile,
+   );
+-  const selected = ranked.slice(0, Math.max(branchLimit, Math.min(actions.length, 24)));
++  const selected = ranked.slice(0, scoring.reserveReplies ? branchLimit : Math.max(branchLimit, Math.min(actions.length, 24)));
+   const rootView = engine.getFilteredView(rootPlayerId);
+   if (isLateGigRace(rootView)) {
+     selected.sort(
+@@ -321,7 +327,12 @@
+     );
+   }
+   const scored: ScoredAction[] = [];
+-  for (const { action, child } of selected) {
++  for (const [index, { action, child }] of selected.entries()) {
++    // Give each root candidate a share of the remaining reply budget. One
++    // early branch must not consume all lookahead and leave later moves at
++    // incomparable horizons. Unused shares carry forward.
++    const replyBudget = scoring.reserveReplies ? { ...budget, nodes: 0,
++      maxNodes: Math.floor((budget.maxNodes - budget.nodes) / (selected.length - index)) } : budget;
+     if (!child) {
+       scored.push({ action, score: -SEARCH_FAILURE_SCORE, abilityFit: 0, child: null });
+       continue;
+@@ -330,26 +341,32 @@
+     const after = child.getFilteredView(rootPlayerId);
+     const hiddenCutoff = hiddenInformationChanged(before, after, action, rootPlayerId);
+     const score = hiddenCutoff
+-      ? hiddenCutoffScore(before, action, rootPlayerId, rootPlayerId, budget, profile, scoring)
++      ? hiddenCutoffScore(before, action, rootPlayerId, rootPlayerId, replyBudget, profile, scoring)
+       : search(
+           child,
+           rootPlayerId,
+           maxDepth - 1,
+           1,
+           branchLimit,
+-          budget,
++          replyBudget,
+           fallback,
+           scoring,
+           profile,
+           [semanticViewHash(before)],
+           true,
+         );
++    if (replyBudget !== budget) {
++      budget.nodes += replyBudget.nodes;
++      budget.deepest = Math.max(budget.deepest, replyBudget.deepest);
++      if (replyBudget.cutoffReason !== "complete") budget.cutoffReason = replyBudget.cutoffReason;
++    }
+     scored.push({
+       action,
+       score:
+         hiddenCutoff || after.gameEnded || score <= STALL_SCORE
+-          ? score
+-          : score + strategicActionBonus(action, before, after, rootPlayerId as string),
++          ? score + (Math.abs(score) < SEARCH_FAILURE_SCORE ? planningBonus(action, before, rootPlayerId as string, scoring) : 0)
++          : score + strategicActionBonus(action, before, after, rootPlayerId as string)
++            + planningBonus(action, before, rootPlayerId as string, scoring),
+       abilityFit: abilityAwarePriorAdjustment(action, before, rootPlayerId as string, scoring),
+       // Never run the follow-up/stall probe through a concealed outcome.
+       child: hiddenCutoff ? null : child,
+@@ -577,7 +594,7 @@
+   // A crowded board can exhaust the budget on Unit-target pairs alone. Check
+   // the turn boundary first (it can win immediately), then high-value steals.
+   // These are search priorities only; engine outcomes still choose the move.
+-  const ordered = isLateGigRace(actorView)
++  const ordered = isLateGigRace(actorView) || scoring.reserveReplies
+     ? [...actions].sort(
+         (a, b) =>
+           lateSearchPriority(b, actorView, actor, profile, scoring) -
+@@ -586,7 +603,7 @@
+     : actions;
+   // Leave at least half of the remaining budget for replies and resolutions.
+   // Otherwise a large target list leaves every attack at its declaration step.
+-  const rankingLimit = isLateGigRace(actorView)
++  const rankingLimit = isLateGigRace(actorView) || scoring.reserveReplies
+     ? Math.min(24, Math.max(1, Math.floor((budget.maxNodes - budget.nodes) / 2)))
+     : ordered.length;
+   for (const action of ordered.slice(0, rankingLimit)) {
+@@ -604,13 +621,13 @@
+     const score = result.success
+       ? boardScore +
+         (maximizing ? 1 : -1) *
+-          actionPrior(
++          (planningBonus(action, actorView, actor as string, scoring) + actionPrior(
+             action,
+             actorView,
+             actor as string,
+             actor === rootPlayerId ? profile : undefined,
+             scoring,
+-          )
++          ))
+       : maximizing
+         ? -SEARCH_FAILURE_SCORE
+         : SEARCH_FAILURE_SCORE;
+@@ -1786,6 +1803,12 @@
+   // Cut off from the BEFORE view whenever that public defense could apply, not
+   // only when the fork happens to offer a matching discard.
+   if (mayReachConcealedGigPrevention(before, action)) return true;
++  // An automatic attack resolution versus a reaction prompt can disclose a
++  // QUICK card. Stop at declaration from public hand count, whether or not
++  // this particular fork happens to offer that private response.
++  if ((action.move === "attackUnit" || action.move === "attackRival")
++      && Object.entries(before.players).some(([id, player]) => id !== actor
++        && typeof player.zones.hand === "number" && player.zones.hand > 0)) return true;
+   if (action.move === "mulligan" || action.move === "gainGig") return true;
+   if (promptChoiceCrossesHiddenInformation(after.prompt)) return true;
+   if (actionUsesHiddenEffectHint(before.prompt, action)) return true;
+@@ -1795,7 +1818,7 @@
+   for (const player of Object.values(before.players)) {
+     for (const zone of Object.values(player.zones)) {
+       if (Array.isArray(zone)) for (const card of zone) {
+-        if (!card.faceDown) known.add(card.instanceId);
++        if (!card.faceDown || card.definitionId) known.add(card.instanceId);
+       }
+     }
+   }
+@@ -2104,6 +2127,12 @@
+   }
+ }
+
++/** Public board fit matters before ties, but cannot outweigh a confirmed result. */
++function planningBonus(action: MoveDecision & { kind: "command" }, view: FilteredMatchView,
++  actorId: string, scoring: TacticalScoringOptions): number {
++  return Math.max(-40, Math.min(40, abilityAwarePriorAdjustment(action, view, actorId, scoring))) * scoring.abilityWeight;
++}
++
+ function abilityAwarePriorAdjustment(
+   action: MoveDecision & { kind: "command" },
+   view: FilteredMatchView,

@@ -1,5 +1,6 @@
+import { informedChoice, rememberedCall } from './choices';
 import { runResolver } from "@tcg/cyberpunk-engine/automation/ai-player";
-import { abilityAwareTacticalStrategy, createTacticalStrategy, tacticalStrategy } from "@tcg/cyberpunk-engine/automation/search/tactical";
+import { createTacticalStrategy, tacticalStrategy } from "@tcg/cyberpunk-engine/automation/search/tactical";
 import { createGreedyStrategy } from "@tcg/cyberpunk-engine/automation/strategies/greedy";
 import type { DeckStrategyProfile } from "@tcg/cyberpunk-engine/automation/deck-profile";
 import type { AIStrategy, DecisionContext, EngineHandle } from "@tcg/cyberpunk-engine/automation/types";
@@ -13,7 +14,7 @@ export { projectRevealedCardView } from "@tcg/cyberpunk-engine/view/filter";
 const strategies: Record<string, AIStrategy> = {
   greedy: createGreedyStrategy(),
   tactical: tacticalStrategy,
-  "tactical-ability-aware": abilityAwareTacticalStrategy,
+  "tactical-ability-aware": createTacticalStrategy({ abilityAware: true, abilityWeight: .75, reserveReplies: true, maxNodes: 96, maxDepth: 4 }),
 };
 
 type VaultDeckProfile = DeckStrategyProfile & {
@@ -30,7 +31,7 @@ function strategyFor(name: string, profile?: VaultDeckProfile) {
     configured = {
       tactical: createTacticalStrategy({ deckProfile: profile }),
       "tactical-ability-aware": createTacticalStrategy({
-        deckProfile: profile, abilityAware: true, maxNodes: 80, maxDepth: 4,
+        deckProfile: profile, abilityAware: true, abilityWeight: .75, reserveReplies: true, maxNodes: 96, maxDepth: 4,
       }),
     };
     profiledStrategies.set(profile, configured);
@@ -70,7 +71,7 @@ function protectGigs({ view, prompt, playerId }: DecisionContext) {
 }
 
 export function chooseMove(view: DecisionContext["view"], rng: () => number, playerId: DecisionContext["playerId"],
-  options: { strategy?: string; engine?: EngineHandle; profile?: VaultDeckProfile } = {}) {
+  options: { strategy?: string; engine?: EngineHandle; profile?: VaultDeckProfile; deckTypePrior?: Readonly<Record<string, number>> } = {}) {
   // Supply only the seat's projection, including its own legal prompt. Greedy needs nothing
   // more. The tactical strategies look ahead, so they also take a boundary-safe engine handle
   // to try their own moves on a fork; they stop searching wherever hidden information changes.
@@ -99,11 +100,14 @@ export function chooseMove(view: DecisionContext["view"], rng: () => number, pla
       if (legendId) return { move: "callLegend", args: { legendId } };
     }
   }
+  const informed = informedChoice(context, options.strategy !== undefined && options.strategy !== 'greedy', options.deckTypePrior);
+  if (informed?.kind === 'command') return { move: informed.move, args: informed.args };
   const defense = options.profile?.detonateForGigDefense && protectGigs(context);
   if (defense) return defense;
   const strategy = strategyFor(options.strategy ?? "greedy", options.profile);
-  const decision = prompt.status === "choice" && prompt.choice
+  let decision = prompt.status === "choice" && prompt.choice
     ? runResolver(prompt.choice, strategy, context)
     : strategy.decideAction(context);
+  if (!options.strategy || options.strategy === 'greedy') decision = rememberedCall(decision, context);
   return decision.kind === "command" ? { move: decision.move, args: decision.args } : undefined;
 }

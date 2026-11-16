@@ -1,10 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
-import { chooseMove, LocalEngine, SeededRNG } from '../../../vendor/cyberpunk-engine/engine.mjs';
+import { describe, expect, it } from 'vitest';
+import { chooseMove, LocalEngine, projectRevealedCardView, SeededRNG } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import type { EngineState } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import starters from '../../curated/starter-decks.json';
 import { CARDS } from '../data';
 import { deckFromRecommended } from '../decks';
-import { botDecision, createEngineSession, engineCardId, initialEngineState, recordLegendPeeks } from './engineSession';
+import { botDecision, botView, createEngineSession, engineCardId, initialEngineState, recordLegendPeeks } from './engineSession';
 import { isReady, matchActions } from './matchActions';
 import { prepareMatchDeck } from './matchDeck';
 import { knownRivalLegendSlugs } from './campaignRivalIntel';
@@ -171,6 +171,167 @@ describe('play engine', () => {
     issue(engine, other, defend.move, defend.args);
     expect(engine.getState().G.players[other].zones.field.includes(defender)).toBe(!pass);
     expect(engine.getState().G.players[other].zones.removedFromGame.includes(jackie)).toBe(!pass);
+  });
+
+  it.each(['standard', 'sharp', 'masterful'] as const)('%s keeps useful revealed cards rather than choosing by instance ID', skill => {
+    const { state, active } = quietRivalFixture();
+    for (let i = 0; i < 3; i++) placeEddie(state, active);
+    const search = placeCard(state, active, 'three-mouths-one-desire', 'hand');
+    const top = state.G.players[active].zones.deck.slice(0, 3);
+    const ids = [...top].sort();
+    state.G.cardIndex[ids[0]].definitionId = engineCardId('gorilla-arms'); // no host, too expensive
+    state.G.cardIndex[ids[1]].definitionId = engineCardId('mantis-blades');
+    state.G.cardIndex[ids[2]].definitionId = engineCardId('field-operator'); // develop a Unit first
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'playCard', { cardId: search });
+    const move = botDecision(engine, active, () => .3, skill)!;
+    expect(move).toMatchObject({ move: 'resolveScry', args: { destinations: [{ zone: 'hand', cardIds: [ids[2], ids[1]] }] } });
+    issue(engine, active, move.move, move.args);
+    expect(engine.getState().G.players[active].zones.hand).toContain(ids[2]);
+  });
+
+  it.each(['standard', 'sharp', 'masterful'] as const)('%s guesses from its registered deck mix, never the hidden top card', skill => {
+    const { state, active } = quietRivalFixture();
+    placeCard(state, active, 'misty-olszewski-mender-of-broken-spirits', 'field');
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'passPhase');
+    expect(engine.getFilteredView(active).prompt.choice?.type).toBe('chooseCardType');
+    const alternateState = structuredClone(engine.getState());
+    alternateState.G.cardIndex[alternateState.G.players[active].zones.deck[0]].definitionId = engineCardId('minotaur');
+    const alternate = new LocalEngine(alternateState);
+    const knowledge = { deckTypePrior: { gear: 25, unit: 10, program: 5 } };
+    const move = botDecision(engine, active, () => .3, skill, undefined, knowledge)!;
+    expect(move).toEqual({ move: 'resolveCardTypeChoice', args: { cardType: 'gear' } });
+    expect(botDecision(alternate, active, () => .3, skill, undefined, knowledge)).toEqual(move);
+    issue(engine, active, move.move, move.args);
+  });
+
+  it('uses only recorded Legend snapshots and forgets them when the crew is shuffled', () => {
+    const { state, active, other } = quietRivalFixture();
+    const slot = state.G.players[active].zones.legendArea[0];
+    const known = new Map<string, Set<Seat>>();
+    const memory = new Map<string, NonNullable<ReturnType<typeof projectRevealedCardView>>>();
+    recordLegendPeeks(state, [{ type: 'cardsRevealed', audience: 'private', fromZone: 'legendArea',
+      cardIds: [slot], playerId: active, viewers: [active] }], known, memory);
+    const remembered = memory.get(slot)!;
+    const altered = structuredClone(state);
+    altered.G.cardIndex[slot].definitionId = engineCardId('jackie-welles-mama-s-favorite');
+    const engine = new LocalEngine(altered);
+    const informed = botView(engine, active, memory);
+    const hidden = botView(engine, other, new Map());
+    expect((informed.players[active].zones.legendArea as CardView[])[0]).toMatchObject({ definitionId: remembered.definitionId, faceDown: true });
+    expect((hidden.players[active].zones.legendArea as CardView[])[0].definitionId).toBe('');
+    recordLegendPeeks(altered, [{ type: 'legendsShuffled', playerId: active }], known, memory);
+    expect(memory.size).toBe(0);
+    expect(known.size).toBe(0);
+    expect((botView(engine, active, memory).players[active].zones.legendArea as CardView[])[0].definitionId).toBe('');
+  });
+
+  it.each(['standard', 'sharp', 'masterful'] as const)('%s remembers a real private peek without inspecting that slot again', skill => {
+    const { state, active, other } = quietRivalFixture();
+    giveGig(state, other);
+    const attacker = placeCard(state, active, 'psycho-squad', 'field');
+    equipFixture(state, attacker, placeCard(state, active, 'kiroshi-optics', 'field'));
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'attackRival', { attackerId: attacker });
+    const pending = structuredClone(engine.getState());
+    const first = botDecision(engine, active, () => .3, skill)!;
+    const known = new Map<string, Set<Seat>>();
+    const memory = new Map<string, NonNullable<ReturnType<typeof projectRevealedCardView>>>();
+    const result = issue(engine, active, first.move, first.args);
+    if (!result.success) throw new Error('peek failed');
+    recordLegendPeeks(result.state, result.gameEvents, known, memory);
+    expect(memory.size).toBe(1);
+    const again = new LocalEngine(pending);
+    const second = botDecision(again, active, () => .3, skill, undefined, { legends: memory })!;
+    expect(second.move).toBe('resolveEffectTarget');
+    expect(second.args?.targetIds).not.toEqual(first.args?.targetIds);
+    issue(again, active, second.move, second.args);
+  });
+
+  it('preserves the rival’s private Legend memory on resume without showing it to the player', () => {
+    const { state } = quietRivalFixture();
+    state.G.turnMetadata.activePlayerId = 'rival';
+    giveGig(state, 'player');
+    const attacker = placeCard(state, 'rival', 'psycho-squad', 'field');
+    equipFixture(state, attacker, placeCard(state, 'rival', 'kiroshi-optics', 'field'));
+    const engine = new LocalEngine(state);
+    issue(engine, 'rival', 'attackRival', { attackerId: attacker });
+    const session = createEngineSession({ ...setup('chrome-syndicate'), rivalSkill: 'masterful' }, undefined,
+      { matchId: 'private-memory', state: engine.getState(), botRng: new SeededRNG('memory').getState(), known: new Map(), peeks: [], log: [], commandNumber: 0 });
+    const snapshot = session.start();
+    const checkpoint = structuredClone(session.checkpoint());
+    expect(checkpoint.legendMemory?.size).toBe(1);
+    expect([...checkpoint.known.values()].every(viewers => viewers.has('rival') && !viewers.has('player'))).toBe(true);
+    expect(snapshot.peeks).toEqual([]);
+    expect(snapshot.knownLegends).toEqual([]);
+    const resumed = createEngineSession(setup('chrome-syndicate'), undefined, checkpoint);
+    expect(resumed.start().knownLegends).toEqual([]);
+    expect(resumed.checkpoint().legendMemory).toEqual(checkpoint.legendMemory);
+  });
+
+  it.each(['standard', 'sharp', 'masterful'] as const)('%s weighs Fool on the Hill’s revealed cards against two unknown draws', skill => {
+    for (const [slug, destination] of [['gorilla-arms', 'hand'], ['psycho-squad', 'trash']] as const) {
+      const { state, active, other } = quietRivalFixture();
+      const program = placeCard(state, active, 'fool-on-the-hill', 'hand');
+      for (let i = 0; i < 2; i++) placeEddie(state, active);
+      for (const id of state.G.players[active].zones.deck.slice(0, 2)) state.G.cardIndex[id].definitionId = engineCardId(slug);
+      const engine = new LocalEngine(state);
+      issue(engine, active, 'playCard', { cardId: program });
+      expect(engine.getFilteredView(other).prompt.choice?.type).toBe('revealDestination');
+      const move = botDecision(engine, other, () => .3, skill)!;
+      expect(move).toEqual({ move: 'resolveRevealDestination', args: { destination } });
+      const altered = structuredClone(engine.getState());
+      altered.G.players[active].zones.deck.reverse();
+      expect(botDecision(new LocalEngine(altered), other, () => .3, skill)).toEqual(move);
+      issue(engine, other, move.move, move.args);
+    }
+  });
+
+  it.each(['standard', 'sharp', 'masterful'] as const)('%s selects a legal die by expected value rather than the hidden roll', skill => {
+    const { state, active, other } = quietRivalFixture();
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'passPhase');
+    const view = engine.getFilteredView(other);
+    expect(view.prompt.choice?.type).toBe('gainGig');
+    const move = botDecision(engine, other, () => .01, skill)!;
+    expect(botDecision(engine, other, () => .99, skill)).toEqual(move);
+    expect((view.players[other].zones.fixerArea as CardView[]).find(die => die.instanceId === move.args?.dieId)?.definitionId).toBe('d12');
+    issue(engine, other, move.move, move.args);
+  });
+
+  it('Masterful values Kiroshi’s repeatable information over surplus Gear power', () => {
+    const { state, active, other } = quietRivalFixture();
+    for (let i = 0; i < 2; i++) giveGig(state, other);
+    const host = placeCard(state, active, '6th-street-recruits', 'field');
+    state.G.cardIndex[host].meta.hasLag = true;
+    const optics = placeCard(state, active, 'kiroshi-optics', 'hand');
+    placeCard(state, active, 'mantis-blades', 'hand');
+    placeEddie(state, active);
+    const engine = new LocalEngine(state);
+    const move = botDecision(engine, active, () => .3, 'masterful')!;
+    expect(move).toEqual({ move: 'playCard', args: { cardId: optics, attachToId: host } });
+    issue(engine, active, move.move, move.args);
+  });
+
+  it.each(['sharp', 'masterful'] as const)('%s cannot infer a concealed QUICK response while planning combat', skill => {
+    const config = { player: prepareMatchDeck(deckFromRecommended('chrome-syndicate')!),
+      rival: prepareMatchDeck(deckFromRecommended('triple-fixers')!) };
+    const engine = new LocalEngine(initialEngineState(config, 'audit-public-3', 'audit-3'));
+    // A real sampled position which previously changed its attack when a
+    // concealed reaction changed. Replay avoids a large raw-state fixture.
+    for (let step = 0; step < 48; step++) {
+      const seat = (['player', 'rival'] as const).find(seat => ['action', 'choice'].includes(engine.getFilteredView(seat).prompt.status))!;
+      const move = botDecision(engine, seat, () => .3, 'sharp')!;
+      issue(engine, seat, move.move, move.args);
+    }
+    const seat = engine.getFilteredView('player').activePlayerId;
+    const other = seat === 'player' ? 'rival' : 'player';
+    const altered = structuredClone(engine.getState());
+    for (const id of altered.G.players[other].zones.hand) altered.G.cardIndex[id].definitionId = engineCardId('minotaur');
+    const alternate = new LocalEngine(altered);
+    expect(hideConcealedTargets(engine.getFilteredView(seat))).toEqual(hideConcealedTargets(alternate.getFilteredView(seat)));
+    expect(botDecision(engine, seat, () => .3, skill)).toEqual(botDecision(alternate, seat, () => .3, skill));
   });
 
   it('maps every currently legal Vault card to a distinct playable engine definition', () => {
@@ -877,37 +1038,29 @@ describe('play engine', () => {
     for (const id of [kept, ...rest]) expect(JSON.stringify(engine.getFilteredView(other))).not.toContain(id);
   });
 
-  it('projects Three Mouths through the worker without exposing the rival’s search', () => {
-    const rival = prepareMatchDeck(deckFromRecommended('lowball-netrun-plus')!);
-    let sequence = 0;
-    const uuid = vi.spyOn(crypto, 'randomUUID').mockImplementation(
-      () => `worker-private-12-${sequence++}` as ReturnType<typeof crypto.randomUUID>,
-    );
-    try {
-      const { respond } = createMatchController();
-      let response = respond({ id: 0, action: { type: 'start', setup: { player: rival, rival } } });
-      const rng = new SeededRNG('worker-player');
-      let playerSearch = false;
-      let rivalSearch = false;
-      for (let id = 1; id <= 100 && !(playerSearch && rivalSearch); id++) {
-        if (!('snapshot' in response)) throw new Error(response.error);
-        const { view, log, matchId } = response.snapshot;
-        const payload = view.prompt.choice?.payload as { source?: { displayName?: string }; revealedCardIds?: string[] } | undefined;
-        expect(typeof view.players.rival.zones.hand).toBe('number');
-        expect(typeof view.players.rival.zones.deck).toBe('number');
-        if (view.prompt.choice?.type === 'scry' && payload?.source?.displayName?.includes('Three Mouths')) {
-          expect(payload.revealedCardIds).toHaveLength(3);
-          expect(view.prompt.choice.chooserId).toBe('player');
-          playerSearch = true;
-        }
-        rivalSearch ||= log.some(({ seat, text }) => seat === 'rival' && text.includes('Three Mouths'));
-        const move = chooseMove(view, () => rng.next(), 'player');
-        if (view.gameEnded || !move) break;
-        response = respond({ id, action: { type: 'move', matchId, stateID: view.stateID, move } });
-      }
-      expect({ playerSearch, rivalSearch }).toEqual({ playerSearch: true, rivalSearch: true });
-    } finally {
-      uuid.mockRestore();
+  it.each(['player', 'rival'] as const)('projects an actual %s Three Mouths search safely through the worker', seat => {
+    const { state } = quietRivalFixture();
+    state.G.turnMetadata.activePlayerId = seat;
+    const program = placeCard(state, seat, 'three-mouths-one-desire', 'hand');
+    for (let i = 0; i < 2; i++) placeEddie(state, seat);
+    const engine = new LocalEngine(state);
+    issue(engine, seat, 'playCard', { cardId: program });
+    expect(engine.getFilteredView(seat).prompt.choice?.type).toBe('scry');
+    const { respond } = createMatchController({ version: 1, setup: setup('chrome-syndicate'),
+      summary: { matchId: 'search-worker', ended: false },
+      checkpoint: { matchId: 'search-worker', state: engine.getState(), botRng: new SeededRNG('search-worker').getState(),
+        known: new Map(), peeks: [], log: [], commandNumber: 0 } });
+    const response = respond({ id: 0, action: { type: 'resume' } });
+    if (!('snapshot' in response)) throw new Error(response.error);
+    const { view, presentation } = response.snapshot;
+    expect(typeof view.players.rival.zones.hand).toBe('number');
+    expect(typeof view.players.rival.zones.deck).toBe('number');
+    if (seat === 'player') expect(view.prompt.choice).toMatchObject({ type: 'scry', chooserId: 'player' });
+    else expect(view.prompt.choice?.chooserId).not.toBe('rival');
+    for (const beat of presentation?.beats ?? []) {
+      expect(beat.view.prompt.choice?.chooserId).not.toBe('rival');
+      expect(typeof beat.view.players.rival.zones.hand).toBe('number');
+      expect(typeof beat.view.players.rival.zones.deck).toBe('number');
     }
   });
 
