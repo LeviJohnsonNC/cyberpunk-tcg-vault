@@ -15,9 +15,9 @@
   z-index: 1;
   border-radius: inherit;
   pointer-events: none;
-  --foil-grain: .15;
-  --foil-prism: .72;
-  --foil-specular: .71;
+  --foil-grain: .1;
+  --foil-prism: .56;
+  --foil-specular: .6;
   --foil-edge-size: 2px;
   --foil-rest-x: 77%;
   --foil-rest-y: 34%;
@@ -64,22 +64,23 @@
 .printing-foil-light::after {
   left: var(--foil-x, var(--foil-rest-x));
   top: var(--foil-y, var(--foil-rest-y));
-  width: 40%;
+  width: 58%;
   height: 160%;
   transform: translate(-50%, -50%) rotate(var(--foil-angle));
   /* A soft fallback also has no rectangular ends when masking is unavailable. */
-  background: radial-gradient(ellipse at center,
-    rgb(255 249 228 / .75), rgb(var(--foil-gold) / .45) 18%,
-    rgb(var(--foil-rose) / .3) 38%, rgb(var(--foil-cool) / .15) 58%, transparent 75%);
+  background: radial-gradient(ellipse at center in oklab,
+    rgb(255 249 228 / .48), rgb(var(--foil-gold) / .3) 22%,
+    rgb(var(--foil-rose) / .18) 42%, rgb(var(--foil-cool) / .08) 62%, transparent 82%);
   opacity: var(--foil-specular);
 }
 /* Limit the strong face light to the illustration and soften it before the name and rules. */
 @supports (mask-image: linear-gradient(#000, transparent)) {
   .printing-foil-light::after {
-    background: linear-gradient(90deg, transparent 4%, rgb(var(--foil-violet) / .24) 22%,
-      rgb(var(--foil-rose) / .44) 37%, rgb(var(--foil-gold) / .58) 46%,
-      rgb(255 249 228 / .8) 52%, rgb(var(--foil-cool) / .58) 59%,
-      rgb(var(--foil-cool) / .26) 70%, transparent 91%);
+    /* A broad pearl reflection, with no narrow white hotspot. */
+    background: linear-gradient(90deg in oklab, transparent 0%, rgb(var(--foil-violet) / .1) 18%,
+      rgb(var(--foil-rose) / .22) 32%, rgb(var(--foil-gold) / .34) 43%,
+      rgb(255 249 228 / .48) 50% 55%, rgb(var(--foil-cool) / .3) 67%,
+      rgb(var(--foil-cool) / .1) 82%, transparent 100%);
     /* Fade the beam along its length as well as across its width. */
     mask-image: linear-gradient(transparent, rgb(0 0 0 / .45) 14%, #000 30% 70%, rgb(0 0 0 / .45) 86%, transparent);
   }
@@ -96,6 +97,7 @@
 }
 .printing-foil::after {
   border: var(--foil-edge-size) solid rgb(232 239 236 / .87);
+  opacity: .78;
 }
 @supports (mask-composite: exclude) {
   .printing-foil::after {
@@ -113,16 +115,16 @@
 }
 
 .printing-foil[data-foil-mode='standard'] {
-  --foil-grain: .26;
-  --foil-prism: .84;
-  --foil-specular: .79;
-  --foil-edge-size: 2.5px;
+  --foil-grain: .16;
+  --foil-prism: .64;
+  --foil-specular: .66;
+  --foil-edge-size: 2px;
 }
 .printing-foil[data-foil-mode='inspection'] {
-  --foil-grain: .36;
-  --foil-prism: .95;
-  --foil-specular: .92;
-  --foil-edge-size: 3px;
+  --foil-grain: .22;
+  --foil-prism: .7;
+  --foil-specular: .72;
+  --foil-edge-size: 2px;
 }
 .printing-foil[data-foil-finish='nova'] {
   --foil-cool: 224 177 255;
@@ -138,13 +140,15 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  .printing-foil-light::before, .printing-foil-light::after {
+    transition: opacity 180ms ease-out;
+  }
   .printing-foil[data-foil-mode='inspection'][data-foil-glint] .printing-foil-light::after {
-    animation: printing-foil-glint 510ms ease-out;
+    animation: printing-foil-glint 640ms ease-out;
   }
 }
 @keyframes printing-foil-glint {
-  0% { transform: translate(-166%, -44%) rotate(var(--foil-angle)); opacity: .10; }
-  48% { opacity: 1; }
+  0% { transform: translate(-120%, -46%) rotate(var(--foil-angle)); opacity: .10; }
   100% { transform: translate(-50%, -50%) rotate(var(--foil-angle)); opacity: var(--foil-specular); }
 }
 @media (prefers-reduced-motion: no-preference) and (any-hover: hover) {
@@ -154,11 +158,11 @@
   }
   .foil-inspection-art[data-foil-active] { transition-duration: 70ms; }
   .foil-art[data-foil-active] > .printing-foil[data-foil-mode='standard'] {
-    --foil-prism: .93;
-    --foil-specular: .9;
+    --foil-prism: .72;
+    --foil-specular: .74;
   }
   .foil-art[data-foil-active] > .printing-foil[data-foil-mode='inspection'] {
-    --foil-prism: 1;
-    --foil-specular: 1;
+    --foil-prism: .78;
+    --foil-specular: .8;
   }
 }

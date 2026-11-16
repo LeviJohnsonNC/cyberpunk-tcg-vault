@@ -78,7 +78,7 @@ export function PrintingFoil({ finish, mode, glintOnOpen }: { finish: FoilFinish
       const y = Math.min(1, Math.max(0, (event.clientY - bounds.top) / bounds.height));
       active = true;
       art.dataset.foilActive = '';
-      target = { x: 19 + x * 62, y: 18 + y * 48, tiltX: (0.5 - y) * 8, tiltY: (x - 0.5) * 8 };
+      target = { x: 19 + x * 62, y: 18 + y * 48, tiltX: (0.5 - y) * 5, tiltY: (x - 0.5) * 5 };
       schedule();
     };
     const resetTouch = (event: PointerEvent) => {
