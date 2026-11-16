@@ -42,6 +42,7 @@
   position: absolute;
   inset: 14% 7% 45%;
   overflow: hidden;
+  border-radius: inherit;
   clip-path: ellipse(50% 50% at 50% 50%);
 }
 .printing-foil-light::before, .printing-foil-light::after {
@@ -63,17 +64,25 @@
 .printing-foil-light::after {
   left: var(--foil-x, var(--foil-rest-x));
   top: var(--foil-y, var(--foil-rest-y));
-  width: 33%;
-  height: 88%;
+  width: 40%;
+  height: 160%;
   transform: translate(-50%, -50%) rotate(var(--foil-angle));
-  background: linear-gradient(90deg, transparent 4%, rgb(var(--foil-violet) / .30) 22%,
-    rgb(var(--foil-rose) / .55) 37%, rgb(var(--foil-gold) / .68) 46%,
-    rgb(255 249 228 / .90) 52%, rgb(var(--foil-cool) / .69) 59%,
-    rgb(var(--foil-cool) / .32) 70%, transparent 91%);
+  /* A soft fallback also has no rectangular ends when masking is unavailable. */
+  background: radial-gradient(ellipse at center,
+    rgb(255 249 228 / .75), rgb(var(--foil-gold) / .45) 18%,
+    rgb(var(--foil-rose) / .3) 38%, rgb(var(--foil-cool) / .15) 58%, transparent 75%);
   opacity: var(--foil-specular);
 }
 /* Limit the strong face light to the illustration and soften it before the name and rules. */
 @supports (mask-image: linear-gradient(#000, transparent)) {
+  .printing-foil-light::after {
+    background: linear-gradient(90deg, transparent 4%, rgb(var(--foil-violet) / .24) 22%,
+      rgb(var(--foil-rose) / .44) 37%, rgb(var(--foil-gold) / .58) 46%,
+      rgb(255 249 228 / .8) 52%, rgb(var(--foil-cool) / .58) 59%,
+      rgb(var(--foil-cool) / .26) 70%, transparent 91%);
+    /* Fade the beam along its length as well as across its width. */
+    mask-image: linear-gradient(transparent, rgb(0 0 0 / .45) 14%, #000 30% 70%, rgb(0 0 0 / .45) 86%, transparent);
+  }
   .printing-foil::before {
     inset: 0;
     mask-image: radial-gradient(ellipse 50% 42% at 67% 32%, #000 0%, rgb(0 0 0 / .44) 52%, transparent 100%);
