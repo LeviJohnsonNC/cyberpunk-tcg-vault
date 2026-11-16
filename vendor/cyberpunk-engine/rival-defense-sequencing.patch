@@ -1,0 +1,207 @@
+--- /dev/null
++++ b/submodules/cyberpunk/packages/engine/src/automation/resolvers/defense-value.ts
+@@ -0,0 +1,15 @@
++import type { FilteredCardView, FilteredMatchView } from "../../view/filter.ts";
++
++/** Only identities already present in the deciding seat's projection. */
++export function visibleCard(view: FilteredMatchView, id: string) {
++  return Object.values(view.players).flatMap(player =>
++    Object.values(player.zones).flatMap(zone => Array.isArray(zone) ? zone : []),
++  ).find(card => card.instanceId === id);
++}
++
++export function defenseMaterialValue(card: FilteredCardView | undefined): number {
++  if (!card) return 0;
++  const blocker = card.keywords.includes("blocker") || card.grantedRules.includes("blocker");
++  return card.effectivePower * 3 + (card.cost ?? 0) * 2 + (blocker ? 12 : 0)
++    + card.triggerHints.length * 5 + (card.type === "unit" ? 10 : 4);
++}
+--- a/submodules/cyberpunk/packages/engine/src/automation/resolvers/prevent-gig-steal.ts
++++ b/submodules/cyberpunk/packages/engine/src/automation/resolvers/prevent-gig-steal.ts
+@@ -1,18 +1,29 @@
+-import type { ChoiceResolver, MoveDecision } from "../types.ts";
++import type { ChoiceResolver } from "../types.ts";
+ import type { PreventGigStealChoicePrompt } from "../../view/player-prompt.ts";
++import { defenseMaterialValue, visibleCard } from "./defense-value.ts";
+
+-/**
+- * Bots do not yet reason about gig-theft prevention; they decline the option so
+- * the steal resolves normally. Human players (and explicit test-engine calls)
+- * resolve `preventGigSteal` choices directly via the `resolvePreventGigSteal`
+- * move.
+- */
+-export const preventGigStealResolver: ChoiceResolver<
+-  PreventGigStealChoicePrompt
+-> = (): MoveDecision => {
+-  return {
+-    kind: "command",
+-    move: "resolvePreventGigSteal",
+-    args: { pass: true, preventions: [] },
+-  };
++/** Match each public Gig value to a distinct, least valuable legal discard. */
++export const preventGigStealResolver: ChoiceResolver<PreventGigStealChoicePrompt> = (choice, ctx) => {
++  const { stealEntries, handEntries } = choice.payload;
++  const defender = ctx.view.players[ctx.playerId];
++  const attacker = Object.entries(ctx.view.players).find(([id]) => id !== ctx.playerId)?.[1];
++  // Protect a near-winning lead or stop the theft from reaching seven Gigs.
++  const urgent = (defender?.gigCount ?? 0) >= 5
++    || (attacker?.gigCount ?? 0) + stealEntries.length >= 7
++    || ctx.view.overtimeActive || ctx.view.turnBeganWithEmptyFixer;
++  const gigValue = urgent ? 120 : 40;
++  const available = [...handEntries].sort((a, b) =>
++    defenseMaterialValue(visibleCard(ctx.view, a.cardId)) - defenseMaterialValue(visibleCard(ctx.view, b.cardId))
++    || a.cardId.localeCompare(b.cardId));
++  const preventions: Array<{ dieId: string; cardId: string }> = [];
++  for (const die of stealEntries) {
++    const index = available.findIndex(card => card.cost === die.value);
++    if (index < 0) continue;
++    const card = available[index]!;
++    if (defenseMaterialValue(visibleCard(ctx.view, card.cardId)) > gigValue) continue;
++    preventions.push({ dieId: die.dieId, cardId: card.cardId });
++    available.splice(index, 1);
++  }
++  return { kind: "command", move: "resolvePreventGigSteal",
++    args: { pass: preventions.length === 0, preventions } };
+ };
+--- a/submodules/cyberpunk/packages/engine/src/automation/resolvers/redirect-defeat.ts
++++ b/submodules/cyberpunk/packages/engine/src/automation/resolvers/redirect-defeat.ts
+@@ -1,17 +1,18 @@
+-import type { ChoiceResolver, MoveDecision } from "../types.ts";
++import type { ChoiceResolver } from "../types.ts";
+ import type { RedirectDefeatChoicePrompt } from "../../view/player-prompt.ts";
++import { defenseMaterialValue, visibleCard } from "./defense-value.ts";
+
+-/**
+- * Bots decline Jackie-style optional defeat replacements by default. Human
+- * players and explicit test-engine calls resolve `redirectDefeat` via
+- * `resolveRedirectDefeat`. Tactical search enumerates apply vs pass.
+- */
+-export const redirectDefeatResolver: ChoiceResolver<
+-  RedirectDefeatChoicePrompt
+-> = (): MoveDecision => {
+-  return {
+-    kind: "command",
+-    move: "resolveRedirectDefeat",
+-    args: { pass: true },
++/** Casual play still weighs the Unit and attached Gear against Jackie and payment. */
++export const redirectDefeatResolver: ChoiceResolver<RedirectDefeatChoicePrompt> = (choice, ctx) => {
++  const { protectedCardId, eligibleProtectedCardIds, replacementCardId, cost } = choice.payload;
++  const value = (id: string) => {
++    const card = visibleCard(ctx.view, id);
++    return defenseMaterialValue(card) + (card?.attachedGearIds ?? []).reduce(
++      (sum, gear) => sum + defenseMaterialValue(visibleCard(ctx.view, gear)), 0);
+   };
++  const target = [...(eligibleProtectedCardIds ?? [protectedCardId])].sort(
++    (a, b) => value(b) - value(a) || a.localeCompare(b))[0];
++  const pass = !target || value(target) <= value(replacementCardId) + cost * 3;
++  return { kind: "command", move: "resolveRedirectDefeat",
++    args: pass ? { pass: true } : { pass: false, protectedCardId: target } };
+ };
+--- a/submodules/cyberpunk/packages/engine/src/automation/search/tactical.ts
++++ b/submodules/cyberpunk/packages/engine/src/automation/search/tactical.ts
+@@ -1617,7 +1617,7 @@
+   // in the search instead of vetoing them with the normal material policy.
+   if (isLateGigRace(ctx.view)) return actions;
+   let filtered = filterUnsafeFights(actions, ctx.view, scoring);
+-  filtered = filterUnsafeDirectAttacks(filtered, ctx.view, ctx.playerId as string, scoring);
++  filtered = filterUnsafeDirectAttacks(filtered, ctx.view, ctx.playerId as string);
+
+   if (filtered.some((action) => action.move === "useBlocker")) {
+     const policyDecision = fallback.decideAction(ctx);
+@@ -1636,9 +1636,7 @@
+ /**
+  * Fights keep only rule-compliant attackers: for each defender the plan sends
+  * the weakest Unit that still wins the fight, preserving ≥10-power bodies
+- * that steal two Gigs. When such a removal exists, combat outranks
+- * developing: develop plays and passes are dropped for this prompt (the
+- * following prompt still develops).
++ * that steal two Gigs. Setup and passing remain candidates for evaluation.
+  */
+ function filterUnsafeFights(
+   actions: Array<MoveDecision & { kind: "command" }>,
+@@ -1670,15 +1668,9 @@
+       preferredPairs.add(`${winners[0]!.id}:${defenderId}`);
+     }
+   }
+-  const removalAvailable = requiredAttackerIds.size > 0 || preferredPairs.size > 0;
+-  const mandate = removalAvailable && !scoring.disabled.has("remove-targets");
+   return actions.filter((action) => {
+-    if (action.move !== "attackUnit") {
+-      if (!mandate) return true;
+-      // A removal exists: this prompt is combat. Keep steals (a second body
+-      // can still take the gig race) but drop developing and passing.
+-      return action.move === "attackRival";
+-    }
++    // Compare development with combat; a winning fight does not make setup worthless.
++    if (action.move !== "attackUnit") return true;
+     const attackerId = stringArg(action.args?.attackerId);
+     if (requiredAttackerIds.size > 0) return requiredAttackerIds.has(attackerId);
+     const attacker = findCard(view, attackerId);
+@@ -1694,16 +1686,13 @@
+  * Direct Gig-area attacks: at parity or behind, an attacker must beat the
+  * strongest ready blocker. With more attack-ready Units than rival ready
+  * Units, weaker attackers may draw a block and leave a spare attacker.
+- * A 0-power Unit steals nothing, so it never attacks the Gig area. When no
+- * blocker can respond at all ("free steal" — no rival ready blocker and at
+- * least one Gig to take), the steal is strictly +EV: this prompt becomes the
+- * steal, plus any already-planned removal fights.
++ * A 0-power Unit steals nothing, so it never attacks the Gig area.
++ * Even an unblocked steal must compete with equipment and ability setup.
+  */
+ function filterUnsafeDirectAttacks(
+   actions: Array<MoveDecision & { kind: "command" }>,
+   view: FilteredMatchView,
+   actorId: string,
+-  scoring: TacticalScoringOptions,
+ ): Array<MoveDecision & { kind: "command" }> {
+   const attacks = actions.filter((action) => action.move === "attackRival");
+   if (attacks.length === 0) return actions;
+@@ -1736,14 +1725,6 @@
+       (findCard(view, bId)?.effectivePower ?? 0) - (findCard(view, aId)?.effectivePower ?? 0);
+     return powerDelta !== 0 ? powerDelta : aId.localeCompare(bId);
+   })[0];
+-  const stealOnly =
+-    selected !== undefined &&
+-    rivalBlockers.length === 0 &&
+-    !scoring.disabled.has("safe-steal") &&
+-    !actions.some((action) => action.move === "useBlocker");
+-  if (stealOnly) {
+-    return actions.filter((action) => action === selected || action.move === "attackUnit");
+-  }
+   return actions.filter(
+     (action) =>
+       action.move !== "attackRival" ||
+@@ -1801,6 +1782,10 @@
+   action: MoveDecision & { kind: "command" },
+   actor: PlayerId,
+ ): boolean {
++  // Even the existence of Alt's prevention prompt depends on a concealed hand.
++  // Cut off from the BEFORE view whenever that public defense could apply, not
++  // only when the fork happens to offer a matching discard.
++  if (mayReachConcealedGigPrevention(before, action)) return true;
+   if (action.move === "mulligan" || action.move === "gainGig") return true;
+   if (promptChoiceCrossesHiddenInformation(after.prompt)) return true;
+   if (actionUsesHiddenEffectHint(before.prompt, action)) return true;
+@@ -1829,6 +1814,22 @@
+     return true;
+   }
+   return false;
++}
++
++function mayReachConcealedGigPrevention(
++  view: FilteredMatchView,
++  action: MoveDecision & { kind: "command" },
++): boolean {
++  const possible = Object.values(view.players).some(player =>
++    typeof player.zones.hand === "number" && player.zones.hand > 0
++    && [player.zones.field, player.zones.legendArea].some(zone => Array.isArray(zone)
++      && zone.some(card => !card.faceDown && card.grantedRules.includes("preventsGigStealByDiscard"))));
++  if (!possible) return false;
++  if (["attackRival", "resolveAttack", "resolveStealGigs"].includes(action.move)) return true;
++  // Effect choices may resolve an indirect steal, including a triggered steal.
++  if (["chooseTarget", "chooseEffect", "chooseTrigger"].includes(view.prompt.choice?.type ?? "")) return true;
++  const source = findCard(view, stringArg(action.args?.cardId));
++  return source?.abilityHints.some(hint => hint.effects.includes("stealGig")) ?? false;
+ }
+
+ /**

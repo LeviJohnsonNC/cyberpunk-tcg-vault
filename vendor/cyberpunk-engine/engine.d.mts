@@ -85,7 +85,6 @@ export interface DeckStrategyProfile {
   pacing?: 'develop-first' | 'attack-first';
   preferSecond?: boolean;
   developLegends?: boolean;
-  planCombatSetup?: boolean;
   detonateForGigDefense?: boolean;
 }
 
