@@ -40,7 +40,7 @@ All tokens live in **`src/theme.css`** (imported first by `src/styles.css`). Nev
 | `--color-divider` | `#4A3248` | Borders, rules, bar tracks |
 | `--color-text` | `#FFF0E6` | Primary text |
 | `--color-text-muted` | `#C9AABF` | Secondary text, column headers |
-| `--color-text-faint` | `#8E7488` | Tertiary metadata (printing IDs, units) |
+| `--color-text-faint` | `#A0869A` | Tertiary metadata (printing IDs, units) |
 | `--color-accent` | `#FF8CBB` | Emphasis, active nav, position totals, focus ring |
 | `--color-accent-deep` | `#C4568A` | Marquee shading, strip shadow, rail border |
 | `--color-accent-ink` | `#1B0F1D` | Text on pink |
@@ -71,7 +71,7 @@ Fonts are self-hosted via `@fontsource` packages (imported in `theme.css`), so t
 - `--cut-sm` (10px), `--cut-lg` (26px): clipped corners via `clip-path`. Use `--cut-lg` only on the focal element.
 - `--radius-sm` (3px): chips, inputs, buttons.
 - `--space-1`…`--space-6`: 4, 8, 12, 16, 24, 32px.
-- `--focus-ring`: two-tone ring (canvas gap + pink). Applied globally on `:focus-visible`. Don't remove it.
+- `--focus-ring`: two-tone ring (canvas gap + pink). Applied globally on `:focus-visible`. Don't remove it. A real outline remains available in forced-colors mode, where shadows disappear.
 
 ## Component patterns
 

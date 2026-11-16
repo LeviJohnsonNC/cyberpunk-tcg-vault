@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject } from 'react';
 import { asPlayMode, type PlayModeId } from './playNavigation';
 
 export const TABS = [
@@ -33,13 +33,26 @@ const subscribePhone = (update: () => void) => {
   return () => query.removeEventListener('change', update);
 };
 
-export function useVaultNavigation(scope: string, closeOverlays: () => void) {
+export function useVaultNavigation(scope: string, closeOverlays: () => void, main: RefObject<HTMLElement | null>) {
   const mobile = useSyncExternalStore(subscribePhone, () => phone().matches);
   const [navigation, setNavigation] = useState(() => {
     const route = readHash();
     return { route, visited: new Set([route.tab]), arrival: { top: 0 } };
   });
   const currentRoute = useRef(navigation.route);
+  const screen = `${navigation.route.tab}:${navigation.route.playMode ?? ''}`;
+  const previousScreen = useRef(screen);
+  const { tab, playMode } = navigation.route;
+  const screenLabel = tab === 'play' && playMode ? (playMode === 'campaign' ? 'Campaign' : 'Free Play')
+    : tab === 'about' ? 'How it works' : tab === 'upgrade' ? 'Upgrade planner' : tab === 'shared' ? 'Shared deck'
+      : TABS.find((item) => item.id === tab)!.label;
+  useLayoutEffect(() => {
+    document.title = `${screenLabel} · Cyberpunk TCG Vault`;
+    // Focus the stable landmark before lazy content arrives; never steal focus when it resolves.
+    // Match checkpoint/query updates and background collection sync are not new screens.
+    if (previousScreen.current !== screen) main.current?.focus({ preventScroll: true });
+    previousScreen.current = screen;
+  }, [screen, screenLabel, main]);
   const currentScope = useRef(scope);
   const positions = useRef(new Map<string, number>());
 
@@ -82,5 +95,5 @@ export function useVaultNavigation(scope: string, closeOverlays: () => void) {
     setNavigation((prev) => ({ ...prev, route }));
   }, []);
 
-  return { route: navigation.route, visited: navigation.visited, mobile, consumeDeck };
+  return { route: navigation.route, visited: navigation.visited, mobile, consumeDeck, screenLabel };
 }

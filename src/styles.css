@@ -19,7 +19,7 @@ body {
 a { color: var(--color-accent); text-underline-offset: 2px; }
 button, input, select, textarea { font: inherit; color: inherit; }
 ::selection { background: var(--color-accent); color: var(--color-accent-ink); }
-:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+:focus-visible { outline: 2px solid transparent; outline-offset: 3px; box-shadow: var(--focus-ring); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: var(--color-canvas-deep); }
@@ -609,3 +609,11 @@ table.data.ht-odds-table tbody tr:hover { background: none; cursor: default; }
   .vault-sync { display: none; }
   .vault-sync[data-state='loading'], .vault-sync[data-state='error'], .vault-sync[data-state='sample'] { display: inline-flex; }
 }
+
+/* A real outline survives Windows High Contrast, where box shadows are suppressed. */
+@media (forced-colors: active) {
+  :focus-visible { outline: 2px solid Highlight !important; outline-offset: 3px; }
+}
+.skip-link { position: fixed; top: var(--space-2); left: var(--space-2); z-index: 100; padding: var(--space-3); background: var(--color-canvas); color: var(--color-text); transform: translateY(-200%); }
+.skip-link:focus { transform: none; }
+#main-content { scroll-margin-top: 100px; }

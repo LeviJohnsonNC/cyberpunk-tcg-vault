@@ -40,7 +40,6 @@ export function CardImg({ slug, alt, className, priority = false }: { slug: stri
       src={useBack ? CARD_BACK : imageUrl(slug)}
       alt={failed === slug && alt ? `${alt} (art unavailable)` : alt}
       loading={priority && near ? 'eager' : 'lazy'}
-      fetchPriority={priority && near ? 'high' : undefined}
       decoding="async"
       onError={useBack ? undefined : () => setFailed(slug)}
     />

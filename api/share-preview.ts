@@ -8,7 +8,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { CARD } from './_deckrules.js';
 
 const TOKEN_RE = /^[0-9a-f]{32}$/;
-const SITE = 'https://cyberpunk-tcg-vault.vercel.app';
+const SITE = 'https://www.cyberpunkvault.com';
 
 export interface PreviewDeck {
   name: string;

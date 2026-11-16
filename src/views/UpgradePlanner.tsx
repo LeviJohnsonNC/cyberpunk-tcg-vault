@@ -1,6 +1,6 @@
 // Budget Upgrade Planner: starting deck + budget -> up to three legal upgrade options.
 // Read-only: never writes the collection or the source deck. Works signed out and in demo mode.
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { VaultSelect } from '../components/VaultSelect';
 import { HandTester, type TestDeck } from '../components/HandTester';
 import { Masthead } from '../components/ui';
@@ -10,7 +10,8 @@ import { estimateText, getCurrency, money } from '../lib/currency';
 import { newId, useStore } from '../lib/store';
 import { STARTERS } from '../lib/starters';
 import { openInBuilder, readUpgradeSource, type UpgradeSource } from '../lib/handoff';
-import { LENS_LABEL, planUpgrades, type Change, type FinishCost, type PlanOption, type BudgetStatus } from '../lib/upgrade';
+import { LENS_LABEL, type Change, type FinishCost, type PlanOption, type BudgetStatus } from '../lib/upgrade';
+import { useDeckTask } from '../lib/useDeckTask';
 
 const PRESETS = [0, 10, 25] as const;
 type Preset = (typeof PRESETS)[number] | 'custom';
@@ -179,13 +180,12 @@ export function UpgradePlanner({ onOpen }: { onOpen: (slug: string) => void }) {
   const currency = getCurrency(); // App re-renders on toggle; the preset amount stays, eligibility recalculates
   const customNum = Math.max(0, Math.min(9999, Number(custom) || 0));
   const budget = preset === 'custom' ? customNum : preset;
-  const deferredBudget = useDeferredValue(budget);
 
-  const plan = useMemo(
-    () => (source ? planUpgrades({ legends: source.legends, cards: source.cards, owned, budget: deferredBudget, currency, locks }) : null),
-    [source, owned, deferredBudget, currency, locks],
+  const task = useMemo(
+    () => source ? { type: 'upgrade' as const, input: { legends: source.legends, cards: source.cards, owned, budget, currency, locks } } : null,
+    [source, owned, budget, currency, locks],
   );
-  const stale = deferredBudget !== budget;
+  const { result: plan, pending, error, retry } = useDeckTask(task);
 
   const toggleLock = (slug: string) =>
     setLocks((prev) => {
@@ -269,6 +269,22 @@ export function UpgradePlanner({ onOpen }: { onOpen: (slug: string) => void }) {
         </p>
       </section>
 
+      <section className="panel up-base" aria-label="Cards to keep">
+        <details className="up-locks">
+          <summary>Lock cards {locks.size > 0 ? `(${locks.size} locked)` : '(keep a card at its current count)'}</summary>
+          <div className="up-lock-grid">
+            {source.legends.map((l) => (
+              <span key={l} className="up-lock fixed">{name(l)} <span className="muted">Legend, fixed</span></span>
+            ))}
+            {deckCards.map(([s, n]) => (
+              <button key={s} className="up-lock" aria-pressed={locks.has(s)} onClick={() => toggleLock(s)}>
+                <span className="num">{n}</span> {name(s)} <span className="up-lock-state">{locks.has(s) ? 'Locked' : 'Lock'}</span>
+              </button>
+            ))}
+          </div>
+        </details>
+      </section>
+
       {plan && (
         <section className="panel up-base" aria-label="Starting point">
           <div className="row">
@@ -281,19 +297,6 @@ export function UpgradePlanner({ onOpen }: { onOpen: (slug: string) => void }) {
           {!plan.base.legal && <p className="tiny weak" style={{ margin: '6px 0 0' }}>{plan.base.issues.join(' · ')}</p>}
           <CostLine cost={plan.base.cost} label="Cost to finish as listed" />
           <CopiesToBuy cost={plan.base.cost} />
-          <details className="up-locks">
-            <summary>Lock cards {locks.size > 0 ? `(${locks.size} locked)` : '(keep a card at its current count)'}</summary>
-            <div className="up-lock-grid">
-              {source.legends.map((l) => (
-                <span key={l} className="up-lock fixed">{name(l)} <span className="muted">Legend, fixed</span></span>
-              ))}
-              {deckCards.map(([s, n]) => (
-                <button key={s} className="up-lock" aria-pressed={locks.has(s)} onClick={() => toggleLock(s)}>
-                  <span className="num">{n}</span> {name(s)} <span className="up-lock-state">{locks.has(s) ? 'Locked' : 'Lock'}</span>
-                </button>
-              ))}
-            </div>
-          </details>
         </section>
       )}
 
@@ -308,7 +311,9 @@ export function UpgradePlanner({ onOpen }: { onOpen: (slug: string) => void }) {
         </div>
       )}
 
-      <div className={`up-options ${stale ? 'is-stale' : ''}`} aria-busy={stale} aria-live="polite">
+      {pending && <p role="status">Finding upgrades within your budget…</p>}
+      {error && <div role="alert"><p>{error}</p><button className="btn quiet" onClick={retry}>Try again</button></div>}
+      <div className="up-options" aria-busy={pending} aria-live="polite">
         {plan?.options.map((o) => (
           <OptionCard key={o.lenses.join()} o={o} budget={budget} onOpen={onOpen} onUse={() => openOption(o)} onCompare={() => compareOption(o)} />
         ))}

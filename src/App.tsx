@@ -2,17 +2,9 @@ import { Activity, lazy, Suspense, useCallback, useEffect, useRef, useState } fr
 import { Analytics, type BeforeSendEvent } from '@vercel/analytics/react';
 import { useStore, type Deck } from './lib/store';
 import { cloudEnabled } from './lib/supabase';
-import { AuthBox } from './components/AuthBox';
-import { CardDrawer } from './components/CardDrawer';
-import { Collection } from './views/Collection';
-import { PriceBook } from './views/PriceBook';
-import { DeckBuilder } from './views/DeckBuilder';
-import { MetaIntel } from './views/MetaIntel';
-import { AddCards } from './views/AddCards';
-import { HowItWorks } from './views/HowItWorks';
-import { UpgradePlanner } from './views/UpgradePlanner';
-import { SharedDeck } from './views/SharedDeck';
 import { FeedbackDialog } from './components/Feedback';
+import { AuthBox } from './components/AuthBox';
+import { Collection } from './views/Collection';
 import { MatchRadioContainer } from './lib/play/matchRadio';
 import { MusicPlayer } from './components/MusicPlayer';
 import { MobileVaultNav } from './components/MobileVaultNav';
@@ -27,6 +19,15 @@ import { PENDING_DECK_KEY } from './lib/handoff';
 import type { MatchSnapshot, MatchSummary } from './lib/play/protocol';
 import './mobile-shell.css';
 
+const CardDrawer = lazy(() => import('./components/CardDrawer').then((module) => ({ default: module.CardDrawer })));
+const PriceBook = lazy(() => import('./views/PriceBook').then((module) => ({ default: module.PriceBook })));
+const DeckBuilder = lazy(() => import('./views/DeckBuilder').then((module) => ({ default: module.DeckBuilder })));
+const MetaIntel = lazy(() => import('./views/MetaIntel').then((module) => ({ default: module.MetaIntel })));
+const AddCards = lazy(() => import('./views/AddCards').then((module) => ({ default: module.AddCards })));
+const HowItWorks = lazy(() => import('./views/HowItWorks').then((module) => ({ default: module.HowItWorks })));
+const UpgradePlanner = lazy(() => import('./views/UpgradePlanner').then((module) => ({ default: module.UpgradePlanner })));
+const SharedDeck = lazy(() => import('./views/SharedDeck').then((module) => ({ default: module.SharedDeck })));
+
 const PlayMode = playPreviewEnabled ? lazy(() => import('./views/PlayMode')) : null;
 
 function stripAnalyticsUrlDetails(event: BeforeSendEvent): BeforeSendEvent {
@@ -40,6 +41,7 @@ export default function App() {
   const store = useStore();
   const { demo, toast } = store;
   const scope = demo ? SAMPLE_DRAFT_OWNER : store.session?.user.id ?? 'local';
+  const main = useRef<HTMLElement>(null);
   const nav = useRef<HTMLElement>(null);
   const menu = useRef<HTMLDialogElement>(null);
   const menuAccount = useRef<HTMLHeadingElement>(null);
@@ -56,7 +58,7 @@ export default function App() {
     setOpenCard(null);
     setFeedbackOpen(false);
   }, []);
-  const { route, visited, mobile, consumeDeck } = useVaultNavigation(scope, closeOverlays);
+  const { route, visited, mobile, consumeDeck, screenLabel } = useVaultNavigation(scope, closeOverlays, main);
   const playPage = route.tab === 'play';
   const checkMatch = !mobile || playPage;
   const [playDraft, setPlayDraft] = useState<{ scope: string; draft: DeckDraft; opponent?: DeckDraft['deck']; curatedId?: string }>();
@@ -174,6 +176,7 @@ export default function App() {
 
   return (
     <>
+      <a className="skip-link" href="#main-content" onClick={(event) => { event.preventDefault(); main.current?.focus(); }}>Skip to main content</a>
       <Analytics route={analyticsPath} path={analyticsPath} beforeSend={stripAnalyticsUrlDetails} />
       <header className={desktopPlay ? 'appbar appbar--play' : 'appbar'}>
         <div className="appbar-inner">
@@ -259,7 +262,8 @@ export default function App() {
         </div>
       )}
 
-      <main key={scope}>
+      <main key={scope} id="main-content" aria-label={screenLabel} ref={main} tabIndex={-1}>
+        <Suspense fallback={<p className="callout" role="status">Opening screen…</p>}>
         {showSection('collection') && <Activity mode={route.tab === 'collection' ? 'visible' : 'hidden'}><Collection mobile={mobile} onOpen={showCard} goAdd={() => go('add')} /></Activity>}
         {showSection('prices') && <Activity mode={route.tab === 'prices' ? 'visible' : 'hidden'}><PriceBook mobile={mobile} onOpen={showCard} goAdd={() => go('add')} /></Activity>}
         {(showSection('builder') || (route.tab === 'play' && (matchDraft || (savedMatch && readDeckDraft(scope))))) && <Activity mode={route.tab === 'builder' ? 'visible' : 'hidden'}><DeckBuilder mobile={mobile} onOpen={showCard} initialDeck={route.tab === 'builder' ? route.deck : undefined} onConsumeDeck={consumeDeck}
@@ -310,14 +314,15 @@ export default function App() {
               : 'Play Mode couldn’t read this browser’s match storage.'}</p>
             <button type="button" className="btn" onClick={() => go('builder')}>Open Deck Builder</button>
           </section>)}
+        </Suspense>
       </main>
 
-      {openCard && <CardDrawer {...openCard} onClose={() => {
+      {openCard && <Suspense fallback={<p role="status">Opening card…</p>}><CardDrawer {...openCard} onClose={() => {
         const opener = openCard.opener?.isConnected ? openCard.opener
           : openCard.opener ? document.querySelector<HTMLElement>(route.tab === 'prices' ? '#pb-holdings-title' : '.collection-heading') : null;
         opener?.focus({ preventScroll: true });
         setOpenCard(null);
-      }} />}
+      }} /></Suspense>}
       <MusicPlayer controlsContainer={mobile ? musicContainer : desktopPlay && matchRadioContainer ? matchRadioContainer : undefined} />
       <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} page={route.tab} />
 

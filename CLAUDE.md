@@ -39,3 +39,15 @@ Run `npm run check` (lint + tests + typecheck/build) before committing. Tests li
 - The rival's skill levels map to upstream strategies in `vendor/cyberpunk-engine/entry.ts` (public-information only; never export the oracle ones). `engine.mjs` is generated: change `entry.ts` or the patches and rebuild with `scripts/build-play-engine.mjs` (see the vendor README), never by hand. Look-ahead goes through `fairHandle` in `src/lib/play/engineSession.ts`.
 - Avoid em-dashes in UI copy.
 - Before calling UI work done: check laptop and phone widths, long names, missing art, loading/empty states and keyboard focus.
+
+
+## Browser support and web checks
+
+Target maintained Chrome, Edge, and Firefox releases and Safari 18+. Core workflows must work without optional rendering and resource-priority hints. Use progressive enhancement for newer APIs; do not add polyfills for decorative effects. Any tighter minimum version needs an explicit product decision.
+
+- Secondary screens and inspection dialogs load through dynamic imports. Keep Collection immediately available. `npm run check:budget` checks the full static entry import graph after `npm run build` (285 kB gzip JS, 35 kB gzip CSS).
+- Deck suggestions run in dedicated module workers via `useDeckTask`. Memoize task inputs, terminate obsolete jobs, and never present a prior job's suggestions under new settings. Failure must offer retry, not block the UI with a synchronous fallback.
+- Route changes update the document title and focus the main landmark. Lazy content resolving, match checkpoints, and background syncing must not steal focus. Skip navigation must not change the hash router's route.
+- Preserve native outlines in forced-colors mode. Image network priority is distinct from the printing lookup queue: visible art may move ahead in that queue without making every thumbnail high priority.
+- Run `npm run test:browser` for navigation/UI changes. It builds local mode and tests desktop/phone layouts, axe accessibility, keyboard focus, missing art, and workers. Install Chromium with `npx playwright install chromium`; a preinstalled executable can be selected with `PLAYWRIGHT_CHROMIUM_EXECUTABLE`.
+- Before adding `content-visibility`, measure rendering cost on the actual view. Keep above-fold content eagerly rendered; pair any offscreen containment with intrinsic sizing and verify keyboard traversal. The current audit does not establish that containment is needed, so it is not applied speculatively.

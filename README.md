@@ -36,6 +36,19 @@ node scripts/sync-community-meta.mjs   # refresh Learn’s community deck statis
 
 To test photo scanning locally, use `vercel dev` with the server env vars below.
 
+## Validation and browser support
+
+```bash
+npm run check            # lint, unit tests, typecheck and production build
+npm run check:budget     # static entry imports: <=285 kB gzip JS, <=35 kB gzip CSS
+npx playwright install chromium
+npm run test:browser     # isolated local-mode build, desktop and phone checks
+```
+
+Browser tests cover keyboard navigation, forced-colors focus, axe accessibility across eight screens, missing artwork, dialog focus restoration, and worker calculation/retry flows. They do not connect to a cloud account. To use a preinstalled Chromium, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to its absolute path. GitHub Actions runs these checks on pull requests; Vercel also runs unit tests and the bundle budget before deployment.
+
+Support targets maintained Chrome, Edge, and Firefox releases and Safari 18+. Newer optional rendering features must degrade gracefully. Secondary screens load on demand, and deck suggestions run in cancellable workers so they cannot block typing or navigation. See `CLAUDE.md` for implementation constraints.
+
 ## Deploy (one-time setup)
 
 ### 1. Supabase
