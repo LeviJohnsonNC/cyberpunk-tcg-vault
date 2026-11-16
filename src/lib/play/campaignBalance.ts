@@ -187,7 +187,6 @@ const satoPlan: DeckStrategyProfile = {
   blockDirectStealsAtLeast: 1,
   preferSecond: true,
   developLegends: true,
-  planCombatSetup: true,
 };
 
 export const CAMPAIGN_RIVAL_PLANS: Readonly<Record<CampaignRivalPlan, DeckStrategyProfile>> = {

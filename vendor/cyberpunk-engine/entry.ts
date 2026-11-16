@@ -19,7 +19,6 @@ const strategies: Record<string, AIStrategy> = {
 type VaultDeckProfile = DeckStrategyProfile & {
   preferSecond?: boolean;
   developLegends?: boolean;
-  planCombatSetup?: boolean;
   detonateForGigDefense?: boolean;
 };
 const profiledStrategies = new WeakMap<VaultDeckProfile, Record<string, AIStrategy>>();
@@ -32,7 +31,6 @@ function strategyFor(name: string, profile?: VaultDeckProfile) {
       tactical: createTacticalStrategy({ deckProfile: profile }),
       "tactical-ability-aware": createTacticalStrategy({
         deckProfile: profile, abilityAware: true, maxNodes: 80, maxDepth: 4,
-        disabledHeuristics: profile.planCombatSetup ? ["safe-steal"] : [],
       }),
     };
     profiledStrategies.set(profile, configured);

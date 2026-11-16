@@ -35,6 +35,144 @@ function afterSetup(config: MatchSetup) {
 }
 
 describe('play engine', () => {
+  it.each([
+    ['sharp', false], ['masterful', false], ['sharp', true], ['masterful', true],
+  ] as const)('%s equips before a two-Gig attack (winning fight available: %s)', (skill, fightAvailable) => {
+    const { state, active, other } = quietRivalFixture();
+    for (let i = 0; i < 3; i++) giveGig(state, other);
+    for (let i = 0; i < 4; i++) placeEddie(state, active);
+    const attacker = placeCard(state, active, 'maxtac-av', 'field');
+    const gear = placeCard(state, active, 'mantis-blades', 'hand');
+    if (fightAvailable) placeCard(state, other, 'corpo-security', 'field', true);
+    const engine = new LocalEngine(state);
+    const before = structuredClone(engine.getState());
+    const decision = botDecision(engine, active, () => .3, skill)!;
+    expect(decision).toEqual({ move: 'playCard', args: { cardId: gear, attachToId: attacker } });
+    expect(engine.getState()).toEqual(before);
+    issue(engine, active, decision.move, decision.args);
+    const field = engine.getFilteredView(active).players[active].zones.field as CardView[];
+    expect(field.find(card => card.instanceId === attacker)?.effectivePower).toBe(10);
+    issue(engine, active, 'attackRival', { attackerId: attacker });
+    const view = engine.getFilteredView(active);
+    expect(view.prompt.choice).toMatchObject({ type: 'chooseGigsToSteal', payload: { count: 2 } });
+    const steal = botDecision(engine, active, () => .3, skill)!;
+    const count = view.players[active].gigCount;
+    issue(engine, active, steal.move, steal.args);
+    expect(engine.getFilteredView(active).players[active].gigCount).toBe(count + 2);
+  });
+
+  it.each(['sharp', 'masterful'] as const)('%s cannot infer Alt’s matching discard while planning an attack', skill => {
+    for (const ownGigs of [1, 4, 6]) {
+      const { state, active, other } = quietRivalFixture();
+      while (state.G.players[active].gigArea.length < ownGigs) giveGig(state, active);
+      for (let i = 0; i < 3; i++) giveGig(state, other);
+      const attacker = placeCard(state, active, 'maxtac-av', 'field');
+      placeCard(state, active, 'minotaur', 'hand');
+      for (let i = 0; i < 5; i++) placeEddie(state, active);
+      placeCard(state, other, 'alt-cunningham-mother-of-daemons', 'field');
+      const hidden = placeCard(state, other, 'mantis-blades', 'hand');
+      const sell = placeCard(state, active, 'floor-it', 'hand');
+      const original = new LocalEngine(state);
+      issue(original, active, 'sellCard', { cardId: sell });
+      const changed = structuredClone(original.getState());
+      changed.G.cardIndex[hidden].definitionId = engineCardId('minotaur');
+      const alternate = new LocalEngine(changed);
+      const compare = () => {
+        expect(hideConcealedTargets(original.getFilteredView(active)))
+          .toEqual(hideConcealedTargets(alternate.getFilteredView(active)));
+        expect(botDecision(original, active, () => .3, skill))
+          .toEqual(botDecision(alternate, active, () => .3, skill));
+      };
+      compare();
+      issue(original, active, 'attackRival', { attackerId: attacker });
+      issue(alternate, active, 'attackRival', { attackerId: attacker });
+      compare();
+    }
+  });
+
+  it.each(['standard', 'sharp', 'masterful'] as const)('%s prevents matching Gigs without reusing a discard', skill => {
+    const { state, active, other } = quietRivalFixture();
+    for (let i = 0; i < 3; i++) giveGig(state, other);
+    const attacker = placeCard(state, active, 'minotaur', 'field');
+    equipFixture(state, attacker, placeCard(state, active, 'mantis-blades', 'field'));
+    placeCard(state, other, 'alt-cunningham-mother-of-daemons', 'field');
+    const discard = placeCard(state, other, 'mantis-blades', 'hand');
+    placeCard(state, other, 'gorilla-arms', 'hand'); // wrong cost for the value-one Gigs
+    const sell = placeCard(state, active, 'floor-it', 'hand');
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'sellCard', { cardId: sell }); // refresh static effects
+    issue(engine, active, 'attackRival', { attackerId: attacker });
+    const steal = botDecision(engine, active, () => .3, skill)!;
+    issue(engine, active, steal.move, steal.args);
+    expect(engine.getFilteredView(other).prompt.choice).toMatchObject({ type: 'preventGigSteal' });
+    const before = structuredClone(engine.getState());
+    const defend = botDecision(engine, other, () => .3, skill)!;
+    expect(defend).toMatchObject({ move: 'resolvePreventGigSteal', args: {
+      pass: false, preventions: [{ cardId: discard }],
+    } });
+    expect(engine.getState()).toEqual(before);
+    issue(engine, other, defend.move, defend.args);
+    expect(engine.getState().G.players[other].zones.trash).toContain(discard);
+    expect(engine.getFilteredView(other).players[other].gigCount).toBe(2);
+  });
+
+  it.each(['standard', 'sharp', 'masterful'] as const)('%s weighs an expensive Alt discard against an imminent seven-Gig loss', skill => {
+    const create = (rivalGigs: number) => {
+      const { state, active, other } = quietRivalFixture();
+      while (state.G.players[active].gigArea.length < rivalGigs) giveGig(state, active);
+      const fixer = state.G.players[other].fixerArea;
+      const d8 = fixer.findIndex(id => state.G.gigDice[id].dieType === 'd8');
+      expect(d8).toBeGreaterThanOrEqual(0);
+      [fixer[0], fixer[d8]] = [fixer[d8], fixer[0]];
+      giveGig(state, other);
+      const die = state.G.players[other].gigArea.at(-1)!;
+      state.G.gigDice[die].faceValue = 7;
+      const attacker = placeCard(state, active, 'psycho-squad', 'field');
+      placeCard(state, other, 'alt-cunningham-mother-of-daemons', 'field');
+      const discard = placeCard(state, other, 'alt-cunningham-mother-of-daemons', 'hand');
+      const sell = placeCard(state, active, 'floor-it', 'hand');
+      const engine = new LocalEngine(state);
+      issue(engine, active, 'sellCard', { cardId: sell });
+      issue(engine, active, 'attackRival', { attackerId: attacker });
+      if (engine.getFilteredView(active).prompt.choice?.type === 'chooseGigsToSteal') {
+        const steal = botDecision(engine, active, () => .3, skill)!;
+        issue(engine, active, steal.move, steal.args);
+      }
+      expect(engine.getFilteredView(other).prompt.choice?.type).toBe('preventGigSteal');
+      return { engine, other, discard };
+    };
+    const early = create(1);
+    const decline = botDecision(early.engine, early.other, () => .3, skill)!;
+    expect(decline.args).toMatchObject({ pass: true });
+    issue(early.engine, early.other, decline.move, decline.args);
+    expect(early.engine.getState().G.players[early.other].zones.hand).toContain(early.discard);
+    const urgent = create(6);
+    const defend = botDecision(urgent.engine, urgent.other, () => .3, skill)!;
+    expect(defend.args).toMatchObject({ pass: false, preventions: [{ cardId: urgent.discard }] });
+    issue(urgent.engine, urgent.other, defend.move, defend.args);
+    expect(urgent.engine.getFilteredView(urgent.other).gameEnded).toBe(false);
+  });
+
+  it.each([
+    ['maxtac-av', false], ['corpo-security', true],
+  ] as const)('Standard weighs Jackie against saving %s', (slug, pass) => {
+    const { state, active, other } = quietRivalFixture();
+    const attacker = placeCard(state, active, 'minotaur', 'field');
+    equipFixture(state, attacker, placeCard(state, active, 'mantis-blades', 'field'));
+    const defender = placeCard(state, other, slug, 'field', true);
+    const jackie = placeCard(state, other, 'jackie-welles-mama-s-favorite', 'legendArea');
+    placeEddie(state, other);
+    const engine = new LocalEngine(state);
+    issue(engine, active, 'attackUnit', { attackerId: attacker, defenderId: defender });
+    if (engine.getFilteredView(other).attackState?.step === 'react') issue(engine, other, 'resolveAttack', { pass: true });
+    expect(engine.getFilteredView(other).prompt.choice?.type).toBe('redirectDefeat');
+    const defend = botDecision(engine, other, () => .3, 'standard')!;
+    expect(defend.args).toMatchObject({ pass });
+    issue(engine, other, defend.move, defend.args);
+    expect(engine.getState().G.players[other].zones.field.includes(defender)).toBe(!pass);
+    expect(engine.getState().G.players[other].zones.removedFromGame.includes(jackie)).toBe(!pass);
+  });
+
   it('maps every currently legal Vault card to a distinct playable engine definition', () => {
     const cards = CARDS.filter((card) => card.legal === 'legal');
     const mapped = cards.map((card) => engineCardId(card.slug));
@@ -1433,7 +1571,7 @@ type FixtureState = EngineState & { G: {
   manualPaymentPlayerId?: Seat;
   turnMetadata: { activePlayerId: Seat };
   players: Record<Seat, { eddies: number; spentEddies: number; eddieCardIds: string[]; fixerArea: string[]; gigArea: string[] }>;
-  gigDice: Record<string, { location: string; faceValue: number; ownerId: Seat }>;
+  gigDice: Record<string, { location: string; faceValue: number; ownerId: Seat; dieType: string }>;
   cardIndex: Record<string, { zone: string; meta: { faceDown: boolean; spent: boolean; hasLag: boolean; attachedGearIds: string[]; attachedToId: string | null } }>;
 } };
 
@@ -1493,4 +1631,13 @@ function issue(engine: LocalEngine, seat: Seat, move: string, args: Record<strin
   const result = engine.processCommand({ commandID: move, move, input: { args } }, seat);
   if (!result.success) throw new Error(result.error);
   return result;
+}
+
+function quietRivalFixture() {
+  const fixture = rulesFixture();
+  for (const seat of [fixture.active, fixture.other]) {
+    fixture.state.G.players[seat].zones.hand = [];
+    for (const id of fixture.state.G.players[seat].zones.legendArea) fixture.state.G.cardIndex[id].meta.spent = true;
+  }
+  return fixture;
 }

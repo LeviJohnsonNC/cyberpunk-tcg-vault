@@ -81,3 +81,22 @@ within the first 800 CSS pixels at a 1280-wide desktop viewport.
 The uploaded-file picker and signed-in cloud account were not exercised in the
 browser pass; imports use the same tested text parser, and saved-deck access uses
 the existing store. The rules audit remains the separate source of mechanics coverage.
+
+## First-pass decision fixes, 16 November 2026
+
+`rival-defense-sequencing.patch` addresses demonstrated defensive and sequencing mistakes:
+
+- All three levels match Alt Cunningham's threatened Gig values to distinct eligible hand cards, choosing the least valuable matching discard. A bounded material estimate can preserve an expensive card early; prevention receives greater weight near a seven-Gig win and during overtime.
+- Standard compares Jackie's replacement and payment against the best eligible Unit and its attached Gear. Sharp and Masterful retain their existing search for this choice.
+- Sharp and Masterful retain setup and passing alongside eligible fights and direct attacks. The MaxTac AV / Mantis Blades regression now equips to reach 10 power before stealing two Gigs, including when a winning fight is also available. The old campaign-only setup exception is unnecessary and removed; search budgets are unchanged.
+- Opening those candidates exposed an indirect information leak in speculative attacks against Alt: whether a prevention prompt appeared depended on the concealed hand. Search now cuts off from the public pre-action position whenever that defense could apply. It does not inspect whether a matching discard actually exists. Effect choices that might reach prevention use the same conservative boundary.
+
+These are decision-policy changes, not changes to card rules. Checked against the official current English text for [Alt Cunningham: Mother of Daemons](https://cyberpunktcg.com/cards/alt-cunningham-mother-of-daemons) and [Jackie Welles: Mama's Favorite](https://cyberpunktcg.com/cards/jackie-welles-mama-s-favorite), plus the [Comprehensive Rules](https://cyberpunktcg.com/comprehensive-rules) sections on stealing and replacement effects. The official indexed rules illustrate both equal-cost discard prevention and the extra Gig at 10 power; the live rules-reader API was inaccessible from this environment, so this pass does not claim a new exhaustive rules-version audit.
+
+Fourteen added regression cases cover equipment sequencing, legal distinct discards, expensive-card retention versus stopping seven Gigs, Jackie's accept/decline tradeoff, and unchanged attack/steal decisions when Alt's concealed matching card changes. Existing tests cover repeatability, match recovery, rules, and broader hidden-information invariance.
+
+Remaining work is unchanged: revealed-card selection, remembered private Legend information, substantive Masterful differentiation, and deliberate difficulty variation are outside this pass. The defensive valuations remain heuristics; the conservative Alt cutoff also limits lookahead in those positions. Neither these fixes nor a small fixed matchup sweep establish tournament-level play.
+
+Validation: `npm run check` passes all 578 tests, lint (existing warnings only), typechecking, and production build. `npm run check:budget` passes. Additional sampled probes found no mismatches across 756 concealed-card comparisons, 288 hidden-RNG comparisons, and 36 Alt-specific comparisons. These finite checks are evidence, not proof of exhaustive fairness.
+
+The [first-pass sweep](qa/opponent-first-pass-benchmark.json) covers the current 17-list roster in both seats, for 102 completed games with no rejected moves or stalls. Standard won 16/34, Sharp 24/34, and Masterful 24/34. The same fixed sweep before this pass was 16/34, 27/34, and 27/34 respectively. The demonstrated tactical corrections therefore do **not** establish a general strength increase; retain this regression signal for the later evaluation/difficulty pass rather than tuning to these seeds. Timing in this artifact overlaps other checks and is not an isolated latency benchmark.
