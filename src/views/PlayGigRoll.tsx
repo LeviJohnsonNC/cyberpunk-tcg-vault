@@ -4,6 +4,7 @@ import { paintDiceSparks, sparkDuration, SPARK_HEIGHT, SPARK_WIDTH } from '../li
 import { diceThrowFrame, diceThrowImpacts, layoutDiceThrow, type PointerRelease } from '../lib/play/diceThrow';
 import { rollHold, rollOffset, rollTime } from '../lib/play/diceTiming';
 import type { TableSoundCue } from '../lib/play/tableSound';
+import type { acquireCrystal } from '../lib/play/crystalRoll';
 import { dicePalette } from '../lib/play/dicePalette';
 import type { GigRoll } from '../lib/play/protocol';
 import './play-gig-roll.css';
@@ -78,16 +79,17 @@ function RollingDie({ roll, index, seatIndex, seatCount, release, cue, onDock }:
   cue?: TableSoundCue; onDock: (id: number) => void;
 }) {
   const root = useRef<HTMLDivElement>(null);
+  const mesh = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const sparks = useRef<HTMLDivElement>(null);
   const shadow = useRef<HTMLSpanElement>(null);
   const caption = useRef<HTMLSpanElement>(null);
 
   useLayoutEffect(() => {
-    const scene = root.current, surface = canvas.current, contactShadow = shadow.current, label = caption.current;
+    const scene = root.current, surface = canvas.current, holder = mesh.current, contactShadow = shadow.current, label = caption.current;
     const mat = scene?.closest<HTMLElement>('.play-table');
     const ctx = surface?.getContext('2d');
-    if (!mat || !scene || !surface || !ctx || !contactShadow || !label) {
+    if (!mat || !scene || !surface || !holder || !ctx || !contactShadow || !label) {
       if (scene) scene.dataset.phase = 'docked';
       onDock(index);
       return;
@@ -110,6 +112,39 @@ function RollingDie({ roll, index, seatIndex, seatCount, release, cue, onDock }:
       return { element, context };
     });
     const palette = dicePalette(mat, roll.seat);
+    let crystal: ReturnType<typeof acquireCrystal>;
+    let finished = false;
+    let gpuReady = false;
+    let previousPose = '';
+    const restoreCanvas = () => {
+      crystal?.canvas.removeEventListener('webglcontextlost', restoreCanvas);
+      crystal?.discard();
+      crystal = undefined;
+      gpuReady = false;
+      surface.hidden = false;
+      previousPose = '';
+      scene.dataset.renderer = 'canvas';
+    };
+    const releaseCrystal = () => {
+      finished = true;
+      crystal?.canvas.removeEventListener('webglcontextlost', restoreCanvas);
+      crystal?.release();
+      crystal = undefined;
+    };
+    surface.hidden = false;
+    scene.dataset.renderer = 'canvas';
+    if (!document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      void import('../lib/play/crystalRoll').then(async ({ acquireCrystal }) => {
+        if (finished || document.hidden) return;
+        crystal = acquireCrystal(roll.dieType, roll.result, palette);
+        if (!crystal) return;
+        crystal.canvas.addEventListener('webglcontextlost', restoreCanvas);
+        await crystal.ready;
+        if (finished || !crystal || document.hidden) return;
+        gpuReady = true;
+        previousPose = '';
+      }).catch(() => { if (!finished) restoreCanvas(); });
+    }
     const seed = [...roll.dieId].reduce((sum, char) => sum * 31 + char.charCodeAt(0) | 0, roll.result);
     const field = mat.querySelector(`[data-zone="field:${roll.seat}"]`);
     const sounds: (() => void)[] = [];
@@ -167,14 +202,30 @@ function RollingDie({ roll, index, seatIndex, seatCount, release, cue, onDock }:
         if (scene.dataset.phase !== phase) scene.dataset.phase = phase;
         const edge = dieContactPoint(roll.dieType, roll.result, [motion.x, motion.y, motion.z], radius);
         const grounding = (radius * .64 - edge.y) * (1 - dock);
-        surface.style.transform = `translate3d(${point.x - SIZE / 2}px, ${point.y - SIZE / 2 + grounding - lift}px, 0)`;
-        surface.style.opacity = dock > .8 ? String((1 - dock) * 5) : '1';
+        holder.style.transform = `translate3d(${point.x - SIZE / 2}px, ${point.y - SIZE / 2 + grounding - lift}px, 0)`;
+        holder.style.opacity = dock > .8 ? String((1 - dock) * 5) : '1';
         contactShadow.style.transform = `translate3d(${point.x - 50}px, ${point.y + radius * .64 - 14}px, 0) scale(${radius / 50 * (1 + lift / 100)}, ${radius / 50 * (1 + lift / 80)})`;
         contactShadow.style.opacity = String(Math.max(.12, .86 - lift / 95) * (1 - dock));
         label.style.transform = `translate3d(${point.x}px, ${point.y + radius * .83 + 5}px, 0) translateX(-50%)`;
         label.style.opacity = elapsed < route.throwing.settle ? '0' : String(1 - dock);
-        paintDie(ctx, roll.dieType, roll.result, [motion.x, motion.y, motion.z], radius, SIZE, palette, phase !== 'air');
+        const angles: [number, number, number] = [motion.x, motion.y, motion.z];
+        const poseKey = [radius, ...angles, phase].join(',');
+        if (phase !== 'docked' && poseKey !== previousPose) {
+          if (gpuReady && crystal) {
+            try {
+              crystal.render(angles, radius, SIZE);
+              if (!surface.hidden) {
+                holder.append(crystal.canvas);
+                surface.hidden = true;
+                scene.dataset.renderer = 'webgl';
+              }
+            } catch { restoreCanvas(); }
+          }
+          if (!gpuReady) paintDie(ctx, roll.dieType, roll.result, angles, radius, SIZE, palette, phase !== 'air');
+          previousPose = poseKey;
+        }
         if (phase === 'docked') {
+          releaseCrystal();
           target?.removeAttribute('data-roll-pending');
           target?.setAttribute('data-roll-docked', roll.decisive ? 'decisive' : '');
           sparkCanvases.forEach(({ element }) => { element.hidden = true; });
@@ -186,6 +237,7 @@ function RollingDie({ roll, index, seatIndex, seatCount, release, cue, onDock }:
     };
     frame = requestAnimationFrame(animate);
     return () => {
+      releaseCrystal();
       cancelAnimationFrame(frame);
       resize.disconnect();
       window.removeEventListener('resize', remeasure);
@@ -202,7 +254,7 @@ function RollingDie({ roll, index, seatIndex, seatCount, release, cue, onDock }:
     <div className="play-gig-sparks" ref={sparks}>
       {[0, 1, 2, 3].map(slot => <canvas key={slot} hidden style={{ width: SPARK_WIDTH, height: SPARK_HEIGHT }} />)}
     </div>
-    <canvas className="play-gig-mesh" ref={canvas} />
+    <div className="play-gig-mesh" ref={mesh}><canvas ref={canvas} /></div>
     <span className="play-gig-roll-label" ref={caption}>{roll.seat === 'player' ? 'Your' : 'Rival'} {roll.dieType}{roll.origin === 'reroll' ? ' reroll' : ''}</span>
   </div>;
 }

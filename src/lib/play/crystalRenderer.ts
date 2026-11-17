@@ -1,4 +1,4 @@
-/** Lazy d20 proof. Convex ray tracing and cut facets approximate a polished gemstone. */
+/** Cut facets and internal reflections for the six Gig dice. */
 import * as THREE from 'three';
 import { crystalOptics } from './crystalOptics';
 import { meshFor, type DicePalette } from './diceMesh';
@@ -40,7 +40,7 @@ function geometry(surfaces: CrystalMesh['surfaces']) {
   return result;
 }
 
-function studio(renderer: THREE.WebGLRenderer) {
+function studio(renderer: THREE.WebGLRenderer, resolution: number) {
   const room = new THREE.Scene();
   room.background = new THREE.Color(.2, .24, .3);
   const panels: [Vec, Vec, number, number][] = [
@@ -59,7 +59,7 @@ function studio(renderer: THREE.WebGLRenderer) {
     const panel = new THREE.Mesh(new THREE.PlaneGeometry(.3 + index % 3 * .2, 1.7 + index % 4 * .7), new THREE.MeshBasicMaterial({ color: new THREE.Color('white').multiplyScalar(1 + index % 4), side: THREE.DoubleSide }));
     panel.position.copy(vector(face.normal).multiplyScalar(4)); panel.lookAt(0, 0, 0); panel.rotateZ(index * .9); room.add(panel);
   }
-  const target = new THREE.WebGLCubeRenderTarget(512, { type: THREE.HalfFloatType, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter });
+  const target = new THREE.WebGLCubeRenderTarget(resolution, { type: renderer.extensions.has('EXT_color_buffer_float') ? THREE.HalfFloatType : THREE.UnsignedByteType, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter });
   const camera = new THREE.CubeCamera(.1, 20, target);
   camera.update(renderer, room);
   room.traverse(object => { if (object instanceof THREE.Mesh) { object.geometry.dispose(); (object.material as THREE.Material).dispose(); } });
@@ -93,24 +93,51 @@ export interface CrystalRenderer {
 }
 
 export function createCrystalRenderer(canvas: HTMLCanvasElement, type: string, result: number, palette: DicePalette): CrystalRenderer | undefined {
+  const stage = createCrystalStage(canvas);
+  if (!stage) return;
+  try {
+    const die = stage.die(type, result, palette);
+    return { render: die.render, dispose() { die.dispose(); stage.dispose(); } };
+  } catch (error) {
+    stage.dispose();
+    throw error;
+  }
+}
+
+export function createCrystalStage(canvas: HTMLCanvasElement, gameplay = false) {
   let renderer: THREE.WebGLRenderer;
-  try { renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: 'high-performance' }); }
+  try { renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: gameplay }); }
   catch { return; }
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, gameplay ? 1.5 : 2));
   renderer.setClearColor(0, 0);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
-  renderer.transmissionResolutionScale = .75;
-  const environment = studio(renderer);
+  const environment = studio(renderer, gameplay ? 128 : 512);
+  return {
+    die: (type: string, result: number, palette: DicePalette) => createDie(renderer, environment.texture, type, result, palette),
+    dispose() {
+      environment.dispose();
+      renderer.dispose();
+      if (!renderer.getContext().isContextLost()) renderer.forceContextLoss();
+    },
+  };
+}
+
+function createDie(renderer: THREE.WebGLRenderer, environment: THREE.CubeTexture, type: string, result: number, palette: DicePalette) {
   const scene = new THREE.Scene(), labelScene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(30, 1, .1, 30); camera.position.z = 5;
   const root = new THREE.Group(); scene.add(root);
   const labelRoot = new THREE.Group(); labelRoot.matrixAutoUpdate = false; labelScene.add(labelRoot);
-  const mesh = meshFor(type, .035), landing = mesh.faces[result - 1] ?? mesh.faces[0];
-  const align = new THREE.Matrix4().set(...landing.right, 0, ...landing.up, 0, ...landing.normal, 0, 0, 0, 0, 1);
+  const mesh = meshFor(type, .035);
+  const align = new THREE.Matrix4();
+  function setResult(value: number) {
+    const face = mesh.faces[value - 1] ?? mesh.faces[0];
+    align.set(...face.right, 0, ...face.up, 0, ...face.normal, 0, 0, 0, 0, 1);
+  }
+  setResult(result);
   const rotation = new THREE.Matrix4();
   root.matrixAutoUpdate = false;
-  const optics = crystalOptics(type, palette, environment.texture);
+  const optics = crystalOptics(type, palette, environment);
   const shell = new THREE.Mesh(geometry(mesh.surfaces), optics);
   root.add(shell);
   const edgeGeometry = new THREE.EdgesGeometry(shell.geometry, 14);
@@ -138,20 +165,26 @@ export function createCrystalRenderer(canvas: HTMLCanvasElement, type: string, r
   scene.add(new THREE.HemisphereLight(0xe9f5ff, 0x030713, .8));
   const key = new THREE.DirectionalLight(0xffffff, 3); key.position.set(-3, 5, 5); scene.add(key);
   const fill = new THREE.DirectionalLight(shade(palette.rim), 2); fill.position.set(4, -1, 2); scene.add(fill);
-  let lastSize = 0, lost = false;
-  const contextLost = (event: Event) => { event.preventDefault(); lost = true; };
-  canvas.addEventListener('webglcontextlost', contextLost);
+  let lastSize = 0;
+  const inverse = new THREE.Matrix4();
+  const facingDirection = new THREE.Vector3();
+  let compilation: Promise<unknown> | undefined;
   return {
-    render(angles, radius, size) {
-      if (lost) return;
+    prepare: () => compilation ??= Promise.all([
+      renderer.compileAsync(scene, camera),
+      renderer.compileAsync(labelScene, camera),
+    ]),
+    setResult,
+    render(angles: Vec, radius: number, size: number) {
       if (size !== lastSize) { renderer.setSize(size, size, false); lastSize = size; }
       camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(size / (radius * 10))); camera.updateProjectionMatrix();
       rotation.makeRotationFromEuler(new THREE.Euler(...angles, 'ZXY'));
       root.matrix.copy(rotation).multiply(align); labelRoot.matrix.copy(root.matrix);
-      optics.uniforms.cameraLocal.value.copy(camera.position).applyMatrix4(root.matrix.clone().invert());
+      optics.uniforms.cameraLocal.value.copy(camera.position).applyMatrix4(inverse.copy(root.matrix).invert());
       optics.uniforms.orientation.value.setFromMatrix4(root.matrix);
       for (const label of labels) {
-        const facing = label.normal.clone().transformDirection(root.matrix).z;
+        const facing = facingDirection.copy(label.normal).transformDirection(root.matrix).z;
+        label.mesh.visible = facing > 0;
         label.mesh.material.opacity = .12 + Math.max(0, facing) ** 2 * .88;
       }
       // The studio capture sets an opaque background. Explicitly restore canvas transparency before clearing.
@@ -159,14 +192,12 @@ export function createCrystalRenderer(canvas: HTMLCanvasElement, type: string, r
       renderer.render(scene, camera); renderer.render(labelScene, camera); renderer.autoClear = true;
     },
     dispose() {
-      canvas.removeEventListener('webglcontextlost', contextLost);
       scene.traverse(object => { if (object instanceof THREE.Mesh || object instanceof THREE.Sprite || object instanceof THREE.LineSegments) {
         if (object instanceof THREE.Mesh || object instanceof THREE.LineSegments) object.geometry.dispose();
         const materials = Array.isArray(object.material) ? object.material : [object.material]; materials.forEach(material => material.dispose());
       } });
       labelScene.traverse(object => { if (object instanceof THREE.Mesh) { object.geometry.dispose(); (object.material as THREE.Material).dispose(); } });
-      textures.forEach(texture => texture.dispose()); environment.dispose(); renderer.dispose();
-      if (!renderer.getContext().isContextLost()) renderer.forceContextLoss();
+      textures.forEach(texture => texture.dispose());
     },
   };
 }

@@ -18,18 +18,27 @@ async function gigChoice(page: Page) {
 
 test('crystal artwork renders all six shapes in the two ownership colors', async ({ page }) => {
   await workbench(page);
-  const colors = await page.locator('.dice-preview-gallery').evaluateAll(galleries => galleries.map(gallery => {
-    const image = gallery.querySelector('img')!;
-    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 160;
-    const ctx = canvas.getContext('2d')!; ctx.drawImage(image, 0, 0);
-    const data = ctx.getImageData(0, 0, 160, 160).data;
-    let r = 0, b = 0, pixels = 0;
-    for (let i = 0; i < data.length; i += 4) if (data[i + 3] > 100) { r += data[i]; b += data[i + 2]; pixels++; }
-    return { r, b, pixels };
-  }));
-  expect(colors[0].b).toBeGreaterThan(colors[0].r * 1.4);
-  expect(colors[1].r).toBeGreaterThan(colors[1].b * 1.4);
-  expect(colors.every(color => color.pixels > 1500)).toBe(true);
+  for (const seat of ['player', 'rival']) {
+    const dice = page.locator(`.dice-preview-gallery[data-seat="${seat}"] .play-crystal-die`);
+    for (const type of ['d4', 'd6', 'd8', 'd10', 'd12', 'd20']) {
+      const icon = dice.filter({ hasText: new RegExp(`^${type}$`) }).locator('img');
+      await expect(icon).toHaveAttribute('src', new RegExp(`${seat}-${type}\\.webp`));
+      const color = await icon.evaluate(image => {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 64;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(image as HTMLImageElement, 0, 0, 64, 64);
+        const rgba = ctx.getImageData(0, 0, 64, 64).data;
+        let red = 0, blue = 0;
+        for (let i = 0; i < rgba.length; i += 4) {
+          red += rgba[i] * rgba[i + 3]; blue += rgba[i + 2] * rgba[i + 3];
+        }
+        return { red, blue };
+      });
+      if (seat === 'player') expect(color.blue).toBeGreaterThan(color.red * 1.4);
+      else expect(color.red).toBeGreaterThan(color.blue * 1.4);
+    }
+  }
 });
 
 test('hard throws last longer, emit collision sparks, and return the same saved result', async ({ page }) => {
@@ -92,5 +101,44 @@ test('reduced motion interrupts a roll and keeps the authoritative result visibl
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(page.locator('.play-gig-roll-layer')).toHaveCount(0);
   await expect(page.getByRole('button', { name: `d6 Gig · ${result}`, exact: true })).toBeVisible();
+  await expect(page.locator('[data-roll-pending]')).toHaveCount(0);
+});
+
+test('losing the graphics context during a throw continues the same roll in Canvas and docks the saved value', async ({ page }) => {
+  await workbench(page);
+  await page.getByRole('button', { name: 'Aggressive throw' }).click();
+  const die = page.locator('.play-gig-roll');
+  await expect.poll(async () => {
+    await page.clock.runFor(16);
+    return die.getAttribute('data-renderer');
+  }).toBe('webgl');
+  const result = await die.getAttribute('data-result');
+  await die.locator('.play-gig-mesh canvas:last-child').evaluate(node => {
+    (node as HTMLCanvasElement).getContext('webgl2')!.getExtension('WEBGL_lose_context')!.loseContext();
+  });
+  await expect(die).toHaveAttribute('data-renderer', 'canvas');
+  await page.clock.runFor(100);
+  await expect(die.locator('.play-gig-mesh canvas').first()).toBeVisible();
+  await page.clock.runFor(2200);
+  await expect(die).toHaveAttribute('data-phase', 'docked');
+  await expect(page.locator('[data-card-id="preview-player"] .play-crystal-die b')).toHaveText(result!);
+});
+
+test('a saved engine result docks with artwork when WebGL is unavailable from launch', async ({ page }) => {
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (id: string, ...args: unknown[]) {
+      return id.includes('webgl') ? null : Reflect.apply(original, this, [id, ...args]);
+    } as typeof original;
+  });
+  await gigChoice(page);
+  await page.getByRole('button', { name: 'Roll d12', exact: true }).last().click();
+  await page.getByRole('button', { name: 'Roll die', exact: true }).click();
+  const roll = page.locator('.play-gig-roll[data-seat="player"]').first();
+  await expect(roll).toHaveAttribute('data-renderer', 'canvas');
+  const result = await roll.getAttribute('data-result');
+  const dock = page.getByRole('button', { name: `d12 Gig · ${result}`, exact: true });
+  await expect(dock.locator('.play-crystal-die b')).toHaveText(result!);
+  await expect(dock.locator('img')).toBeVisible();
   await expect(page.locator('[data-roll-pending]')).toHaveCount(0);
 });

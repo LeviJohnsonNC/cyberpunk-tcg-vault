@@ -3,6 +3,7 @@ import { CARD_BACK } from '../components/bits';
 import eddiesBack from '../assets/play/eddies-back.webp';
 import { zoneCards, zoneCount } from '../lib/play/matchView';
 import type { CardView, GigRoll, MatchChange, MatchSnapshot, Seat, SeatView } from '../lib/play/protocol';
+import { dicePalette } from '../lib/play/dicePalette';
 import { DieFace } from './PlayDice';
 
 type DieDrag = { start: (event: PointerEvent<HTMLElement>, die: CardView) => void; suppressClick: () => boolean };
@@ -31,16 +32,24 @@ export function ZoneFloat({ outcome, seat, kinds, waitForRoll }: {
   </span>;
 }
 
-function MatDie({ card, fixer = false, adjustmentSelected, effectIds, targetIds, chosenIds, onPick, dieDrag }: Targeting & { card: CardView; fixer?: boolean; adjustmentSelected?: boolean }) {
+function MatDie({ seat, card, fixer = false, adjustmentSelected, effectIds, targetIds, chosenIds, onPick, dieDrag }: Targeting & { seat: Seat; card: CardView; fixer?: boolean; adjustmentSelected?: boolean }) {
   const target = targetIds.has(card.instanceId);
   const rollAvailable = fixer && target && !!dieDrag;
+  function prepareRoll(element: HTMLElement) {
+    if (!rollAvailable || document.hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    void import('../lib/play/crystalRoll').then(({ warmCrystal }) => {
+      if (element.isConnected && !document.hidden) warmCrystal(card.definitionId, dicePalette(element, seat));
+    }).catch(() => { /* The Canvas roll is available immediately. */ });
+  }
   const label = fixer ? `Roll ${card.definitionId}` : `${card.definitionId} Gig · ${card.power}`;
   return <button type="button" className={`play-die${fixer ? ' play-die-fixer' : ''}`} aria-label={label} title={label}
     data-card-id={card.instanceId} data-result={effectIds?.has(card.instanceId)} data-target={target} data-adjustment-selected={adjustmentSelected || undefined} data-roll-available={rollAvailable || undefined} disabled={!target}
     aria-pressed={target ? chosenIds.has(card.instanceId) : undefined}
+    onPointerEnter={rollAvailable ? event => prepareRoll(event.currentTarget) : undefined}
+    onFocus={rollAvailable ? event => prepareRoll(event.currentTarget) : undefined}
     onPointerDown={rollAvailable ? (event) => dieDrag?.start(event, card) : undefined}
     onClick={() => { if (!dieDrag?.suppressClick()) onPick(card.instanceId); }}>
-    <DieFace type={card.definitionId} value={fixer ? undefined : card.power} />
+    <DieFace seat={seat} type={card.definitionId} value={fixer ? undefined : card.power} />
     {!fixer && <small aria-hidden="true">{card.definitionId}</small>}
   </button>;
 }
@@ -51,7 +60,7 @@ export function GigZones({ snapshot, outcome, adjustedGig, ...targeting }: Targe
     const gigs = zoneCards(view, 'gigArea');
     return <section key={seat} className="play-gigs" data-seat={seat} data-zone={`gigs:${seat}`} data-drop-zone={`gigs:${seat}`} data-drop-available={targeting.dropZones?.has(`gigs:${seat}`)} data-drop-over={targeting.dropOver === `gigs:${seat}`} aria-label={seat === 'player' ? 'Your Gigs' : 'Rival Gigs'}>
       <h3 className="play-gig-count play-eyebrow">{seat === 'player' ? 'Your Gigs' : 'Rival Gigs'} <span>{view.gigCount}</span></h3>
-      <div className="play-dice">{gigs.map((card) => <MatDie key={card.instanceId} card={card} adjustmentSelected={card.instanceId === adjustedGig} {...targeting} />)}</div>
+      <div className="play-dice">{gigs.map((card) => <MatDie seat={seat} key={card.instanceId} card={card} adjustmentSelected={card.instanceId === adjustedGig} {...targeting} />)}</div>
       <span className="play-gig-cred" title="Street Cred is the total value of these Gig dice">Cred <b>{view.streetCred}</b></span>
       <ZoneFloat outcome={outcome} seat={seat} kinds={['gigs', 'cred']} waitForRoll={snapshot.gigRolls.length > 0} />
     </section>;
@@ -249,7 +258,7 @@ function Fixer({ seat, snapshot, rolls, ...targeting }: Targeting & { seat: Seat
   }
   return <section className="play-fixer play-mat-fixer" data-zone={`fixer:${seat}`} aria-label={seat === 'player' ? 'Your Fixer dice' : 'Rival Fixer dice'}>
     <h3 className="play-zone-label">Fixer</h3>
-    <div className="play-dice">{slots.map(({ id, card }) => card ? <MatDie key={id} card={card} fixer {...targeting} />
+    <div className="play-dice">{slots.map(({ id, card }) => card ? <MatDie seat={seat} key={id} card={card} fixer {...targeting} />
       : <span key={id} className="play-die play-die-fixer play-roll-source" data-roll-source={id} aria-hidden="true" />)}</div>
   </section>;
 }

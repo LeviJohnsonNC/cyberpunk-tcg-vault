@@ -3,6 +3,7 @@ import { Rules } from '../components/bits';
 import { isReady, type MatchActionForm, type PickField, type Picks } from '../lib/play/matchActions';
 import { commitLabel } from '../lib/play/matchInteraction';
 import type { CardView, PlayerView } from '../lib/play/protocol';
+import { zoneCards } from '../lib/play/matchView';
 import { decisionSource } from '../lib/play/tacticalInfo';
 import { CardFace } from './PlayCard';
 import { DieFace } from './PlayDice';
@@ -47,11 +48,12 @@ export function PlayChoices({ presentation, context, view, action, picks, fields
         <div className="play-pick-list">{active.options.map((option) => {
           const card = option.cardId ? byId.get(option.cardId) : undefined;
           const die = card && ['gigArea', 'fixerArea'].includes(card.zone ?? '');
+          const rivalDie = die && zoneCards(view.players.rival, card.zone!).some(item => item.instanceId === card.instanceId);
           const rank = picks[active.id]?.indexOf(option.id) ?? -1;
           const artwork = card && !die && active.id !== 'payment';
           return <div key={option.id} className="play-choice-option"><button type="button" className={`play-option${artwork ? ' play-option-card' : ''}`}
             data-pick-option={option.id} aria-pressed={rank >= 0} onClick={() => select(active.id, option.id)} onKeyDown={(event) => { if (card && event.key.toLowerCase() === 'i') { event.preventDefault(); inspect(card, event.currentTarget); } }}>
-            {die && <DieFace type={card.definitionId} value={card.zone === 'gigArea' ? card.power : undefined} />}
+            {die && <DieFace seat={rivalDie ? 'rival' : 'player'} type={card.definitionId} value={card.zone === 'gigArea' ? card.power : undefined} />}
             {artwork && <CardFace card={card} />}
             <span>{active.ordered && rank >= 0 ? `${rank + 1}. ` : ''}{option.label}</span>
             {option.note && <small><Rules text={option.note} /></small>}

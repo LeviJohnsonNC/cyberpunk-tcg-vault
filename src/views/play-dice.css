@@ -27,3 +27,24 @@
   border-color: var(--die-rim);
   box-shadow: 0 0 10px color-mix(in srgb, var(--die-light) 36%, transparent);
 }
+
+.play-crystal-die {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+  container-type: inline-size;
+  aspect-ratio: 1;
+  font-style: normal;
+}
+.play-crystal-die img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.play-crystal-die > b {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font: 700 25cqw/1 var(--font-ui);
+  color: var(--color-dice-number);
+  text-shadow: 0 0 .14em var(--die-light);
+}
+.play-crystal-die[data-shape="d4"] > b { top: 20%; }
+.play-crystal-die[data-shape="d10"] > b { bottom: 10%; }
