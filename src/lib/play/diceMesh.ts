@@ -65,11 +65,11 @@ const vertices: Record<string, Vec[]> = {
   d12: dual(ico),
   d20: ico,
 };
-function bevel(faces: Face[], vertices: Vec[]): Surface[] {
+function bevel(faces: Face[], vertices: Vec[], amount = .14): Surface[] {
   const corners = new Map<Vec, Vec[]>();
   const edges = new Map<string, [Vec, Vec][]>();
   const surfaces = faces.map((face, index): Surface => {
-    const points = face.points.map((point) => add(scale(point, .92), scale(face.center, .08)));
+    const points = face.points.map((point) => add(scale(point, 1 - amount), scale(face.center, amount)));
     face.points.forEach((vertex, i) => {
       const next = (i + 1) % points.length;
       const adjacent = face.points[next];
@@ -99,15 +99,20 @@ function bevel(faces: Face[], vertices: Vec[]): Surface[] {
 }
 
 const meshes = new Map<string, Mesh>();
-function meshFor(type: string) {
-  if (!meshes.has(type)) {
+export function meshFor(type: string, bevelAmount = .14) {
+  const key = `${type}:${bevelAmount}`;
+  if (!meshes.has(key)) {
     const points = vertices[type] ?? vertices.d6;
     const radius = Math.max(...points.map(length));
     const normalized = points.map((point) => scale(point, 1 / radius));
     const faces = hull(normalized);
-    meshes.set(type, { faces, surfaces: bevel(faces, normalized) });
+    if (type === 'd6') for (const face of faces) {
+      face.up = unit(sub(mean([face.points[0], face.points[1]]), face.center));
+      face.right = cross(face.up, face.normal);
+    }
+    meshes.set(key, { faces, surfaces: bevel(faces, normalized, bevelAmount) });
   }
-  return meshes.get(type)!;
+  return meshes.get(key)!;
 }
 
 function rotation(x: number, y: number, z: number) {
@@ -157,7 +162,8 @@ export function dieContactPoint(type: string, result: number, angles: Vec, radiu
 
 // Geometry, camera and motion only. The selected face is supplied by the saved engine event.
 export function paintDie(ctx: CanvasRenderingContext2D, type: string, result: number,
-  angles: Vec, radius: number, size: number, palette: DicePalette, settled: boolean) {
+  angles: Vec, radius: number, size: number, palette: DicePalette, settled: boolean, label?: string) {
+  if (label) { paintCrystalIcon(ctx, type, label, radius, size, palette); return; }
   const { mesh, landing, transform, project } = dieProjection(type, result, angles, radius, size / 2);
   function trace(points: (readonly [number, number])[]) {
     ctx.beginPath();
@@ -176,38 +182,153 @@ export function paintDie(ctx: CanvasRenderingContext2D, type: string, result: nu
       const rim = Math.max(0, dot(normal, rimDirection));
       trace(points);
       if (!surface.face) {
-        const specular = .16 + .40 * diffuse ** 2 + .24 * rim ** 3;
-        ctx.fillStyle = colorBetween(palette.resin, palette.rim, specular);
+        const specular = .18 + .56 * diffuse ** 3 + .24 * rim ** 4;
+        const bevel = ctx.createLinearGradient(x - radius * .24, y - radius * .2, x + radius * .25, y + radius * .3);
+        bevel.addColorStop(0, colorBetween(palette.light, palette.number, specular));
+        bevel.addColorStop(.3, colorBetween(palette.resin, palette.rim, specular * .7));
+        bevel.addColorStop(.62, colorBetween(palette.light, palette.reflection, rim * .8));
+        bevel.addColorStop(1, colorBetween(palette.resin, palette.rim, .26));
+        ctx.fillStyle = bevel;
         ctx.fill();
-        ctx.strokeStyle = ctx.fillStyle;
+        ctx.strokeStyle = colorBetween(palette.light, palette.number, .25 + diffuse * .65);
         ctx.lineWidth = .65;
         ctx.stroke();
         return;
       }
       const face = surface.face;
-      const base = .18 + diffuse * .48;
-      const gradient = ctx.createLinearGradient(x - radius * .48, y - radius * .52, x + radius * .48, y + radius * .52);
-      gradient.addColorStop(0, colorBetween(palette.light, palette.number, diffuse ** 5 * .21));
-      gradient.addColorStop(.37, colorBetween(palette.resin, palette.light, base));
-      gradient.addColorStop(.78, colorBetween(palette.resin, palette.light, base * .57));
-      gradient.addColorStop(1, colorBetween(palette.resin, palette.reflection, .06 + rim * .25));
+      const gradient = ctx.createRadialGradient(x - radius * .16, y - radius * .27, 0, x, y, radius * 1.2);
+      gradient.addColorStop(0, colorBetween(palette.resin, palette.light, .12 + diffuse * .13));
+      gradient.addColorStop(.52, colorBetween(palette.resin, palette.light, .04));
+      gradient.addColorStop(1, colorBetween(palette.resin, palette.reflection, .28));
       ctx.fillStyle = gradient;
       ctx.fill();
+
+      // Each cut is attached to the mesh. Its reflected light changes with the face normal.
+      const inner = surface.points.map(v => add(scale(v, .69), scale(surface.center, .31)));
+      surface.points.forEach((a, i) => {
+        const j = (i + 1) % surface.points.length;
+        const b = surface.points[j];
+        const pivot = add(scale(add(a, b), .25), scale(inner[i], .5));
+        const cuts = [[a, b, pivot], [b, inner[j], pivot], [inner[j], inner[i], pivot], [inner[i], a, pivot]];
+        cuts.forEach((cut, k) => {
+          const phase = (surface.value! * 17 + i * 11 + k * 7) * 1.73;
+          const glint = Math.max(0, Math.sin(phase) * normal[0] + Math.cos(phase) * normal[1] + normal[2] * .42);
+          const shine = .13 + glint ** 5 * .87;
+          trace(cut.map(v => project(transform(v))));
+          ctx.fillStyle = colorBetween(k % 2 ? palette.light : palette.resin,
+            k === 1 ? palette.reflection : k === 3 ? palette.number : palette.rim, shine);
+          ctx.fill();
+          ctx.strokeStyle = colorBetween(palette.light, palette.rim, .4);
+          ctx.lineWidth = .35;
+          ctx.globalAlpha = .36;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        });
+        // Quiet internal reflections keep the central number well dark and readable.
+        const deep = add(scale(inner[j], .76), scale(surface.center, .24));
+        trace([inner[i], inner[j], deep].map(v => project(transform(v))));
+        ctx.fillStyle = colorBetween(palette.resin, palette.light, .18 + rim * .15);
+        ctx.fill();
+      });
+      trace(points);
+      ctx.strokeStyle = colorBetween(palette.rim, palette.number, diffuse ** 4 * .75);
+      ctx.lineWidth = radius > 35 ? 1 : .65;
+      ctx.shadowColor = colorBetween(palette.light, palette.rim, .65);
+      ctx.shadowBlur = radius > 35 ? 4 : 2;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      trace(inner.map(v => project(transform(v))));
+      ctx.strokeStyle = colorBetween(palette.resin, palette.rim, .22 + rim * .26);
+      ctx.lineWidth = .65;
+      ctx.stroke();
+
       ctx.save();
+      trace(points);
       ctx.clip();
       const [rx, ry] = project(add(center, transform(face.right)));
       const [ux, uy] = project(add(center, transform(face.up)));
       ctx.transform(rx - x, ry - y, x - ux, y - uy, x, y);
       const value = String(surface.value);
-      const contrast = settled && face === landing ? 1 : .35 + Math.max(0, normal[2]) ** 1.55 * .65;
-      ctx.font = `700 ${face.inradius * (value.length === 1 ? 2.05 : 1.60)}px monospace`;
+      const contrast = settled && face === landing ? 1 : .25 + Math.max(0, normal[2]) ** 2 * .75;
+      ctx.font = `600 ${face.inradius * (value.length === 1 ? 1.68 : 1.32)}px Inter, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.strokeStyle = colorBetween(palette.resin, palette.number, .07);
-      ctx.lineWidth = .035;
-      ctx.strokeText(value, 0, .035);
-      ctx.fillStyle = colorBetween(palette.resin, palette.number, contrast);
-      ctx.fillText(value, 0, .035);
+      ctx.strokeStyle = colorBetween(palette.resin, palette.rim, .28);
+      ctx.lineWidth = .028;
+      ctx.strokeText(value, 0, .025);
+      ctx.fillStyle = colorBetween(palette.light, palette.number, contrast);
+      ctx.shadowColor = colorBetween(palette.light, palette.rim, .55);
+      ctx.shadowBlur = settled && face === landing ? 4 : 1.5;
+      ctx.fillText(value, 0, .025);
       ctx.restore();
     });
+}
+
+
+/** The small dock / picker face uses a frontal crystal cut, keeping its label readable at 30px. */
+function paintCrystalIcon(ctx: CanvasRenderingContext2D, type: string, label: string, radius: number, size: number, palette: DicePalette) {
+  type P = [number, number];
+  const contours: Record<string, P[]> = {
+    d4: [[0, -1], [.94, .78], [-.94, .78]],
+    d6: [[-.76, -.9], [.76, -.9], [.9, -.76], [.9, .76], [.76, .9], [-.76, .9], [-.9, .76], [-.9, -.76]],
+    d8: [[0, -1], [.94, 0], [0, 1], [-.94, 0]],
+    d10: [[0, -1], [.84, -.2], [.94, .2], [0, 1], [-.94, .2], [-.84, -.2]],
+    d12: Array.from({ length: 10 }, (_, i): P => [Math.sin((i + .5) * Math.PI / 5), -Math.cos((i + .5) * Math.PI / 5)]),
+    d20: [[0, -1], [.88, -.51], [.88, .51], [0, 1], [-.88, .51], [-.88, -.51]],
+  };
+  const outer = contours[type] ?? contours.d6;
+  const inner = outer.map(([x, y]): P => [x * .64, y * .64]);
+  const trace = (points: P[]) => {
+    ctx.beginPath(); points.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath();
+  };
+  ctx.clearRect(0, 0, size, size);
+  ctx.save(); ctx.translate(size / 2, size / 2); ctx.scale(radius, radius);
+  trace(outer);
+  const core = ctx.createRadialGradient(-.18, -.24, .05, 0, 0, 1.1);
+  core.addColorStop(0, colorBetween(palette.resin, palette.light, .17));
+  core.addColorStop(.48, colorBetween(palette.resin, palette.light, .03));
+  core.addColorStop(1, colorBetween(palette.resin, palette.light, .8));
+  ctx.fillStyle = core; ctx.fill();
+  outer.forEach((a, i) => {
+    const j = (i + 1) % outer.length, b = outer[j];
+    const pivot: P = [(a[0] + b[0] + inner[i][0]) / 3, (a[1] + b[1] + inner[i][1]) / 3];
+    const shards = [[a, b, pivot], [b, inner[j], pivot], [inner[j], inner[i], pivot], [inner[i], a, pivot]];
+    shards.forEach((shard, k) => {
+      trace(shard);
+      const shine = .2 + (Math.sin(i * 3.1 + k * 1.8) * .5 + .5) ** 3 * .8;
+      const gradient = ctx.createLinearGradient(a[0], a[1], inner[j][0] + .001, inner[j][1]);
+      gradient.addColorStop(0, colorBetween(palette.rim, palette.number, k === 0 ? .8 : shine * .55));
+      gradient.addColorStop(.35, colorBetween(palette.light, k === 1 ? palette.reflection : palette.rim, shine));
+      gradient.addColorStop(1, colorBetween(palette.resin, palette.light, k === 2 ? .1 : .55));
+      ctx.fillStyle = gradient; ctx.fill();
+      ctx.strokeStyle = colorBetween(palette.light, palette.rim, .6); ctx.lineWidth = .007; ctx.stroke();
+    });
+    const deep: P = [inner[j][0] * .76, inner[j][1] * .76];
+    trace([inner[i], inner[j], deep]);
+    ctx.fillStyle = colorBetween(palette.resin, palette.light, .16); ctx.fill();
+  });
+  trace(outer);
+  ctx.shadowColor = colorBetween(palette.light, palette.rim, .5); ctx.shadowBlur = 5;
+  ctx.strokeStyle = colorBetween(palette.rim, palette.number, .72); ctx.lineWidth = .016; ctx.stroke();
+  ctx.shadowBlur = 0;
+  trace(inner); ctx.strokeStyle = colorBetween(palette.light, palette.rim, .65); ctx.lineWidth = .009; ctx.stroke();
+  for (const index of [0, Math.floor(outer.length / 2)]) {
+    const [x, y] = outer[index];
+    const flare = ctx.createRadialGradient(x, y, 0, x, y, .16);
+    flare.addColorStop(0, `rgba(${palette.number.join(',')},.9)`);
+    flare.addColorStop(.2, `rgba(${palette.rim.join(',')},.25)`);
+    flare.addColorStop(1, `rgba(${palette.rim.join(',')},0)`);
+    ctx.fillStyle = flare; ctx.fillRect(x - .16, y - .16, .32, .32);
+    ctx.fillStyle = colorBetween(palette.rim, palette.number, .85);
+    trace([[x, y - .065], [x + .012, y - .012], [x + .065, y], [x + .012, y + .012],
+      [x, y + .065], [x - .012, y + .012], [x - .065, y], [x - .012, y - .012]]);
+    ctx.fill();
+  }
+  const labelY = type === 'd4' ? .21 : .04;
+  ctx.font = `600 ${label.length > 2 ? .56 : .65}px Inter, sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.shadowColor = colorBetween(palette.light, palette.rim, .4); ctx.shadowBlur = 5;
+  ctx.fillStyle = colorBetween(palette.rim, palette.number, .95);
+  ctx.fillText(label, 0, labelY);
+  ctx.restore();
 }

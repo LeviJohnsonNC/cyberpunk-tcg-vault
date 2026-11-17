@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { beatDuration } from '../lib/play/matchPresentation';
 import type { MatchSnapshot } from '../lib/play/protocol';
 import { preloadFaces } from '../lib/play/cardArt';
@@ -24,6 +24,9 @@ export function useMatchPresentation(snapshot?: MatchSnapshot) {
   const playing = !!snapshot && !reduced && index < beats.length;
   const beat = playing ? beats[index] : undefined;
   function skip() { setProgress({ key, index: beats.length }); }
+  const finishRoll = useCallback(() => {
+    setProgress(previous => previous?.key === key && previous.index > index ? previous : { key, index: index + 1 });
+  }, [key, index]);
 
   useEffect(() => {
     if (!snapshot || !beat) return;
@@ -67,6 +70,6 @@ export function useMatchPresentation(snapshot?: MatchSnapshot) {
     knownLegends: beat.knownLegends, log: beat.log, gigRolls: beat.gigRolls,
   } : snapshot && beats.length && !reduced ? { ...snapshot, gigRolls: [] } : snapshot;
   return { displayed, playing, feedback, reduced,
-    playback: playing ? { beat: beat!, index, count: beats.length, skip } : undefined,
+    playback: playing ? { beat: beat!, index, count: beats.length, skip, finishRoll } : undefined,
   };
 }

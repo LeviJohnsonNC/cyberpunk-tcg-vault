@@ -1,23 +1,16 @@
-import { useLayoutEffect, useRef } from 'react';
-import { dieContactPoint, paintDie, type DicePalette } from '../lib/play/diceMesh';
+import { useCallback, useLayoutEffect, useRef } from 'react';
+import { dieContactPoint, paintDie } from '../lib/play/diceMesh';
 import { paintDiceSparks, sparkDuration, SPARK_HEIGHT, SPARK_WIDTH } from '../lib/play/diceSparks';
 import { diceThrowFrame, diceThrowImpacts, layoutDiceThrow, type PointerRelease } from '../lib/play/diceThrow';
-import { ROLL_CONTACT, ROLL_SETTLE, rollHold, rollOffset, rollTime } from '../lib/play/diceTiming';
-import type { TableCue } from '../lib/play/tableSound';
+import { rollHold, rollOffset, rollTime } from '../lib/play/diceTiming';
+import type { TableSoundCue } from '../lib/play/tableSound';
+import { dicePalette } from '../lib/play/dicePalette';
 import type { GigRoll } from '../lib/play/protocol';
 import './play-gig-roll.css';
 
 type Point = { x: number; y: number };
-type Route = { source: Point; contact: Point; rest: Point; destination: Point; radius: number; slotRadius: number; throwing?: ReturnType<typeof layoutDiceThrow> };
+type Route = { destination: Point; slotRadius: number; throwing: ReturnType<typeof layoutDiceThrow> };
 const SIZE = 176;
-const dieMotion: Record<string, { turns: number; bounce: number }> = {
-  d4: { turns: .85, bounce: 7 },
-  d6: { turns: 1.1, bounce: 10 },
-  d8: { turns: 1.35, bounce: 12 },
-  d10: { turns: 1.55, bounce: 14 },
-  d12: { turns: 1.75, bounce: 15 },
-  d20: { turns: 2, bounce: 17 },
-};
 const clamp = (n: number, low: number, high: number) => Math.max(low, Math.min(n, high));
 const progress = (n: number) => clamp(n, 0, 1);
 const ease = (t: number) => 1 - (1 - t) ** 3;
@@ -52,76 +45,37 @@ function layout(table: HTMLElement, field: Element | null, roll: GigRoll, seatIn
     x: clamp(lerp(destination.x, bounds.width * (.5 - direction * .13), .68) + (seatIndex - (seatCount - 1) / 2) * radius * 1.8, radius + 10, bounds.width - radius - 10),
     y: minY <= maxY ? clamp(naturalY, minY, maxY) : clamp(naturalY, radius + 14, bounds.height - radius - 30),
   };
-  const contact = { x: rest.x - direction * 18, y: rest.y + direction * 8 };
-  const throwing = release && fieldBox && layoutDiceThrow(release, fieldBox, radius);
-  return { source, destination, contact, rest, radius, throwing, slotRadius: die ? Math.max(10, die.getBoundingClientRect().height * .43) : 15 };
+  const area = fieldBox ?? { left: 0, top: 0, width: bounds.width, height: bounds.height };
+  const launch = release ?? { x: (source.x - area.left) / area.width, y: (source.y - area.top) / area.height,
+    vx: (rest.x - source.x) * 3.4, vy: (rest.y - source.y) * 3.4 };
+  const throwing = layoutDiceThrow(launch, area, radius, roll.dieType);
+  return { destination, throwing, slotRadius: die ? Math.max(10, die.getBoundingClientRect().height * .43) : 15 };
 }
 
 function pose(route: Route, roll: GigRoll, elapsed: number) {
-  const dock = smooth(progress((elapsed - ROLL_SETTLE - rollHold(roll)) / (rollTime(roll) - ROLL_SETTLE - rollHold(roll))));
-  const { turns, bounce: bounceHeight } = dieMotion[roll.dieType] ?? dieMotion.d6;
-  const settledX = roll.dieType === 'd4' ? .67 : .43;
-  if (route.throwing) {
-    const { point, tilt, lift } = diceThrowFrame(route.throwing, elapsed);
-    const scale = ease(progress(elapsed / 140));
-    const radius = lerp(lerp(Math.min(23, route.throwing.radius), route.throwing.radius, scale), route.slotRadius, dock);
-    return { point: between(point, route.destination, dock), radius, lift, dock,
-      x: settledX + tilt.x * turns, y: -.24 + tilt.y * turns, z: .06 + tilt.z * turns };
-  }
-  const direction = roll.seat === 'player' ? 1 : -1;
-  const beforeContact = elapsed < ROLL_CONTACT;
-  const flight = progress(elapsed / ROLL_CONTACT);
-  const bounce = progress((elapsed - ROLL_CONTACT) / (ROLL_SETTLE - ROLL_CONTACT));
-  const onMat = beforeContact ? between(route.source, route.contact, flight) : between(route.contact, route.rest, ease(bounce));
-  const point = between(onMat, route.destination, dock);
-  const lift = beforeContact ? Math.sin(Math.PI * flight) * 36 : Math.sin(Math.PI * bounce) * bounceHeight;
-  const radius = lerp(lerp(route.slotRadius, route.radius, ease(flight)), route.slotRadius, dock);
-  const spin = beforeContact ? 1 - flight * .77 : .23 * (1 - ease(bounce));
-  return {
-    point, lift, radius,
-    x: settledX + spin * Math.PI * turns * 2,
-    y: -.24 + direction * spin * Math.PI * (turns + .45),
-    z: .06 - direction * spin * Math.PI * (turns + .2),
-    dock,
-  };
+  const settle = route.throwing.settle;
+  const dock = smooth(progress((elapsed - settle - rollHold(roll)) / (rollTime(roll, settle) - settle - rollHold(roll))));
+  const { point, tilt, lift } = diceThrowFrame(route.throwing, elapsed);
+  const scale = ease(progress(elapsed / 145));
+  const radius = lerp(lerp(route.slotRadius, route.throwing.radius, scale), route.slotRadius, dock);
+  return { point: between(point, route.destination, dock), radius, lift, dock,
+    x: (roll.dieType === 'd4' ? .67 : .16) + tilt.x, y: -.13 + tilt.y, z: tilt.z };
 }
 
 function impactLocations(route: Route, roll: GigRoll) {
-  const impacts = route.throwing ? diceThrowImpacts(route.throwing) : [
-    { time: ROLL_CONTACT, strength: .67 },
-    { time: ROLL_SETTLE, strength: .24 },
-  ];
-  return impacts.map(impact => {
-    const { point, x, y, z, radius } = pose(route, roll, impact.time);
+  return diceThrowImpacts(route.throwing).map(impact => {
+    const { point, x, y, z, radius, lift } = pose(route, roll, impact.time);
     const edge = dieContactPoint(roll.dieType, roll.result, [x, y, z], radius);
     const before = pose(route, roll, impact.time - 12).point;
     const velocity = { x: point.x - before.x, y: point.y - before.y };
-    // For a stationary drop or an almost settled die, give the spray a slight sideways bias.
-    return { ...impact, x: point.x + edge.x, y: point.y + edge.y,
-      velocity: Math.hypot(velocity.x, velocity.y) >= .1 ? velocity : route.throwing?.direction ?? {
-        x: route.rest.x - route.contact.x, y: route.rest.y - route.contact.y,
-      } };
+    return { ...impact, x: point.x + edge.x, y: point.y + radius * .64 - (impact.wall ? lift : 0),
+      velocity: Math.hypot(velocity.x, velocity.y) >= .1 ? velocity : route.throwing.direction };
   });
 }
 
-function paletteFor(table: HTMLElement, roll: GigRoll): DicePalette {
-  const styles = getComputedStyle(table);
-  function read(token: string): [number, number, number] {
-    const value = styles.getPropertyValue(token).trim();
-    return [1, 3, 5].map((offset) => parseInt(value.slice(offset, offset + 2), 16)) as [number, number, number];
-  }
-  return {
-    resin: read('--color-canvas-deep'),
-    light: read(roll.decisive ? '--color-ticket-muted' : '--color-divider'),
-    rim: read(roll.seat === 'rival' && !roll.decisive ? '--color-accent' : '--color-ticket'),
-    reflection: read('--color-accent'),
-    number: read('--color-ticket'),
-  };
-}
-
-function RollingDie({ roll, index, seatIndex, seatCount, release, cue }: {
+function RollingDie({ roll, index, seatIndex, seatCount, release, cue, onDock }: {
   roll: GigRoll; index: number; seatIndex: number; seatCount: number; release?: PointerRelease;
-  cue?: (name: TableCue, delayMs?: number, pan?: number) => (() => void) | undefined;
+  cue?: TableSoundCue; onDock: (id: number) => void;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -135,6 +89,7 @@ function RollingDie({ roll, index, seatIndex, seatCount, release, cue }: {
     const ctx = surface?.getContext('2d');
     if (!mat || !scene || !surface || !ctx || !contactShadow || !label) {
       if (scene) scene.dataset.phase = 'docked';
+      onDock(index);
       return;
     }
     const target = mat.querySelector<HTMLElement>(`.play-gigs [data-card-id="${CSS.escape(roll.dieId)}"]`);
@@ -154,9 +109,11 @@ function RollingDie({ roll, index, seatIndex, seatCount, release, cue }: {
       context?.setTransform(dpr, 0, 0, dpr, 0, 0);
       return { element, context };
     });
-    const palette = paletteFor(mat, roll);
+    const palette = dicePalette(mat, roll.seat);
+    const seed = [...roll.dieId].reduce((sum, char) => sum * 31 + char.charCodeAt(0) | 0, roll.result);
     const field = mat.querySelector(`[data-zone="field:${roll.seat}"]`);
-    let stopSound: (() => void) | undefined;
+    const sounds: (() => void)[] = [];
+    const heard = new Set<number>();
     let route = layout(mat, field, roll, seatIndex, seatCount, release);
     let impacts = route ? impactLocations(route, roll) : [];
     let dirty = false;
@@ -177,39 +134,55 @@ function RollingDie({ roll, index, seatIndex, seatCount, release, cue }: {
         impacts = route ? impactLocations(route, roll) : [];
         dirty = false;
       }
+      const firstFloor = impacts.findIndex(impact => !impact.wall);
+      const visibleImpacts = impacts.map((impact, index) => ({ impact, index }))
+        .filter(({ impact, index }) => elapsed >= impact.time && elapsed - impact.time < sparkDuration(impact.strength, index === firstFloor))
+        .slice(-sparkCanvases.length);
       sparkCanvases.forEach(({ element, context }, i) => {
-        const impact = impacts[i];
-        const firstImpact = i === 0;
-        const age = impact ? elapsed - impact.time : -1;
-        const visible = context && impact && age >= 0 && age < sparkDuration(impact.strength, firstImpact);
-        element.hidden = !visible;
-        if (!visible) return;
+        const item = visibleImpacts[i];
+        element.hidden = !item || !context;
+        if (!item || !context) return;
+        const { impact, index } = item;
         element.style.transform = `translate3d(${impact.x - SPARK_WIDTH / 2}px, ${impact.y - SPARK_HEIGHT / 2}px, 0)`;
-        paintDiceSparks(context, age, impact.strength, impact.velocity, firstImpact);
+        paintDiceSparks(context, elapsed - impact.time, impact.strength, impact.velocity, index === firstFloor, palette, seed + index);
+      });
+      impacts.forEach((impact, index) => {
+        if (elapsed < impact.time || heard.has(index)) return;
+        heard.add(index);
+        if (elapsed - impact.time > 80) return;
+        const stop = cue?.('dice-impact', 0, roll.seat === 'rival' ? .24 : -.24, { type: roll.dieType, strength: impact.strength });
+        if (stop) sounds.push(stop);
       });
       if (route && elapsed >= 0) {
         if (!launched) {
           launched = true;
-          if (elapsed < 100) stopSound = cue?.('dice-roll', 0, roll.seat === 'rival' ? .24 : -.24);
+          if (elapsed < 100) {
+            const stop = cue?.('dice-launch', 0, roll.seat === 'rival' ? .24 : -.24, { type: roll.dieType, strength: route.throwing.strength });
+            if (stop) sounds.push(stop);
+          }
         }
         const motion = pose(route, roll, elapsed);
         const { point, radius, lift, dock } = motion;
-        const phase = elapsed < ROLL_SETTLE ? 'air' : dock < 1 ? 'landed' : 'docked';
+        const phase = elapsed < route.throwing.settle ? 'air' : dock < 1 ? 'landed' : 'docked';
         if (scene.dataset.phase !== phase) scene.dataset.phase = phase;
-        surface.style.transform = `translate3d(${point.x - SIZE / 2}px, ${point.y - SIZE / 2 - lift}px, 0)`;
+        const edge = dieContactPoint(roll.dieType, roll.result, [motion.x, motion.y, motion.z], radius);
+        const grounding = (radius * .64 - edge.y) * (1 - dock);
+        surface.style.transform = `translate3d(${point.x - SIZE / 2}px, ${point.y - SIZE / 2 + grounding - lift}px, 0)`;
         surface.style.opacity = dock > .8 ? String((1 - dock) * 5) : '1';
-        contactShadow.style.transform = `translate3d(${point.x - 50}px, ${point.y + radius * .64 - 14}px, 0) scale(${radius / 50}, ${radius / 50})`;
-        contactShadow.style.opacity = String((.92 - lift / 78) * (1 - dock));
+        contactShadow.style.transform = `translate3d(${point.x - 50}px, ${point.y + radius * .64 - 14}px, 0) scale(${radius / 50 * (1 + lift / 100)}, ${radius / 50 * (1 + lift / 80)})`;
+        contactShadow.style.opacity = String(Math.max(.12, .86 - lift / 95) * (1 - dock));
         label.style.transform = `translate3d(${point.x}px, ${point.y + radius * .83 + 5}px, 0) translateX(-50%)`;
-        label.style.opacity = elapsed < ROLL_SETTLE ? '0' : String(1 - dock);
+        label.style.opacity = elapsed < route.throwing.settle ? '0' : String(1 - dock);
         paintDie(ctx, roll.dieType, roll.result, [motion.x, motion.y, motion.z], radius, SIZE, palette, phase !== 'air');
         if (phase === 'docked') {
           target?.removeAttribute('data-roll-pending');
           target?.setAttribute('data-roll-docked', roll.decisive ? 'decisive' : '');
+          sparkCanvases.forEach(({ element }) => { element.hidden = true; });
+          onDock(index);
           return;
         }
       }
-      if (elapsed < rollTime(roll) + 50) frame = requestAnimationFrame(animate);
+      if (elapsed < rollTime(roll, route?.throwing.settle) + 50) frame = requestAnimationFrame(animate);
     };
     frame = requestAnimationFrame(animate);
     return () => {
@@ -217,32 +190,43 @@ function RollingDie({ roll, index, seatIndex, seatCount, release, cue }: {
       resize.disconnect();
       window.removeEventListener('resize', remeasure);
       dice?.removeEventListener('scroll', remeasure);
-      stopSound?.();
+      sounds.forEach(stop => stop());
       target?.removeAttribute('data-roll-pending');
       target?.removeAttribute('data-roll-docked');
     };
-  }, [roll, index, seatIndex, seatCount, release, cue]);
+  }, [roll, index, seatIndex, seatCount, release, cue, onDock]);
 
   return <div ref={root} className="play-gig-roll" data-phase="air" data-seat={roll.seat} data-die={roll.dieType}
     data-origin={roll.origin} data-launch={release ? 'drag' : undefined} data-result={roll.result} data-decisive={roll.decisive || undefined}>
     <span className="play-gig-shadow" ref={shadow} />
     <div className="play-gig-sparks" ref={sparks}>
-      <canvas hidden style={{ width: SPARK_WIDTH, height: SPARK_HEIGHT }} />
-      <canvas hidden style={{ width: SPARK_WIDTH, height: SPARK_HEIGHT }} />
+      {[0, 1, 2, 3].map(slot => <canvas key={slot} hidden style={{ width: SPARK_WIDTH, height: SPARK_HEIGHT }} />)}
     </div>
     <canvas className="play-gig-mesh" ref={canvas} />
     <span className="play-gig-roll-label" ref={caption}>{roll.seat === 'player' ? 'Your' : 'Rival'} {roll.dieType}{roll.origin === 'reroll' ? ' reroll' : ''}</span>
   </div>;
 }
 
-export function PlayGigRoll({ rolls, thrown, cue }: {
-  rolls: GigRoll[]; thrown?: { dieId: string; release: PointerRelease }; cue?: (name: TableCue, delayMs?: number, pan?: number) => (() => void) | undefined;
+export function PlayGigRoll({ rolls, thrown, cue, onComplete }: {
+  rolls: GigRoll[]; thrown?: { dieId: string; release: PointerRelease }; cue?: TableSoundCue; onComplete?: () => void;
 }) {
+  const completed = useRef(new Set<number>());
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const completion = useRef(onComplete);
+  useLayoutEffect(() => { completion.current = onComplete; });
+  useLayoutEffect(() => () => { clearTimeout(timer.current); completed.current.clear(); }, [rolls]);
+  const onDock = useCallback((index: number) => {
+    completed.current.add(index);
+    if (completed.current.size === rolls.length) {
+      clearTimeout(timer.current);
+      timer.current = setTimeout(() => completion.current?.(), 120);
+    }
+  }, [rolls.length]);
   if (!rolls.length) return null;
   return <div className="play-gig-roll-layer" aria-hidden="true">
     {rolls.map((roll, index) => <RollingDie key={`${roll.dieId}:${index}`} roll={roll} index={index}
       seatIndex={rolls.slice(0, index).filter((other) => other.seat === roll.seat).length}
       seatCount={rolls.filter((other) => other.seat === roll.seat).length}
-      release={roll.seat === 'player' && roll.origin === 'gainGig' && thrown?.dieId === roll.dieId ? thrown.release : undefined} cue={cue} />)}
+      release={roll.seat === 'player' && roll.origin === 'gainGig' && thrown?.dieId === roll.dieId ? thrown.release : undefined} cue={cue} onDock={onDock} />)}
   </div>;
 }

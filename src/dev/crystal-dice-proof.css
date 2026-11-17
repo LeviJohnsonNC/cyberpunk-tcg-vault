@@ -1,0 +1,39 @@
+.crystal-proof { max-width: 1440px; padding: 38px; margin: auto; color: var(--color-text); }
+.crystal-proof header { margin-bottom: 32px; }
+.crystal-proof header p { font: 500 10px var(--font-mono); color: var(--color-accent); letter-spacing: .22em; }
+.crystal-proof h1 { margin: 10px 0 5px; font: 800 58px/.95 var(--font-display); letter-spacing: -.015em; }
+.crystal-proof header > span { color: var(--color-text-muted); font-size: 13px; }
+.crystal-proof-comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.crystal-proof article, .crystal-proof-motion { border: 1px solid var(--color-divider); background: var(--color-canvas-deep); border-radius: 8px; padding: 22px; overflow: hidden; }
+.crystal-proof h2 { margin: 0; font: 500 11px var(--font-mono); letter-spacing: .13em; }
+.crystal-proof article[data-seat="player"] h2 { color: var(--color-dice-player-rim); }
+.crystal-proof article[data-seat="rival"] h2 { color: var(--color-dice-rival-rim); }
+.crystal-proof-pair { display: grid; grid-template-columns: 1fr 1fr; align-items: center; }
+.crystal-proof figure { margin: 0; min-width: 0; text-align: center; }
+.crystal-proof figure > canvas, .crystal-proof figure > .crystal-proof-art { width: 100%; height: auto; aspect-ratio: 1; }
+.crystal-proof figcaption { font: 500 10px var(--font-mono); color: var(--color-text-muted); margin-bottom: 18px; }
+.crystal-proof-art { width: var(--proof-size); height: var(--proof-size); display: inline-block; position: relative; flex: none; vertical-align: middle; container-type: inline-size; }
+.crystal-proof-crop { position: absolute; top: 0; left: 12.5%; width: 75%; height: 100%; overflow: hidden; }
+.crystal-proof-crop img { position: absolute; left: 0; top: 0; width: 200%; max-width: none; height: 100%; object-fit: fill; }
+.crystal-proof-art[data-seat="rival"] img { transform: translateX(-50%); }
+.crystal-proof-art b { position: absolute; inset: 0; display: grid; place-items: center; padding-top: 1%; font: 600 19cqw/1 var(--font-ui); color: var(--color-dice-number); text-shadow: 0 0 8px var(--color-dice-player-light); }
+.crystal-proof-art[data-seat="rival"] b { text-shadow: 0 0 8px var(--color-dice-rival-light); }
+.crystal-proof-sizes { display: flex; align-items: center; justify-content: center; gap: 14px; border-top: 1px solid var(--color-divider); padding-top: 8px; }
+.crystal-proof-sizes > span:first-child { font: 500 10px var(--font-mono); color: var(--color-text-faint); }
+.crystal-proof-motion { margin-top: 20px; }
+.crystal-proof-controls { display: flex; align-items: center; gap: 24px; }
+.crystal-proof-controls > div { margin-right: auto; }
+.crystal-proof-controls p { font-size: 12px; color: var(--color-text-muted); margin: 8px 0 0; }
+.crystal-proof-controls label { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.crystal-proof-controls input { accent-color: var(--color-accent); }
+.crystal-proof-live-pair { display: flex; justify-content: space-around; padding-bottom: 64px; }
+.crystal-proof-live { position: relative; width: var(--proof-size); height: var(--proof-size); }
+.crystal-proof-webgl { position: relative; width: 100%; height: 100%; }
+.crystal-proof-fallback { position: absolute; inset: 0; }
+.crystal-proof-fallback .crystal-proof-art { width: 100%; height: 100%; }
+.crystal-proof-live:not([data-renderer="webgl"]) > canvas { visibility: hidden; }
+.crystal-proof-reflection { position: absolute; left: 0; top: 75%; width: 100%; height: 100%; transform: scaleY(-1); opacity: .2; mask-image: linear-gradient(transparent 70%, black); pointer-events: none; }
+.crystal-proof-pool { position: absolute; left: 12%; width: 76%; height: 14%; top: 84%; border-radius: 50%; background: radial-gradient(ellipse, color-mix(in srgb, var(--color-dice-player-rim) 35%, transparent), color-mix(in srgb, var(--color-dice-player-light) 12%, transparent) 40%, transparent 72%); }
+[data-seat="rival"] > .crystal-proof-pool { background: radial-gradient(ellipse, color-mix(in srgb, var(--color-dice-rival-rim) 35%, transparent), color-mix(in srgb, var(--color-dice-rival-light) 12%, transparent) 40%, transparent 72%); }
+.crystal-proof-live small { position: absolute; top: 105%; left: 0; width: 100%; text-align: center; font: 500 9px var(--font-mono); color: var(--color-text-faint); }
+@media (max-width: 760px) { .crystal-proof { padding: 16px; } .crystal-proof-comparison { grid-template-columns: 1fr; } .crystal-proof-controls { flex-wrap: wrap; gap: 12px; } .crystal-proof-live-pair { flex-direction: column; align-items: center; gap: 30px; } .crystal-proof-live { width: min(var(--proof-size), 100%); height: auto; aspect-ratio: 1; } }

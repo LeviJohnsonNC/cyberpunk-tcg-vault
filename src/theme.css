@@ -50,6 +50,17 @@
   --color-card-red: #ff8a9a;
   --color-card-green: #9be7a8;
 
+  /* Crystal dice: ownership stays blue / red through every presentation state. */
+  --color-dice-player-body: #020c22;
+  --color-dice-player-light: #087eea;
+  --color-dice-player-rim: #57eaff;
+  --color-dice-player-reflection: #b8a4ff;
+  --color-dice-rival-body: #21030c;
+  --color-dice-rival-light: #e91b42;
+  --color-dice-rival-rim: #ff667c;
+  --color-dice-rival-reflection: #ff88d7;
+  --color-dice-number: #f2fbff;
+
   /* ---- Type roles ---- */
   --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif; /* mastheads, big numbers */
   --font-ui: 'Inter', system-ui, sans-serif; /* interface copy */
