@@ -1,7 +1,7 @@
 import type { GigRoll } from './protocol';
 
-export const ROLL_CONTACT = 365;
-export const ROLL_SETTLE = 590;
+// Upper bound also reserves enough presentation time for the strongest throw.
+export const ROLL_SETTLE = 1220;
 const HOLD = 335;
 const WIN_HOLD = 735;
 const DOCK = 175;
@@ -14,8 +14,8 @@ export function rollHold(roll: GigRoll) {
   return roll.decisive ? WIN_HOLD : HOLD;
 }
 
-export function rollTime(roll: GigRoll) {
-  return ROLL_SETTLE + rollHold(roll) + DOCK;
+export function rollTime(roll: GigRoll, settle = ROLL_SETTLE) {
+  return settle + rollHold(roll) + DOCK;
 }
 
 export function rollDuration(rolls: GigRoll[]) {

@@ -1,6 +1,6 @@
 import type { MatchBeat } from '../lib/play/protocol';
 
-export interface MatchPlayback { beat: MatchBeat; index: number; count: number; skip: () => void }
+export interface MatchPlayback { beat: MatchBeat; index: number; count: number; skip: () => void; finishRoll?: () => void }
 /** One line for the move on the table. The table itself shows what changed. */
 export function PlayPresentation({ playback, feedback }: { playback?: MatchPlayback; feedback?: MatchBeat }) {
   const beat = playback?.beat ?? feedback;

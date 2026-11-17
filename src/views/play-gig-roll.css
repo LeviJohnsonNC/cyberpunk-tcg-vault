@@ -13,7 +13,7 @@
   width: 100px;
   height: 28px;
   border-radius: 50%;
-  background: radial-gradient(ellipse, var(--color-canvas-deep) 16%, transparent 72%);
+  background: radial-gradient(ellipse, var(--color-canvas-deep) 10%, color-mix(in srgb, var(--die-light) 28%, var(--color-canvas-deep)) 34%, transparent 72%);
 }
 .play-gig-roll-label {
   padding: 4px 8px;
@@ -28,11 +28,11 @@
 }
 .play-gig-roll[data-seat="rival"] .play-gig-roll-label { color: var(--color-accent); }
 .play-gig-roll[data-decisive="true"] .play-gig-roll-label { border-color: var(--color-ticket); color: var(--color-ticket); }
-.play-gig-roll[data-decisive="true"] .play-gig-mesh { filter: drop-shadow(0 0 13px color-mix(in srgb, var(--color-ticket) 34%, transparent)); }
+.play-gig-roll[data-decisive="true"] .play-gig-mesh { filter: drop-shadow(0 0 9px color-mix(in srgb, var(--die-rim) 32%, transparent)); }
 .play-mat-fixer .play-roll-source { visibility: hidden; flex: none; }
 .play-die[data-roll-pending] > * { visibility: hidden; }
-.play-die[data-roll-docked] { border-color: var(--color-ticket); box-shadow: 0 0 9px color-mix(in srgb, var(--color-ticket) 38%, transparent); }
-.play-die[data-roll-docked="decisive"] { box-shadow: 0 0 14px var(--color-ticket); }
+.play-die[data-roll-docked] { border-color: var(--die-rim); box-shadow: 0 0 9px color-mix(in srgb, var(--die-light) 38%, transparent); }
+.play-die[data-roll-docked="decisive"] { box-shadow: 0 0 14px var(--die-rim); }
 .play-roll-wait { display: none; }
 .play-grid:has(.play-gig-roll[data-phase="air"]) .play-roll-wait { display: block; }
 .play-grid:has(.play-gig-roll[data-phase="air"]) .play-roll-outcome { display: none; }

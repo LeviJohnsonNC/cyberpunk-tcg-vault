@@ -1,0 +1,17 @@
+.dice-preview { max-width: 1240px; margin: auto; padding: 30px; }
+.dice-preview header { margin-bottom: 20px; }
+.dice-preview header p { color: var(--color-accent); font: 500 11px var(--font-mono); letter-spacing: .2em; }
+.dice-preview h1 { margin: 4px 0; font: 800 42px var(--font-display); }
+.dice-preview header span { color: var(--color-text-muted); }
+.dice-preview-gallery { display: grid; grid-template-columns: repeat(6, 1fr); background: var(--color-canvas-deep); border-radius: 8px; margin: 8px 0; padding: 12px; }
+.dice-preview figure { text-align: center; margin: 0; min-width: 0; }
+.dice-preview figure img { display: block; width: 100%; height: 140px; object-fit: contain; }
+.dice-preview figcaption { font: 500 10px var(--font-mono); color: var(--die-rim); letter-spacing: .1em; }
+.dice-preview nav { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 20px 0; }
+.dice-preview nav label { display: flex; align-items: center; gap: 8px; }
+.dice-preview .dice-preview-table { position: relative; min-height: 390px; background: var(--color-canvas-deep); border: 1px solid var(--color-divider); border-radius: 8px; overflow: hidden; }
+.dice-preview-field { height: 175px; border-bottom: 1px solid var(--color-divider); padding: 12px; color: var(--color-text-faint); font: 500 10px var(--font-mono); }
+.dice-preview .dice-preview-table .dice-preview-dock { position: absolute; right: 20px; width: 44px; min-height: 0; padding: 0; border: 0; display: block; background: none; }
+.dice-preview-dock .play-die { display: block; width: 44px; height: 44px; }
+.dice-preview [data-seat="rival"] .dice-preview-dock { top: 10px; }
+.dice-preview [data-seat="player"] .dice-preview-dock { bottom: 10px; }

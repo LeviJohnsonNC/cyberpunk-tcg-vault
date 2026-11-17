@@ -1,5 +1,5 @@
 /** Short synthesised table cues, including fallbacks for recorded effects. */
-export type TableCue = 'dice-roll' | 'card-play' | 'unit-kill' | 'deal' | 'draw' | 'play' | 'eddie' | 'hit' | 'defeat' | 'gig' | 'gig-steal' | 'turn' | 'win' | 'lose' | 'equip' | 'program' | 'call' | 'attack' | 'select' | 'ready' | 'match-opening' | 'pack-open' | 'pack-reveal' | 'pack-rare' | 'pack-foil' | 'reward-lock' | 'act-arrival';
+export type TableCue = 'dice-impact' | 'dice-launch' | 'dice-roll' | 'card-play' | 'unit-kill' | 'deal' | 'draw' | 'play' | 'eddie' | 'hit' | 'defeat' | 'gig' | 'gig-steal' | 'turn' | 'win' | 'lose' | 'equip' | 'program' | 'call' | 'attack' | 'select' | 'ready' | 'match-opening' | 'pack-open' | 'pack-reveal' | 'pack-rare' | 'pack-foil' | 'reward-lock' | 'act-arrival';
 
 const TAU = Math.PI * 2;
 const tone = (hz: number, t: number) => Math.sin(TAU * hz * t);
@@ -9,7 +9,10 @@ const note = (hz: number, t: number, at: number, decay: number) => t < at ? 0 : 
 const fall = (from: number, floor: number, rate: number, t: number) => TAU * (floor * t + from / rate * (1 - Math.exp(-rate * t)));
 
 interface Recipe { seconds: number; gain: number; smooth: number; voice: (t: number, noise: number) => number }
-const recordedFallback = { 'dice-roll': 'gig', 'card-play': 'play', 'unit-kill': 'defeat', 'match-opening': 'act-arrival', deal: 'draw', 'gig-steal': 'gig' } as const;
+export interface DiceSoundOptions { type: string; strength: number }
+export type TableSoundCue = (name: TableCue, delayMs?: number, pan?: number, dice?: DiceSoundOptions) => (() => void) | undefined;
+
+const recordedFallback = { 'dice-impact': 'gig', 'dice-launch': 'gig', 'dice-roll': 'gig', 'card-play': 'play', 'unit-kill': 'defeat', 'match-opening': 'act-arrival', deal: 'draw', 'gig-steal': 'gig' } as const;
 const recipes: Record<Exclude<TableCue, keyof typeof recordedFallback>, Recipe> = {
   // Foil tear, a glassy reveal, and a quiet lock-in. Shared mute and voice limits apply.
   'pack-open': { seconds: .55, gain: .4, smooth: .22, voice: (t, n) => n * Math.sin(Math.PI * t / .55) ** 2 * (1 + .35 * tone(43, t)) + note(196, t, .3, 12) * .6 },
@@ -66,7 +69,7 @@ export function renderCue(cue: TableCue, sampleRate: number, variant = 0): Float
 
 export const tableCues = [...Object.keys(recipes), ...Object.keys(recordedFallback)] as TableCue[];
 
-/** Resin dice on felt: size changes the body resonance; softer contacts have a shorter tail. */
+/** Crystal on felt: one contact per cue, with size-dependent body and a short glass overtone. */
 export function renderDice(type: string, soft: boolean, launch: boolean, sampleRate: number): Float32Array {
   const sides = Math.max(4, Math.min(20, Number(type.slice(1)) || 6));
   const seconds = launch ? .19 : soft ? .1 : .24;
@@ -77,11 +80,11 @@ export function renderDice(type: string, soft: boolean, launch: boolean, sampleR
     seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
     low += .4 * ((seed / 2147483648 - 1) - low);
     let value = 0;
-    for (const at of launch ? [0, .044, .105] : soft ? [0] : [0, .064, .112]) {
+    for (const at of launch ? [0, .044, .105] : [0]) {
       const u = t - at;
       if (u < 0) continue;
       const weight = at === 0 ? 1 : .25;
-      value += weight * (tone(260 - sides * 7, u) * Math.exp(-48 * u) * .6 + tone(1800 + sides * 21, u) * Math.exp(-105 * u) * .24 + low * Math.exp(-85 * u) * .5);
+      value += weight * (tone(260 - sides * 7, u) * Math.exp(-48 * u) * .6 + tone(1800 + sides * 21, u) * Math.exp(-105 * u) * .24 + low * Math.exp(-85 * u) * .5 + tone(2800 - sides * 31, u) * Math.exp(-42 * u) * .1);
     }
     samples[i] = Math.tanh(value) * (launch ? .18 : soft ? .2 : .5) * Math.min(1, t * 1500, (seconds - t) * 100);
   }

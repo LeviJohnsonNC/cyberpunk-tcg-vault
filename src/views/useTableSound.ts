@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { renderCue, type TableCue } from '../lib/play/tableSound';
+import { renderCue, renderDice, type DiceSoundOptions, type TableCue } from '../lib/play/tableSound';
 import { duckMusic } from '../lib/musicSignal';
 import diceRoll from '../assets/play/dice-roll.mp3';
 import cardPlay from '../assets/play/card-play.mp3';
@@ -117,7 +117,21 @@ export function useTableSound() {
       source.stop(context.currentTime + .07);
     } : stop;
   }, []);
-  const cue = useCallback((name: TableCue, delayMs = 0, pan = 0) => {
+  const cue = useCallback((name: TableCue, delayMs = 0, pan = 0, dice?: DiceSoundOptions) => {
+    if (dice && (name === 'dice-impact' || name === 'dice-launch')) {
+      const context = audio.current;
+      if (!active.current || !level.current || context?.state !== 'running' || document.hidden) return;
+      const soft = dice.strength < .35;
+      const key = `${name}:${dice.type}:${soft}`;
+      let buffer = buffers.current.get(key);
+      if (!buffer) {
+        const samples = renderDice(dice.type, soft, name === 'dice-launch', context.sampleRate);
+        buffer = context.createBuffer(1, samples.length, context.sampleRate);
+        buffer.getChannelData(0).set(samples);
+        buffers.current.set(key, buffer);
+      }
+      return play(name, delayMs, pan, buffer, .35 + Math.min(1, Math.max(0, dice.strength)) * .85);
+    }
     const variants = clips.current.get(name);
     const clip = variants?.[variants.length === 1 ? 0 : Math.floor(Math.random() * variants.length)];
     const context = audio.current;

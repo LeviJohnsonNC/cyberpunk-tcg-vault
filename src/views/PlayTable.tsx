@@ -21,7 +21,7 @@ import { useTableMotion } from './useTableMotion';
 import { useMatchOpening } from './useMatchOpening';
 import { useMatchSound } from './useMatchSound';
 import { beatPace } from '../lib/play/matchMotion';
-import type { TableCue } from '../lib/play/tableSound';
+import type { TableSoundCue } from '../lib/play/tableSound';
 import { Rules } from '../components/bits';
 import { CombatArrow, CombatBanner } from './PlayCombat';
 import { PlayPresentation, type MatchPlayback } from './PlayPresentation';
@@ -94,7 +94,7 @@ function ContextMenu({ context, children, close }: { context: Context; children:
 export function PlayTable({ scope, snapshot, names, busy: saving, error, send, rematch, edit, circuit, playback, feedback, reduced, controls, navigation, audio, cue, campaign, freePlay, practiceLobby }: {
   campaign?: CampaignResultDetails & { rival: ReactNode; act?: number };
   freePlay?: { rival: ReactNode; resultQuote?: { rival: string; text: string } };
-  cue?: (name: TableCue, delayMs?: number) => (() => void) | undefined;
+  cue?: TableSoundCue;
   playback?: MatchPlayback; feedback?: MatchBeat; scope: string; snapshot: MatchSnapshot; names: Record<Seat, string>; busy: boolean; error?: string;
   send: (move: Move) => void; rematch: () => void; edit: () => void; circuit?: () => void; reduced: boolean; controls?: ReactNode; navigation?: ReactNode; audio?: ReactNode;
   practiceLobby?: () => void;
@@ -548,7 +548,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
       {view.gameEnded && <MatchResult view={view} report={snapshot.report} receipt={snapshot.circuit?.receipt} circuit={circuit} title={decisionTitle} reason={winReasons[view.winReason ?? ''] ?? 'Match ended'} busy={busy} rematch={rematch} edit={edit} quote={freePlay?.resultQuote} />}
       <span className="sr-only" role="status">{notice}{busy ? ' Resolving move.' : ''}</span>
       {notice && <p className="play-table-notice">{notice}</p>}
-      {rolling && <PlayGigRoll key={view.stateID} rolls={rolls} thrown={activeThrow} cue={cue} />}
+      {rolling && <PlayGigRoll key={view.stateID} rolls={rolls} thrown={activeThrow} cue={cue} onComplete={playback?.finishRoll} />}
     </div>
     {opening.showing && <section className="play-intro" aria-labelledby={`${panelId}-intro`} data-reduced={reduced || undefined}
       style={{ '--play-opening-duration': `${opening.duration}ms` } as CSSProperties}>

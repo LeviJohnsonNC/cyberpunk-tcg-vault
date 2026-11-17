@@ -1,55 +1,33 @@
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { GigRoll } from '../lib/play/protocol';
+import { paintDie } from '../lib/play/diceMesh';
+import { dicePalette } from '../lib/play/dicePalette';
+import './play-dice.css';
 
-const shapes: Record<string, { outline: string; face: string; facets: string; y?: number }> = {
-  d4: {
-    outline: 'M24 3 46 42 4 42Z',
-    face: 'M24 3 37 33 4 42Z',
-    facets: 'M37 33 46 42',
-    y: 28,
-  },
-  d6: {
-    outline: 'M5 12 13 5 38 5 44 12 44 37 37 43 5 43Z',
-    face: 'M5 12H37V43H5Z',
-    facets: 'M37 12 44 12M37 12 38 5',
-    y: 27,
-  },
-  d8: {
-    outline: 'M24 2 44 24 24 46 4 24Z',
-    face: 'M24 2 33 26 24 46 15 26Z',
-    facets: 'M4 24 15 26H33L44 24',
-    y: 25,
-  },
-  d10: {
-    outline: 'M24 2 44 17 46 29 24 46 2 29 4 17Z',
-    face: 'M24 2 36 25 24 46 12 25Z',
-    facets: 'M4 17 12 25 2 29M44 17 36 25 46 29',
-    y: 24,
-  },
-  d12: {
-    outline: 'M15 4H33L45 16V32L33 44H15L3 32V16Z',
-    face: 'M24 8 38 18 33 34H15L10 18Z',
-    facets: 'M24 8 15 4M24 8 33 4M38 18 45 16M33 34 45 32M33 34V44M15 34V44M15 34 3 32M10 18 3 16',
-    y: 24,
-  },
-  d20: {
-    outline: 'M24 2 44 13V35L24 46 4 35V13Z',
-    face: 'M24 10 38 34H10Z',
-    facets: 'M24 2V10L4 13M24 10 44 13M38 34 44 35M38 34 24 46 10 34 4 35',
-    y: 27,
-  },
-};
-
+// Cached crystal artwork stays crisp in the dock; images also survive table-flight clones.
+const artwork = new Map<string, string>();
 export function DieFace({ type, value }: { type: string; value?: number }) {
-  const shape = Object.hasOwn(shapes, type) ? shapes[type] : shapes.d6;
-  return <svg className="play-die-face" viewBox="0 0 48 48" aria-hidden="true">
-    <path className="play-die-shell" d={shape.outline} />
-    <path className="play-die-front" d={shape.face} />
-    <path className="play-die-facets" d={shape.facets} />
-    <text className={value === undefined ? 'play-die-type' : 'play-die-number'}
-      x={type === 'd6' ? 21 : 24} y={shape.y ?? 24} textAnchor="middle" dominantBaseline="central">
-      {value ?? type}
-    </text>
-  </svg>;
+  const ref = useRef<HTMLImageElement>(null);
+  const [src, setSrc] = useState<string>();
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const seat = element.closest('[data-seat]')?.getAttribute('data-seat') === 'rival' ? 'rival' : 'player';
+    const palette = dicePalette(element, seat);
+    const key = `${type}:${value}:${JSON.stringify(palette)}`;
+    let image = artwork.get(key);
+    if (!image) {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 160;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      paintDie(ctx, type, value ?? 1, [type === 'd4' ? .67 : .16, -.13, 0], 68, 160, palette, true, value === undefined ? type : String(value));
+      image = canvas.toDataURL();
+      artwork.set(key, image);
+    }
+    setSrc(image);
+  }, [type, value]);
+  return <img ref={ref} className="play-die-face play-crystal-die" src={src} alt="" aria-hidden="true" draggable={false} />;
 }
 
 export function GigRollAnnouncement({ rolls }: { rolls: GigRoll[] }) {
