@@ -52,7 +52,7 @@ export function PlayGigAdjustment({ view, action, picks, fields, active, cards, 
       {!choosingDie && target && <>
         <div className="play-gig-adjustment-die" role="group" aria-label={`${target.seat === 'player' ? 'Your' : 'Rival'} ${target.die.definitionId}, current value ${target.die.power}`}>
           <span>Selected Gig</span>
-          <DieFace type={target.die.definitionId} value={target.die.power} />
+          <DieFace seat={target.seat} type={target.die.definitionId} value={target.die.power} />
           <b>{target.seat === 'player' ? 'Your' : 'Rival'} {target.die.definitionId}</b>
         </div>
         <fieldset className="play-gig-adjustment-values" data-pick-field="value" disabled={busy}>
@@ -89,7 +89,7 @@ export function PlayGigAdjustment({ view, action, picks, fields, active, cards, 
               const gig = gigAdjustmentTarget(view, option.cardId);
               return <button key={option.id} className="btn quiet" type="button" data-pick-option={option.id}
                 onClick={() => select('die', option.id)} aria-pressed={picks.die?.includes(option.id) ?? false}>
-                {gig ? <><DieFace type={gig.die.definitionId} value={gig.die.power} />
+                {gig ? <><DieFace seat={gig.seat} type={gig.die.definitionId} value={gig.die.power} />
                   <span>{gig.seat === 'player' ? 'Your' : 'Rival'} {gig.die.definitionId} · {gig.die.power}</span></> : option.label}
               </button>;
             })}

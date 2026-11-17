@@ -5,7 +5,7 @@
 .dice-preview header span { color: var(--color-text-muted); }
 .dice-preview-gallery { display: grid; grid-template-columns: repeat(6, 1fr); background: var(--color-canvas-deep); border-radius: 8px; margin: 8px 0; padding: 12px; }
 .dice-preview figure { text-align: center; margin: 0; min-width: 0; }
-.dice-preview figure img { display: block; width: 100%; height: 140px; object-fit: contain; }
+.dice-preview figure .play-crystal-die { width: min(140px, 100%); height: auto; }
 .dice-preview figcaption { font: 500 10px var(--font-mono); color: var(--die-rim); letter-spacing: .1em; }
 .dice-preview nav { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 20px 0; }
 .dice-preview nav label { display: flex; align-items: center; gap: 8px; }
