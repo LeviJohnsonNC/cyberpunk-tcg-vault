@@ -21,6 +21,8 @@ export interface EngineState {
 export type EngineEvent =
   | { type: 'cardDefeated'; cardId: string; defeatedBy?: string | null }
   | { type: 'attackResolved'; attackKind: string; attackerId: string; defenderId?: string; result?: FightResult }
+  | { type: 'blockerActivated'; playerId: Seat; attackerId: string; blockerId: string; originalTarget: string | null }
+  | { type: 'actionLog'; category?: string; messageKey: string; cardIds?: string[]; params?: Record<string, unknown> }
   | { type: 'cardPlayed'; cardId: string }
   | { type: 'cardsDrawn'; playerId: Seat; count: number }
   | { type: 'cardSold' | 'legendFlipped' | 'turnStarted' | 'legendsShuffled'; playerId: Seat }

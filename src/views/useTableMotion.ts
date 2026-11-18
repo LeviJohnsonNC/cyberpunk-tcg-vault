@@ -268,7 +268,13 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
     const struck = strike && (strike.targetId ? next.get(strike.targetId)?.spot ?? before.get(strike.targetId)?.spot
       : spotOf(table.querySelector<HTMLElement>(`[data-zone="${strike.targetZone}"]`), table));
     // Give a freshly declared attack a beat on the table before it connects.
-    const windup = striker && struck ? (previousView.attackState ? 60 : 320) : 0;
+    // When the blocker was the last legal reaction, one command both redirects and resolves.
+    const oldAttack = previousView.attackState;
+    const redirect = beat?.fight && oldAttack && oldAttack.defenderId !== strike?.targetId
+      ? oldAttack.defenderId ? before.get(oldAttack.defenderId)?.spot
+        : spotOf(table.querySelector<HTMLElement>(`[data-zone="gigs:${oldAttack.rivalId}"] .play-gig-count`), table)
+      : undefined;
+    const windup = striker && struck ? time(redirect ? 310 : oldAttack ? 60 : 320) : 0;
     const impact = windup + time(200);
 
     let entered = 0;
@@ -381,6 +387,36 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
 
     if (combatKills.size) say('unit-kill', striker && struck ? impact : time(140));
     if (strike && striker && struck) {
+      if (redirect) {
+        const aim = (point: Spot) => {
+          const x = point.x - striker.spot.x, y = point.y - striker.spot.y;
+          return `rotate(${Math.atan2(y, x)}rad) scaleX(${Math.hypot(x, y) / 100})`;
+        };
+        const beam = document.createElement('div');
+        beam.className = 'play-block-redirect';
+        beam.style.left = `${striker.spot.x}px`;
+        beam.style.top = `${striker.spot.y}px`;
+        layer.append(beam);
+        const animation = beam.animate([
+          { transform: aim(redirect) }, { transform: aim(struck), offset: .65 }, { transform: aim(struck), opacity: 0 },
+        ], { duration: windup, easing: EASE, fill: 'both' });
+        track([animation], () => beam.remove());
+      }
+      if (beat?.fight) {
+        for (const side of ['attacker', 'defender'] as const) {
+          const spot = side === 'attacker' ? striker.spot : struck;
+          const label = document.createElement('span');
+          label.className = 'play-fight-power';
+          label.dataset.side = side;
+          label.style.left = `${spot.x}px`;
+          label.style.top = `${spot.y - spot.h * .25}px`;
+          label.textContent = `${beat.fight[side].power} PWR`;
+          layer.append(label);
+          const animation = label.animate([{ opacity: 0 }, { opacity: 1, offset: .12 }, { opacity: 1, offset: .8 }, { opacity: 0 }],
+            { duration: time(790), delay: windup, fill: 'both' });
+          track([animation], () => label.remove());
+        }
+      }
       const dx = struck.x - striker.spot.x, dy = struck.y - striker.spot.y;
       const reach = Math.min(0.62, 230 / Math.max(1, Math.hypot(dx, dy)));
       const body = next.has(strike.attackerId) ? striker.el : ghosts.get(strike.attackerId);

@@ -25,8 +25,8 @@ export function PlayPresentation({ playback, feedback }: { playback?: MatchPlayb
   if (!beat) return null;
   return <section className="play-move-receipt" data-beat-id={beat.id} data-seat={beat.seat} aria-label={playback ? 'Move playback' : 'Move result'} key={beat.id}>
     {playback && beat.gigRolls.length > 0 && <p className="play-roll-wait"><b>{beat.seat === 'player' ? 'You' : 'Rival'}</b> Rolling {beat.gigRolls.map(({ dieType }) => dieType).join(', ')}</p>}
-    <p className="play-roll-outcome" role="status"><b>{beat.seat === 'player' ? 'You' : 'Rival'}</b> {beat.text}</p>
-    {beat.changes.length > 0 && <ul className="play-roll-outcome">{beat.changes.slice(0, 4).map((change, index) => <li key={index} data-change={change.kind}>
+    <p className="play-roll-outcome" role="status">{!beat.fight && <b>{beat.seat === 'player' ? 'You' : 'Rival'} </b>}{beat.text}</p>
+    {!beat.fight && beat.changes.length > 0 && <ul className="play-roll-outcome">{beat.changes.slice(0, 4).map((change, index) => <li key={index} data-change={change.kind}>
       <span>{change.card?.cardName ?? (change.seat === 'player' ? 'You' : 'Rival')}</span> <strong>{publicChangeLabel(change, beat.view)}</strong>
     </li>)}{beat.changes.length > 4 && <li>+{beat.changes.length - 4} more on the mat</li>}</ul>}
     {playback && <div className="play-playback">

@@ -110,6 +110,35 @@ export function describeBeat(seat: Seat, command: Move, before: PlayerView, afte
   return { text: text ?? (combatChanged ? 'Combat continues.' : undefined), source: source && publicCard(source), targetIds, changes };
 }
 
+/** Only report a completed fight. Replacement choices may separate the power comparison from the final destinations. */
+export function completedFight(before: PlayerView, after: PlayerView, events: EngineEvent[]) {
+  if (after.attackState) return;
+  const comparison = events.find(event => event.type === 'actionLog' && event.category === 'combat'
+    && event.messageKey.startsWith('move.resolveAttack.fight.'));
+  const attack = before.attackState;
+  const stored = attack?.fightResolution;
+  const ids = comparison?.type === 'actionLog' ? comparison.cardIds : undefined;
+  const powers = comparison?.type === 'actionLog' ? comparison.params : undefined;
+  const attackerId = ids?.[0] ?? attack?.attackerId, defenderId = ids?.[1] ?? attack?.defenderId;
+  const attackerPower = powers?.attackerPower ?? stored?.attackerPower, defenderPower = powers?.defenderPower ?? stored?.defenderPower;
+  if (!attackerId || !defenderId || typeof attackerPower !== 'number' || typeof defenderPower !== 'number') return;
+  const cards = [...visibleCards(after), ...visibleCards(before)];
+  const find = (id: string) => cards.find(card => card.instanceId === id && card.cardName && !card.faceDown);
+  const attacker = find(attackerId), defender = find(defenderId);
+  if (!attacker || !defender) return;
+  const trash = new Set(seats.flatMap(seat => zoneCards(after.players[seat], 'trash')).map(card => card.instanceId));
+  const lost = [attacker, defender].filter(card => trash.has(card.instanceId));
+  const destination = lost.length === 2 ? 'Both went to Trash.' : lost.length ? `${lost[0].cardName} went to Trash.` : '';
+  const block = events.find(event => event.type === 'blockerActivated' && event.attackerId === attackerId && event.originalTarget === null);
+  const guarded = attack?.redirectedTargets?.[0] === null ? attack.rivalId : block?.type === 'blockerActivated' ? block.playerId : undefined;
+  const gigCount = guarded ? after.players[guarded].gigCount : 0;
+  const gigs = guarded ? `${guarded === 'player' ? 'You hold' : 'The rival holds'} ${gigCount} ${gigCount === 1 ? 'Gig' : 'Gigs'} after the block.` : '';
+  return {
+    fight: { attacker: { id: attackerId, power: attackerPower }, defender: { id: defenderId, power: defenderPower } },
+    text: [`${attacker.cardName} (${attackerPower}) vs ${defender.cardName} (${defenderPower}).`, destination, gigs].filter(Boolean).join(' '),
+  };
+}
+
 export function describeRolls(rolls: GigRoll[], actor: Seat) {
   return rolls.map((roll) => {
     const owner = roll.seat === actor ? 'a' : roll.seat === 'player' ? 'your' : 'the rival’s';
@@ -144,10 +173,10 @@ export function gigVictoryHold(view: PlayerView | undefined, quick: boolean) {
 }
 
 /** Playback clocks only presentation. The engine owns every decision window. */
-export function beatDuration(count: number, beat: Pick<MatchBeat, 'gigRolls'> & Partial<Pick<MatchBeat, 'changes' | 'view' | 'tableCues'>>, quick = false) {
+export function beatDuration(count: number, beat: Pick<MatchBeat, 'gigRolls'> & Partial<Pick<MatchBeat, 'changes' | 'view' | 'tableCues' | 'fight'>>, quick = false) {
   if (beat.gigRolls.length) return rollDuration(beat.gigRolls);
   const kinds = new Set(beat.changes?.map((change) => change.kind));
-  const base = kinds.has('defeated') ? 1300 : kinds.has('played') || kinds.has('called') ? 1350
+  const base = beat.fight ? 1720 : kinds.has('defeated') ? 1300 : kinds.has('played') || kinds.has('called') ? 1350
     : beat.view?.attackState || kinds.has('gigs') ? 1050 : kinds.has('power') ? 1100
     : beat.tableCues?.some(sound => sound.cue === 'draw' || sound.cue === 'eddie') ? 480 : 700;
   return Math.round(base * beatPace(count, quick));

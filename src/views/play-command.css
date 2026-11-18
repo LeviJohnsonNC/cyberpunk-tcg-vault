@@ -133,3 +133,73 @@
   .play-direct .play-command .btn { transition: none; }
   .play-command-arrival { animation: none; }
 }
+
+.play-direct .play-command[data-responding] .play-turn-plate {
+  background: var(--color-ticket);
+  color: var(--color-ticket-ink);
+}
+.play-response-pass { flex: none; margin-inline-start: auto; }
+.play-direct .play-response-pass .btn { min-height: 44px; padding-inline: 14px; }
+.play-direct .play-gigs[data-threatened] {
+  border-color: var(--color-accent);
+  box-shadow: inset 4px 0 var(--color-accent);
+}
+.play-gig-threat, .play-fight-power {
+  color: var(--color-accent-ink);
+  background: var(--color-accent);
+  font: 700 11px/1 var(--font-ui);
+  text-transform: uppercase;
+}
+.play-gig-threat { padding: 4px 6px; white-space: nowrap; }
+.play-fight-power {
+  position: absolute;
+  z-index: 2;
+  translate: -50% -50%;
+  padding: 6px 9px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font: 800 19px/1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+.play-fight-power[data-side="defender"] { background: var(--color-ticket); color: var(--color-ticket-ink); }
+.play-table[data-combat="true"] .play-card[data-response] .play-card-art {
+  --card-ring: var(--color-ticket);
+  --card-ring-width: 2px;
+  filter: none;
+}
+.play-card[data-response] .play-card-art > small,
+.play-card-shell:has(> .play-card[data-response]) > .play-legend-note {
+  background: var(--color-ticket);
+  color: var(--color-ticket-ink);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .play-table:not([data-reduced]) .play-field .play-card[data-combat-role="attacking"] .play-card-art {
+    rotate: var(--combat-lean, 0deg);
+  }
+}
+@media (forced-colors: active) {
+  .play-card[data-response] .play-card-art, .play-gigs[data-threatened] { outline: 2px solid Highlight; }
+}
+.play-last-fight {
+  flex: 1;
+  max-width: 52ch;
+  margin-inline: auto;
+  padding-inline: 10px;
+  border-inline-start: 2px solid var(--color-ticket);
+  color: var(--color-text);
+  font: 500 13px/1.3 var(--font-ui);
+}
+.play-gear-thumbnail[data-response] { outline: 2px solid var(--color-ticket); }
+.play-direct .play-field[data-seat] .play-card[data-combat-role] .play-card-art {
+  scale: .96;
+  translate: none;
+  filter: none;
+}
+.play-block-redirect {
+  position: absolute;
+  width: 100px;
+  height: 3px;
+  transform-origin: left center;
+  background: var(--color-accent);
+  box-shadow: 0 0 7px var(--color-accent);
+}

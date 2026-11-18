@@ -7,7 +7,7 @@ import { dicePalette } from '../lib/play/dicePalette';
 import { DieFace } from './PlayDice';
 
 type DieDrag = { start: (event: PointerEvent<HTMLElement>, die: CardView) => void; suppressClick: () => boolean };
-export type Targeting = { dieDrag?: DieDrag; effectIds?: Set<string>; dropZones?: Set<string>; dropOver?: string; targetIds: Set<string>; chosenIds: Set<string>; onPick: (id: string) => void };
+export type Targeting = { responseIds?: Set<string>; dieDrag?: DieDrag; effectIds?: Set<string>; dropZones?: Set<string>; dropOver?: string; targetIds: Set<string>; chosenIds: Set<string>; onPick: (id: string) => void };
 type CardTile = (card: CardView, label?: string, options?: { legendSlot?: boolean; attachedGear?: boolean }) => ReactNode;
 /** The latest public outcome, shown where it happened. */
 export interface Outcome { id: number; changes: MatchChange[] }
@@ -54,12 +54,13 @@ function MatDie({ seat, card, fixer = false, adjustmentSelected, effectIds, targ
   </button>;
 }
 
-export function GigZones({ snapshot, outcome, adjustedGig, ...targeting }: Targeting & { snapshot: MatchSnapshot; outcome?: Outcome; adjustedGig?: unknown }) {
+export function GigZones({ snapshot, outcome, adjustedGig, threatened, ...targeting }: Targeting & { snapshot: MatchSnapshot; outcome?: Outcome; adjustedGig?: unknown; threatened?: Seat }) {
   return <div className="play-gig-zones">{(['rival', 'player'] as const).map((seat) => {
     const view = snapshot.view.players[seat];
     const gigs = zoneCards(view, 'gigArea');
-    return <section key={seat} className="play-gigs" data-seat={seat} data-zone={`gigs:${seat}`} data-drop-zone={`gigs:${seat}`} data-drop-available={targeting.dropZones?.has(`gigs:${seat}`)} data-drop-over={targeting.dropOver === `gigs:${seat}`} aria-label={seat === 'player' ? 'Your Gigs' : 'Rival Gigs'}>
+    return <section key={seat} className="play-gigs" data-threatened={threatened === seat || undefined} data-seat={seat} data-zone={`gigs:${seat}`} data-drop-zone={`gigs:${seat}`} data-drop-available={targeting.dropZones?.has(`gigs:${seat}`)} data-drop-over={targeting.dropOver === `gigs:${seat}`} aria-label={seat === 'player' ? 'Your Gigs' : 'Rival Gigs'}>
       <h3 className="play-gig-count play-eyebrow">{seat === 'player' ? 'Your Gigs' : 'Rival Gigs'} <span>{view.gigCount}</span></h3>
+      {threatened === seat && <strong className="play-gig-threat">Under attack</strong>}
       <div className="play-dice">{gigs.map((card) => <MatDie seat={seat} key={card.instanceId} card={card} adjustmentSelected={card.instanceId === adjustedGig} {...targeting} />)}</div>
       <span className="play-gig-cred" title="Street Cred is the total value of these Gig dice">Cred <b>{view.streetCred}</b></span>
       <ZoneFloat outcome={outcome} seat={seat} kinds={['gigs', 'cred']} waitForRoll={snapshot.gigRolls.length > 0} />
@@ -158,24 +159,25 @@ function ResourceDialog({ title, label, className, trigger, target, selected, ch
   </>;
 }
 
-function Legends({ seat, snapshot, renderCard, renderFace, targetIds, chosenIds }: {
+function Legends({ seat, snapshot, renderCard, renderFace, targetIds, chosenIds, responseIds }: {
   seat: Seat; snapshot: MatchSnapshot; renderCard: CardTile; renderFace: (card: CardView) => ReactNode;
-} & Pick<Targeting, 'targetIds' | 'chosenIds'>) {
+} & Pick<Targeting, 'targetIds' | 'chosenIds' | 'responseIds'>) {
   const { legends, attached } = crew(snapshot.view.players[seat]);
   const own = seat === 'player';
   return <section className="play-legends" data-zone={`legends:${seat}`} aria-label={own ? 'Your Legends' : 'Rival Legends'}>
     <h3 className="play-zone-label">Legends <b>{legends.length}/3</b></h3>
     <div className="play-legend-slots">{legends.map((card, index) => {
       const gear = attached.filter((item) => item.attachedToId === card.instanceId);
+      const canRespond = gear.some(item => responseIds?.has(item.instanceId));
       const host = card.cardName ?? `Legend slot ${index + 1}`;
       return <div key={card.instanceId} className="play-legend-slot">
         {renderCard(card, `Legend slot ${index + 1}`, { legendSlot: true })}
         {gear.length > 0 && <div className="play-legend-gear" data-zone={`field:${seat}`}>
           <span className="play-gear-thumbnails" aria-hidden="true">{gear.map(item =>
-            <span key={item.instanceId} className="play-gear-thumbnail" data-card-id={item.instanceId}>{renderFace(item)}</span>)}</span>
-          <ResourceDialog title={`Gear on ${host}`} label={`${gear.length} attached Gear on ${host}`} className="play-gear-trigger"
+            <span key={item.instanceId} className="play-gear-thumbnail" data-card-id={item.instanceId} data-response={responseIds?.has(item.instanceId) || undefined}>{renderFace(item)}</span>)}</span>
+          <ResourceDialog title={`Gear on ${host}`} label={`${gear.length} attached Gear on ${host}${canRespond ? ', response available' : ''}`} className="play-gear-trigger"
             target={gear.some(item => targetIds.has(item.instanceId))} selected={gear.some(item => chosenIds.has(item.instanceId))}
-            trigger={<><span aria-hidden="true">↗</span> {gear.length}</>}>
+            trigger={<><span aria-hidden="true">↗</span> {gear.length}{canRespond && ' · Respond'}</>}>
             <div className="play-pile-cards play-resource-gear-list">{gear.map(item => renderCard(item, undefined, { attachedGear: true }))}</div>
           </ResourceDialog>
         </div>}

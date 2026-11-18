@@ -133,9 +133,9 @@
 .play-combat-instruction { flex: 1 1 120px; min-width: 0; color: var(--color-text-muted); font: 400 12px/1.35 var(--font-ui); }
 .play-combat-controls { display: flex; flex-wrap: wrap; gap: 6px; margin-inline-start: auto; }
 .play-command .play-combat-controls .btn { min-height: 38px; padding-inline: 16px; font-size: 13px; }
-.play-combat-arrow { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 2; overflow: visible; pointer-events: none; }
-.play-combat-glow { fill: none; stroke: var(--color-accent); stroke-width: 13px; stroke-linecap: round; opacity: .2; }
-.play-combat-beam { fill: none; stroke: var(--color-accent); stroke-width: 4px; stroke-linecap: round; stroke-dasharray: 14 9; }
+.play-combat-arrow { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 4; overflow: visible; pointer-events: none; }
+.play-combat-glow { fill: none; stroke: var(--color-accent); stroke-width: 8px; stroke-linecap: round; opacity: .2; }
+.play-combat-beam { fill: none; stroke: var(--color-accent); stroke-width: 3px; stroke-linecap: round; stroke-dasharray: 9 6; }
 .play-combat-arrow marker path { fill: var(--color-accent); }
 .play-combat-arrow circle { fill: var(--color-ticket); stroke: var(--color-canvas-deep); stroke-width: 2px; }
 .play-table[data-combat="true"] .play-card:not([data-combat-role], [data-target="true"]) .play-card-art { filter: brightness(.78); }

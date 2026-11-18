@@ -45,6 +45,8 @@ export function commandPresentation({ view, actions, selected, active, busy = fa
       : choice.type === 'revealDestination' ? 'Place the revealed card' : actions[0]?.label ?? 'Resolve a choice';
     return show('effect', title, actions[0]?.detail);
   }
+  if (combat?.responding && combat.defender && view.attackState?.redirectedTargets?.length)
+    return show('combat', `${combat.defender.cardName ?? 'Your Unit'} is blocking`, combat.hint, 'mandatory');
   if (combat) return show('combat', view.attackState?.step === 'react' ? 'Respond to the attack' : 'Continue combat', combat.hint, offered('resolveAttack') ? 'mandatory' : 'normal');
   return show('normal-turn', 'Your move', 'Select a card or drag it to a highlighted destination.', 'normal');
 }
