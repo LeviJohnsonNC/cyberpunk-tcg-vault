@@ -16,7 +16,7 @@ const adjustmentSources = {
   'Increase a Gig': 'industrial-assembly',
   'Decrease a Gig': 'trust-no-one',
 } as const;
-export const decisionFixtures = ['Turn order', 'Opening hand', 'Gig die', 'Main turn', 'Table exchange', 'Block a Gig attack', 'Crowded table', 'Reaction', 'Forced payment', 'Target effect', 'Order effects', 'Card placement', 'Add to hand',
+export const decisionFixtures = ['Turn order', 'Opening hand', 'Gig die', 'Main turn', 'Table exchange', 'Block a Gig attack', 'Crowded table', 'Reaction', 'Forced payment', 'Target effect', 'Order effects', 'Attack effects', 'Card placement', 'Add to hand',
   'Gig adjustment', 'Single Gig adjustment', 'Increase a Gig', 'Decrease a Gig', 'Overtime', 'Complete'] as const;
 export type DecisionFixture = typeof decisionFixtures[number];
 type Position = EngineState & { G: {
@@ -24,7 +24,7 @@ type Position = EngineState & { G: {
   turnMetadata: { activePlayerId: Seat; overtimeActive: boolean };
   players: Record<Seat, { eddies: number; eddieCardIds: string[]; gigArea: string[]; fixerArea: string[] }>;
   gigDice: Record<string, { dieType: string; faceValue: number; location: string }>;
-  cardIndex: Record<string, { zone: string; meta: { faceDown: boolean; spent: boolean; hasLag: boolean; attachedToId?: string } }>;
+  cardIndex: Record<string, { zone: string; meta: { faceDown: boolean; spent: boolean; hasLag: boolean; attachedGearIds: string[]; attachedToId?: string } }>;
 } };
 
 export function createDecisionFixture(name: DecisionFixture) {
@@ -64,6 +64,14 @@ export function createDecisionFixture(name: DecisionFixture) {
   const eddie = (seat: Seat) => {
     const id = place(seat, 'floor-it', 'eddieArea');
     state.G.players[seat].eddieCardIds.push(id); state.G.players[seat].eddies++; return id;
+  };
+  const putGig = (seat: Seat, type: string, value: number) => {
+    const player = state.G.players[seat];
+    const index = player.fixerArea.findIndex(id => state.G.gigDice[id].dieType === type);
+    if (index < 0) throw new Error(`Fixture die ${type} is unavailable.`);
+    const [id] = player.fixerArea.splice(index, 1);
+    player.gigArea.push(id);
+    Object.assign(state.G.gigDice[id], { location: 'gigArea', faceValue: value });
   };
   const attacker = place('rival', 'field-operator', 'field', name === 'Main turn' || name === 'Overtime');
   const defender = place('player', name === 'Table exchange' ? 'delamain-cab' : name === 'Reaction' ? 'mox-inciters' : 'corpo-security', 'field', name === 'Forced payment');
@@ -108,14 +116,6 @@ export function createDecisionFixture(name: DecisionFixture) {
       player.fixerArea.push(...player.gigArea.splice(0));
       for (const id of player.fixerArea) state.G.gigDice[id].location = 'fixerArea';
     }
-    const putGig = (seat: Seat, type: string, value: number) => {
-      const player = state.G.players[seat];
-      const index = player.fixerArea.findIndex(id => state.G.gigDice[id].dieType === type);
-      if (index < 0) throw new Error(`Fixture die ${type} is unavailable.`);
-      const [id] = player.fixerArea.splice(index, 1);
-      player.gigArea.push(id);
-      Object.assign(state.G.gigDice[id], { location: 'gigArea', faceValue: value });
-    };
     putGig('player', 'd4', 3);
     if (name !== 'Single Gig adjustment') putGig('rival', 'd12', 4);
     if (name === 'Increase a Gig' || name === 'Decrease a Gig') putGig('rival', 'd8', 5);
@@ -128,6 +128,16 @@ export function createDecisionFixture(name: DecisionFixture) {
   if (name === 'Order effects') {
     place('player', 'misty-olszewski-mender-of-broken-spirits', 'field');
     place('player', 'misty-olszewski-mender-of-broken-spirits', 'field');
+  }
+  const equippedAttacker = name === 'Attack effects' ? place('player', 'evelyn-parker-scheming-siren', 'field') : undefined;
+  if (equippedAttacker) {
+    putGig('rival', 'd8', 5);
+    state.G.cardIndex[attacker].meta.spent = true;
+    for (const slug of ['zetatech-faceplate', 'dying-night-v-s-pistol']) {
+      const gear = place('player', slug, 'field');
+      state.G.cardIndex[gear].meta.attachedToId = equippedAttacker;
+      state.G.cardIndex[equippedAttacker].meta.attachedGearIds.push(gear);
+    }
   }
   if (name === 'Overtime') { state.G.overtime = true; state.G.turnMetadata.overtimeActive = true; }
   if (name === 'Reaction' || name === 'Block a Gig attack' || name === 'Forced payment') state.G.turnMetadata.activePlayerId = 'rival';
@@ -145,6 +155,7 @@ export function createDecisionFixture(name: DecisionFixture) {
   if (program) issue('player', 'playCard', { cardId: program });
   if (handSearch) issue('player', 'callLegend', { legendId: handSearch });
   if (name === 'Order effects') issue('player', 'passPhase');
+  if (equippedAttacker) issue('player', 'attackUnit', { attackerId: equippedAttacker, defenderId: attacker });
   if (name === 'Complete') issue('player', 'concede');
   checkpoint.state = engine.getState();
   (checkpoint.state as Position).G.manualPaymentPlayerId = 'player';

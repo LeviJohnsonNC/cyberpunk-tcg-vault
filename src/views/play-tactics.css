@@ -69,3 +69,9 @@
   .play-combat-instruction { font-size: 11px; }
   .play-combat-stage { min-width: 80px; }
 }
+
+.play-hover-preview[data-effect-preview] { pointer-events: auto; }
+.play-hover-preview[data-effect-preview][data-landscape="true"] { grid-template-columns: 44% minmax(0, 1fr); }
+.play-hover-preview[data-effect-preview] .play-hover-copy { gap: 5px; }
+.play-hover-preview[data-effect-preview] .card-art { align-self: center; }
+.play-hover-preview[data-effect-preview] strong { font-size: 13px; }

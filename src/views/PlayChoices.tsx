@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { Rules } from '../components/bits';
 import { isReady, type MatchActionForm, type PickField, type Picks } from '../lib/play/matchActions';
+import { triggerPreviewCard } from '../lib/play/cardDisplay';
 import { commitLabel } from '../lib/play/matchInteraction';
 import type { CardView, PlayerView } from '../lib/play/protocol';
 import { zoneCards } from '../lib/play/matchView';
@@ -40,14 +41,16 @@ function triggerRules(active: PickField | undefined) {
   return unique.size === 1 ? [...unique.values()].map(rule => ({ ...rule, label: 'Ability rules' })) : [...unique.values()];
 }
 
-export function PlayChoices({ presentation, context, view, action, picks, fields, active, cards, busy, forced, select, step, submit, cancel, resetPayment, alternatives, reorder, inspect, revealed, highlightSource }: {
+export function PlayChoices({ presentation, context, view, action, picks, fields, active, cards, busy, forced, select, step, submit, cancel, resetPayment, alternatives, reorder, inspect, revealed, previewSource, leaveSource }: {
   presentation: CommandPresentation; context?: ReactNode;
   view: PlayerView;
   revealed?: CardView[]; action: MatchActionForm; picks: Picks; fields: PickField[]; active?: PickField; cards: CardView[];
-  highlightSource?: (id?: string) => void;
+  previewSource: (card: CardView, trigger: HTMLElement, note: string | undefined, canInspect: boolean) => void;
+  leaveSource: (wait?: boolean) => void;
   inspect: (card: CardView, trigger: HTMLElement) => void; busy: boolean; forced: boolean; select: (field: string, value: string) => void;
   step: (id: string) => void; reorder: (field: string, ids: string[]) => void; submit: () => void; cancel: () => void; resetPayment: () => void; alternatives: ReactNode;
 }) {
+  const choiceId = useId();
   if (action.id === 'resolveAdjustGig') return <PlayGigAdjustment
     view={view} action={action} picks={picks} fields={fields} active={active} cards={cards} busy={busy}
     select={select} changeGig={() => step('die')} submit={submit} inspect={inspect} alternatives={alternatives} context={context} />;
@@ -56,6 +59,7 @@ export function PlayChoices({ presentation, context, view, action, picks, fields
   const rollingGig = action.id === 'gainGig';
   const sourceCard = decisionSource(view, action, picks, cards);
   const paying = active?.id === 'payment';
+  const triggerChoice = action.id === 'resolveTrigger';
   const placement = action.id === 'resolveScry';
   const replacement = action.id === 'resolveRedirectDefeat';
   const preventTheft = action.id === 'resolvePreventGigSteal';
@@ -87,7 +91,7 @@ export function PlayChoices({ presentation, context, view, action, picks, fields
           <span className="sr-only">{active.label}{limit ? '. ' : ''}</span>
           {limit}
         </legend>
-        <div className="play-pick-list">{active.options.map((option) => {
+        <div className="play-pick-list">{active.options.map((option, index) => {
           const card = option.cardId ? byId.get(option.cardId) : undefined;
           const die = card && ['gigArea', 'fixerArea'].includes(card.zone ?? '');
           const rivalDie = die && zoneCards(view.players.rival, card.zone!).some(item => item.instanceId === card.instanceId);
@@ -97,15 +101,24 @@ export function PlayChoices({ presentation, context, view, action, picks, fields
           const costRelevant = ['playCard', 'resolveCardToPlay', 'resolvePreventGigSteal'].includes(action.id);
           const showNote = option.note && !paying && (costRelevant || !option.note.endsWith(' €$'));
           const source = option.sourceCardId ? byId.get(option.sourceCardId) : undefined;
-          const duplicateTriggers = action.id === 'resolveTrigger' ? active.options.filter(item => item.label === option.label) : [];
+          const previewCard = option.sourceCardId ? triggerPreviewCard(source, option.sourceCardId, option.label) : undefined;
+          const descriptionId = triggerChoice && option.note ? `${choiceId}-effect-${index}` : undefined;
+          const duplicateTriggers = triggerChoice ? active.options.filter(item => item.label === option.label) : [];
           const label = duplicateTriggers.length > 1 ? `${option.label} · ${duplicateTriggers.indexOf(option) + 1}` : option.label;
           return <div key={option.id} className="play-choice-option"><button type="button" className={`play-option${artwork ? ' play-option-card' : ''}`}
             data-pick-option={option.id} aria-pressed={rank >= 0} aria-disabled={capped || undefined}
             onClick={() => { if (!capped) select(active.id, option.id); }}
-            onMouseEnter={source ? () => highlightSource?.(source.instanceId) : undefined}
-            onMouseLeave={source ? () => highlightSource?.() : undefined}
-            onFocus={source ? () => highlightSource?.(source.instanceId) : undefined}
-            onBlur={source ? () => highlightSource?.() : undefined} onKeyDown={(event) => { if (card && event.key.toLowerCase() === 'i') { event.preventDefault(); inspect(card, event.currentTarget); } }}>
+            aria-describedby={descriptionId}
+            onMouseEnter={previewCard ? event => previewSource(previewCard, event.currentTarget, option.note, !!source) : undefined}
+            onMouseLeave={previewCard ? event => { if (!event.currentTarget.matches(':focus-visible')) leaveSource(true); } : undefined}
+            onFocus={previewCard ? event => {
+              if (event.currentTarget.matches(':focus-visible')) previewSource(previewCard, event.currentTarget, option.note, !!source);
+            } : undefined}
+            onBlur={previewCard ? () => leaveSource() : undefined}
+            onKeyDown={event => {
+              const inspectable = card ?? (previewCard && source);
+              if (inspectable && event.key.toLowerCase() === 'i') { event.preventDefault(); inspect(inspectable, event.currentTarget); }
+            }}>
             {die && <DieFace seat={rivalDie ? 'rival' : 'player'} type={card.definitionId} value={card.zone === 'gigArea' ? card.power : undefined} />}
             {artwork && <CardFace card={card} />}
             <span className="play-option-label">
@@ -113,8 +126,8 @@ export function PlayChoices({ presentation, context, view, action, picks, fields
               {label}
               {active.ordered && rank >= 0 && <span className="sr-only">{`, position ${rank + 1}`}</span>}
             </span>
-            {showNote && action.id !== 'resolveTrigger' && <small><Rules text={option.note!} /></small>}
-          </button>{artwork && <button type="button" className="play-choice-details" aria-label={`Details for ${option.label}`} title={`Details for ${option.label}`} onClick={(event) => inspect(card, event.currentTarget)}><span aria-hidden="true">ⓘ</span></button>}</div>;
+            {showNote && !triggerChoice && <small><Rules text={option.note!} /></small>}
+          </button>{descriptionId && <span id={descriptionId} className="sr-only"><Rules text={option.note!} /></span>}{artwork && <button type="button" className="play-choice-details" aria-label={`Details for ${option.label}`} title={`Details for ${option.label}`} onClick={(event) => inspect(card, event.currentTarget)}><span aria-hidden="true">ⓘ</span></button>}</div>;
         })}{!active.options.length && <p className="play-empty">{fields.length > 1 ? 'No eligible options. Choose an earlier step to change your selection.' : 'No eligible options.'}</p>}</div>
       </fieldset>;
   return <section className="play-decision-tray" aria-label="Table decision" data-forced={forced} data-placement={placement || undefined}>
@@ -145,7 +158,7 @@ export function PlayChoices({ presentation, context, view, action, picks, fields
       </div>
       {(showPanel || context) && <div className="play-tray-summary">
         {showPanel && <PlayDecisionPanel key={onMat ? 'mat' : 'list'} label={onMat ? paying ? 'Payment sources' : 'Choice list' : heading}
-          title={onMat ? paying ? 'Payment sources' : 'Eligible choices' : heading} defaultOpen={!onMat} hideTriggerWhenOpen>
+          title={onMat ? paying ? 'Payment sources' : 'Eligible choices' : heading} defaultOpen={!onMat} hideTriggerWhenOpen onClose={triggerChoice ? () => leaveSource() : undefined}>
           {fields.length > 1 && <div className="play-choice-steps" aria-label="Decision steps">{fields.map(field =>
             <button type="button" key={field.id} className="btn quiet" aria-pressed={field.id === active?.id}
               data-step={field.id} disabled={busy} onClick={() => step(field.id)}>
@@ -170,7 +183,7 @@ export function PlayChoices({ presentation, context, view, action, picks, fields
               <p>{unassigned.map((card) => card.cardName ?? 'Revealed card').join(' · ')}</p>
             </details>}
             {!inlineDetail && action.detail && <details><summary>Effect rules</summary><p><Rules text={action.detail} /></p></details>}
-            {action.id === 'resolveTrigger' && triggerRules(active).map(rule => <details key={rule.note}>
+            {triggerChoice && triggerRules(active).map(rule => <details key={rule.note}>
               <summary>{rule.label}</summary><p><Rules text={rule.note} /></p>
             </details>)}
           </div>
