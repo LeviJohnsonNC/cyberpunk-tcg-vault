@@ -1,4 +1,4 @@
-import { ENCOUNTERS, campaignClearedCount, type CampaignRun, type EncounterId } from './campaign';
+import { campaignEncounter, ENCOUNTERS, campaignClearedCount, type CampaignRun, type EncounterId } from './campaign';
 import type { RivalDialogueBank } from './rivalDialogue';
 
 interface StoryBeat {
@@ -219,5 +219,5 @@ export const campaignChapters = {
 } satisfies Record<EncounterId, CampaignChapter>;
 
 export function unlockedCampaignChapters(run: CampaignRun) {
-  return ENCOUNTERS.slice(0, campaignClearedCount(run));
+  return ENCOUNTERS.slice(0, campaignClearedCount(run)).map((_, index) => campaignEncounter(run, index));
 }

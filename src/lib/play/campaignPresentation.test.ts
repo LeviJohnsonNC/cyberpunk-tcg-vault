@@ -80,12 +80,12 @@ describe('campaign presentation and edit previews', () => {
     const run = rewarded(); run.encounter = 3;
     expect(needsActBriefing(run)).toBe(true);
     await updateCampaign('qa-act', () => ({ run, value: undefined }));
-    await acknowledgeCampaignAct('qa-act', run.revision);
+    await acknowledgeCampaignAct('qa-act', run, 'silence');
     const restored = (await readCampaign('qa-act')).run!;
     expect(needsActBriefing(restored)).toBe(false);
     expect(restored.inventory).toEqual(run.inventory);
     expect(restored.deck).toEqual(run.deck);
-    await expect(acknowledgeCampaignAct('qa-act', run.revision)).rejects.toThrow('another tab');
+    await expect(acknowledgeCampaignAct('qa-act', run, 'silence')).rejects.toThrow('another tab');
     expect(needsActBriefing({ ...restored, encounter: 6 })).toBe(true);
     expect(needsActBriefing({ ...restored, phase: 'inMatch', encounter: 6 })).toBe(false);
   });

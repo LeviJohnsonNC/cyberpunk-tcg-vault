@@ -305,3 +305,4 @@
   .campaign-board-timeline > span:last-child { margin-left: auto; }
   .campaign-board-cleared { display: none; }
 }
+.campaign-board-route-still { width: 100%; height: 100%; object-fit: cover; object-position: center; }

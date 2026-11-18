@@ -10,6 +10,7 @@ import type { CampaignRivalPlan, RivalSkill } from './protocol';
 import recommended from '../../data/decks.json';
 import { ARASAKA_HOUSE_LIST, HEIST_OPENING_RIVAL, LEDGER_GEAR_LIST, MOTH_PRACTICE_DELTAS, REWARD_THEMES, RIVAL_TUNING, ROGUELIKE_RIVAL_DELTAS } from './campaignBalance';
 import { HOSTILE_TAKEOVER_REWARDS, redLineReward } from './campaignRematch';
+import { routeContract, type CampaignRoute } from './campaignRoutes';
 
 export const CAMPAIGN_VERSION = 1;
 export const ENVIRONMENTS = [
@@ -61,6 +62,7 @@ export interface CampaignRun {
   balanceVersion?: 2 | 3 | 4 | 5;
   /** Presentation-only acknowledgement. Older runs can show their current act once. */
   briefedAct?: number;
+  route?: CampaignRoute;
   /** A finished match remains on its result screen until the player continues. */
   resultPending?: boolean;
   aftermath?: CampaignAftermath;
@@ -74,7 +76,7 @@ export interface CampaignRun {
   /** Legacy sequential reveal count, read only until the pack is edited. */
   revealed?: number;
 }
-export interface CampaignArchive { id: string; starter: StarterKey; cleared: number; completed: boolean; endedAt: number; deck: Deck; }
+export interface CampaignArchive { route?: CampaignRoute; id: string; starter: StarterKey; cleared: number; completed: boolean; endedAt: number; deck: Deck; }
 export interface CampaignProfile { version: 1; completions: Record<StarterKey, number>; environments: Environment[]; equipped?: Environment; history?: CampaignArchive[]; }
 export const emptyProfile = (): CampaignProfile => ({ version: 1, completions: { 'the-heist': 0, 'embracing-power': 0 }, environments: [] });
 
@@ -98,15 +100,22 @@ export { campaignDeckIssues } from './campaignDeckRules';
 
 const MOTH_EMBRACING_POWER = 'Moth’s Embracing Power';
 
+export function campaignEncounter(run: CampaignRun, index = run.encounter) {
+  const route = routeContract(run, index);
+  if (!route) return ENCOUNTERS[index];
+  const rival = ENCOUNTERS.find(item => item.id === route.rival)!;
+  return { ...rival, title: route.title };
+}
+
 export function encounterDeck(run: CampaignRun): Deck {
-  const saved = run.opponents?.[run.encounter];
+  const info = campaignEncounter(run);
+  if (!info) throw new Error('The campaign is complete.');
+  const saved = run.opponents?.[ENCOUNTERS.findIndex(item => item.id === info.id)];
   if (saved) {
     const rival = structuredClone(saved);
     if (rival.name === 'Embracing Power · Practice List') rival.name = MOTH_EMBRACING_POWER;
     return rival;
   }
-  const info = ENCOUNTERS[run.encounter];
-  if (!info) throw new Error('The campaign is complete.');
   if (info.rival === 'other-starter') {
     const rival = makeStarterDeck(run.starter === 'the-heist' ? 'embracing-power' : 'the-heist');
     if (run.balanceVersion && run.starter === 'the-heist') {
@@ -152,13 +161,13 @@ function applyCopyDeltas(cards: Record<string, number>, deltas?: Readonly<Record
 }
 
 export function encounterSkill(run: CampaignRun): RivalSkill {
-  const info = ENCOUNTERS[run.encounter];
+  const info = campaignEncounter(run);
   return ((run.balanceVersion ?? 0) >= 3 ? ROGUELIKE_RIVAL_DELTAS[info.id]?.skill : undefined)
     ?? (run.balanceVersion ? RIVAL_TUNING[info.id]?.skill : undefined) ?? info.skill;
 }
 
 export function encounterRivalPlan(run: CampaignRun): CampaignRivalPlan | undefined {
-  const encounter = ENCOUNTERS[run.encounter];
+  const encounter = campaignEncounter(run);
   if (run.balanceVersion === 5 && encounter?.id === 'last-call') return 'last-call-v5';
   if ((run.balanceVersion ?? 0) >= 3 && encounter) return ROGUELIKE_RIVAL_DELTAS[encounter.id]?.plan;
 }
@@ -214,7 +223,7 @@ export function prepareCampaignReward(run: CampaignRun) {
     offers: rewardOffers(run, compatibleRewards(run), rewardSeed(run), reward.cards) };
 }
 
-const isRecruitment = (run: CampaignRun) => run.encounter === 2 || run.encounter === 5;
+const isRecruitment = (run: CampaignRun) => run.encounter === 2 || run.encounter === 5 || (run.encounter === 4 && run.route?.call === 'moth');
 
 function recruitCandidates(run: CampaignRun, colours: readonly string[]) {
   if (!isRecruitment(run)) return [];
@@ -263,6 +272,8 @@ function rewardOffers(run: CampaignRun, compatible: Card[], seed: string, sealed
     const second = ordered.find(card => card.color !== first?.color) ?? ordered[1];
     if (second) offers.push(second.slug);
   } else {
+    if (run.encounter === 4 && run.route?.call === 'answer')
+      offers.push(pick('ledger-counter', card => card.type === 'Gear', answer));
     for (const [index, theme] of themes.entries()) {
       offers.push(pick(`offer-theme-${index}`, card => theme.has(card.slug), early ? economy : answer));
     }
@@ -282,7 +293,7 @@ function retryOffers(run: CampaignRun, inventory: Record<string, number>, pack: 
   const answer = (card: Card) => rating(card.slug).roles.includes('removal') && (card.cost ?? Infinity) <= 5;
   let preferred = run.encounter >= 6 ? [answer, blocker, earlyUnit] : [earlyUnit, blocker, answer];
   const selected = new Set<string>();
-  const encounterId = ENCOUNTERS[run.encounter]?.id;
+  const encounterId = campaignEncounter(run)?.id;
   if (encounterId === 'hostile-takeover') {
     const threat = HOSTILE_TAKEOVER_REWARDS[run.starter].find(slug => eligible.some(card => card.slug === slug));
     if (threat) selected.add(threat);

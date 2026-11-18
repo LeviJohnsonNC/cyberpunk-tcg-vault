@@ -1,10 +1,11 @@
-import { ENCOUNTERS, type CampaignRun, type EncounterId } from './campaign';
+import { finalInvitation, callRoutes, evidenceRoutes, routeContract, type StoryArt } from './campaignRoutes';
+import { campaignEncounter, type CampaignRun, type EncounterId } from './campaign';
 import { campaignChapters } from './campaignStory';
 
 export interface CampaignSceneBeat {
   title: string;
   text: string;
-  art: 'rival' | 'clue' | 'room';
+  art: 'rival' | 'clue' | 'room' | StoryArt;
 }
 
 interface ContractScenes {
@@ -90,12 +91,49 @@ export const contractScenes = {
   },
 } satisfies Record<EncounterId, ContractScenes>;
 
+export function victoryBeats(run: CampaignRun, index = run.encounter): readonly CampaignSceneBeat[] {
+  const base = contractScenes[campaignEncounter(run, index).id].win;
+  if (!run.route) return base;
+  const table = routeContract(run, index);
+  if (table) return [{ title: table.title, text: table.win, art: table.art }];
+  if (index === 3) {
+    const messages = {
+      answer: 'Switchback plugs the phone into the relay. A scrap of your answer comes back through the speaker, followed by the scrape of Ledger’s pen. She has booked a table in your name.',
+      moth: 'Switchback tries the relay twice. The side door clicks open on the second knock. Moth holds up the green chip. “Latch remembered me.”',
+      silence: 'Switchback unplugs the ringer. The relay keeps ticking. Someone has marked seven times on the printout and signed the strip with a thumbprint. “Hush,” she says. “They want you upstairs.”',
+    };
+    return [base[0], { title: 'The return address', text: messages[run.route.call], art: callRoutes[run.route.call].art }];
+  }
+  if (index === 6 && run.route.evidence === 'seal') return [base[0], {
+    title: 'Off the record', text: 'Feedback switches the mic off. People slip their receipts under your pack, folded so the names stay inside. When the guard asks who handed them in, Feedback shrugs. “Bad light in here.”', art: 'film',
+  }];
+  if (index === 8 && run.route.evidence) return [base[0], {
+    title: 'The house is yours', text: 'You cross out the debt beside your crew, turn the page, and do the same for every name in the book. When you look up, Sato is gone. The fixer has sent a message. “Leave a chair empty.”', art: 'room',
+  }, {
+    title: 'First light', text: run.route.evidence === 'broadcast'
+      ? 'You hold the house mic up to the turning pages. One by one, the crews below fall silent as they hear their debts struck out. You set the mic on the empty seat.'
+      : 'You stop the clerk from putting the witness list in the minutes. Splice gives you the scissors. The scraps curl up in the ashtray as the sun comes through the blinds.', art: 'chair',
+  }];
+  return base;
+}
+
+export function contractBriefing(run: CampaignRun) {
+  const table = routeContract(run);
+  if (table) return table.briefing;
+  if (run.route && run.encounter === 3) return callRoutes[run.route.call].record + ' Switchback can get your crew onto the relay roof.';
+  if (run.route?.evidence && run.encounter === 6) return evidenceRoutes[run.route.evidence].record + ' Feedback waves your crew up to the stage.';
+  if (run.route && run.encounter === 8) return finalInvitation(run.route);
+  return campaignChapters[campaignEncounter(run).id].briefing;
+}
+
 export function aftermathBeats(run: CampaignRun): readonly CampaignSceneBeat[] {
   const scene = run.aftermath;
   if (!scene) return [];
-  const id = ENCOUNTERS[run.encounter].id;
+  const id = campaignEncounter(run).id;
   const contract = contractScenes[id];
-  if (scene.outcome === 'win') return contract.win;
+  if (scene.outcome === 'win') return victoryBeats(run);
+  const table = routeContract(run);
+  if (table && scene.outcome === 'loss') return [{ title: 'The seat is still yours', text: table.loss, art: table.art }];
   if (scene.outcome === 'draw') {
     const { lines, rival } = campaignChapters[id];
     return [{ title: 'Unfinished business', text: `“${lines.draw[0]}” ${rival} leaves you with the house pack. The table is still yours to challenge.`, art: 'rival' }];
