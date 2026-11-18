@@ -7,6 +7,7 @@ import type { TableCue } from '../lib/play/tableSound';
 
 /** Position of a table piece, relative to the table. */
 interface Spot { x: number; y: number; w: number; h: number }
+export interface CardFlightOrigin { id: string; fromState: number; width: number; x: number; y: number }
 interface Piece { el: HTMLElement; spot: Spot; zone: string }
 
 const EASE = 'cubic-bezier(.2, .8, .2, 1)';
@@ -32,6 +33,7 @@ function clone(el: HTMLElement, spot: Spot) {
  */
 export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
   key: string; view: PlayerView; beat?: MatchBeat; reducedBeats?: MatchBeat[]; hasRolls?: boolean; enabled: boolean; pace: number; openingHand: boolean;
+  cardRelease?: RefObject<CardFlightOrigin | null>;
   sound?: (cue: TableCue, delayMs?: number, pan?: number) => (() => void) | undefined;
 }) {
   const sounds = useRef<(() => void)[]>([]);
@@ -91,6 +93,8 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
     for (const stop of sounds.current.splice(0)) stop();
     const { view, beat, reducedBeats, hasRolls, enabled, pace, openingHand, sound } = live.current;
     const before = pieces.current, previousView = lastView.current;
+    const release = live.current.cardRelease?.current;
+    if (live.current.cardRelease) live.current.cardRelease.current = null;
     const next = measure(table);
     pieces.current = next;
     lastView.current = view;
@@ -103,12 +107,17 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
         const cues = new Set<TableCue>();
         const combatBeats = reducedBeats?.filter(beat => beat.combatKillIds?.length) ?? [];
         const combatKills = new Set(combatBeats.flatMap(beat => beat.combatKillIds ?? []));
-        const playedCard = reducedBeats?.some((beat) => beat.playedCardIds?.length);
+        const playedIds = new Set(reducedBeats?.flatMap(item => item.playedCardIds ?? []));
+        const equipment = reducedBeats?.flatMap(item => item.changes)
+          .filter(change => change.kind === 'played' && change.card?.attachedToId) ?? [];
+        for (const change of equipment) playedIds.delete(change.card!.instanceId);
+        if (equipment.length) cues.add('equip');
+        const playedCard = playedIds.size > 0;
         if (hasRolls) cues.add('dice-roll');
         combatBeats.forEach((_, index) => { const stop = sound?.('unit-kill', index * 180); if (stop) sounds.current.push(stop); });
         if (playedCard) cues.add('card-play');
         for (const accent of accents) {
-          if (accent.kind === 'land' && !playedCard) cues.add('play');
+          if (accent.kind === 'land' && !playedCard && !equipment.some(change => change.card?.instanceId === accent.cardId)) cues.add('play');
         }
         if (plan.strike && !combatKills.size) cues.add('hit');
         if (plan.defeated.some((id) => !combatKills.has(id))) cues.add('defeat');
@@ -156,6 +165,9 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
     function fly(piece: Piece, from: Spot, options: { delay?: number; back?: string; showcase?: boolean; duration?: number; cue?: TableCue } = {}) {
       const showcase = options.showcase && !piece.el.querySelector('[data-face-placeholder]');
       if (piece.el.dataset.cardId) arrivals.set(piece.el.dataset.cardId, (options.delay ?? 0) + time(showcase ? 1080 : options.duration ?? 420));
+      const gear = options.cue === 'equip';
+      const contact = gear ? 'translateX(-6px) rotate(-2deg)' : 'translateY(1px) scale(1.025,.985)';
+      const lands = gear || options.cue === 'card-play' || options.cue === 'play';
       if (options.cue) say(options.cue, (options.delay ?? 0) + time(showcase ? 1080 : (options.duration ?? 420) * .8), piece.zone.endsWith('rival') ? .24 : -.24);
       const to = piece.spot;
       const wrap = document.createElement('div');
@@ -182,13 +194,15 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
         const stage = `translate(${table!.offsetWidth / 2 - to.x}px, ${table!.offsetHeight * 0.4 - to.y}px) scale(${scale})`;
         animations.push(wrap.animate([
           { transform: start, easing: EASE }, { transform: stage, offset: 0.3 },
-          { transform: stage, offset: 0.7, easing: 'cubic-bezier(.5, 0, .3, 1)' }, { transform: end },
+          { transform: stage, offset: 0.7, easing: 'cubic-bezier(.5, 0, .3, 1)' },
+          ...(lands ? [{ transform: contact, offset: .93, easing: 'ease-out' }] : []), { transform: end },
         ], { duration: time(1150), delay, fill: 'backwards' }));
         if (options.back) animations.push(flip.animate([{ transform: 'rotateY(180deg)' }, { transform: 'none', offset: 0.26 }, { transform: 'none' }],
           { duration: time(1150), delay, fill: 'backwards', easing: 'ease-out' }));
       } else {
         const duration = time(options.duration ?? 420);
-        animations.push(wrap.animate([{ transform: start }, { transform: end }], { duration, delay, fill: 'backwards', easing: EASE }));
+        animations.push(wrap.animate([{ transform: start, easing: EASE },
+          ...(lands ? [{ transform: contact, offset: .8, easing: 'ease-out' }] : []), { transform: end }], { duration, delay, fill: 'backwards' }));
         if (options.back) animations.push(flip.animate([{ transform: 'rotateY(180deg)' }, { transform: 'none' }],
           { duration, delay, fill: 'backwards', easing: 'ease-out' }));
       }
@@ -240,9 +254,9 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
     const previousById = new Map(previousCards.map((card) => [card.instanceId, card]));
     const playedCards = new Set(beat?.playedCardIds);
     const arrivalCue = (id: string): TableCue => {
-      if (playedCards.delete(id)) return 'card-play';
+      const played = playedCards.delete(id);
       const card = publicCards.find((card) => card.instanceId === id);
-      return card?.attachedToId ? 'equip' : card?.type === 'program' ? 'program' : 'play';
+      return card?.attachedToId ? 'equip' : played ? 'card-play' : card?.type === 'program' ? 'program' : 'play';
     };
     if (!previousView.attackState && view.attackState) say('attack', 0);
     if (previousView.turnNumber === view.turnNumber && publicCards.some((card) => !card.spent && Object.values(previousView.players).some((seat) => Object.values(seat.zones).some((zone) => Array.isArray(zone) && zone.some((old) => old.instanceId === card.instanceId && old.spent))))) say('ready', 0);
@@ -273,7 +287,12 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
         if (sameEddie || sameLegendGear) continue;
         if (earlier.zone !== piece.zone || earlier.el !== piece.el) {
           const arriving = piece.zone.split(':')[0];
-          if (moved > 3) fly(piece, earlier.spot, { delay: id === strike?.attackerId ? impact : 0,
+          let from = earlier.spot;
+          if (release?.id === id && release.fromState === previousView.stateID && arriving === 'field') {
+            const bounds = table.getBoundingClientRect();
+            from = { ...from, x: release.x - bounds.left - table.clientLeft, y: release.y - bounds.top - table.clientTop, w: release.width };
+          }
+          if (moved > 3) fly(piece, from, { delay: id === strike?.attackerId ? impact : 0,
             cue: !['eddies', 'gigs'].includes(arriving) && earlier.zone === 'hand:player' ? arrivalCue(id) : undefined });
         } else if (moved > 3 && id !== strike?.attackerId) {
           const animation = piece.el.animate([{ transform: `translate(${earlier.spot.x - piece.spot.x}px, ${earlier.spot.y - piece.spot.y}px)` }, { transform: 'none' }],
@@ -291,6 +310,15 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
       else track([piece.el.animate([{ transform: 'scale(.6)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: time(260), easing: EASE })], () => undefined);
     }
 
+    // Let a host's power receipt arrive at the same contact as its newly attached Gear.
+    for (const change of beat?.changes ?? []) {
+      const gear = change.card;
+      if (change.kind !== 'played' || !gear?.attachedToId) continue;
+      const at = arrivals.get(gear.instanceId);
+      const host = next.get(gear.attachedToId);
+      const receipt = host?.el.parentElement?.querySelector<HTMLElement>(':scope > .play-float');
+      if (at && receipt) receipt.style.animationDelay = `${at}ms`;
+    }
     // An instant Program may go straight to trash without a landing animation.
     if (playedCards.size) say('card-play', time(80), beat?.seat === 'rival' ? .24 : -.24);
 

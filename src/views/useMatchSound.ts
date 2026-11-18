@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { combatContext } from '../lib/play/matchPresentation';
 import type { MatchBeat, MatchSnapshot } from '../lib/play/protocol';
 import type { TableCue } from '../lib/play/tableSound';
 
@@ -6,11 +7,17 @@ type Cue = (name: TableCue, delayMs?: number, pan?: number) => (() => void) | un
 
 const delays = { turn: 0, deal: 140, draw: 140, eddie: 300, call: 135, 'gig-steal': 240 };
 
-export function useMatchSound(snapshot: MatchSnapshot, beat: MatchBeat | undefined, reduced: boolean, cue?: Cue, opening = false) {
+export function useMatchSound(snapshot: MatchSnapshot, beat: MatchBeat | undefined, reduced: boolean, cue?: Cue, opening = false, pace = 1) {
   const heardBeat = useRef(0);
   const heardOpening = useRef(false);
   const result = snapshot.view.gameEnded ? snapshot.view.winnerId ?? 'draw' : undefined;
   const heardResult = useRef(result);
+  const responding = !!snapshot.view.attackState && !!combatContext(snapshot.view)?.responding;
+  const responseOpen = useRef(responding);
+  useEffect(() => {
+    if (responding && !responseOpen.current) cue?.('response');
+    responseOpen.current = responding;
+  }, [responding, cue]);
 
   useEffect(() => {
     if (opening) return;
@@ -30,7 +37,7 @@ export function useMatchSound(snapshot: MatchSnapshot, beat: MatchBeat | undefin
       heardBeat.current = item.id;
       for (const sound of item.tableCues ?? []) {
         // Without animation, stagger compressed actions so two turn cues remain distinct.
-        const delay = reduced ? index * 85 + (sound.cue === 'turn' ? 0 : 85) : delays[sound.cue];
+        const delay = reduced ? index * 85 + (sound.cue === 'turn' ? 0 : 85) : delays[sound.cue] * pace;
         const delayForDeal = sound.cue === 'deal' && item.view.gamePhase === 'setup' ? 0 : delay;
         if (alreadyDealt && sound.cue === 'deal') continue;
         cue?.(sound.cue, delayForDeal, sound.seat === 'rival' ? .18 : -.18);
@@ -40,5 +47,5 @@ export function useMatchSound(snapshot: MatchSnapshot, beat: MatchBeat | undefin
       heardResult.current = result;
       if (result && result !== 'draw') cue?.(result === 'player' ? 'win' : 'lose', 250);
     }
-  }, [snapshot, beat, reduced, result, cue, opening]);
+  }, [snapshot, beat, reduced, result, cue, opening, pace]);
 }

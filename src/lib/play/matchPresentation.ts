@@ -95,7 +95,11 @@ export function describeBeat(seat: Seat, command: Move, before: PlayerView, afte
   const targets = [args.defenderId, args.attachToId, args.blockerId, args.protectedCardId, args.dieId,
     ...(Array.isArray(args.targetIds) ? args.targetIds : []), ...(Array.isArray(args.dieIds) ? args.dieIds : [])];
   const targetIds = [...new Set(targets.filter((id): id is string => typeof id === 'string' && visible.has(id)))];
-  const description = describeAction(seat, command, before, after);
+  const equipment = command.move === 'playCard'
+    ? changes.find(change => change.kind === 'played' && change.card?.instanceId === args.cardId)?.card : undefined;
+  const host = equipment?.attachedToId ? visible.get(equipment.attachedToId) : undefined;
+  const description = host?.cardName && !host.faceDown && equipment?.cardName
+    ? `Equipped ${equipment.cardName} to ${host.cardName}.` : describeAction(seat, command, before, after);
   const entered = changes.find((change) => change.kind === 'played' || change.kind === 'called');
   const combatChanged = after.attackState?.step !== before.attackState?.step && !!after.attackState;
   const combatEnded = !!before.attackState && !after.attackState;
@@ -113,6 +117,18 @@ export function describeRolls(rolls: GigRoll[], actor: Seat) {
   }).join(' ');
 }
 
+export function publicChangeLabel(change: MatchChange, view: PlayerView) {
+  const card = change.card;
+  if (change.kind === 'power' && card && change.amount != null)
+    return `Power ${card.effectivePower - change.amount} → ${card.effectivePower}`;
+  if (change.kind === 'played' && card?.attachedToId) {
+    const owner = view.players[change.seat];
+    const host = [...zoneCards(owner, 'field'), ...zoneCards(owner, 'legendArea')].find(item => item.instanceId === card.attachedToId);
+    if (host?.cardName && !host.faceDown) return `Equipped to ${host.cardName}`;
+  }
+  return change.label;
+}
+
 export function presentationView(view: PlayerView): PlayerView {
   const seatView = (seat: Seat) => ({ ...view.players[seat], zones: {
     ...view.players[seat].zones, eddieArea: zoneCards(view.players[seat], 'eddieArea').map(publicCard),
@@ -122,13 +138,19 @@ export function presentationView(view: PlayerView): PlayerView {
   };
 }
 
-/** Time on screen for one public move: long enough for its movement on the table to land. */
-export function beatDuration(count: number, beat: Pick<MatchBeat, 'gigRolls'> & Partial<Pick<MatchBeat, 'changes' | 'view'>>) {
+// A threshold roll can happen a turn before the engine actually declares the win.
+export function gigVictoryHold(view: PlayerView | undefined, quick: boolean) {
+  return view?.gameEnded && (view.winReason === 'gig_victory' || view.winReason === 'overtime_majority') ? (quick ? 150 : 450) : 0;
+}
+
+/** Playback clocks only presentation. The engine owns every decision window. */
+export function beatDuration(count: number, beat: Pick<MatchBeat, 'gigRolls'> & Partial<Pick<MatchBeat, 'changes' | 'view' | 'tableCues'>>, quick = false) {
   if (beat.gigRolls.length) return rollDuration(beat.gigRolls);
   const kinds = new Set(beat.changes?.map((change) => change.kind));
   const base = kinds.has('defeated') ? 1300 : kinds.has('played') || kinds.has('called') ? 1350
-    : beat.view?.attackState || kinds.has('gigs') ? 1050 : kinds.has('power') ? 1100 : 700;
-  return Math.round(base * beatPace(count));
+    : beat.view?.attackState || kinds.has('gigs') ? 1050 : kinds.has('power') ? 1100
+    : beat.tableCues?.some(sound => sound.cue === 'draw' || sound.cue === 'eddie') ? 480 : 700;
+  return Math.round(base * beatPace(count, quick));
 }
 
 export function combatContext(view: PlayerView) {

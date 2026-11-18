@@ -412,7 +412,7 @@ export function CampaignMode({ scope, openInBuilder, preparationOnly = false, on
     onPointerDownCapture={sound.unlock} onKeyDownCapture={sound.unlock}>
     {tableOpen && !resultOpen && <ReactiveRoom />}
     {tableOpen && snapshot && displayedMatch ? <PlayTable key={snapshot.matchId} scope={`${scope}:campaign`} snapshot={displayedMatch} names={snapshot.names}
-      playback={presentation.playback} feedback={presentation.feedback} reduced={presentation.reduced} cue={sound.cue}
+      playback={presentation.playback} feedback={presentation.feedback} quick={presentation.quick} togglePace={presentation.togglePace} reduced={presentation.reduced} cue={sound.cue}
       campaign={run && encounter && {
         title: encounter.title,
         act: Math.floor(run.encounter / 3) + 1,

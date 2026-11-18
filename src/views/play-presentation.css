@@ -186,3 +186,19 @@
   .play-float { animation: play-float-still var(--play-float-time) steps(1, end) both; }
   .play-turn-banner { display: none; }
 }
+
+.play-power-receipt {
+  --play-float-time: 1.85s;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.play-power-receipt small {
+  display: block;
+  max-width: 15ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text-muted);
+  font: 600 10px/1.4 var(--font-ui);
+  text-transform: none;
+}
+.play-card .play-power { cursor: help; }

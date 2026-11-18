@@ -259,19 +259,19 @@ function RollingDie({ roll, index, seatIndex, seatCount, release, cue, onDock }:
   </div>;
 }
 
-export function PlayGigRoll({ rolls, thrown, cue, onComplete }: {
-  rolls: GigRoll[]; thrown?: { dieId: string; release: PointerRelease }; cue?: TableSoundCue; onComplete?: () => void;
+export function PlayGigRoll({ rolls, thrown, cue, onComplete, resultHold = 0 }: {
+  rolls: GigRoll[]; thrown?: { dieId: string; release: PointerRelease }; cue?: TableSoundCue; onComplete?: () => void; resultHold?: number;
 }) {
   const completed = useRef(new Set<number>());
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const completion = useRef(onComplete);
-  useLayoutEffect(() => { completion.current = onComplete; });
+  const completion = useRef({ onComplete, resultHold });
+  useLayoutEffect(() => { completion.current = { onComplete, resultHold }; });
   useLayoutEffect(() => () => { clearTimeout(timer.current); completed.current.clear(); }, [rolls]);
   const onDock = useCallback((index: number) => {
     completed.current.add(index);
     if (completed.current.size === rolls.length) {
       clearTimeout(timer.current);
-      timer.current = setTimeout(() => completion.current?.(), 120);
+      timer.current = setTimeout(() => completion.current.onComplete?.(), 120 + completion.current.resultHold);
     }
   }, [rolls.length]);
   if (!rolls.length) return null;
