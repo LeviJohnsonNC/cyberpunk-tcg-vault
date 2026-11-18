@@ -51,12 +51,14 @@ describe('table motion plan', () => {
     expect(planMotion(reached, stolen).strike).toBeUndefined();
   });
 
-  it('lands the hit on the defender or the blocker when a fight resolves', () => {
+  it('strikes the confirmed defender once and stays still when an attack is interrupted', () => {
     const before = fresh(), after = structuredClone(before);
+    after.stateID++;
     before.attackState = { attackerId: 'raider', defenderId: 'guard', step: 'react' };
-    expect(planMotion(before, after).strike).toEqual({ attackerId: 'raider', targetId: 'guard' });
-    before.attackState = { attackerId: 'raider', step: 'react' };
-    expect(planMotion(before, after, { seat: 'player', changes: [], source: card('guard', 'field') }).strike).toEqual({ attackerId: 'raider', targetId: 'guard' });
+    expect(planMotion(before, after).strike).toBeUndefined();
+    const beat = { seat: 'player' as const, changes: [], fight: { attacker: { id: 'raider', power: 2 }, defender: { id: 'guard', power: 2 } } };
+    expect(planMotion(before, after, beat).strike).toEqual({ attackerId: 'raider', targetId: 'guard' });
+    expect(planMotion(after, after, beat).strike).toBeUndefined();
   });
 
   it('shows no hit when an attack on the Gigs ends without reaching them', () => {

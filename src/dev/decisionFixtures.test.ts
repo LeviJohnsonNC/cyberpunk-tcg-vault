@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createDecisionFixture, decisionFixtures } from './decisionFixtures';
+import { createDecisionFixture, decisionFixtures, decisionSetup } from './decisionFixtures';
+import { createEngineSession } from '../lib/play/engineSession';
 import { matchActions } from '../lib/play/matchActions';
 import { updatePick } from '../lib/play/matchInteraction';
 import { gigAdjustmentTarget } from '../lib/play/tacticalInfo';
@@ -13,6 +14,36 @@ describe('engine-backed decision review positions', () => {
     if (expected[name]) expect(snapshot.view.prompt.choice?.type).toBe(expected[name]);
     if (name === 'Reaction') expect(snapshot.view.attackState?.step).toBe('react');
     if (name === 'Overtime') expect(snapshot.view.overtimeActive).toBe(true);
+  });
+});
+
+describe('rival combat presentation', () => {
+  it('keeps a blocked attack open and records the comparison and both Trash destinations once after resume', () => {
+    const { session, snapshot } = createDecisionFixture('Block a Gig attack');
+    const blocker = matchActions(snapshot.view).find(action => action.id === 'useBlocker')!;
+    const field = blocker.fields({})[0];
+    const id = field.options[0].id;
+    const blocked = session.move(snapshot.view.stateID, blocker.move({ [field.id]: [id] }));
+    expect(blocked.view.attackState).toMatchObject({ step: 'react', defenderId: id });
+    expect(blocked.presentation?.feedback?.fight).toBeUndefined();
+    const resumed = createEngineSession(decisionSetup, undefined, structuredClone(session.checkpoint()));
+    const response = resumed.start();
+    const pass = matchActions(response.view).find(action => action.id === 'resolveAttack')!;
+    const final = resumed.move(response.view.stateID, pass.move({}));
+    const receipt = final.presentation?.feedback;
+    expect(receipt?.fight).toEqual({ attacker: { id: snapshot.view.attackState?.attackerId, power: 2 }, defender: { id, power: 2 } });
+    expect(receipt?.text).toBe('Field Operator (2) vs Corpo Security (2). Both went to Trash. You hold 1 Gig after the block.');
+    expect(resumed.checkpoint().log.filter(entry => entry.text === receipt?.text)).toHaveLength(1);
+  });
+
+  it('waits for defeat replacement and reports only the participants that actually reached Trash', () => {
+    const { session, snapshot } = createDecisionFixture('Forced payment');
+    expect(snapshot.view.attackState?.step).toBe('fightResult');
+    expect(snapshot.log.some(entry => entry.text.includes(' vs '))).toBe(false);
+    const choice = snapshot.view.prompt.choice?.payload as { protectedCardId: string };
+    const after = session.move(snapshot.view.stateID, { move: 'resolveRedirectDefeat', args: { protectedCardId: choice.protectedCardId } });
+    expect(after.presentation?.feedback?.fight?.defender.power).toBe(2);
+    expect(after.presentation?.feedback?.text).toBe('Field Operator (2) vs Corpo Security (2). Field Operator went to Trash.');
   });
 });
 

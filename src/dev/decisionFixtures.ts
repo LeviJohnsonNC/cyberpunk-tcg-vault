@@ -16,7 +16,7 @@ const adjustmentSources = {
   'Increase a Gig': 'industrial-assembly',
   'Decrease a Gig': 'trust-no-one',
 } as const;
-export const decisionFixtures = ['Turn order', 'Opening hand', 'Gig die', 'Main turn', 'Table exchange', 'Crowded table', 'Reaction', 'Forced payment', 'Target effect', 'Order effects', 'Card placement',
+export const decisionFixtures = ['Turn order', 'Opening hand', 'Gig die', 'Main turn', 'Table exchange', 'Block a Gig attack', 'Crowded table', 'Reaction', 'Forced payment', 'Target effect', 'Order effects', 'Card placement',
   'Gig adjustment', 'Single Gig adjustment', 'Increase a Gig', 'Decrease a Gig', 'Overtime', 'Complete'] as const;
 export type DecisionFixture = typeof decisionFixtures[number];
 type Position = EngineState & { G: {
@@ -122,14 +122,14 @@ export function createDecisionFixture(name: DecisionFixture) {
     place('player', 'misty-olszewski-mender-of-broken-spirits', 'field');
   }
   if (name === 'Overtime') { state.G.overtime = true; state.G.turnMetadata.overtimeActive = true; }
-  if (name === 'Reaction' || name === 'Forced payment') state.G.turnMetadata.activePlayerId = 'rival';
+  if (name === 'Reaction' || name === 'Block a Gig attack' || name === 'Forced payment') state.G.turnMetadata.activePlayerId = 'rival';
   if (program) state.G.manualPaymentPlayerId = undefined;
   const engine = new LocalEngine(state);
   const issue = (seat: Seat, move: string, args: Record<string, unknown> = {}) => {
     const result = engine.processCommand({ commandID: `fixture-${move}`, move, input: { args } }, seat);
     if (!result.success) throw new Error(result.error);
   };
-  if (name === 'Reaction') issue('rival', 'attackRival', { attackerId: attacker });
+  if (name === 'Reaction' || name === 'Block a Gig attack') issue('rival', 'attackRival', { attackerId: attacker });
   if (name === 'Forced payment') {
     issue('rival', 'attackUnit', { attackerId: attacker, defenderId: defender });
     if (engine.getFilteredView('player').attackState?.step === 'react') issue('player', 'resolveAttack', { pass: true });

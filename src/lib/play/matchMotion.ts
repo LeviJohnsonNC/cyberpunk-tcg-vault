@@ -66,7 +66,7 @@ function ownerOf(view: PlayerView | undefined, id: string): Seat | undefined {
  * two filtered views and the public beat, so it can never show hidden cards.
  */
 export function planMotion(before: PlayerView | undefined, after: PlayerView,
-  beat?: Pick<MatchBeat, 'changes' | 'source' | 'seat'>): MotionPlan {
+  beat?: Pick<MatchBeat, 'changes' | 'source' | 'seat' | 'fight'>): MotionPlan {
   const plan: MotionPlan = { defeated: [], showcase: [], destinations: {} };
   if (!before) return plan;
 
@@ -90,6 +90,10 @@ export function planMotion(before: PlayerView | undefined, after: PlayerView,
       && !known.has(change.card.instanceId) ? [change.card.instanceId] : []);
   }
 
+  if (beat?.fight && before.stateID !== after.stateID) {
+    plan.strike = { attackerId: beat.fight.attacker.id, targetId: beat.fight.defender.id };
+    return plan;
+  }
   const previous = before.attackState, current = after.attackState;
   const attackerId = current?.attackerId ?? previous?.attackerId;
   if (!attackerId) return plan;
@@ -100,12 +104,8 @@ export function planMotion(before: PlayerView | undefined, after: PlayerView,
     // The attack got through. The hit lands on the Gigs before any are taken.
     plan.strike = { attackerId, targetZone: `gigs:${defending}` };
   } else if (previous && !current && previous.step !== 'steal') {
-    const blocker = beat?.source && beat.source.zone === 'field' && beat.source.instanceId !== attackerId
-      && ownerOf(before, beat.source.instanceId) === defending ? beat.source.instanceId : undefined;
-    const targetId = blocker ?? previous.defenderId;
-    const gigsMoved = after.players[defending].gigCount !== before.players[defending].gigCount;
-    if (targetId) plan.strike = { attackerId, targetId };
-    else if (gigsMoved) plan.strike = { attackerId, targetZone: `gigs:${defending}` };
+    const gigsMoved = after.players[defending].gigCount < before.players[defending].gigCount;
+    if (!previous.defenderId && gigsMoved) plan.strike = { attackerId, targetZone: `gigs:${defending}` };
   }
   return plan;
 }

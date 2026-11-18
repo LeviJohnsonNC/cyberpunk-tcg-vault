@@ -27,7 +27,7 @@ export function useMatchPresentation(snapshot?: MatchSnapshot) {
   const own = snapshot?.presentation?.feedback;
   // Lead with the player's own move when it rolled a die, changed the table, or opened an attack the rival then answers.
   const victoryHold = gigVictoryHold(snapshot?.view, quick);
-  const beats = own && (victoryHold || own.gigRolls.length || (rival.length && (own.changes.length || own.view.attackState || own.tableCues?.length))) ? [own, ...rival] : rival;
+  const beats = own && (victoryHold || own.fight || own.gigRolls.length || (rival.length && (own.changes.length || own.view.attackState || own.tableCues?.length))) ? [own, ...rival] : rival;
   const index = progress?.key === key ? progress.index : 0;
   const playing = !!snapshot && !reduced && index < beats.length;
   const beat = playing ? beats[index] : undefined;

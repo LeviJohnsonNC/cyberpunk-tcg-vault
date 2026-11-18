@@ -101,7 +101,7 @@ export interface PlayerView {
   winReason: string | null;
   stateID: number;
   prompt: Prompt;
-  attackState?: { attackerId: string; defenderId?: string; step: string; rivalId?: Seat; fightResolution?: { result: FightResult } } | null;
+  attackState?: { attackerId: string; defenderId?: string; step: string; rivalId?: Seat; redirectedTargets?: (string | null)[]; fightResolution?: { result: FightResult; attackerPower?: number; defenderPower?: number } } | null;
 }
 
 export interface MatchLogEntry { id: number; turn: number; seat: Seat; text: string }
@@ -147,6 +147,7 @@ export interface MatchBeat extends MatchFrame {
   changes: MatchChange[];
   playedCardIds?: string[];
   combatKillIds?: string[];
+  fight?: { attacker: { id: string; power: number }; defender: { id: string; power: number } };
   tableCues?: MatchTableCue[];
 }
 
