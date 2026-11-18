@@ -4,8 +4,9 @@ import { COPY_MAX, MAIN_MAX } from '../decks';
 import { campaignCardFit, campaignCrew, campaignLegendIssue } from './campaignDeckRules';
 import { openDatabase } from './matchStorage';
 import { emptyCircuit, finishUnlocked, type CircuitProgress, type TableFinish } from './circuit';
-import { CAMPAIGN_VERSION, ENCOUNTERS, ENVIRONMENTS, campaignClearedCount, campaignDeckIssues, campaignPackLayout, dealCampaignPack, emptyProfile, newCampaign, pendingCampaignPack,
+import { CAMPAIGN_VERSION, campaignEncounter, ENCOUNTERS, ENVIRONMENTS, campaignClearedCount, campaignDeckIssues, campaignPackLayout, dealCampaignPack, emptyProfile, newCampaign, pendingCampaignPack,
   type CampaignProfile, type CampaignRun, type Environment } from './campaign';
+import { callRoutes, evidenceRoutes, pendingStoryDecision, type CallChoice, type EvidenceChoice, type StoryChoice } from './campaignRoutes';
 import { aftermathBeats } from './campaignScenes';
 import type { StarterKey } from '../starters';
 
@@ -97,7 +98,7 @@ export function startCampaign(scope: string, starter: StarterKey, replace?: Pick
     if (old && old.phase !== 'completed' && !replace) throw new Error('Finish or abandon your current campaign first.');
     const run = newCampaign(starter, crypto.randomUUID(), crypto.randomUUID());
     const nextProfile = old ? { ...profile, history: [...(profile.history ?? []), {
-      id: old.id, starter: old.starter, cleared: campaignClearedCount(old),
+      id: old.id, starter: old.starter, ...(old.route && { route: old.route }), cleared: campaignClearedCount(old),
       completed: old.phase === 'completed', endedAt: old.completedAt ?? Date.now(), deck: structuredClone(old.deck),
     }] } : profile;
     return { run, profile: nextProfile, value: { run, profile: nextProfile } };
@@ -198,11 +199,18 @@ export function finishCampaignPack(scope: string, expected: PackCheckpoint) {
   });
 }
 
-export function acknowledgeCampaignAct(scope: string, expected: number) {
+export function acknowledgeCampaignAct(scope: string, expected: PackCheckpoint, choice?: StoryChoice) {
   return updateCampaign(scope, (run, profile) => {
-    if (!run || run.revision !== expected || run.phase !== 'upgrading' || ![3, 6].includes(run.encounter))
+    if (!run || run.id !== expected.id || run.revision !== expected.revision || run.phase !== 'upgrading' || ![3, 6].includes(run.encounter)
+      || (run.briefedAct ?? 0) >= Math.floor(run.encounter / 3))
       throw new Error('The campaign changed in another tab. Reload the campaign.');
-    const next = { ...run, revision: run.revision + 1, briefedAct: Math.floor(run.encounter / 3) };
+    const decision = pendingStoryDecision(run);
+    let route = run.route;
+    if (decision === 'call' && choice && Object.hasOwn(callRoutes, choice)) route = { call: choice as CallChoice };
+    else if (decision === 'evidence' && route && choice && Object.hasOwn(evidenceRoutes, choice))
+      route = { ...route, evidence: choice as EvidenceChoice };
+    else if (decision || choice) throw new Error('Choose an available story path.');
+    const next = { ...run, route, revision: run.revision + 1, briefedAct: Math.floor(run.encounter / 3) };
     return { run: next, value: { run: next, profile } };
   });
 }
@@ -268,5 +276,5 @@ export function campaignStatus(run?: CampaignRun) {
   if (run.resultPending) return 'Return to match result';
   if (pendingCampaignPack(run)) return run.aftermath && !run.aftermath.sceneSeen ? 'Continue your story' : 'Open your earned pack';
   if (run.phase === 'inMatch') return 'Return to match';
-  return `${ENCOUNTERS[run.encounter]?.title ?? 'Next contract'} · ${run.encounter + 1} / ${ENCOUNTERS.length}`;
+  return `${campaignEncounter(run)?.title ?? 'Next contract'} · ${run.encounter + 1} / ${ENCOUNTERS.length}`;
 }

@@ -5,7 +5,7 @@ import { STARTERS, type StarterKey } from '../lib/starters';
 import type { Deck } from '../lib/store';
 import { totalCopies } from '../lib/deckDraft';
 import { campaignCardAddReason, campaignCrew } from '../lib/play/campaignDeckRules';
-import { ENCOUNTERS, ENVIRONMENTS, campaignDeckIssues, pendingCampaignPack, type CampaignProfile, type CampaignRun } from '../lib/play/campaign';
+import { campaignEncounter, ENVIRONMENTS, campaignDeckIssues, pendingCampaignPack, type CampaignProfile, type CampaignRun } from '../lib/play/campaign';
 import { readCampaign, startCampaign, resetCampaign, chooseReward, saveCampaignDeck, claimEnvironment, equipEnvironment, openCampaignPack, revealCampaignSlot, showCampaignBonus, advanceCampaignScene, finishCampaignPack, acknowledgeCampaignAct, acknowledgeCampaignResult } from '../lib/play/campaignStorage';
 import type { CampaignWorkerResponse } from '../lib/play/campaign.worker';
 import type { MatchSnapshot, Move } from '../lib/play/protocol';
@@ -28,6 +28,8 @@ import { CampaignInvitation, CampaignScene } from './CampaignStory';
 import { CampaignRivalSeat } from './CampaignRivalDossier';
 import { campaignRivalIntel, knownRivalLegendSlugs } from '../lib/play/campaignRivalIntel';
 import { campaignChapters } from '../lib/play/campaignStory';
+import { CampaignDecision } from './CampaignDecision';
+import { pendingStoryDecision, type StoryChoice } from '../lib/play/campaignRoutes';
 import { CampaignCrewPick } from './CampaignCrewPick';
 import { useRivalDialogue, useRivalDialoguePreference } from './useRivalDialogue';
 import './campaign.css';
@@ -82,7 +84,7 @@ export function CampaignMode({ scope, openInBuilder, preparationOnly = false, on
   const presentation = useMatchPresentation(snapshot);
   const displayedMatch = presentation.displayed ?? snapshot;
   const sound = useTableSound();
-  const encounter = run && ENCOUNTERS[run.encounter];
+  const encounter = run && campaignEncounter(run);
   const quote = useRivalDialogue(encounter && campaignChapters[encounter.id].lines, snapshot, opening, presentation.playing, presentation.playback?.beat);
 
   function proceedToStarters() {
@@ -342,6 +344,15 @@ export function CampaignMode({ scope, openInBuilder, preparationOnly = false, on
   const choosingStarter = !run || !!newRunFrom;
   const showInvitation = !!profile && choosingStarter && !introSeen;
   const actPending = run ? needsActBriefing(run) : false;
+  const decision = run && pendingStoryDecision(run);
+  function enterAct(choice?: StoryChoice) {
+    if (!run) return;
+    void apply(() => acknowledgeCampaignAct(scope, run, choice), value => {
+      setRun(value.run);
+      changeSurface(choice ? 'hub' : 'new-cards');
+      sound.cue('act-arrival');
+    });
+  }
   const issues = run ? campaignDeckIssues(run, run.deck) : [];
   const campaignPrintings = new Map<string, Printing>();
   function rememberPrinting(slug: string, printing?: Printing) {
@@ -442,7 +453,7 @@ export function CampaignMode({ scope, openInBuilder, preparationOnly = false, on
           manage={(slot, incoming) => setCrewEdit({ id: run.id, revision: run.revision, slot, incoming })}
           undo={() => edit('undo')} restore={saved => edit('restore', saved)} back={() => changeSurface('hub')} />
         : showAftermath && scenePending && run.aftermath && encounter
-          ? <CampaignScene encounter={encounter.id} beats={beats} index={run.aftermath.beat} outcome={run.aftermath.outcome}
+          ? <CampaignScene run={run} beats={beats} index={run.aftermath.beat} outcome={run.aftermath.outcome}
             busy={busy} tools={tools} next={() => continueScene(run)} skip={() => continueScene(run, true)} />
         : showAftermath && earnedPack
           ? <CampaignPack key={earnedPack.id} run={run} reward={earnedPack} titleRef={focusTitle} tools={tools} busy={busy} inspect={inspectCard}
@@ -464,16 +475,17 @@ export function CampaignMode({ scope, openInBuilder, preparationOnly = false, on
               sound.cue(actBriefing ? 'act-arrival' : 'reward-lock');
             })} />
         : actPending || finale
-          ? <section className="campaign-board-moment" aria-labelledby="campaign-moment-title">
+          ? <section className="campaign-board-moment" aria-labelledby={decision ? 'decision-title' : 'campaign-moment-title'}>
             <header className="campaign-board-header">
               <div><p className="campaign-invitation-eyebrow">The Afterlife</p>
-                <h1 id="campaign-moment-title" tabIndex={-1} ref={focusTitle}>{actPending ? 'Next act' : 'Campaign cleared'}</h1></div>
+                {!decision && <h1 id="campaign-moment-title" tabIndex={-1} ref={focusTitle}>{actPending ? 'Next act' : 'Campaign cleared'}</h1>}</div>
               {tools}
             </header>
-            <CampaignTimeline run={run} />
-            {actPending && <CampaignArrival run={run} busy={busy} continueToDeck={() => void apply(() => acknowledgeCampaignAct(scope, run.revision), value => {
-              setRun(value.run); changeSurface('new-cards');
-            })} />}
+            {!decision && <CampaignTimeline run={run} />}
+            {actPending && (decision
+              ? <CampaignDecision key={decision} decision={decision} busy={busy} titleRef={focusTitle} commit={enterAct} />
+              : <CampaignArrival run={run} busy={busy} continueToDeck={() => enterAct()} />)}
+            {decision && <CampaignTimeline run={run} />}
             {finale && <CampaignRecap run={run} inspect={inspectCard} />}
             {run.phase === 'claimingFinish' && <CampaignRooms action="claim" allOwned={profile.environments.length === ENVIRONMENTS.length}
               rooms={ENVIRONMENTS.filter(item => !profile.environments.includes(item.id) || profile.environments.length === ENVIRONMENTS.length).map(item => item.id)}

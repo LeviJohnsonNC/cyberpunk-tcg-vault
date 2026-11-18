@@ -5,7 +5,7 @@ import { BY_SLUG, CARDS, defaultPrinting, type Card, type Printing } from '../li
 import { MAIN_MAX, MAIN_MIN } from '../lib/decks';
 import { totalCopies } from '../lib/deckDraft';
 import { deckStats } from '../lib/handtest';
-import { ENCOUNTERS, type CampaignRun } from '../lib/play/campaign';
+import { campaignEncounter, type CampaignRun } from '../lib/play/campaign';
 import { campaignCardAddReason, campaignCardFit, campaignCrew, campaignDeckIssues, campaignDeckSizeIssue, isCampaignLegend } from '../lib/play/campaignDeckRules';
 import { latestPack } from '../lib/play/campaignPresentation';
 import { hostileTakeoverSwaps, redLineSwaps } from '../lib/play/campaignRematch';
@@ -75,7 +75,7 @@ export function CampaignWorkbench({ run, titleRef, busy, error, issues: savedIss
     });
   const readiness = !issues.length ? 'Ready to play'
     : campaignDeckSizeIssue(total) ?? (issues.some(issue => issue.includes('RAM')) ? 'Over RAM limit' : 'Deck needs edits');
-  const encounterId = ENCOUNTERS[run.encounter]?.id;
+  const encounterId = campaignEncounter(run)?.id;
   const rematchSwaps = issues.length ? [] : encounterId === 'red-line' ? redLineSwaps(run)
     : encounterId === 'hostile-takeover' ? hostileTakeoverSwaps(run) : [];
 

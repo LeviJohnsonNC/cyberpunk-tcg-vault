@@ -1,7 +1,9 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { ENCOUNTERS, type CampaignRun, type EncounterId } from '../lib/play/campaign';
+import { campaignEncounter, type CampaignRun, type EncounterId } from '../lib/play/campaign';
 import { campaignChapters, campaignInvitation, unlockedCampaignChapters } from '../lib/play/campaignStory';
-import { contractScenes, type CampaignSceneBeat } from '../lib/play/campaignScenes';
+import { routeArt } from './campaignRouteArt';
+import { callRoutes, evidenceRoutes, routeEnding } from '../lib/play/campaignRoutes';
+import { victoryBeats, type CampaignSceneBeat } from '../lib/play/campaignScenes';
 import moth from '../assets/play/campaign-first-call.webp';
 import booth from '../assets/play/campaign-booth.webp';
 import roof from '../assets/play/campaign-rooftop.webp';
@@ -63,8 +65,13 @@ export function CampaignInvitation({ scope, proceed, onBack, onReset, busy }: {
   </section>;
 }
 
-export function CampaignDispatch({ encounter }: { encounter: EncounterId }) {
-  const { victory } = campaignChapters[encounter];
+function storySummary(run: CampaignRun, slot: number) {
+  if (run.route && slot >= 3) return victoryBeats(run, slot).at(-1)!;
+  return campaignChapters[campaignEncounter(run, slot).id].victory;
+}
+
+export function CampaignDispatch({ run }: { run: CampaignRun }) {
+  const victory = storySummary(run, run.encounter);
   return <aside className="campaign-dispatch" aria-label="Story update">
     <h3>{victory.title}</h3>
     <p>{victory.text}</p>
@@ -84,20 +91,23 @@ const sceneClues = {
 } satisfies Record<EncounterId, readonly [string, string]>;
 const sceneRooms = [booth, roof, suite];
 
-export function CampaignScene({ encounter, beats, index, outcome, busy, next, skip, tools }: {
-  encounter: EncounterId; beats: readonly CampaignSceneBeat[]; index: number; outcome: 'win' | 'loss' | 'draw';
+export function CampaignScene({ run, slot = run.encounter, beats, index, outcome, busy, next, skip, tools }: {
+  run: CampaignRun; slot?: number; beats: readonly CampaignSceneBeat[]; index: number; outcome: 'win' | 'loss' | 'draw';
   busy?: boolean; next: () => void; skip?: () => void; tools?: ReactNode;
 }) {
   const id = useId();
-  const contract = ENCOUNTERS.find(item => item.id === encounter)!;
-  const act = Math.floor(ENCOUNTERS.indexOf(contract) / 3) + 1;
+  const contract = campaignEncounter(run, slot);
+  const encounter = contract.id;
+  const act = Math.floor(slot / 3) + 1;
   const beat = beats[index];
   const title = useRef<HTMLHeadingElement>(null);
   const last = index === beats.length - 1;
   const replay = !skip;
   const label = outcome === 'win' ? 'Contract won' : outcome === 'draw' ? 'Match drawn' : 'Contract lost';
   const [clue, clueAlt] = sceneClues[encounter];
-  const still = beat.art === 'clue' ? clue : beat.art === 'room' ? encounter === 'last-call' ? ledger : sceneRooms[act - 1] : encounter === 'first-call' ? moth : undefined;
+  const [still, alt] = beat.art === 'clue' ? [clue, clueAlt]
+    : beat.art === 'room' ? [encounter === 'last-call' ? ledger : sceneRooms[act - 1], '']
+    : beat.art === 'rival' ? [encounter === 'first-call' ? moth : undefined, ''] : routeArt[beat.art];
 
   useEffect(() => {
     title.current?.focus({ preventScroll: true });
@@ -117,7 +127,7 @@ export function CampaignScene({ encounter, beats, index, outcome, busy, next, sk
     </header>
     <div className="campaign-scene-stage" key={index}>
       <figure className="campaign-scene-frame" data-shot={beat.art} data-encounter={encounter}>
-        {still ? <img src={still} alt={beat.art === 'clue' ? clueAlt : ''} fetchPriority="high" /> : <CampaignRivalPortrait encounter={encounter} />}
+        {still ? <img src={still} alt={alt} fetchPriority="high" /> : <CampaignRivalPortrait encounter={encounter} />}
       </figure>
       <div className="campaign-scene-copy">
         <p className="campaign-scene-result">{replay ? 'Story so far' : label}</p>
@@ -143,10 +153,10 @@ export function CampaignScene({ encounter, beats, index, outcome, busy, next, sk
 
 export function CampaignStoryJournal({ run }: { run: CampaignRun }) {
   const journal = useRef<HTMLDialogElement>(null);
-  const lastChapter = useRef<EncounterId | undefined>(undefined);
-  const [replay, setReplay] = useState<{ encounter: EncounterId; index: number }>();
+  const lastChapter = useRef<number | undefined>(undefined);
+  const [replay, setReplay] = useState<{ slot: number; index: number }>();
   const titleId = useId();
-  const beats = replay && contractScenes[replay.encounter].win;
+  const beats = replay && victoryBeats(run, replay.slot);
   function stopReplay() {
     setReplay(undefined);
     requestAnimationFrame(() => journal.current?.querySelector<HTMLButtonElement>(`button[data-encounter='${lastChapter.current}']`)?.focus());
@@ -157,21 +167,24 @@ export function CampaignStoryJournal({ run }: { run: CampaignRun }) {
       onClose={() => setReplay(undefined)} onClick={event => {
         if (event.target === event.currentTarget) event.currentTarget.close();
       }}>
-      {replay && beats ? <CampaignScene encounter={replay.encounter} beats={beats} index={replay.index} outcome="win"
+      {replay && beats ? <CampaignScene run={run} slot={replay.slot} beats={beats} index={replay.index} outcome="win"
         next={() => replay.index + 1 < beats.length ? setReplay({ ...replay, index: replay.index + 1 }) : stopReplay()}
         tools={<button type="button" className="btn quiet" onClick={stopReplay}>Back to journal</button>} />
         : <div className="al-dialog-body">
           <header><h2 id={titleId}>Story so far</h2><button type="button" className="btn quiet" onClick={() => journal.current?.close()}>Close</button></header>
           <div className="campaign-journal-chapters">
             <article><h3>The invitation</h3><p>{campaignInvitation.setup} {campaignInvitation.payout} {campaignInvitation.reveal}</p></article>
-            {unlockedCampaignChapters(run).map(contract => {
-              const { victory } = campaignChapters[contract.id];
-              return <article key={contract.id}>
+            {unlockedCampaignChapters(run).map((contract, slot) => {
+              const victory = storySummary(run, slot);
+              const decision = slot === 2 && run.route ? callRoutes[run.route.call]
+                : slot === 5 && run.route?.evidence ? evidenceRoutes[run.route.evidence] : undefined;
+              return <article key={slot}>
                 <p className="play-eyebrow">{contract.title}</p><h3>{victory.title}</h3><p>{victory.text}</p>
-                <button type="button" className="btn quiet" data-encounter={contract.id}
-                  onClick={() => { lastChapter.current = contract.id; setReplay({ encounter: contract.id, index: 0 }); }}>
+                <button type="button" className="btn quiet" data-encounter={slot}
+                  onClick={() => { lastChapter.current = slot; setReplay({ slot, index: 0 }); }}>
                   Replay {contract.title}
                 </button>
+                {decision && <p className="campaign-journal-choice"><strong>{decision.label}.</strong> {decision.record}</p>}
               </article>;
             })}
           </div>
@@ -180,10 +193,11 @@ export function CampaignStoryJournal({ run }: { run: CampaignRun }) {
   </>;
 }
 
-export function CampaignEpilogue() {
-  const { victory } = campaignChapters['last-call'];
+export function CampaignEpilogue({ run }: { run: CampaignRun }) {
+  const victory = run.route?.evidence ? routeEnding(run.route) : campaignChapters['last-call'].victory;
+  const [image, alt] = run.route?.evidence ? routeArt.chair : [ledger, 'Dawn falls across the open house ledger and a brass key'];
   return <section className="campaign-story-scene campaign-epilogue" aria-labelledby="campaign-epilogue-title">
-    <img src={ledger} alt="Dawn falls across the open house ledger and a brass key" loading="lazy" />
+    <img src={image} alt={alt} loading="lazy" />
     <div className="campaign-story-copy">
       <p className="play-eyebrow">Epilogue / First light</p>
       <h3 id="campaign-epilogue-title">{victory.title}.</h3>

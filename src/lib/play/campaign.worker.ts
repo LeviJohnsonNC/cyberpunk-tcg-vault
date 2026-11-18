@@ -1,5 +1,6 @@
 import { updateCampaign } from './campaignStorage';
 import { ENCOUNTERS, campaignDeckIssues, encounterDeck, encounterRivalPlan, encounterSkill, prepareCampaignReward, settleCampaignMatch } from './campaign';
+import { pendingStoryDecision } from './campaignRoutes';
 import { prepareMatchDeck } from './matchDeck';
 import { createMatchController } from './workerController';
 import type { MatchSnapshot, Move } from './protocol';
@@ -14,6 +15,7 @@ self.addEventListener('message', async ({ data }: MessageEvent<Command>) => {
       if (!run) throw new Error('Choose a starter first.');
       if (action.type === 'start') {
         if (run.revision !== action.revision || run.resultPending || !['preparing', 'upgrading'].includes(run.phase)) throw new Error('The campaign changed in another tab. Reload to continue.');
+        if (pendingStoryDecision(run)) throw new Error('Choose your story path before taking this contract.');
         const issues = campaignDeckIssues(run, run.deck);
         if (issues.length) throw new Error(issues.join(' '));
         const rival = encounterDeck(run), rivalDeck = prepareMatchDeck(rival), player = prepareMatchDeck(run.deck);

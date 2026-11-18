@@ -1,7 +1,7 @@
 import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { CARD_BACK } from '../components/bits';
 import { BY_SLUG, defaultPrinting } from '../lib/data';
-import { ENCOUNTERS, campaignPackLayout, type CampaignRun, type CampaignReward } from '../lib/play/campaign';
+import { campaignEncounter, campaignPackLayout, type CampaignRun, type CampaignReward } from '../lib/play/campaign';
 import { campaignPulls, packRarityLabel, type CampaignPull } from '../lib/play/campaignPack';
 import { packCardContext } from '../lib/play/campaignPresentation';
 import { packMaterial, packMaterialStyle } from '../lib/play/packMaterial';
@@ -70,7 +70,7 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
   const revealed = layout?.revealedSlots ?? [];
   const allRevealed = revealed.length === count;
   const bonus = !!layout?.choosingBonus && allRevealed && hasChoice;
-  const encounter = ENCOUNTERS[run.encounter];
+  const encounter = campaignEncounter(run);
   const act = Math.floor(run.encounter / 3) + 1;
   const [selected, setSelected] = useState<number>();
   const [discovery, setDiscovery] = useState<number>();
@@ -325,7 +325,7 @@ export function CampaignPack({ run, reward, busy, titleRef, tools, tearSeal, fli
             </div>
           </div>
         </div>
-        {!run.aftermath && <CampaignDispatch encounter={encounter.id} />}
+        {!run.aftermath && <CampaignDispatch run={run} />}
       </div>
     </div>
   </section>;

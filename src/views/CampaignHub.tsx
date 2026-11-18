@@ -1,8 +1,11 @@
+import { callRoutes, evidenceRoutes, routeContract } from '../lib/play/campaignRoutes';
+import { routeArt } from './campaignRouteArt';
+import { contractBriefing } from '../lib/play/campaignScenes';
 import { campaignCrew } from '../lib/play/campaignDeckRules';
 import { useId, useRef, type ReactNode, type Ref } from 'react';
 import { BY_SLUG, PRINTING_INDEX, type Printing } from '../lib/data';
 import { totalCopies } from '../lib/deckDraft';
-import { ENCOUNTERS, encounterDeck, pendingCampaignPack, type CampaignProfile, type CampaignRun, type Environment } from '../lib/play/campaign';
+import { ENCOUNTERS, campaignEncounter, encounterDeck, pendingCampaignPack, type CampaignProfile, type CampaignRun, type Environment } from '../lib/play/campaign';
 import { CAMPAIGN_ACTS } from '../lib/play/campaignPresentation';
 import { campaignChapters } from '../lib/play/campaignStory';
 import { STARTERS } from '../lib/starters';
@@ -42,13 +45,14 @@ export function CampaignTimeline({ run }: { run: CampaignRun }) {
   return <div className="campaign-board-timeline" aria-label="Campaign progression">
     <span className="campaign-tracker-label">Act {currentAct + 1} / {CAMPAIGN_ACTS.length}</span>
     <ol aria-label="Nine campaign contracts">
-      {ENCOUNTERS.map((item, index) => {
+      {ENCOUNTERS.map((_, index) => {
+        const item = campaignEncounter(run, index);
         const cleared = ended || index < run.encounter;
         const current = !ended && index === run.encounter;
         const awaitingPack = current && run.phase === 'rewardPending';
         const status = cleared ? 'Cleared' : awaitingPack ? 'Won, pack ready' : current ? 'Current' : 'Locked';
         const label = `Contract ${index + 1}${cleared || current ? `, ${item.title}` : ''}: ${status}`;
-        return <li key={item.id} data-state={cleared ? 'cleared' : awaitingPack ? 'reward' : current ? 'current' : 'locked'}
+        return <li key={index} data-state={cleared ? 'cleared' : awaitingPack ? 'reward' : current ? 'current' : 'locked'}
           aria-current={current ? 'step' : undefined} aria-label={label} title={label}>
           <span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
           {cleared && <span className="campaign-board-cleared" aria-hidden="true">✓</span>}
@@ -88,6 +92,7 @@ export function CampaignHubTools({ run, profile, busy, soundEnabled, toggleSound
         <header><h2 id={archiveTitle}>Previous runs</h2><button type="button" className="btn quiet" onClick={() => archive.current?.close()}>Close</button></header>
         <ul className="campaign-board-archive">{[...history].reverse().map(item => <li key={item.id}>
           <span>{STARTERS.find(starter => starter.key === item.starter)?.name} · {item.completed ? 'Cleared all nine tables' : `Stopped after ${item.cleared} wins`}</span>
+          {item.route && <span>{callRoutes[item.route.call].title}{item.route.evidence && ' / ' + evidenceRoutes[item.route.evidence].title}</span>}
           {item.completed && <button type="button" className="btn quiet" onClick={() => openInBuilder(item.deck)}>Open finished deck as draft</button>}
         </li>)}</ul>
       </div>
@@ -99,8 +104,9 @@ export function CampaignHub({ run, titleRef, tools, issues, busy, printings, ins
   run: CampaignRun; titleRef: Ref<HTMLHeadingElement>; tools: ReactNode; issues: string[]; busy: boolean;
   printings: ReadonlyMap<string, Printing>; inspect: CampaignInspect; tune: () => void; reviewNew?: () => void; primary: () => void; preparationOnly?: boolean;
 }) {
-  const encounter = ENCOUNTERS[run.encounter];
+  const encounter = campaignEncounter(run);
   const chapter = campaignChapters[encounter.id];
+  const table = routeContract(run);
   const rival = encounterDeck(run);
   const actIndex = Math.floor(run.encounter / 3);
   const pending = !!pendingCampaignPack(run);
@@ -122,12 +128,13 @@ export function CampaignHub({ run, titleRef, tools, issues, busy, printings, ins
     <div className="campaign-board-matchup">
       <article className="campaign-board-rival" aria-labelledby="campaign-opponent-title">
         <div className="campaign-board-rival-art" aria-hidden="true" data-encounter={encounter.id}>
-          {encounter.id !== 'first-call' && <CampaignRivalPortrait encounter={encounter.id} />}
+          {table ? <img className="campaign-board-route-still" src={routeArt[table.art][0]} alt="" />
+            : encounter.id !== 'first-call' && <CampaignRivalPortrait encounter={encounter.id} />}
         </div>
         <div className="campaign-board-rival-copy">
           <p className="play-eyebrow">{chapter.role}</p>
           <h2 id="campaign-opponent-title">{chapter.rival}</h2>
-          <p className="campaign-board-briefing">{chapter.briefing}</p>
+          <p className="campaign-board-briefing">{contractBriefing(run)}</p>
           <CampaignRivalDossier encounter={encounter.id} starter={run.starter} context="contract" legends={crewLegendPrintings(rival)} inspect={inspect} />
           <p className="campaign-board-rival-deck">{rival.name}</p>
           <CampaignCrewCards deck={rival} inspect={inspect} label="Rival Legends" />

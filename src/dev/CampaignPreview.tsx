@@ -22,6 +22,8 @@ function fixture(starter: StarterKey, state: string, contract: number): Campaign
   const run = newCampaign(starter, 'visual-qa', state === 'chase pack' ? 'retail-pack-qa-12' : 'presentation-fixture-2026');
   const openingPack = state === 'pack' || state === 'chase pack' || state === 'material common';
   const count = state === 'contract' ? contract : state === 'retry' ? 0 : state === 'finale' || state === 'complete' ? 8 : state === 'act3' ? 6 : state === 'act2' ? 3 : state === 'recruit' ? 2 : state === 'start' ? 0 : 1;
+  if (state === 'act3' || state === 'finale' || state === 'complete')
+    run.route = state === 'act3' ? { call: 'moth' } : { call: 'answer', evidence: 'seal' };
   for (let index = 0; index < count; index++) {
     run.encounter = index;
     const reward = generateReward(run);
