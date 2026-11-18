@@ -203,3 +203,14 @@
   background: var(--color-accent);
   box-shadow: 0 0 7px var(--color-accent);
 }
+
+.play-mulligan {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+}
+.play-mulligan small,
+.play-save-state { color: var(--color-text-muted); font: 500 11px/1.25 var(--font-ui); }
+.play-save-state { padding: 3px 6px; }
+.play-direct .play-command[data-presentation="opening-hand"] .play-command-actions { align-items: start; }
+.play-direct .play-command[data-state="playback"] .play-move-receipt { margin-inline-start: auto; }

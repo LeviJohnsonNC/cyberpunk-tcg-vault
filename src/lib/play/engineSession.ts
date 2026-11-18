@@ -3,7 +3,7 @@ import { engineSlug } from './engineCards';
 import { chooseMove, createCardCatalog, createMatchState, LocalEngine, projectRevealedCardView, SeededRNG } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import type { EngineCardView, EngineEvent, EngineHandle, EngineState } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import { describeAction, hideConcealedTargets, visibleCards, zoneCards, zoneCount } from './matchView';
-import { completedFight, describeBeat, describeRolls, matchTableCues, presentationView } from './matchPresentation';
+import { completedFight, describeBeat, describeRolls, matchTableCues, presentationView, publicChangeLabel } from './matchPresentation';
 import { emptyTally, matchReport, recordMove } from './matchReport';
 import type { CampaignRivalPlan, CardView, GigRoll, MatchBeat, MatchFrame, MatchLogEntry, MatchSetup, MatchSnapshot, MatchTally, Move, RivalSkill, Seat } from './protocol';
 
@@ -230,13 +230,19 @@ export function createEngineSession(
     const tableCues = matchTableCues(result.gameEvents, before, after);
     const described = main || rolls.length || tableCues.length ? describeBeat(seat, command, before, after, defeated) : undefined;
     const resultOfFight = completedFight(before, after, result.gameEvents);
-    const beatText = resultOfFight?.text || described?.text || describeRolls(rolls, seat)
+    const rollText = describeRolls(rolls, seat);
+    const beatText = resultOfFight?.text || described?.text || rollText
       || (tableCues.length ? 'Resolved a table action.' : undefined);
     const actionText = describeAction(seat, command, before, after);
     const text = resultOfFight ? [actionText, resultOfFight.text].filter(Boolean).join(' ')
       : actionText ?? (described?.changes.length || rolls.length ? beatText : undefined);
     if (text) {
-      log.push({ id: commandNumber, turn: before.turnNumber, seat, text });
+      const changes = [rollText, ...(described?.changes.map(change => {
+        const subject = !change.card?.faceDown && change.card?.cardName
+          ? change.card.cardName : change.seat === 'player' ? 'You' : 'Rival';
+        return `${subject} · ${publicChangeLabel(change, after)}`;
+      }) ?? [])].filter(change => change && change !== text);
+      log.push({ id: commandNumber, turn: before.turnNumber, seat, text, ...(changes.length && { changes }) });
       if (log.length > 80) log.shift();
     }
     if (described && beatText) {
@@ -262,7 +268,7 @@ export function createEngineSession(
         }
       }
       const beat: MatchBeat = structuredClone({ ...frame(presentationView(after), rolls),
-        ...described, ...(resultOfFight && { fight: resultOfFight.fight }), text: beatText, id: commandNumber, seat,
+        ...described, ...(resultOfFight && { fight: resultOfFight.fight, summary: resultOfFight.summary }), text: beatText, id: commandNumber, seat,
         ...(playedCardIds.length && { playedCardIds }), ...(combatKillIds.length && { combatKillIds }), ...(tableCues.length && { tableCues }) });
       if (seat === 'rival') beats.push(beat);
       else feedback = beat;

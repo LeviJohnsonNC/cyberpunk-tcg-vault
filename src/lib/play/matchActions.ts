@@ -1,15 +1,17 @@
 import { visibleCards, zoneCards } from './matchView';
 import type { CardView, Move, PlayerView, Seat } from './protocol';
 
-export interface PickOption { id: string; label: string; cardId?: string; note?: string }
-export interface PickField { id: string; label: string; options: PickOption[]; min: number; max: number; ordered?: boolean }
+export interface PickOption { id: string; label: string; cardId?: string; sourceCardId?: string; note?: string }
+export interface PickField { id: string; label: string; options: PickOption[]; min: number; max: number; ordered?: boolean; destination?: string }
 export type Picks = Record<string, string[]>;
 export interface MatchActionForm {
   id: string;
   label: string;
   detail?: string;
+  summary?: string;
   remainder?: string;
-  confirm?: string;
+  remainderZone?: string;
+  confirm?: (picks: Picks) => string;
   fields: (picks: Picks) => PickField[];
   move: (picks: Picks) => Move;
 }
@@ -125,6 +127,8 @@ export function matchActions(view: PlayerView): MatchActionForm[] {
             return [field('from', 'Copy value from', options(eligible)),
               ...(first ? [field('to', 'Copy value to', options(targets))] : [])];
           }, (p) => ({ targetIds: payload.pairConstraint ? [one(p, 'from'), one(p, 'to')] : p.targets ?? [] }), detail)];
+          const rules = source?.rulesText?.trim();
+          if (rules && rules.length <= 96 && rules.replace(/\.$/, '') !== label) actions[0].summary = rules;
           if (payload.canDecline || min === 0 || payload.targetPurpose === 'playCard') actions.push(skip('resolveEffectTarget'));
         }
         break;
@@ -134,10 +138,10 @@ export function matchActions(view: PlayerView): MatchActionForm[] {
           (p) => ({ optionId: one(p, 'effect') }), detail)];
         break;
       case 'chooseTrigger': {
-        const triggers = payload.options as { triggerId: string; cardName: string; abilityText: string }[];
+        const triggers = payload.options as { triggerId: string; sourceCardId?: string; cardName: string; abilityText: string }[];
         const multiple = triggers.length > 1;
         actions = [form('resolveTrigger', multiple ? 'Order abilities' : 'Resolve an ability',
-          () => [field('trigger', multiple ? 'Choose what resolves first' : 'Choose an ability', triggers.map(({ triggerId, cardName, abilityText }) => pick(triggerId, cardName, abilityText)))],
+          () => [field('trigger', multiple ? 'Choose what resolves first' : 'Choose an ability', triggers.map(({ triggerId, sourceCardId, cardName, abilityText }) => ({ ...pick(triggerId, cardName, abilityText), sourceCardId })))],
           (p) => ({ triggerId: one(p, 'trigger') }), multiple ? 'Resolve one ability at a time. The first can change what the others can do.' : undefined)];
         if (payload.canPass) actions.push(skip('resolveTrigger', 'Pass on optional abilities'));
         break;
@@ -162,12 +166,12 @@ export function matchActions(view: PlayerView): MatchActionForm[] {
         const selectable = destinations.filter((dest) => !dest.remainder);
         const remainder = destinations.find((dest) => dest.remainder)?.zone ?? 'deckBottom';
         const placement = form('resolveScry', 'Place revealed cards', (p) => selectable.map((dest, i) =>
-          field(String(i), labels[dest.zone] ?? dest.zone,
+          ({ ...field(String(i), labels[dest.zone] ?? dest.zone,
             options(dest.eligibleCardIds.filter((id) => !Object.entries(p).some(([key, chosen]) => key !== String(i) && chosen.includes(id)))),
-            dest.min ?? 0, dest.max ?? dest.eligibleCardIds.length, dest.order !== 'random' && (dest.zone === 'deckTop' || dest.zone === 'deckBottom'))),
+            dest.min ?? 0, dest.max ?? dest.eligibleCardIds.length, dest.order !== 'random' && (dest.zone === 'deckTop' || dest.zone === 'deckBottom')), destination: dest.zone })),
         (p) => ({ destinations: selectable.map((dest, i) => ({ zone: dest.zone, cardIds: dest.zone === 'deckTop' ? [...(p[String(i)] ?? [])].reverse() : p[String(i)] ?? [] })) }),
         detail);
-        actions = [{ ...placement, remainder: labels[remainder] ?? remainder }];
+        actions = [{ ...placement, remainder: labels[remainder] ?? remainder, remainderZone: remainder }];
         break;
       }
       case 'revealDestination':
@@ -208,7 +212,11 @@ export function matchActions(view: PlayerView): MatchActionForm[] {
         actions = [form(id, eligible ? 'Protect a Unit' : `Protect ${option(payload.protectedCardId as string).label}`,
           () => [...(eligible ? [field('protected', 'Choose a Unit to protect', options(eligible))] : []), ...paymentFields(id, 'action')],
           (p) => ({ ...paymentArgs(p), ...(eligible && { protectedCardId: one(p, 'protected') }) }),
-          `Spend ${payload.cost} €$ and defeat ${option(payload.replacementCardId as string).label} instead.`), skip(id)];
+          `${payload.cost} €$ · Defeat ${option(payload.replacementCardId as string).label} instead.`), skip(id)];
+        actions[0].confirm = p => {
+          const target = eligible ? one(p, 'protected') : payload.protectedCardId as string;
+          return target ? `Protect ${option(target).label}` : 'Protect Unit';
+        };
         break;
       }
       case 'chooseSacrificialGear':

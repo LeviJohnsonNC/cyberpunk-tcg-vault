@@ -2,6 +2,7 @@
 import { CrystalDiceProof } from './CrystalDiceProof';
 import { DicePreview } from './DicePreview';
 import { PackMaterialPreview } from './PackMaterialPreview';
+import type { DecisionFixture } from './decisionFixtures';
 import { PlayDecisionPreview } from './PlayDecisionPreview';
 import { createRoot } from 'react-dom/client';
 import { useState } from 'react';
@@ -93,7 +94,8 @@ export function Preview() {
 if (import.meta.env.DEV || import.meta.env.VAULT_PLAY_PREVIEW) {
   const params = new URLSearchParams(location.search);
   const opener = params.has('opener');
-  createRoot(document.getElementById('root')!).render(params.has('dice-proof') ? <CrystalDiceProof /> : params.has('dice') ? <DicePreview /> : params.has('decisions') ? <PlayDecisionPreview initial={params.get('decisions') === 'exchange' ? 'Table exchange' : params.get('decisions') === 'block' ? 'Block a Gig attack' : 'Turn order'} /> : params.has('materials') ? <PackMaterialPreview /> : opener
+  const decisions: Record<string, DecisionFixture> = { exchange: 'Table exchange', block: 'Block a Gig attack', hand: 'Add to hand' };
+  createRoot(document.getElementById('root')!).render(params.has('dice-proof') ? <CrystalDiceProof /> : params.has('dice') ? <DicePreview /> : params.has('decisions') ? <PlayDecisionPreview initial={decisions[params.get('decisions') ?? ''] ?? 'Turn order'} /> : params.has('materials') ? <PackMaterialPreview /> : opener
     ? <CampaignMode scope="qa:campaign-opener" openInBuilder={() => {}} />
     : <Preview />);
 }

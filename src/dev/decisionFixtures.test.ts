@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createDecisionFixture, decisionFixtures, decisionSetup } from './decisionFixtures';
 import { createEngineSession } from '../lib/play/engineSession';
-import { matchActions } from '../lib/play/matchActions';
+import { isReady, matchActions } from '../lib/play/matchActions';
 import { updatePick } from '../lib/play/matchInteraction';
 import { gigAdjustmentTarget } from '../lib/play/tacticalInfo';
 
@@ -10,11 +10,29 @@ describe('engine-backed decision review positions', () => {
     const { snapshot } = createDecisionFixture(name);
     if (name === 'Complete') expect(snapshot.view.gameEnded).toBe(true);
     else expect(matchActions(snapshot.view).length).toBeGreaterThan(0);
-    const expected: Partial<Record<typeof name, string>> = { 'Turn order': 'chooseFirstPlayer', 'Gig die': 'gainGig', 'Forced payment': 'redirectDefeat', 'Target effect': 'chooseTarget', 'Order effects': 'chooseTrigger', 'Card placement': 'scry' };
+    const expected: Partial<Record<typeof name, string>> = { 'Turn order': 'chooseFirstPlayer', 'Gig die': 'gainGig', 'Forced payment': 'redirectDefeat', 'Target effect': 'chooseTarget', 'Order effects': 'chooseTrigger', 'Card placement': 'scry', 'Add to hand': 'scry' };
     if (expected[name]) expect(snapshot.view.prompt.choice?.type).toBe(expected[name]);
     if (name === 'Reaction') expect(snapshot.view.attackState?.step).toBe('react');
     if (name === 'Overtime') expect(snapshot.view.overtimeActive).toBe(true);
   });
+});
+
+it('offers up to two Gear and puts the remaining cards on the bottom of the deck', () => {
+  const { session, snapshot } = createDecisionFixture('Add to hand');
+  const placement = matchActions(snapshot.view)[0];
+  const [field] = placement.fields({});
+  expect(field).toMatchObject({ min: 0, max: 2, destination: 'hand' });
+  expect(isReady([field], {})).toBe(true);
+  expect(field.options.map(option => option.label)).toEqual(['Arasaka Emergency Radioport', 'Adrenaline Converter', 'Kiroshi Optics']);
+  const first = updatePick(placement, {}, field.id, field.options[0].id)!;
+  const two = updatePick(placement, first, field.id, field.options[1].id)!;
+  expect(updatePick(placement, two, field.id, field.options[2].id)).toBeUndefined();
+  const final = session.move(snapshot.view.stateID, placement.move(two));
+  expect(final.view.players.player.zones.hand).toEqual(expect.arrayContaining(two[field.id].map(instanceId => expect.objectContaining({ instanceId }))));
+  const payload = snapshot.view.prompt.choice?.payload as { revealedCards: { instanceId: string }[] };
+  const remainder = payload.revealedCards.map(card => card.instanceId).filter(id => !two[field.id].includes(id));
+  expect(placement.remainderZone).toBe('deckBottom');
+  expect(session.checkpoint().state.G.players.player.zones.deck.slice(-3)).toEqual(expect.arrayContaining(remainder));
 });
 
 describe('rival combat presentation', () => {

@@ -14,22 +14,12 @@
 }
 
 .play-gig-adjustment .play-tray-source { width: clamp(38px, 3.6vw, 58px); }
-.play-gig-adjustment-source-name {
-  display: block;
-  margin-bottom: 3px;
-  color: var(--color-accent);
-  font: 650 12px/1.2 var(--font-display);
-  letter-spacing: .045em;
-  text-transform: uppercase;
-}
-
 .play-gig-adjustment-intent h3 {
   margin: 0;
   color: var(--color-ticket);
   font: italic 800 clamp(22px, 1.95vw, 33px)/1.05 var(--font-display);
   text-transform: uppercase;
 }
-.play-gig-adjustment-intent p { margin: 4px 0 0; color: var(--color-text-muted); font: 13px/1.3 var(--font-ui); }
 
 .play-gig-adjustment-die,
 .play-gig-adjustment-preview {
@@ -40,9 +30,7 @@
   border-inline-start: 1px solid var(--color-divider);
   color: var(--color-ticket);
 }
-.play-gig-adjustment-die > span,
-.play-gig-adjustment-preview > span,
-.play-gig-adjustment-values > legend {
+.play-gig-adjustment-preview > span {
   color: var(--color-text-muted);
   font: 650 12px/1.2 var(--font-display);
   letter-spacing: .06em;
@@ -54,7 +42,8 @@
 .play-gig-adjustment-values,
 .play-gig-adjustment-dice { min-width: 0; margin: 0; padding: 0; border: 0; }
 .play-gig-adjustment-values { max-width: min(100%, 370px); }
-.play-gig-adjustment-values > legend { margin-block-end: 6px; padding: 0; }
+.play-gig-adjustment-arrow { color: var(--color-ticket); }
+.play-gig-adjustment-values .play-choice-detail { margin: 4px 0 0; }
 .play-gig-adjustment-options,
 .play-gig-adjustment-dice { display: flex; align-items: center; gap: 6px; }
 .play-gig-adjustment-options { flex-wrap: wrap; }
@@ -91,13 +80,6 @@
 .play-gig-adjustment-preview output b,
 .play-gig-adjustment-preview output strong { font: 800 32px/1 var(--font-display); }
 .play-gig-adjustment-preview output strong[data-preview-selected] { color: var(--color-accent); animation: play-gig-preview-in 150ms ease-out; }
-.play-gig-adjustment-preview output small {
-  border: 1px solid #f6dca947;
-  border-radius: 4px;
-  padding: 3px 4px;
-  color: var(--color-ticket);
-  font: 600 11px/1 var(--font-mono);
-}
 @keyframes play-gig-preview-in { from { opacity: .65; transform: translateY(2px); } }
 
 .play-gig-adjustment-actions { display: grid; grid-template-columns: auto auto; gap: 4px 6px; margin-inline-start: auto; }

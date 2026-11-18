@@ -7,7 +7,7 @@ import { dicePalette } from '../lib/play/dicePalette';
 import { DieFace } from './PlayDice';
 
 type DieDrag = { start: (event: PointerEvent<HTMLElement>, die: CardView) => void; suppressClick: () => boolean };
-export type Targeting = { responseIds?: Set<string>; dieDrag?: DieDrag; effectIds?: Set<string>; dropZones?: Set<string>; dropOver?: string; targetIds: Set<string>; chosenIds: Set<string>; onPick: (id: string) => void };
+export type Targeting = { dropActions?: ReadonlyMap<string, string>; responseIds?: Set<string>; dieDrag?: DieDrag; effectIds?: Set<string>; dropZones?: Set<string>; dropOver?: string; targetIds: Set<string>; chosenIds: Set<string>; onPick: (id: string) => void };
 type CardTile = (card: CardView, label?: string, options?: { legendSlot?: boolean; attachedGear?: boolean }) => ReactNode;
 /** The latest public outcome, shown where it happened. */
 export interface Outcome { id: number; changes: MatchChange[] }
@@ -62,6 +62,7 @@ export function GigZones({ snapshot, outcome, adjustedGig, threatened, ...target
       <h3 className="play-gig-count play-eyebrow">{seat === 'player' ? 'Your Gigs' : 'Rival Gigs'} <span>{view.gigCount}</span></h3>
       {threatened === seat && <strong className="play-gig-threat">Under attack</strong>}
       <div className="play-dice">{gigs.map((card) => <MatDie seat={seat} key={card.instanceId} card={card} adjustmentSelected={card.instanceId === adjustedGig} {...targeting} />)}</div>
+      {targeting.dropActions?.get(`gigs:${seat}`) && <span className="play-drop-label">{targeting.dropActions.get(`gigs:${seat}`)}</span>}
       <span className="play-gig-cred" title="Street Cred is the total value of these Gig dice">Cred <b>{view.streetCred}</b></span>
       <ZoneFloat outcome={outcome} seat={seat} kinds={['gigs', 'cred']} waitForRoll={snapshot.gigRolls.length > 0} />
     </section>;
@@ -86,7 +87,7 @@ function MatTrash({ seat, trash, removed, renderCard, renderFace }: {
       if (event.target === dialog.current) dialog.current?.close();
     }}>
       <div className="al-dialog-body">
-        <div className="play-inspect-head"><div><p className="play-eyebrow">Public cards</p><h2 id={titleId}>{label}</h2></div>
+        <div className="play-inspect-head"><h2 id={titleId}>{label}</h2>
           <button type="button" className="btn quiet" onClick={() => dialog.current?.close()}>Close</button></div>
         <section aria-label="Trash"><h3 className="play-eyebrow">Trash <span>{trash.length}</span></h3>
           <div className="play-pile-cards">{trash.length ? trash.slice().reverse().map((card) => renderCard(card)) : <p className="play-empty">No cards in trash.</p>}</div>
@@ -135,6 +136,7 @@ export function SeatField({ seat, snapshot, active, renderCard, overlay, outcome
         <h3 className="play-zone-label">Resolving</h3><div className="play-card-row">{resolving.map((card) => renderCard(card))}</div>
       </div>}
     </div>
+    {targeting.dropActions?.get(`field:${seat}`) && <span className="play-drop-label">{targeting.dropActions.get(`field:${seat}`)}</span>}
     {overlay}
   </section>;
 }
@@ -224,7 +226,8 @@ function Eddies({ seat, snapshot, outcome, ...targeting }: Targeting & { seat: S
     </button>;
   }
   return <section className="play-eddies" data-zone={`eddies:${seat}`} data-drop-zone={`eddies:${seat}`} data-drop-available={targeting.dropZones?.has(`eddies:${seat}`)} data-drop-over={targeting.dropOver === `eddies:${seat}`} aria-label={own ? 'Your Eddies' : 'Rival Eddies'} aria-describedby={breakdown}>
-    <div className="play-eddies-total" title={breakdownText || undefined}><b>{view.availableEddies}</b><span>€$<wbr /> available</span></div>
+    <div className="play-eddies-total" title={breakdownText || undefined}><b>{view.availableEddies}</b><span>€$</span></div>
+    {targeting.dropActions?.get(`eddies:${seat}`) && <span className="play-drop-label">{targeting.dropActions.get(`eddies:${seat}`)}</span>}
     <span id={breakdown} className="sr-only">{view.availableEddies} Eddies available{breakdownText && `. ${breakdownText}`}.</span>
     <div className="play-eddie-row" data-empty={!eddies.length && !showStack || undefined}>
       {shown.map((card, index) => eddieButton(card, index))}
@@ -279,7 +282,7 @@ function Piles({ seat, snapshot, renderCard, renderFace }: { seat: Seat; snapsho
 type BenchProps = MatProps & { active: boolean; renderFace: (card: CardView) => ReactNode };
 
 /** The rival's side of the table edge: piles, a hand of card backs and the crew. */
-export function RivalBench({ snapshot, name, active, renderCard, renderFace, outcome, rolls, portrait, ...targeting }: BenchProps & { name: string; portrait?: ReactNode }) {
+export function RivalBench({ snapshot, active, renderCard, renderFace, outcome, rolls, portrait, ...targeting }: BenchProps & { portrait?: ReactNode }) {
   const hand = zoneCount(snapshot.view.players.rival, 'hand');
   return <section className="play-bench" data-seat="rival" data-portrait={!!portrait || undefined} data-active={active} aria-label="Rival bench">
     {portrait}
@@ -291,7 +294,7 @@ export function RivalBench({ snapshot, name, active, renderCard, renderFace, out
       <div className="play-rival-hand" data-anchor="hand:rival" role="img" aria-label={`${hand} cards in the rival’s hand`}>
         {Array.from({ length: Math.min(hand, 12) }, (_, index) => <img key={index} src={CARD_BACK} alt="" style={{ '--i': index, '--n': Math.min(hand, 12) } as CSSProperties} />)}
       </div>
-      <div className="play-seat-name">{!portrait && <span className="play-eyebrow">Rival</span>}<h2 title={name}>{name}</h2><span className="play-seat-hand"><b>{hand}</b> in hand</span></div>
+      <span className="play-seat-hand"><b>{hand}</b> in hand</span>
     </div>
     <div className="play-bench-crew">
       <Eddies seat="rival" snapshot={snapshot} outcome={outcome} {...targeting} />

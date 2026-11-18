@@ -16,7 +16,7 @@ const adjustmentSources = {
   'Increase a Gig': 'industrial-assembly',
   'Decrease a Gig': 'trust-no-one',
 } as const;
-export const decisionFixtures = ['Turn order', 'Opening hand', 'Gig die', 'Main turn', 'Table exchange', 'Block a Gig attack', 'Crowded table', 'Reaction', 'Forced payment', 'Target effect', 'Order effects', 'Card placement',
+export const decisionFixtures = ['Turn order', 'Opening hand', 'Gig die', 'Main turn', 'Table exchange', 'Block a Gig attack', 'Crowded table', 'Reaction', 'Forced payment', 'Target effect', 'Order effects', 'Card placement', 'Add to hand',
   'Gig adjustment', 'Single Gig adjustment', 'Increase a Gig', 'Decrease a Gig', 'Overtime', 'Complete'] as const;
 export type DecisionFixture = typeof decisionFixtures[number];
 type Position = EngineState & { G: {
@@ -92,6 +92,14 @@ export function createDecisionFixture(name: DecisionFixture) {
     legend.definitionId = engineCardId('jackie-welles-mama-s-favorite'); legend.meta.faceDown = false;
   }
   if (name === 'Target effect') program = place('player', 'floor-it', 'hand');
+  const handSearch = name === 'Add to hand' ? state.G.players.player.zones.legendArea[0] : undefined;
+  if (handSearch) {
+    state.G.cardIndex[handSearch].definitionId = engineCardId('viktor-vektor-sit-down-and-relax');
+    const deck = state.G.players.player.zones.deck;
+    ['arasaka-emergency-radioport', 'adrenaline-converter', 'kiroshi-optics', 'corpo-security', 'floor-it']
+      .forEach((slug, index) => { state.G.cardIndex[deck[index]].definitionId = engineCardId(slug); });
+    state.G.manualPaymentPlayerId = undefined;
+  }
   if (name === 'Card placement') program = place('player', 'three-mouths-one-desire', 'hand');
   if (name in adjustmentSources) {
     // Stage the table, then play the actual card to generate its engine prompt.
@@ -135,6 +143,7 @@ export function createDecisionFixture(name: DecisionFixture) {
     if (engine.getFilteredView('player').attackState?.step === 'react') issue('player', 'resolveAttack', { pass: true });
   }
   if (program) issue('player', 'playCard', { cardId: program });
+  if (handSearch) issue('player', 'callLegend', { legendId: handSearch });
   if (name === 'Order effects') issue('player', 'passPhase');
   if (name === 'Complete') issue('player', 'concede');
   checkpoint.state = engine.getState();

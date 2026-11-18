@@ -108,7 +108,6 @@
   animation: play-turn-banner 1.3s cubic-bezier(.2, .8, .2, 1) both;
 }
 .play-turn-banner[data-seat="rival"] { inset-block-start: 31%; padding-block: 7px 10px; color: var(--color-accent-ink); background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-accent) 92%, transparent) 26% 74%, transparent); animation-duration: 1s; }
-.play-turn-banner span { font: 500 11px/1.2 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; }
 .play-turn-banner strong { font: italic 800 clamp(46px, 6.2vw, 92px)/.88 var(--font-display); text-transform: uppercase; transform: skewX(-4deg); }
 .play-turn-banner[data-seat="rival"] strong { font-size: clamp(30px, 3.6vw, 52px); }
 @keyframes play-turn-banner {
@@ -149,11 +148,6 @@
 .play-move-receipt p { flex: 0 1 auto; min-width: 0; margin: 0; font-size: 14px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .play-move-receipt p b { margin-inline-end: 4px; color: var(--color-accent); font: 800 17px/1 var(--font-display); text-transform: uppercase; }
 .play-move-receipt[data-seat="player"] p b { color: var(--color-ticket); }
-.play-move-receipt ul { flex: 1 1 0; display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; max-height: 24px; margin: 0; padding: 0; overflow: hidden; list-style: none; }
-.play-move-receipt li { display: flex; gap: 5px; padding: 3px 7px; border: 1px solid var(--color-divider); border-radius: 3px; font: 500 11px/1.4 var(--font-mono); white-space: nowrap; }
-.play-move-receipt li > span { color: var(--color-text-muted); }
-.play-move-receipt li strong { color: var(--color-ticket); font-weight: 500; }
-.play-move-receipt li[data-change="defeated"] strong { color: var(--color-danger); }
 .play-playback { flex: none; display: flex; align-items: center; gap: var(--space-2); margin-inline-start: auto; }
 .play-playback-progress { width: 84px; height: 3px; background: var(--color-divider); }
 .play-playback-progress > span { display: block; height: 100%; background: var(--color-accent); }

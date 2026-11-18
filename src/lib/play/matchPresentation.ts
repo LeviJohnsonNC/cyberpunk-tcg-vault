@@ -135,6 +135,8 @@ export function completedFight(before: PlayerView, after: PlayerView, events: En
   const gigs = guarded ? `${guarded === 'player' ? 'You hold' : 'The rival holds'} ${gigCount} ${gigCount === 1 ? 'Gig' : 'Gigs'} after the block.` : '';
   return {
     fight: { attacker: { id: attackerId, power: attackerPower }, defender: { id: defenderId, power: defenderPower } },
+    summary: [lost.length === 2 ? 'Both to Trash' : lost.length ? `${lost[0].cardName} to Trash` : 'Fight resolved',
+      guarded && `${guarded === 'player' ? 'Your' : 'Rival'} Gigs ${gigCount}`].filter(Boolean).join(' · '),
     text: [`${attacker.cardName} (${attackerPower}) vs ${defender.cardName} (${defenderPower}).`, destination, gigs].filter(Boolean).join(' '),
   };
 }
@@ -196,6 +198,7 @@ export function combatContext(view: PlayerView) {
   const options = [offered.has('playCard') && 'play a Quick card', offered.has('callLegend') && 'call a Legend',
     offered.has('activateAbility') && 'use an ability', offered.has('useBlocker') && 'block'].filter(Boolean) as string[];
   return { attacker, defender, attackerSeat, defendingSeat, responding,
+    hasResponses: options.length > 0,
     canPass: responding && offered.has('resolveAttack'),
     title: responding ? 'Your response' : view.prompt.choice ? 'Resolve the current choice' : ['fight', 'fightResult', 'steal'].includes(attack.step) ? 'Combat resolution' : `${attackerSeat === 'player' ? 'Your' : 'Rival'} attack`,
     caption: `${attacker?.cardName ?? 'Attacking Unit'} → ${defender?.cardName ?? (defendingSeat === 'player' ? 'Your Gigs' : 'Rival Gigs')}`,

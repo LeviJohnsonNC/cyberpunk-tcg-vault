@@ -94,7 +94,6 @@ html:has(.play-direct) { scrollbar-gutter: stable; }
   color: var(--color-text-muted);
   font-size: 12px;
 }
-.play-step-count b { color: var(--color-ticket); font-family: var(--font-mono); white-space: nowrap; }
 .play-direct .play-command .play-tray-summary > .play-combat-banner {
   flex: 0 1 auto;
   min-width: 0;
@@ -108,6 +107,7 @@ html:has(.play-direct) { scrollbar-gutter: stable; }
 .play-gig-adjustment-options .btn { flex: none; }
 
 /* Choices open above the strip and wrap at the panel's available width. */
+.play-decision-panel-trigger[hidden] { display: none; }
 .play-decision-panel {
   position: absolute;
   z-index: 8;
@@ -167,4 +167,9 @@ html:has(.play-direct) { scrollbar-gutter: stable; }
   .play-direct .play-table { --play-command-height: 212px; }
   .play-command-content { flex-wrap: wrap; }
   .play-gig-adjustment-values { max-width: min(100%, 225px); }
+}
+.play-decision-tray[data-placement] .play-decision-panel {
+  width: fit-content;
+  min-width: min(330px, 100%);
+  max-width: min(670px, 100%);
 }
