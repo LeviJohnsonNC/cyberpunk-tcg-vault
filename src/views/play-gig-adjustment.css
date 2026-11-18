@@ -102,6 +102,26 @@
   .play-gig-adjustment-options .btn:active:enabled { transform: none; }
 }
 @media (max-width: 1180px) {
-  .play-gig-adjustment-intent { flex-basis: 100%; }
+  .play-gig-adjustment-form { gap: 6px 10px; }
+  .play-gig-adjustment-intent { flex-basis: 146px; gap: 7px; }
+  .play-gig-adjustment-values { flex: 1 1 165px; }
+  .play-gig-adjustment .play-tray-source { width: 27px; }
   .play-gig-adjustment-die { border-inline-start: 0; padding-inline-start: 0; }
+  .play-direct .play-gig-adjustment-die .play-die-face { width: 34px; height: 34px; }
+  .play-gig-adjustment-options .btn { min-width: 38px; min-height: 46px; }
+  .play-gig-adjustment-preview { min-width: 0; }
+  .play-gig-adjustment-preview output { min-height: 30px; }
+  .play-gig-adjustment-preview output b,
+  .play-gig-adjustment-preview output strong { font-size: 25px; }
+}
+@media (max-width: 900px) {
+  .play-gig-adjustment-intent { flex-basis: 105px; }
+  .play-gig-adjustment-intent h3 { font-size: 19px; }
+  .play-gig-adjustment-actions { gap: 3px; }
+  .play-direct .play-command .play-gig-adjustment-actions .btn.quiet { font-size: 11px; padding-inline: 5px; }
+  .play-gig-adjustment-options { gap: 4px; }
+  .play-gig-adjustment-form:has(.play-gig-adjustment-values) {
+    display: grid;
+    grid-template-columns: minmax(88px, .8fr) minmax(0, 1.2fr) minmax(72px, .55fr) auto;
+  }
 }

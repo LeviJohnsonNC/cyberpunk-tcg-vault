@@ -134,6 +134,11 @@
   .play-command-arrival { animation: none; }
 }
 
+@media (max-width: 1060px) {
+  .play-direct .play-command .play-decision-tray .play-tray-intent { flex-basis: 172px; }
+  .play-direct .play-command .play-tray-actions { gap: 5px; }
+  .play-direct .play-command .play-tray-actions .btn { padding-inline: 10px; }
+}
 .play-direct .play-command[data-responding] .play-turn-plate {
   background: var(--color-ticket);
   color: var(--color-ticket-ink);

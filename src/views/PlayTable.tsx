@@ -18,6 +18,7 @@ import { GigZones, PlayerBench, RivalBench, SeatField } from './PlayMat';
 import { PlayChoices } from './PlayChoices';
 import { PlayDecisionPanel } from './PlayDecisionPanel';
 import { useTableDrag, type TableDrag } from './useTableDrag';
+import { usePlayTableFit } from './usePlayTableFit';
 import { useTableMotion, type CardFlightOrigin } from './useTableMotion';
 import { useMatchOpening } from './useMatchOpening';
 import { useMatchSound } from './useMatchSound';
@@ -222,6 +223,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
   }, [opening.showing, choice?.type]);
   // Movement follows each public frame: the player's own result, then every rival move in turn.
   const pace = beatPace(playback?.count ?? 1, quick);
+  usePlayTableFit(table, view.gameEnded);
   useTableMotion(table, { key: opening.showing ? '' : `${stateKey}:${playback?.beat.id ?? ''}`, view, beat: playback?.beat ?? feedback,
     reducedBeats: reduced && snapshot.presentation ? [...(snapshot.presentation.feedback ? [snapshot.presentation.feedback] : []), ...snapshot.presentation.beats] : undefined,
     cardRelease, hasRolls: snapshot.gigRolls.length > 0, enabled: !reduced, pace,

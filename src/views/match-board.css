@@ -1,12 +1,5 @@
 /* Match chrome and table layout. Zone elements remain the interaction and motion anchors. */
-.app--play:has(.play-direct) { padding-block: 4px 7px; }
-.play-mode:has(.play-direct) {
-  --play-card-width: clamp(63px, min(8vw, calc((100svh - 302px) / 5.25)), 150px);
-  --play-hand-width: calc(var(--play-card-width) * 1.12);
-  --play-legend-width: calc(var(--play-card-width) * .59);
-  --play-fixer-die: clamp(44px, 3.3vw, 48px);
-  --play-gig-die: clamp(46px, 3.5vw, 54px);
-}
+.app--play.page:has(.play-direct) { padding-block: 4px 7px; }
 .play-direct .play-match-header {
   position: relative;
   z-index: 11;
@@ -89,7 +82,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  --rival-portrait-size: clamp(94px, 12.25svh, 130px);
+  --rival-portrait-size: var(--play-rival-portrait-size);
   min-height: var(--rival-portrait-size);
   width: 100%;
   max-width: none;
@@ -140,7 +133,7 @@
 @media (max-width: 1120px) {
   .play-match-identity small:not([data-match-error]) { display: none; }
   .play-radio-panel .afterhours-radio { grid-template-columns: minmax(124px, .8fr) minmax(130px, 1fr) minmax(185px, 1.2fr) auto; gap: 5px 8px; }
-  .play-direct .play-bench[data-portrait] { grid-template-columns: minmax(150px, 1fr) auto minmax(95px, .7fr) auto; gap: 6px; }
+  .play-direct .play-bench[data-portrait] { grid-template-columns: minmax(140px, 1fr) auto minmax(48px, .55fr) auto; gap: 6px; }
   .play-direct .play-rival-caption > strong { font-size: clamp(23px, 3.15vw, 35px); }
 }
 
@@ -248,25 +241,12 @@
 
 
 @media (max-width: 1060px) {
-  .play-direct .play-bench[data-portrait] {
-    grid-template-columns: minmax(155px, 1fr) auto auto;
-  }
-  .play-direct .play-bench[data-portrait] .play-bench-seat {
-    grid-column: 1;
-    grid-row: 2;
-    justify-items: start;
-  }
-  .play-direct .play-bench[data-portrait] .play-rival-hand { display: none; }
-  .play-direct .play-bench[data-seat="player"] { grid-template-columns: auto 1fr; }
-  .play-direct .play-bench[data-seat="player"] .play-hand { grid-row: 2; grid-column: 1 / -1; }
-  .play-direct .play-bench[data-seat="player"] .play-bench-crew { justify-self: start; }
+  .play-direct .play-rival-hand { display: none; }
   .play-direct .play-combat-banner, .play-direct .play-tray-head { flex-wrap: wrap; }
 }
 @media (max-width: 900px) {
-  .play-direct .play-bench[data-portrait] { grid-template-columns: minmax(140px, 1fr) auto; }
-  .play-direct .play-bench[data-portrait] .play-bench-crew { grid-column: 2; grid-row: 2; }
-  .play-direct .play-bench[data-seat="rival"]:not([data-portrait]) { grid-template-columns: minmax(120px, 1fr) auto; }
-  .play-direct .play-bench[data-seat="rival"]:not([data-portrait]) .play-bench-seat { grid-row: 2; }
+  .play-direct .play-bench-piles .play-zone-label { font-size: 9px; letter-spacing: .035em; }
+  .play-direct .play-bench-piles .play-zone-label b { font-size: 13px; margin-inline-start: 1px; }
   .play-direct .play-match-identity .play-eyebrow:not(button) { display: none; }
   .play-radio-panel .afterhours-radio { grid-template-columns: minmax(120px, 1fr) minmax(180px, 1fr); }
   .play-radio-panel :is(.radio-timeline, .radio-transport, .radio-footer) { grid-row: auto; }
