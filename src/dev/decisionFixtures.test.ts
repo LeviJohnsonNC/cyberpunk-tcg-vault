@@ -3,6 +3,8 @@ import { createDecisionFixture, decisionFixtures, decisionSetup } from './decisi
 import { createEngineSession } from '../lib/play/engineSession';
 import { isReady, matchActions } from '../lib/play/matchActions';
 import { updatePick } from '../lib/play/matchInteraction';
+import { triggerPreviewCard } from '../lib/play/cardDisplay';
+import { visibleCards } from '../lib/play/matchView';
 import { gigAdjustmentTarget } from '../lib/play/tacticalInfo';
 
 describe('engine-backed decision review positions', () => {
@@ -15,6 +17,19 @@ describe('engine-backed decision review positions', () => {
     if (name === 'Reaction') expect(snapshot.view.attackState?.step).toBe('react');
     if (name === 'Overtime') expect(snapshot.view.overtimeActive).toBe(true);
   });
+});
+
+it('offers the three sources in the reported attack prompt and preserves concealed card backs', () => {
+  const { snapshot } = createDecisionFixture('Attack effects');
+  const action = matchActions(snapshot.view).find(move => move.id === 'resolveTrigger')!;
+  const options = action.fields({})[0].options;
+  expect(options.map(option => option.label).sort()).toEqual(["Dying Night: V's Pistol", 'Evelyn Parker: Scheming Siren', 'Zetatech Faceplate']);
+  for (const { sourceCardId, label } of options) {
+    const source = visibleCards(snapshot.view).find(card => card.instanceId === sourceCardId)!;
+    expect(triggerPreviewCard(source, sourceCardId!, label)).toBe(source);
+    expect(triggerPreviewCard(undefined, sourceCardId!, label)?.cardName).toBe(label);
+    expect(triggerPreviewCard({ ...source, definitionId: '', cardName: null, faceDown: true }, sourceCardId!, label)).toBeUndefined();
+  }
 });
 
 it('offers up to two Gear and puts the remaining cards on the bottom of the deck', () => {

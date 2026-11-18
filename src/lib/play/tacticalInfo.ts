@@ -49,18 +49,29 @@ export function gigAdjustmentTarget(view: PlayerView, dieId: unknown) {
 }
 
 export interface PreviewRect { left: number; top: number; width: number; height: number }
+const cardPreviewSizes = [{ width: 286, height: 464, landscape: false }, { width: 440, height: 330, landscape: true }];
+
 /** Find a readable close-up that does not cover the hand, decision controls or eligible targets. */
-export function previewPosition(anchor: PreviewRect, viewport: { width: number; height: number }, blocked: PreviewRect[]) {
-  if (viewport.height < 480) return;
-  for (const { width, height, landscape } of [{ width: 286, height: 464, landscape: false }, { width: 440, height: 330, landscape: true }]) {
+export function previewPosition(anchor: PreviewRect, viewport: { width: number; height: number }, blocked: PreviewRect[],
+  sizes?: typeof cardPreviewSizes) {
+  if (!sizes && viewport.height < 480) return;
+  for (const { width, height, landscape } of sizes ?? cardPreviewSizes) {
     const margin = 12;
     const clampX = (x: number) => Math.max(margin, Math.min(viewport.width - width - margin, x));
     const clampY = (y: number) => Math.max(margin, Math.min(viewport.height - height - margin, y));
     if (viewport.width < width + 2 * margin || viewport.height < height + 2 * margin) continue;
+    const centerX = clampX(anchor.left + (anchor.width - width) / 2);
+    const alongsideY = clampY(anchor.top + anchor.height - height);
     const positions = [
       { x: clampX(anchor.left + anchor.width + margin), y: clampY(anchor.top) },
       { x: clampX(anchor.left - width - margin), y: clampY(anchor.top) },
-      { x: clampX(anchor.left + anchor.width / 2 - width / 2), y: clampY(anchor.top - height - margin) },
+      { x: centerX, y: clampY(anchor.top - height - margin) },
+      ...(sizes ? blocked.flatMap(rect => [
+        { x: clampX(rect.left - width - margin), y: alongsideY },
+        { x: clampX(rect.left + rect.width + margin), y: alongsideY },
+        { x: centerX, y: clampY(rect.top - height - margin) },
+        { x: centerX, y: clampY(rect.top + rect.height + margin) },
+      ]) : []),
       { x: viewport.width - width - margin, y: margin }, { x: margin, y: margin },
     ];
     const position = positions.find(({ x, y }) => ![anchor, ...blocked].some((rect) =>

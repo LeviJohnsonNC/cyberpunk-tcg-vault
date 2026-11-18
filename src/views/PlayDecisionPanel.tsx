@@ -1,8 +1,8 @@
 import { useId, useRef, useState, type ReactNode } from 'react';
 
 /** Expands above the command bar, scrolling within the space above it. */
-export function PlayDecisionPanel({ label, title, defaultOpen = false, hideTriggerWhenOpen = false, children }: {
-  label: string; title: string; defaultOpen?: boolean; hideTriggerWhenOpen?: boolean; children: ReactNode;
+export function PlayDecisionPanel({ label, title, defaultOpen = false, hideTriggerWhenOpen = false, onClose, children }: {
+  label: string; title: string; defaultOpen?: boolean; hideTriggerWhenOpen?: boolean; onClose?: () => void; children: ReactNode;
 }) {
   const id = useId();
   const [open, setOpen] = useState<boolean>();
@@ -10,6 +10,7 @@ export function PlayDecisionPanel({ label, title, defaultOpen = false, hideTrigg
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLElement>(null);
   function close() {
+    onClose?.();
     setOpen(false);
     requestAnimationFrame(() => trigger.current?.focus({ preventScroll: true }));
   }

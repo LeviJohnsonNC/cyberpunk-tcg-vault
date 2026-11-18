@@ -43,7 +43,17 @@ import './play-resource-dock.css';
 const winReasons: Record<string, string> = { gig_victory: 'Seven Gigs secured', overtime_majority: 'Majority of Gigs in overtime', deck_out_victory: 'Deck-out', concede: 'Concession', concession: 'Concession' };
 type SavedDecision = { matchId: string; state: number; selection?: number; picks: Picks; step?: string };
 type Context = { state: string; card: CardView; intents: Intent[]; x: number; y: number; trigger?: HTMLElement };
-type Preview = { state: string; card: CardView; x: number; y: number; landscape: boolean };
+type Preview = {
+  state: string; card: CardView; x: number; y: number; landscape: boolean;
+  effect?: { width: number; height: number; note?: string; canInspect: boolean };
+};
+const effectPreviewSizes = [
+  { width: 354, height: 248, landscape: true },
+  { width: 294, height: 174, landscape: true },
+  { width: 258, height: 128, landscape: true },
+  { width: 238, height: 104, landscape: true },
+  { width: 120, height: 174, landscape: false },
+];
 
 function readDecision(key: string, snapshot: MatchSnapshot): SavedDecision | undefined {
   try {
@@ -240,15 +250,31 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
       if (element) { element.focus({ preventScroll: true }); break; }
     }
   }, [stateKey, selection, current?.step]);
+  const clearHover = useCallback(() => {
+    clearTimeout(hoverTimer.current);
+    setPreview(undefined);
+    setArrow(undefined);
+    setEffectFocus(undefined);
+  }, []);
+  const reviewingEffect = !!hovered?.effect;
   useEffect(() => () => clearTimeout(hoverTimer.current), []);
   useEffect(() => {
-    const clear = () => { clearTimeout(hoverTimer.current); setPreview(undefined); };
-    window.addEventListener('resize', clear);
-    document.addEventListener('scroll', clear, true);
-    return () => { window.removeEventListener('resize', clear); document.removeEventListener('scroll', clear, true); };
-  }, []);
+    window.addEventListener('resize', clearHover);
+    document.addEventListener('scroll', clearHover, true);
+    return () => { window.removeEventListener('resize', clearHover); document.removeEventListener('scroll', clearHover, true); };
+  }, [clearHover]);
+  useEffect(() => {
+    if (!reviewingEffect) return;
+    const dismiss = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopPropagation();
+      clearHover();
+    };
+    window.addEventListener('keydown', dismiss, true);
+    return () => window.removeEventListener('keydown', dismiss, true);
+  }, [reviewingEffect, clearHover]);
 
-  function clearHover() { clearTimeout(hoverTimer.current); setPreview(undefined); setArrow(undefined); }
   function setChoice(selection: number | undefined, chosen: Picks, step?: string) {
     // Payment starts filled in, so an ordinary play is one confirmation. The sources stay selectable on the mat.
     const picks = selection !== undefined && actions[selection] ? suggestPayment(actions[selection], chosen, visibleCards(view)) : chosen;
@@ -366,6 +392,31 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
       } else if (intents.length) dropActions.set(spot.cardId ?? spot.key, 'Choose action');
     }
   }
+  function previewBlocks() {
+    // Keep the hand, decision controls, and other active targets reachable.
+    return [...(grid.current?.querySelectorAll<HTMLElement>('.play-hand, .play-command-inner, .play-decision-panel, .play-drawer, [data-target="true"]') ?? [])]
+      .map(node => node.getBoundingClientRect()).filter(box => box.width && box.height);
+  }
+  function showEffectSource(card: CardView, element: HTMLElement, note: string | undefined, canInspect: boolean) {
+    if (drag || menu || inspected || busy) return;
+    clearHover();
+    if (canInspect) setEffectFocus({ state: stateKey, id: card.instanceId });
+    const anchor = element.getBoundingClientRect();
+    const viewport = { width: innerWidth, height: innerHeight };
+    const blocked = previewBlocks();
+    for (const size of effectPreviewSizes) {
+      const position = previewPosition(anchor, viewport, blocked, [size]);
+      if (position) {
+        setPreview({ state: stateKey, card, ...position, effect: { width: size.width, height: size.height, note, canInspect } });
+        break;
+      }
+    }
+  }
+  function leaveEffectSource(wait = false) {
+    if (!wait) return clearHover();
+    clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(clearHover, 240);
+  }
   function enterCard(card: CardView, element: HTMLElement) {
     if (drag || menu || inspected || busy) return;
     clearTimeout(hoverTimer.current);
@@ -374,11 +425,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
       if (source) { const a = source.getBoundingClientRect(), b = element.getBoundingClientRect();
         setArrow({ state: stateKey, x1: a.x + a.width / 2, y1: a.y + a.height / 2, x2: b.x + b.width / 2, y2: b.y + b.height / 2 }); }
     }
-    const rect = element.getBoundingClientRect();
-    // Read during a decision too, but never hide its controls, targets or the hand.
-    const blocked = [...(grid.current?.querySelectorAll<HTMLElement>('.play-hand, .play-command-inner, .play-decision-panel, .play-drawer, [data-target="true"]') ?? [])]
-      .map((node) => node.getBoundingClientRect()).filter((box) => box.width && box.height);
-    const position = previewPosition(rect, { width: innerWidth, height: innerHeight }, blocked);
+    const position = previewPosition(element.getBoundingClientRect(), { width: innerWidth, height: innerHeight }, previewBlocks());
     if (position) hoverTimer.current = setTimeout(() => setPreview({ state: stateKey, card, ...position }), 400);
   }
   function renderCard(card: CardView, fallback = 'Face-down card', options?: {
@@ -574,7 +621,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
                 }} reorder={(field, ids) => { const next = reorderPick(selected, picks, field, ids); if (next) setChoice(selection, next, field); }}
                 submit={() => selection !== undefined && commit({ action: selection, picks })}
                 cancel={() => { setChoice(choice ? defaultSelection : undefined, {}); clearHover(); }} resetPayment={resetPayment}
-                inspect={inspect} highlightSource={id => setEffectFocus(id ? { state: stateKey, id } : undefined)} alternatives={choice ? special.map(({ index }) => actionButton(index)) : null} /></div>
+                inspect={inspect} previewSource={showEffectSource} leaveSource={leaveEffectSource} alternatives={choice ? special.map(({ index }) => actionButton(index)) : null} /></div>
             : choice || setup ? <div className="play-opening-choices">
               {combat && <CombatBanner view={view} watching={false} compact inspect={inspect} />}
               <div className="play-command-lead">
@@ -637,12 +684,25 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
       {menu.intents.some((intent) => actions[intent.action].id === 'activateAbility') && vaultCard(menu.card) && <details className="play-menu-rules"><summary>Printed abilities</summary><Rules text={vaultCard(menu.card)!.text} /></details>}
       {!menu.intents.length && <p className="play-choice-detail">{selected ? 'Finish or cancel the current selection to start another action.' : 'No action available for this card now.'}</p>}
       <button type="button" className="btn play-card-menu-action" onClick={() => inspect(menu.card, menu.trigger)}><span>Details</span><span aria-hidden="true">→</span></button></ContextMenu>}
-    {hovered && !drag && !menu && !inspected && createPortal(<div className="play-hover-preview" data-landscape={hovered.landscape} style={{ left: hovered.x, top: hovered.y }} aria-hidden="true"><CardFace card={hovered.card} /><div className="play-hover-copy">
-      <strong>{hovered.card.cardName ?? 'Concealed card'}</strong>
-      {hovered.card.definitionId && <p>{hovered.card.type !== 'gear' && hovered.card.type !== 'program' && <>Power <b>{hovered.card.effectivePower}</b> · </>}
-        Cost <b>{hovered.card.effectiveCost ?? hovered.card.cost ?? '—'} €$</b>{hovered.card.spent && ' · Spent'}{hovered.card.hasLag && ' · Lag'}</p>}
-      {hovered.landscape && vaultCard(hovered.card) && <div className="play-hover-rules"><Rules text={vaultCard(hovered.card)!.text} /></div>}
-      <small>I to inspect rules and effects</small></div></div>, document.body)}
+    {hovered && !drag && !menu && !inspected && createPortal(<div className="play-hover-preview" data-landscape={hovered.landscape}
+      data-effect-preview={!!hovered.effect || undefined}
+      style={{ left: hovered.x, top: hovered.y, width: hovered.effect?.width, height: hovered.effect?.height }} aria-hidden="true"
+      onMouseEnter={hovered.effect ? () => clearTimeout(hoverTimer.current) : undefined}
+      onMouseLeave={hovered.effect ? () => leaveEffectSource(true) : undefined}>
+      <CardFace card={hovered.card} />
+      <div className="play-hover-copy">
+        <strong>{(hovered.effect && vaultCard(hovered.card)?.display) || hovered.card.cardName || 'Concealed card'}</strong>
+        {hovered.effect ? <>
+          {hovered.effect.note && hovered.landscape && <div className="play-hover-rules"><Rules text={hovered.effect.note} /></div>}
+          {hovered.effect.canInspect && hovered.landscape && <small>I to inspect card</small>}
+        </> : <>
+          {hovered.card.definitionId && <p>{hovered.card.type !== 'gear' && hovered.card.type !== 'program' && <>Power <b>{hovered.card.effectivePower}</b> · </>}
+            Cost <b>{hovered.card.effectiveCost ?? hovered.card.cost ?? '—'} €$</b>{hovered.card.spent && ' · Spent'}{hovered.card.hasLag && ' · Lag'}</p>}
+          {hovered.landscape && vaultCard(hovered.card) && <div className="play-hover-rules"><Rules text={vaultCard(hovered.card)!.text} /></div>}
+          <small>I to inspect rules and effects</small>
+        </>}
+      </div>
+    </div>, document.body)}
     {held && createPortal(<div className="play-drag-ghost" data-kind={gigChoice ? 'die' : 'card'}
       data-returning={!!returning || undefined} data-over={!!held.destination || undefined}
       onAnimationEnd={returning ? dragControl.finishReturn : undefined}
