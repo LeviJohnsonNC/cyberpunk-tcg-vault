@@ -111,6 +111,6 @@ export function planMotion(before: PlayerView | undefined, after: PlayerView,
 }
 
 /** Long sequences play faster, but never so fast that a move cannot be followed. */
-export function beatPace(count: number) {
-  return Math.max(0.55, Math.min(1, 9 / Math.max(1, count)));
+export function beatPace(count: number, quick = false) {
+  return Math.max(0.55, Math.min(1, 9 / Math.max(1, count))) * (quick ? .68 : 1);
 }

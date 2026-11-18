@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { beatDuration, combatContext, describeBeat, describeRolls, matchChanges, matchTableCues, presentationView } from './matchPresentation';
+import { beatDuration, gigVictoryHold, publicChangeLabel, combatContext, describeBeat, describeRolls, matchChanges, matchTableCues, presentationView } from './matchPresentation';
 import type { CardView, PlayerView } from './protocol';
 
 const card = (id: string, zone: string, extra: Partial<CardView> = {}): CardView => ({ instanceId: id, definitionId: id, cardName: id, zone, type: 'unit', faceDown: false, spent: false, power: 3, effectivePower: 3, cost: 2, ...extra });
@@ -62,6 +62,10 @@ describe('public move presentation', () => {
     expect(changes).toContainEqual(expect.objectContaining({ kind: 'played', label: 'Equipped', card: expect.objectContaining({ instanceId: 'gear' }) }));
     expect(changes).toContainEqual(expect.objectContaining({ kind: 'power', amount: 2, label: '+2 power' }));
     expect(changes).toContainEqual(expect.objectContaining({ kind: 'defeated', label: 'Defeated', seat: 'player' }));
+    const labels = changes.map(change => publicChangeLabel(change, after));
+    expect(labels).toContain('Power 3 → 5');
+    expect(labels).toContain('Equipped to attacker');
+    expect(describeBeat('rival', { move: 'playCard', args: { cardId: 'gear' } }, before, after).text).toBe('Equipped gear to attacker.');
     expect(matchChanges(before, after).find((change) => change.card?.instanceId === 'defender')?.label).toBe('To Trash');
   });
   it('describes playing a Program from Trash as a play rather than completed resolution', () => {
@@ -107,12 +111,19 @@ describe('public move presentation', () => {
   it('paces each move by what it shows and speeds up long sequences without rushing them', () => {
     const played = { gigRolls: [], changes: [{ kind: 'played' as const, seat: 'rival' as const, label: 'Played' }] };
     expect(beatDuration(1, { gigRolls: [] })).toBe(700);
+    expect(beatDuration(1, { gigRolls: [], tableCues: [{ cue: 'draw', seat: 'rival' }] })).toBeLessThan(700);
+    expect(beatDuration(1, played, true)).toBeLessThan(beatDuration(1, played));
+    expect(gigVictoryHold(fresh(), false)).toBe(0);
+    const win = { ...fresh(), gameEnded: true, winReason: 'gig_victory' };
+    expect(gigVictoryHold(win, false)).toBeGreaterThan(gigVictoryHold(win, true));
+    expect(gigVictoryHold({ ...win, winReason: 'concede' }, false)).toBe(0);
     expect(beatDuration(1, played)).toBeGreaterThan(beatDuration(1, { gigRolls: [] }));
     expect(beatDuration(1, { gigRolls: [], changes: [{ kind: 'defeated', seat: 'player', label: 'Defeated' }] })).toBeGreaterThanOrEqual(1200);
     expect(beatDuration(30, played)).toBeLessThan(beatDuration(1, played));
     expect(beatDuration(30, { gigRolls: [] })).toBeGreaterThanOrEqual(350);
     const roll = { dieId: 'die', dieType: 'd6', result: 3, seat: 'rival', origin: 'gainGig' } as const;
     const ordinary = beatDuration(10, { gigRolls: [roll] });
+    expect(beatDuration(10, { gigRolls: [roll] }, true)).toBe(ordinary);
     expect(ordinary).toBeGreaterThan(1000);
     // Includes the longest energetic throw, result hold, and docking.
     expect(ordinary).toBeLessThan(2000);

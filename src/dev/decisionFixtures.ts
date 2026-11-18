@@ -16,7 +16,7 @@ const adjustmentSources = {
   'Increase a Gig': 'industrial-assembly',
   'Decrease a Gig': 'trust-no-one',
 } as const;
-export const decisionFixtures = ['Turn order', 'Opening hand', 'Gig die', 'Main turn', 'Crowded table', 'Reaction', 'Forced payment', 'Target effect', 'Order effects', 'Card placement',
+export const decisionFixtures = ['Turn order', 'Opening hand', 'Gig die', 'Main turn', 'Table exchange', 'Crowded table', 'Reaction', 'Forced payment', 'Target effect', 'Order effects', 'Card placement',
   'Gig adjustment', 'Single Gig adjustment', 'Increase a Gig', 'Decrease a Gig', 'Overtime', 'Complete'] as const;
 export type DecisionFixture = typeof decisionFixtures[number];
 type Position = EngineState & { G: {
@@ -66,11 +66,15 @@ export function createDecisionFixture(name: DecisionFixture) {
     state.G.players[seat].eddieCardIds.push(id); state.G.players[seat].eddies++; return id;
   };
   const attacker = place('rival', 'field-operator', 'field', name === 'Main turn' || name === 'Overtime');
-  const defender = place('player', name === 'Reaction' ? 'mox-inciters' : 'corpo-security', 'field', name === 'Forced payment');
+  const defender = place('player', name === 'Table exchange' ? 'delamain-cab' : name === 'Reaction' ? 'mox-inciters' : 'corpo-security', 'field', name === 'Forced payment');
   place('player', 'delamain-cab', 'hand');
   place('player', 'floor-it', 'hand');
   place('player', 'kiroshi-optics', 'hand');
   eddie('player'); eddie('player');
+  if (name === 'Table exchange') {
+    for (let i = 0; i < 4; i++) eddie('player');
+    state.G.cardIndex[attacker].meta.spent = true;
+  }
   if (name === 'Crowded table') {
     const legend = state.G.players.player.zones.legendArea[0];
     state.G.cardIndex[legend].meta.faceDown = false;
@@ -139,15 +143,17 @@ export function createDecisionFixture(name: DecisionFixture) {
   return { session, snapshot: session.start() };
 }
 
-const saveKey = 'qa:command-bar:checkpoint';
-export function saveDecisionFixture(session: ReturnType<typeof createEngineSession>) {
+const fixtureKey = (initial: DecisionFixture) => initial === 'Turn order' ? 'qa:command-bar:checkpoint' : `qa:command-bar:checkpoint:${initial}`;
+export function saveDecisionFixture(session: ReturnType<typeof createEngineSession>, initial: DecisionFixture = 'Turn order') {
   const checkpoint = session.checkpoint();
-  localStorage.setItem(saveKey, JSON.stringify({ ...checkpoint, known: [...checkpoint.known].map(([id, seats]) => [id, [...seats]]) }));
+  localStorage.setItem(fixtureKey(initial), JSON.stringify({ ...checkpoint, legendMemory: [...(checkpoint.legendMemory ?? [])], known: [...checkpoint.known].map(([id, seats]) => [id, [...seats]]) }));
 }
-export function resumeDecisionFixture(): { session: ReturnType<typeof createEngineSession>; snapshot: MatchSnapshot } {
-  const saved = JSON.parse(localStorage.getItem(saveKey) ?? 'null');
-  if (!saved) return createDecisionFixture('Turn order');
-  const checkpoint: EngineCheckpoint = { ...saved, known: new Map(saved.known.map(([id, seats]: [string, Seat[]]) => [id, new Set(seats)])) };
+export function resumeDecisionFixture(initial: DecisionFixture = 'Turn order'): { session: ReturnType<typeof createEngineSession>; snapshot: MatchSnapshot } {
+  const saved = JSON.parse(localStorage.getItem(fixtureKey(initial)) ?? 'null');
+  if (!saved) return createDecisionFixture(initial);
+  const checkpoint: EngineCheckpoint = { ...saved,
+    legendMemory: Array.isArray(saved.legendMemory) ? new Map(saved.legendMemory) : undefined,
+    known: new Map(saved.known.map(([id, seats]: [string, Seat[]]) => [id, new Set(seats)])) };
   const session = createEngineSession(decisionSetup, undefined, checkpoint);
   return { session, snapshot: session.start() };
 }

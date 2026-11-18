@@ -1,5 +1,5 @@
 /** Short synthesised table cues, including fallbacks for recorded effects. */
-export type TableCue = 'dice-impact' | 'dice-launch' | 'dice-roll' | 'card-play' | 'unit-kill' | 'deal' | 'draw' | 'play' | 'eddie' | 'hit' | 'defeat' | 'gig' | 'gig-steal' | 'turn' | 'win' | 'lose' | 'equip' | 'program' | 'call' | 'attack' | 'select' | 'ready' | 'match-opening' | 'pack-open' | 'pack-reveal' | 'pack-rare' | 'pack-foil' | 'reward-lock' | 'act-arrival';
+export type TableCue = 'dice-impact' | 'dice-launch' | 'dice-roll' | 'card-play' | 'unit-kill' | 'deal' | 'draw' | 'play' | 'eddie' | 'hit' | 'defeat' | 'gig' | 'gig-steal' | 'turn' | 'win' | 'lose' | 'equip' | 'response' | 'program' | 'call' | 'attack' | 'select' | 'ready' | 'match-opening' | 'pack-open' | 'pack-reveal' | 'pack-rare' | 'pack-foil' | 'reward-lock' | 'act-arrival';
 
 const TAU = Math.PI * 2;
 const tone = (hz: number, t: number) => Math.sin(TAU * hz * t);
@@ -23,6 +23,7 @@ const recipes: Record<Exclude<TableCue, keyof typeof recordedFallback>, Recipe> 
     + note(392, t, .02, 7) * .5 + note(587.33, t, .09, 7) * .58 + note(880, t, .15, 9) * .52 + note(1174.66, t, .21, 11) * .33 },
   'reward-lock': { seconds: .4, gain: .35, smooth: .8, voice: (t, n) => note(180, t, 0, 30) + n * Math.exp(-70 * t) * .4 + note(659.25, t, .07, 12) * .6 + note(987.77, t, .12, 12) * .3 },
   'act-arrival': { seconds: 1.35, gain: .35, smooth: .9, voice: t => note(130.81, t, 0, 3) * .7 + note(261.63, t, .12, 4) * .6 + note(392, t, .25, 4) * .5 + note(523.25, t, .4, 4) * .4 },
+  response: { seconds: .19, gain: .29, smooth: .5, voice: t => note(740, t, 0, 41) + note(1110, t, .055, 42) * .7 },
   equip: { seconds: .28, gain: .5, smooth: .65, voice: (t, n) => note(1450, t, 0, 65) * .55 + note(2200, t, .055, 38) * .4 + n * Math.exp(-45 * t) * .3 },
   program: { seconds: .42, gain: .38, smooth: .3, voice: (t, n) => Math.sin(fall(-900, 1600, 6, t)) * Math.sin(Math.PI * t / .42) ** 2 * .4 + note(1568, t, .16, 20) * .4 + n * Math.exp(-18 * t) * .2 },
   // A foil turn followed by a short, pitched reveal.

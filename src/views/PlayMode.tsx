@@ -237,7 +237,7 @@ function FreePlayMode({ scope, draft, saved, requestedMatch, initialRival, initi
       {!practiceResult && <ReactiveRoom />}
       {snapshot && !lobby ? <>
         <PlayTable key={snapshot.matchId} scope={scope} snapshot={presentation.displayed ?? snapshot} names={snapshot.names}
-          playback={presentation.playback} feedback={presentation.feedback} reduced={presentation.reduced} cue={sound.cue}
+          playback={presentation.playback} feedback={presentation.feedback} quick={presentation.quick} togglePace={presentation.togglePace} reduced={presentation.reduced} cue={sound.cue}
           freePlay={rival && { rival: <FreePlayRivalSeat profile={rival} deckName={snapshot.names.rival} quote={quote}
             enabled={dialogue} toggle={toggleDialogue} />, resultQuote }}
           busy={busy || presentation.playing} error={error} send={send} rematch={rematch} edit={onEdit} circuit={openCircuit}

@@ -16,15 +16,15 @@ import { PlayGigRoll } from './PlayGigRoll';
 import { GigZones, PlayerBench, RivalBench, SeatField } from './PlayMat';
 import { PlayChoices } from './PlayChoices';
 import { PlayDecisionPanel } from './PlayDecisionPanel';
-import { useTableDrag } from './useTableDrag';
-import { useTableMotion } from './useTableMotion';
+import { useTableDrag, type TableDrag } from './useTableDrag';
+import { useTableMotion, type CardFlightOrigin } from './useTableMotion';
 import { useMatchOpening } from './useMatchOpening';
 import { useMatchSound } from './useMatchSound';
 import { beatPace } from '../lib/play/matchMotion';
 import type { TableSoundCue } from '../lib/play/tableSound';
 import { Rules } from '../components/bits';
 import { CombatArrow, CombatBanner } from './PlayCombat';
-import { PlayPresentation, type MatchPlayback } from './PlayPresentation';
+import { CardPowerReceipt, PlayPresentation, type MatchPlayback } from './PlayPresentation';
 import { MatchResult } from './PlayResult';
 import { CampaignMatchResult, type CampaignResultDetails } from './CampaignMatchResult';
 import { PracticeMatchResult } from './PracticeMatchResult';
@@ -91,12 +91,12 @@ function ContextMenu({ context, children, close }: { context: Context; children:
   </div>, document.body);
 }
 
-export function PlayTable({ scope, snapshot, names, busy: saving, error, send, rematch, edit, circuit, playback, feedback, reduced, controls, navigation, audio, cue, campaign, freePlay, practiceLobby }: {
+export function PlayTable({ scope, snapshot, names, busy: saving, error, send, rematch, edit, circuit, playback, feedback, reduced, quick = false, togglePace, controls, navigation, audio, cue, campaign, freePlay, practiceLobby }: {
   campaign?: CampaignResultDetails & { rival: ReactNode; act?: number };
   freePlay?: { rival: ReactNode; resultQuote?: { rival: string; text: string } };
   cue?: TableSoundCue;
   playback?: MatchPlayback; feedback?: MatchBeat; scope: string; snapshot: MatchSnapshot; names: Record<Seat, string>; busy: boolean; error?: string;
-  send: (move: Move) => void; rematch: () => void; edit: () => void; circuit?: () => void; reduced: boolean; controls?: ReactNode; navigation?: ReactNode; audio?: ReactNode;
+  send: (move: Move) => void; rematch: () => void; edit: () => void; circuit?: () => void; reduced: boolean; quick?: boolean; togglePace?: () => void; controls?: ReactNode; navigation?: ReactNode; audio?: ReactNode;
   practiceLobby?: () => void;
 }) {
   const { view } = snapshot;
@@ -152,6 +152,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
   const panelId = useId();
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const grid = useRef<HTMLDivElement>(null);
+  const cardRelease = useRef<CardFlightOrigin | null>(null);
   const table = useRef<HTMLDivElement>(null);
   const rolls = playback?.beat.gigRolls;
   const rolling = !!rolls?.length;
@@ -203,11 +204,12 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     }
   }, [opening.showing, choice?.type]);
   // Movement follows each public frame: the player's own result, then every rival move in turn.
+  const pace = beatPace(playback?.count ?? 1, quick);
   useTableMotion(table, { key: opening.showing ? '' : `${stateKey}:${playback?.beat.id ?? ''}`, view, beat: playback?.beat ?? feedback,
     reducedBeats: reduced && snapshot.presentation ? [...(snapshot.presentation.feedback ? [snapshot.presentation.feedback] : []), ...snapshot.presentation.beats] : undefined,
-    hasRolls: snapshot.gigRolls.length > 0, enabled: !reduced, pace: playback ? beatPace(playback.count) : 1,
+    cardRelease, hasRolls: snapshot.gigRolls.length > 0, enabled: !reduced, pace,
     openingHand: !!snapshot.openingDeal && setup && !opening.skipped, sound: cue });
-  useMatchSound(snapshot, playback?.beat ?? feedback, reduced, cue, opening.showing);
+  useMatchSound(snapshot, playback?.beat ?? feedback, reduced, cue, opening.showing, pace);
 
   useEffect(() => {
     if (!focusAfter.current) return;
@@ -238,10 +240,12 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
   function commit(intent: Intent, thrown?: { dieId: string; release: PointerRelease }) {
     const action = actions[intent.action];
     if (busy || submitLock.current === stateKey || !action || !isReady(action.fields(intent.picks), intent.picks)) return;
+    cardRelease.current = null;
     submitLock.current = stateKey;
     setDieThrow(thrown && { ...thrown, matchId: snapshot.matchId, fromState: view.stateID });
     clearHover(); setContext(undefined); setNotice('');
     send(action.move(intent.picks));
+    return true;
   }
   // A rejected command is safe to retry, without permitting a double submission while pending.
   useEffect(() => { if (!busy) submitLock.current = undefined; }, [busy, error, stateKey]);
@@ -251,7 +255,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     if (!action || busy) return;
     clearHover(); setContext(undefined); setNotice(''); setPanel(undefined);
     focusAfter.current = true;
-    if (immediate && (!choice || !action.fields({}).length) && !action.fields(intent.picks).some((field) => field.id === 'payment') && isReady(action.fields(intent.picks), intent.picks)) commit(intent);
+    if (immediate && (!choice || !action.fields({}).length) && !action.fields(intent.picks).some((field) => field.id === 'payment') && isReady(action.fields(intent.picks), intent.picks)) return commit(intent);
     else setChoice(intent.action, intent.picks);
   }
   function chooseValue(fieldId: string, value: string) {
@@ -284,29 +288,39 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     clearHover(); setContext(undefined); focusReturn.current = trigger; setInspection({ state: stateKey, card: !card.definitionId ? rememberedLegends.get(card.instanceId) ?? card : card });
   }
   function closeMenu() { context?.trigger?.focus({ preventScroll: true }); setContext(undefined); }
-  function handleDrop(card: CardView, destination: Destination, release: PointerRelease) {
+  function handleDrop(card: CardView, destination: Destination, release: PointerRelease, held?: TableDrag) {
     const intents = dropIntents(actions, card, destination);
     if (intents.length === 1) {
       const [intent] = intents;
-      if (actions[intent.action].id !== 'gainGig') { beginIntent(intent, true); return; }
+      if (actions[intent.action].id !== 'gainGig') {
+        const sent = beginIntent(intent, true);
+        if (sent && held && actions[intent.action].id === 'playCard') {
+          cardRelease.current = { id: card.instanceId, fromState: view.stateID, width: held.width,
+            x: release.x + (.5 - held.grabX) * held.width, y: release.y + (.5 - held.grabY) * held.height };
+        }
+        return !!sent;
+      }
       const field = table.current?.querySelector('[data-zone="field:player"]')?.getBoundingClientRect();
-      commit(intent, field?.width && field.height ? { dieId: card.instanceId, release: releaseOnField(release, field) } : undefined);
+      return !!commit(intent, field?.width && field.height ? { dieId: card.instanceId, release: releaseOnField(release, field) } : undefined);
     }
     else if (intents.length > 1) {
       const trigger = grid.current?.querySelector<HTMLElement>(`[data-board-card="${CSS.escape(card.instanceId)}"]`);
       if (trigger) showMenu(card, trigger, intents);
     }
+    return false;
   }
   const gigChoice = selected?.id === 'gainGig';
   const spatial = new Set(['playCard', 'sellCard', 'goSolo', 'attackUnit', 'attackRival', 'useBlocker']);
   const canDrag = (card: CardView) => cardIntents(actions, card.instanceId).some((intent) => gigChoice ? actions[intent.action].id === 'gainGig' : spatial.has(actions[intent.action].id));
-  const dragControl = useTableDrag({ stateKey, enabled: !busy && !view.gameEnded && (!selected || gigChoice),
+  const dragControl = useTableDrag({ stateKey, reduced, enabled: !busy && !view.gameEnded && (!selected || gigChoice),
     eligible: canDrag,
     accept: (card, destination) => dropIntents(actions, card, destination).length > 0,
     drop: handleDrop, begin: () => { clearHover(); setContext(undefined); setNotice(''); },
     rejected: () => setNotice(gigChoice ? 'Drop a die onto your field to roll it.' : 'Card returned. Drop onto a highlighted destination.'),
   });
   const drag = dragControl.drag;
+  const returning = dragControl.returning;
+  const held = drag ?? returning?.drag;
   const zoneKeys = ['field:player', 'eddies:player', 'program', 'gigs:rival'];
   const dropZones = new Set(drag ? zoneKeys.filter((key) => dropIntents(actions, drag.card, { key }).length) : []);
   const dropOver = drag?.destination?.key;
@@ -364,6 +378,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
           if (playback || dragControl.suppressClick()) return;
           cue?.('select');
           if (pickOnBoard(card.instanceId)) return;
+          if ((event.target as HTMLElement).closest('.play-power')) { inspect(card, event.currentTarget); return; }
           const intents = availableIntents(card);
           const dialog = event.currentTarget.closest('dialog');
           const gearTrigger = attachedGear && dialog?.previousElementSibling;
@@ -374,14 +389,15 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
           else showMenu(card, event.currentTarget, intents);
         }}>
         <span className="play-card-art"><CardFace card={card} />
-          {power != null && <span className="play-power" aria-hidden="true">{power}</span>}
+          {power != null && <span className="play-power" title="Inspect power and attached Gear" aria-hidden="true">{power}</span>}
           {repriced && <span className="play-cost" aria-hidden="true">{cost} €$</span>}
           {!legendSlot && state && <small>{visibleRole ?? state}</small>}
         </span><span className="play-card-name">{name}</span>
       </button>
       {legendSlot && slotNote && <span className="play-legend-note" aria-hidden="true">{slotNote}</span>}
       <button type="button" className="play-details" disabled={!!playback} aria-label={`Details for ${name}`} title="Inspect card · I" onClick={(event) => inspect(card, event.currentTarget)}>i</button>
-      {feedback && change && (change.kind === 'power' || change.kind === 'called') && <span className="play-float" key={feedback.id} data-tone={(change.amount ?? 0) < 0 ? 'down' : 'up'} aria-hidden="true">{change.label}</span>}
+      {power != null && <CardPowerReceipt beat={feedback} id={card.instanceId} power={power} />}
+      {feedback && change?.kind === 'called' && <span className="play-float" key={feedback.id} aria-hidden="true">{change.label}</span>}
     </div>;
   }
   function actionButton(index: number, label?: string, className = 'btn quiet') {
@@ -441,6 +457,9 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
           <div className="play-more-actions">
             {!view.gameEnded && <button type="button" className="btn quiet" aria-expanded={panel === 'actions'} aria-controls={`${panelId}-actions`}
               disabled={!!playback} onClick={() => { closeOptions(); setPanel(panel === 'actions' ? undefined : 'actions'); }}>All actions</button>}
+            {togglePace && <button type="button" className="btn quiet" aria-pressed={quick} onClick={togglePace}>
+              Quick pace <b>{quick ? 'On' : 'Off'}</b>
+            </button>}
             {(audio || radioContainer) && <div className="play-match-audio" role="group" aria-label="Audio">
               {radioContainer && <button type="button" className="btn quiet" aria-expanded={radioOpen} aria-controls={`${panelId}-radio`}
                 onClick={() => { closeOptions(); setRadioOpen(!radioOpen); }}>Afterhours Radio</button>}
@@ -548,7 +567,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
       {view.gameEnded && <MatchResult view={view} report={snapshot.report} receipt={snapshot.circuit?.receipt} circuit={circuit} title={decisionTitle} reason={winReasons[view.winReason ?? ''] ?? 'Match ended'} busy={busy} rematch={rematch} edit={edit} quote={freePlay?.resultQuote} />}
       <span className="sr-only" role="status">{notice}{busy ? ' Resolving move.' : ''}</span>
       {notice && <p className="play-table-notice">{notice}</p>}
-      {rolling && <PlayGigRoll key={view.stateID} rolls={rolls} thrown={activeThrow} cue={cue} onComplete={playback?.finishRoll} />}
+      {rolling && <PlayGigRoll key={view.stateID} rolls={rolls} thrown={activeThrow} cue={cue} onComplete={playback?.finishRoll} resultHold={playback?.resultHold} />}
     </div>
     {opening.showing && <section className="play-intro" aria-labelledby={`${panelId}-intro`} data-reduced={reduced || undefined}
       style={{ '--play-opening-duration': `${opening.duration}ms` } as CSSProperties}>
@@ -570,7 +589,17 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
         Cost <b>{hovered.card.effectiveCost ?? hovered.card.cost ?? '—'} €$</b>{hovered.card.spent && ' · Spent'}{hovered.card.hasLag && ' · Lag'}</p>}
       {hovered.landscape && vaultCard(hovered.card) && <div className="play-hover-rules"><Rules text={vaultCard(hovered.card)!.text} /></div>}
       <small>I to inspect rules and effects</small></div></div>, document.body)}
-    {drag && createPortal(<div className="play-drag-ghost" data-kind={gigChoice ? 'die' : undefined} style={gigChoice ? { left: drag.x - 25, top: drag.y - 25, width: 50 } : { left: drag.x + 12, top: drag.y - 35, width: Math.max(65, Math.min(drag.width, 110)) }} aria-hidden="true">{gigChoice ? <DieFace type={drag.card.definitionId} /> : <CardFace card={drag.card} />}<span>{gigChoice ? (drag.destination ? 'Release to roll' : 'Drag onto your field') : (drag.destination ? 'Release to choose this action' : 'Choose a highlighted destination')}</span></div>, document.body)}
+    {held && createPortal(<div className="play-drag-ghost" data-kind={gigChoice ? 'die' : 'card'}
+      data-returning={!!returning || undefined} data-over={!!held.destination || undefined}
+      onAnimationEnd={returning ? dragControl.finishReturn : undefined}
+      style={gigChoice ? { left: held.x - 25, top: held.y - 25, width: 50 } : {
+        width: held.width, height: held.height, transformOrigin: `${held.grabX * 100}% ${held.grabY * 100}%`,
+        '--held-pose': `translate3d(${held.x - held.grabX * held.width}px, ${held.y - held.grabY * held.height}px, 0) rotate(${held.tilt}deg)`,
+        '--home-pose': returning && `translate3d(${returning.left}px, ${returning.top}px, 0) rotate(${returning.rotation}deg)`,
+      } as CSSProperties} aria-hidden="true">
+      {gigChoice ? <DieFace type={held.card.definitionId} /> : <CardFace card={held.card} />}
+      {!returning && <span className="play-drag-hint">{gigChoice ? (held.destination ? 'Release to roll' : 'Drag onto your field') : (held.destination ? 'Release to choose this action' : 'Choose a highlighted destination')}</span>}
+    </div>, document.body)}
     {combat && <CombatArrow view={view} root={grid} />}
     {shownArrow && createPortal(<svg className="play-target-arrow" aria-hidden="true"><defs><marker id="play-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 6 3 0 6" /></marker></defs><path d={`M${shownArrow.x1} ${shownArrow.y1} Q${shownArrow.x1} ${shownArrow.y2} ${shownArrow.x2} ${shownArrow.y2}`} markerEnd="url(#play-arrowhead)" /></svg>, document.body)}
     {inspected && <CardInspection card={inspected} cards={cards} hostName={cards.find((card) => card.instanceId === inspected.attachedToId)?.cardName ?? undefined} shortcuts={[]} onClose={() => { setInspection(undefined); focusReturn.current?.focus({ preventScroll: true }); }} />}
