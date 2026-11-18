@@ -71,8 +71,17 @@ test('simultaneous player and rival rolls complete without leaving hidden dice',
   await expect(page.locator('[data-roll-pending]')).toHaveCount(0);
 });
 
-test('a real drag rolls through the engine, reveals its result, and finishes presentation', async ({ page }) => {
+async function expectTableToFit(page: Page) {
+  await expect.poll(() => page.locator('.play-table').evaluate(table => {
+    const bottom = table.getBoundingClientRect().bottom + window.scrollY;
+    return bottom <= innerHeight && document.documentElement.scrollHeight <= innerHeight;
+  })).toBe(true);
+}
+
+test('a real drag rolls and docks without scrolling the laptop table', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 690 });
   await gigChoice(page);
+  await expectTableToFit(page);
   const source = page.getByRole('button', { name: 'Roll d12', exact: true }).last();
   const box = (await source.boundingBox())!;
   const field = (await page.locator('[data-zone="field:player"]').boundingBox())!;
@@ -89,6 +98,7 @@ test('a real drag rolls through the engine, reveals its result, and finishes pre
   await expect(page.locator('.play-gig-roll-layer')).toHaveCount(0, { timeout: 8000 });
   await expect(page.getByRole('button', { name: `d12 Gig · ${result}`, exact: true })).toBeVisible();
   await expect(page.locator('[data-roll-pending]')).toHaveCount(0);
+  await expectTableToFit(page);
 });
 
 test('reduced motion interrupts a roll and keeps the authoritative result visible', async ({ page }) => {

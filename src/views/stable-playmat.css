@@ -1,15 +1,29 @@
 /* The viewport sizes the table. Prompts and pieces fill its zones. */
 html:has(.play-direct) { scrollbar-gutter: stable; }
 .play-direct { overflow-anchor: none; }
-.play-mode:has(.play-direct) {
-  --play-card-width: clamp(60px, min(8vw, calc((100svh - 416px) / 5.25)), 150px);
-}
 .play-direct .play-table {
-  --play-command-height: 100px;
+  --play-available-height: calc(100dvh - 100px);
+  --play-command-height: clamp(72px, calc(var(--play-available-height) * .135), 100px);
+  --play-command-used: var(--play-command-height);
+  --play-fixer-die: clamp(29px, min(3.3vw, calc(var(--play-available-height) * .068)), 48px);
+  --play-gig-die: clamp(34px, min(3.5vw, calc(var(--play-available-height) * .07)), 54px);
+  --play-gigs-height: calc(var(--play-gig-die) + 10px);
+  --play-rival-portrait-size: clamp(70px, calc(var(--play-available-height) * .166), 130px);
+  --play-rival-height: max(var(--play-rival-portrait-size), calc(var(--play-fixer-die) * 2 + 20px), calc(var(--play-legend-slot-height) + 23px));
+  --play-player-dock-height: max(var(--play-dock-height), calc(var(--play-fixer-die) * 2 + 22px));
+
+  /* Reserve the measured command bar, benches, dice and 33px of padding, borders and gaps.
+     Size the cards for both constraints: two fields plus the dock, or two fields plus a taller hand. */
+  --play-card-room: calc(var(--play-available-height) - var(--play-rival-height) - var(--play-gigs-height) - var(--play-command-used) - 33px);
+  --play-card-width: clamp(44px, min(8vw,
+    calc((var(--play-card-room) - var(--play-player-dock-height) - 32px) / 2.8),
+    calc((var(--play-card-room) - 46px) / 4.368)), 150px);
+  --play-hand-width: calc(var(--play-card-width) * 1.12);
+  --play-legend-width: var(--play-legend-art);
+  --play-pile-width: clamp(34px, calc(var(--play-card-width) * .5), 74px);
   --play-field-height: calc(var(--play-card-width) * 1.4 + 16px);
-  --play-rival-height: max(clamp(94px, 12.25svh, 130px), calc(var(--play-fixer-die) * 2 + 20px), calc(var(--play-legend-slot-height) + 23px));
   --play-hand-height: calc(var(--play-hand-width) * 1.4 + 14px);
-  --play-bench-height: max(var(--play-hand-height), var(--play-dock-height), calc(var(--play-fixer-die) * 2 + 22px));
+  --play-bench-height: max(var(--play-hand-height), var(--play-player-dock-height));
 }
 .play-direct .play-bench[data-seat="rival"] { block-size: var(--play-rival-height); }
 .play-direct .play-bench[data-seat="player"] {
@@ -24,7 +38,7 @@ html:has(.play-direct) { scrollbar-gutter: stable; }
 .play-direct .play-mat-trash .play-trash-trigger { inline-size: 100%; }
 .play-direct .play-trash-trigger > small { position: absolute; inset: auto 0 -10px; text-align: center; }
 .play-direct .play-trash-trigger { position: relative; }
-.play-direct .play-gigs { block-size: calc(var(--play-gig-die) + 10px); }
+.play-direct .play-gigs { block-size: var(--play-gigs-height); }
 .play-direct .play-gigs .play-dice { align-self: stretch; scrollbar-width: none; }
 .play-direct .play-hand .play-card-row {
   block-size: var(--play-hand-height);
@@ -63,13 +77,13 @@ html:has(.play-direct) { scrollbar-gutter: stable; }
 }
 
 .play-direct .play-command {
-  block-size: var(--play-command-height);
-  min-block-size: 0;
+  display: grid;
+  block-size: auto;
+  min-block-size: var(--play-command-height);
 }
 .play-direct .play-command .play-command-inner {
   position: relative;
-  block-size: 100%;
-  min-block-size: 0;
+  block-size: auto;
   flex-wrap: nowrap;
 }
 .play-command-content {
@@ -114,6 +128,8 @@ html:has(.play-direct) { scrollbar-gutter: stable; }
   inset: auto 0 calc(100% + 6px) auto;
   display: grid;
   width: min(670px, 100%);
+  max-block-size: calc(var(--play-rival-height) + var(--play-field-height) + var(--play-gigs-height) + 4px);
+  grid-template-rows: auto minmax(0, 1fr);
   border: 1px solid #ff8cbb70;
   border-radius: 8px;
   background: linear-gradient(145deg, #241925, #151019);
@@ -130,7 +146,7 @@ html:has(.play-direct) { scrollbar-gutter: stable; }
 }
 .play-decision-panel-heading h4 { margin: 0; color: var(--color-ticket); font: italic 800 20px/1.1 var(--font-display); text-transform: uppercase; }
 .play-direct .play-decision-panel-heading .btn { min-height: 30px; }
-.play-decision-panel-body { display: grid; gap: 9px; padding: 10px 12px; overflow-wrap: anywhere; }
+.play-decision-panel-body { display: grid; gap: 9px; padding: 10px 12px; overflow: auto; overscroll-behavior: contain; overflow-wrap: anywhere; }
 .play-decision-panel-body > * { min-width: 0; }
 .play-decision-panel .play-active-choice .play-pick-list { flex-wrap: wrap; max-height: none; overflow: visible; }
 .play-decision-panel .play-active-choice .play-option { max-width: 100%; }
@@ -150,21 +166,7 @@ html:has(.play-direct) { scrollbar-gutter: stable; }
   width: min(980px, 100%);
 }
 
-@media (max-width: 1180px) {
-  .play-direct .play-table { --play-command-height: 172px; }
-  .play-gig-adjustment-intent { flex-basis: 100%; }
-}
-@media (max-width: 1060px) {
-  .play-direct .play-bench[data-seat="rival"] { block-size: calc(var(--play-rival-height) + 24px); }
-  .play-direct .play-bench[data-seat="player"] {
-    grid-template-columns: var(--play-crew-width) 1fr;
-    grid-template-rows: var(--play-bench-height) var(--play-hand-height);
-    block-size: auto;
-  }
-}
 @media (max-width: 900px) {
-  .play-direct .play-bench[data-portrait] { block-size: calc(var(--play-rival-height) * 2 + 6px); }
-  .play-direct .play-table { --play-command-height: 212px; }
   .play-command-content { flex-wrap: wrap; }
   .play-gig-adjustment-values { max-width: min(100%, 225px); }
 }
