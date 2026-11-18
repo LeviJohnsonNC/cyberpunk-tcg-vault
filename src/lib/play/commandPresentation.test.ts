@@ -47,7 +47,7 @@ describe('contextual decision presentation', () => {
     const state = view(); state.activePlayerId = 'rival';
     state.attackState = { attackerId: 'rival-unit', step: 'react', rivalId: 'player' };
     state.prompt.availableMoves = [{ moveId: 'resolveAttack', inputSpec: { type: 'none' } }];
-    expect(present(state)).toMatchObject({ variant: 'combat', attention: 'mandatory', title: 'Respond to the attack' });
+    expect(present(state)).toMatchObject({ variant: 'combat', attention: 'mandatory', title: 'Your response', detail: 'No reactions available' });
     expect(matchActions(state)[0].move({})).toEqual({ move: 'resolveAttack', args: { pass: true } });
     expect(commandPresentation({ view: state, actions: matchActions(state), playback: true }).attention).toBe('waiting');
   });

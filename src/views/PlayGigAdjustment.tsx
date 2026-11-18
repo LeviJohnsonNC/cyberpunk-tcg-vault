@@ -7,18 +7,7 @@ import { DieFace } from './PlayDice';
 import { PlayDecisionPanel } from './PlayDecisionPanel';
 import './play-gig-adjustment.css';
 
-type AdjustmentRules = { direction?: string; maxAmount?: number; chooseUpTo?: boolean };
-type AdjustmentPayload = AdjustmentRules & { adjustGig?: AdjustmentRules; source?: { displayName?: string } };
-
-function adjustmentInstruction(rules?: AdjustmentRules) {
-  if (rules?.maxAmount == null) return 'Choose a new value for the selected Gig.';
-  const verb = rules.direction === 'increase' ? 'Increase' : rules.direction === 'decrease' ? 'Decrease' : 'Change';
-  return `${verb} the selected Gig by ${rules.chooseUpTo || rules.maxAmount > 1 ? 'up to ' : ''}${rules.maxAmount}.`;
-}
-
-function formatDelta(delta: number) {
-  return delta < 0 ? `−${Math.abs(delta)}` : `+${delta}`;
-}
+type AdjustmentPayload = { source?: { displayName?: string } };
 
 export function PlayGigAdjustment({ view, action, picks, fields, active, cards, busy, select, changeGig, submit, inspect, alternatives, context }: {
   view: PlayerView; action: MatchActionForm; picks: Picks; fields: PickField[]; active?: PickField;
@@ -44,43 +33,44 @@ export function PlayGigAdjustment({ view, action, picks, fields, active, cards, 
       <div className="play-gig-adjustment-intent">
         {source && <button type="button" className="play-tray-source" disabled={busy} aria-label={`Inspect ${sourceName ?? 'source card'}`} onClick={event => inspect(source, event.currentTarget)}><CardFace card={source} /></button>}
         <div>
-          {sourceName && <span className="play-gig-adjustment-source-name">{sourceName}</span>}
           <h3>{choosingDie ? 'Choose a Gig to adjust' : 'Adjust a Gig value'}</h3>
-          <p>{choosingDie ? 'Select a highlighted die or choose from the list.' : adjustmentInstruction(payload?.adjustGig ?? payload)}</p>
         </div>
       </div>
       {!choosingDie && target && <>
-        <div className="play-gig-adjustment-die" role="group" aria-label={`${target.seat === 'player' ? 'Your' : 'Rival'} ${target.die.definitionId}, current value ${target.die.power}`}>
-          <span>Selected Gig</span>
-          <DieFace seat={target.seat} type={target.die.definitionId} value={target.die.power} />
-          <b>{target.seat === 'player' ? 'Your' : 'Rival'} {target.die.definitionId}</b>
-        </div>
         <fieldset className="play-gig-adjustment-values" data-pick-field="value" disabled={busy}>
-          <legend>Choose new value</legend>
+          <legend className="sr-only">Choose a new value for {target.seat === 'player' ? 'your' : 'the rival’s'} {target.die.definitionId}, currently {target.die.power}</legend>
           <div className="play-gig-adjustment-options">
+            <div className="play-gig-adjustment-die" aria-hidden="true">
+              <DieFace seat={target.seat} type={target.die.definitionId} value={target.die.power} />
+              <b>{target.seat === 'player' ? 'Your' : 'Rival'} {target.die.definitionId}</b>
+            </div>
+            <span className="play-gig-adjustment-arrow" aria-hidden="true">→</span>
             {valueField?.options.map(option => {
               const change = Number(option.id) - target.die.power;
               const label = change ? `Set Gig value to ${option.label}, ${change > 0 ? 'increase' : 'decrease'} ${Math.abs(change)}` : `Keep Gig value at ${option.label}`;
               return <button key={option.id} className="btn quiet" type="button" data-pick-option={option.id}
                 aria-label={label} aria-pressed={option.id === value?.id} onClick={() => { if (option.id !== value?.id) select('value', option.id); }}>
-                <strong>{option.label}</strong><span>{change ? formatDelta(change) : 'Keep'}</span>
+                <strong>{option.label}</strong>{change === 0 && <span>Keep</span>}
               </button>;
             })}
             {!valueField?.options.length && <span>No legal new values.</span>}
           </div>
+          {delta === 0 && alternatives && <p className="play-choice-detail">Keep selects this Gig. Decline skips the selection.</p>}
         </fieldset>
         {target.streetCred !== undefined && <div className="play-gig-adjustment-preview">
           <span>{target.seat === 'player' ? 'Your' : 'Rival'} Street Cred</span>
           <output aria-live="polite" aria-atomic="true">
-            <b>{target.streetCred}</b><span aria-hidden="true">→</span><span className="sr-only"> to </span>
-            <strong key={value?.id} data-preview-selected={value ? true : undefined}>{delta === undefined ? '—' : target.streetCred + delta}</strong>
-            {delta !== undefined && delta !== 0 && <small>{formatDelta(delta)}</small>}
+            <b>{target.streetCred}</b>
+            {delta !== undefined && delta !== 0 && <>
+              <span aria-hidden="true">→</span><span className="sr-only"> to </span>
+              <strong key={value?.id} data-preview-selected="true">{target.streetCred + delta}</strong>
+            </>}
           </output>
         </div>}
       </>}
       {!choosingDie && !target && <p>The selected Gig is unavailable.</p>}
       <div className="play-gig-adjustment-actions">
-        {(choosingDie || context) && <PlayDecisionPanel label={choosingDie ? 'Options' : 'Combat details'}
+        {(choosingDie || context) && <PlayDecisionPanel label={choosingDie ? 'Gig list' : 'Combat details'}
           title={choosingDie ? 'Eligible Gigs' : 'Combat details'}>
           {context}
           {choosingDie && <fieldset className="play-gig-adjustment-dice" data-pick-field="die" disabled={busy}>
@@ -96,7 +86,7 @@ export function PlayGigAdjustment({ view, action, picks, fields, active, cards, 
             {!dieField.options.length && <span>No eligible Gigs.</span>}
           </fieldset>}
         </PlayDecisionPanel>}
-        {!choosingDie && <button className="btn play-confirm" data-confirm-move="resolveAdjustGig" disabled={busy || !ready}>Apply adjustment</button>}
+        {!choosingDie && <button className="btn play-confirm" data-confirm-move="resolveAdjustGig" disabled={busy || !ready}>{delta === 0 && target ? `Keep ${target.die.definitionId} at ${value?.label}` : 'Set value'}</button>}
         {!choosingDie && !!dieField?.options.length && <button className="btn quiet" type="button" disabled={busy} onClick={changeGig}>Change Gig</button>}
         {alternatives}
       </div>

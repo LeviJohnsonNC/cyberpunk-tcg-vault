@@ -104,7 +104,7 @@ export interface PlayerView {
   attackState?: { attackerId: string; defenderId?: string; step: string; rivalId?: Seat; redirectedTargets?: (string | null)[]; fightResolution?: { result: FightResult; attackerPower?: number; defenderPower?: number } } | null;
 }
 
-export interface MatchLogEntry { id: number; turn: number; seat: Seat; text: string }
+export interface MatchLogEntry { id: number; turn: number; seat: Seat; text: string; changes?: string[] }
 
 export interface GigRoll {
   dieId: string;
@@ -142,6 +142,7 @@ export interface MatchBeat extends MatchFrame {
   id: number;
   seat: Seat;
   text: string;
+  summary?: string;
   source?: CardView;
   targetIds: string[];
   changes: MatchChange[];

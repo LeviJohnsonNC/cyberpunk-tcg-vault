@@ -25,19 +25,19 @@ export function commandPresentation({ view, actions, selected, active, busy = fa
     cueKey: `${view.stateID}:${variant}:${selected?.id ?? ''}:${active?.id ?? ''}`,
   });
   if (view.gameEnded) return show('complete', view.winnerId === 'player' ? 'You win' : view.winnerId === 'rival' ? 'Rival wins' : 'Match complete', undefined, 'normal');
-  if (rolling) return show('waiting', 'Rolling Gigs', 'The dice are resolving.', 'waiting');
-  if (playback) return show('waiting', combat ? 'Resolving combat' : 'Watching moves', 'The move is playing out.', 'waiting');
-  if (busy) return show('waiting', 'Resolving move', 'Your choice is being resolved.', 'waiting');
-  if (!actions.length) return show('waiting', view.prompt.status === 'waiting' ? 'Rival is deciding' : 'Resolving effects', 'Waiting for the next action.', 'waiting');
-  if (choice?.type === 'chooseFirstPlayer') return show('turn-order', 'Choose turn order', 'Decide who takes the first turn.', 'mandatory');
-  if (view.gamePhase === 'setup' && offered('keepHand')) return show('opening-hand', 'Keep this hand?', actions.find(action => action.id === 'mulligan')?.detail, 'mandatory');
+  if (rolling) return show('waiting', 'Rolling Gigs', undefined, 'waiting');
+  if (playback) return show('waiting', combat ? 'Resolving combat' : 'Watching moves', undefined, 'waiting');
+  if (busy) return show('waiting', 'Resolving move', undefined, 'waiting');
+  if (!actions.length) return show('waiting', view.prompt.status === 'waiting' ? 'Rival is deciding' : 'Resolving effects', undefined, 'waiting');
+  if (choice?.type === 'chooseFirstPlayer') return show('turn-order', 'Choose turn order', undefined, 'mandatory');
+  if (view.gamePhase === 'setup' && offered('keepHand')) return show('opening-hand', 'Keep this hand?', undefined, 'mandatory');
   if (selected) {
-    if (selected.id === 'gainGig') return show('gig', 'Choose a Gig die', 'Drag onto your field, or select a die and choose Roll die.');
+    if (selected.id === 'gainGig') return show('gig', 'Choose a Gig die');
     if (selected.id === 'resolveAdjustGig') return show('gig-adjustment', active?.id === 'die' ? 'Choose a Gig to adjust' : 'Adjust a Gig value');
-    if (active?.id === 'payment') return show('payment', active.label, selected.detail);
-    if (selected.id === 'useBlocker') return show('combat', 'Choose a blocker', 'Select a highlighted Unit, or pass the reaction.');
-    if (['attackUnit', 'attackRival'].includes(selected.id)) return show('target', active?.id === 'defender' ? 'Choose an attack target' : 'Choose an attacker', 'Select a highlighted Unit. Cancel to return to your move.');
-    return show(choice ? 'effect' : 'target', active?.label ?? selected.label, choice ? 'Resolve the highlighted choice to continue.' : 'Complete this action, or cancel to return to your move.');
+    if (active?.id === 'payment') return show('payment', active.label);
+    if (selected.id === 'useBlocker') return show('combat', 'Choose a blocker');
+    if (['attackUnit', 'attackRival'].includes(selected.id)) return show('target', active?.id === 'defender' ? 'Choose an attack target' : 'Choose an attacker');
+    return show(choice ? 'effect' : 'target', active?.label ?? selected.label);
   }
   if (choice) {
     // Direct choices have option labels ('unit', 'hand'), not an instruction.
@@ -45,8 +45,10 @@ export function commandPresentation({ view, actions, selected, active, busy = fa
       : choice.type === 'revealDestination' ? 'Place the revealed card' : actions[0]?.label ?? 'Resolve a choice';
     return show('effect', title, actions[0]?.detail);
   }
-  if (combat?.responding && combat.defender && view.attackState?.redirectedTargets?.length)
-    return show('combat', `${combat.defender.cardName ?? 'Your Unit'} is blocking`, combat.hint, 'mandatory');
-  if (combat) return show('combat', view.attackState?.step === 'react' ? 'Respond to the attack' : 'Continue combat', combat.hint, offered('resolveAttack') ? 'mandatory' : 'normal');
-  return show('normal-turn', 'Your move', 'Select a card or drag it to a highlighted destination.', 'normal');
+  if (combat) {
+    const response = combat.responding;
+    return show('combat', response ? 'Your response' : 'Continue combat',
+      response && !combat.hasResponses ? 'No reactions available' : undefined, combat.canPass ? 'mandatory' : 'normal');
+  }
+  return show('normal-turn', 'Your turn', undefined, 'normal');
 }

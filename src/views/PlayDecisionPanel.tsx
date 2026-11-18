@@ -1,8 +1,8 @@
 import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
 /** Expands above the command bar, reserving space when the panel exceeds the upper mat. */
-export function PlayDecisionPanel({ label, title, defaultOpen = false, children }: {
-  label: string; title: string; defaultOpen?: boolean; children: ReactNode;
+export function PlayDecisionPanel({ label, title, defaultOpen = false, hideTriggerWhenOpen = false, children }: {
+  label: string; title: string; defaultOpen?: boolean; hideTriggerWhenOpen?: boolean; children: ReactNode;
 }) {
   const id = useId();
   const [open, setOpen] = useState<boolean>();
@@ -35,10 +35,10 @@ export function PlayDecisionPanel({ label, title, defaultOpen = false, children 
 
   function close() {
     setOpen(false);
-    trigger.current?.focus({ preventScroll: true });
+    requestAnimationFrame(() => trigger.current?.focus({ preventScroll: true }));
   }
   return <>
-    <button ref={trigger} className="btn quiet play-decision-panel-trigger" type="button" aria-expanded={visible}
+    <button ref={trigger} className="btn quiet play-decision-panel-trigger" type="button" hidden={visible && hideTriggerWhenOpen} aria-expanded={visible}
       aria-controls={id} onClick={() => {
         if (visible) close();
         else {

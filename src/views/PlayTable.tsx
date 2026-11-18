@@ -148,6 +148,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
   const [preview, setPreview] = useState<Preview>();
   const [arrow, setArrow] = useState<{ state: string; x1: number; y1: number; x2: number; y2: number }>();
   const [notice, setNotice] = useState('');
+  const [effectFocus, setEffectFocus] = useState<{ state: string; id: string }>();
   const [dieThrow, setDieThrow] = useState<{ dieId: string; matchId: string; fromState: number; release: PointerRelease }>();
   const [panel, setPanel] = useState<'log' | 'actions' | 'effects' | 'contract'>();
   const panelId = useId();
@@ -201,7 +202,6 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
       }
     }
   }
-  const waiting = !actions.length && view.prompt.status === 'waiting';
   const inspected = inspection?.state === stateKey ? inspection.card : undefined;
   const menu = context?.state === stateKey ? context : undefined;
   const hovered = preview?.state === stateKey ? preview : undefined;
@@ -231,8 +231,8 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
   useEffect(() => {
     if (!focusAfter.current) return;
     focusAfter.current = false;
-    // In order of usefulness: confirm a ready decision, else the step in progress, else the bar itself.
-    const targets = ['.play-gig-adjustment [data-pick-option]:enabled', '.play-gig-adjustment .play-decision-panel-trigger', '.play-decision-tray [data-confirm-move]:not(:disabled)', '.play-decision-panel [data-pick-option]:enabled', '.play-decision-tray [data-step][aria-pressed=true]', '.play-decision-tray button:not(:disabled)', '.play-command-inner'];
+    // Start at the choice list when it is open. Otherwise prefer the available confirmation or step.
+    const targets = ['.play-gig-adjustment [data-pick-option]:enabled', '.play-gig-adjustment .play-decision-panel-trigger', '.play-decision-panel [data-pick-option]:enabled:not([aria-disabled=true])', '.play-decision-tray [data-confirm-move]:not(:disabled)', '.play-decision-tray [data-step][aria-pressed=true]', '.play-decision-tray button:not(:disabled)', '.play-command-inner'];
     for (const target of targets) {
       const element = grid.current?.querySelector<HTMLElement>(target);
       if (element) { element.focus({ preventScroll: true }); break; }
@@ -274,6 +274,11 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     focusAfter.current = true;
     if (immediate && (!choice || !action.fields({}).length) && !action.fields(intent.picks).some((field) => field.id === 'payment') && isReady(action.fields(intent.picks), intent.picks)) return commit(intent);
     else setChoice(intent.action, intent.picks);
+  }
+  function resetPayment() {
+    const next = { ...picks };
+    delete next.payment;
+    setChoice(selection, next, 'payment');
   }
   function chooseValue(fieldId: string, value: string) {
     if (busy || !selected || selection === undefined) return;
@@ -333,14 +338,32 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     eligible: canDrag,
     accept: (card, destination) => dropIntents(actions, card, destination).length > 0,
     drop: handleDrop, begin: () => { clearHover(); setContext(undefined); setNotice(''); },
-    rejected: () => setNotice(gigChoice ? 'Drop a die onto your field to roll it.' : 'Card returned. Drop onto a highlighted destination.'),
+    rejected: () => setNotice(gigChoice ? 'Drop the die on your field to roll.' : 'Invalid drop. Card returned.'),
   });
   const drag = dragControl.drag;
   const returning = dragControl.returning;
   const held = drag ?? returning?.drag;
   const zoneKeys = ['field:player', 'eddies:player', 'program', 'gigs:rival'];
-  const dropZones = new Set(drag ? zoneKeys.filter((key) => dropIntents(actions, drag.card, { key }).length) : []);
+  const dropZones = new Set<string>();
   const dropOver = drag?.destination?.key;
+  const dropActions = new Map<string, string>();
+  if (drag) {
+    const hosts = (['player', 'rival'] as const).flatMap(seat =>
+      [...zoneCards(view.players[seat], 'field'), ...zoneCards(view.players[seat], 'legendArea')]);
+    const destinations: Destination[] = [...zoneKeys.map(key => ({ key })), ...hosts.map(card => ({
+      key: card.instanceId === combat?.attackerId ? 'attacker' : 'card', cardId: card.instanceId,
+    }))];
+    for (const spot of destinations) {
+      const intents = dropIntents(actions, drag.card, spot);
+      if (intents.length && !spot.cardId) dropZones.add(spot.key);
+      if (intents.length === 1) {
+        const action = actions[intents[0].action];
+        const label = spot.cardId && action.id === 'playCard' ? 'Attach'
+          : ({ gainGig: 'Roll die', attackUnit: 'Attack', attackRival: 'Attack Gigs', sellCard: 'Sell for 1 €$', useBlocker: 'Block', playCard: 'Play card' } as Record<string, string>)[action.id] ?? action.label;
+        dropActions.set(spot.cardId ?? spot.key, label);
+      } else if (intents.length) dropActions.set(spot.cardId ?? spot.key, 'Choose action');
+    }
+  }
   function enterCard(card: CardView, element: HTMLElement) {
     if (drag || menu || inspected || busy) return;
     clearTimeout(hoverTimer.current);
@@ -368,11 +391,11 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     const inHand = handIds.has(card.instanceId);
     const unavailable = view.gamePhase === 'main' && inHand && view.prompt.status === 'action'
       && !actions.some((action) => action.id === 'playCard' && action.fields({})[0]?.options.some((option) => option.cardId === card.instanceId)) && !target;
-    const combatRole = combat?.attackerId === card.instanceId ? 'Attacking' : combat?.defenderId === card.instanceId ? 'Defending' : undefined;
+    const combatRole = combat?.attackerId === card.instanceId ? 'Attacking' : combat?.defenderId === card.instanceId ? combat.redirectedTargets?.length ? 'Blocking' : 'Defending' : undefined;
     const effectTarget = playback?.beat.targetIds.includes(card.instanceId);
-    const effectSource = playback?.beat.source?.instanceId === card.instanceId;
+    const effectSource = playback?.beat.source?.instanceId === card.instanceId || (effectFocus?.state === stateKey && effectFocus.id === card.instanceId);
     const response = [...(reactions.get(card.instanceId) ?? [])].join(' / ');
-    const visibleRole = [combatRole, response].filter(Boolean).join(' · ')
+    const visibleRole = [dropActions.get(card.instanceId), combatRole, response].filter(Boolean).join(' · ')
       || (effectTarget ? 'Target' : effectSource ? 'Source' : undefined);
     const remembered = rememberedLegends.has(card.instanceId);
     const state = [visibleRole, card.spent && 'Spent', card.hasLag && 'Lag', remembered && 'Known', !!card.damage && `${card.damage} dmg`].filter(Boolean).join(' · ');
@@ -386,7 +409,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
       <button type="button" className="play-card" disabled={!!playback} data-card-id={card.instanceId} data-board-card={card.instanceId}
         data-legend-card={legendSlot || undefined}
         data-drop-zone={card.instanceId === combat?.attackerId ? 'attacker' : undefined} data-drop-available={!!dropLegal} data-drop-over={drag?.destination?.cardId === card.instanceId}
-        data-source={!!selected && sourceId === card.instanceId} data-target={target} data-unplayable={unavailable || undefined} data-spent={card.spent} data-combat={!!combatRole} data-combat-role={combatRole?.toLowerCase()} data-response={response || undefined} data-effect-target={effectTarget || undefined} data-effect-source={effectSource || undefined} data-feedback={change?.kind} data-color={printing?.color} data-draggable={dragLegal}
+        data-source={!!selected && sourceId === card.instanceId} data-target={target} data-unplayable={unavailable || undefined} data-spent={card.spent} data-combat={!!combatRole} data-combat-role={combatRole === 'Blocking' ? 'defending' : combatRole?.toLowerCase()} data-response={response || undefined} data-effect-target={effectTarget || undefined} data-effect-source={effectSource || undefined} data-feedback={change?.kind} data-color={printing?.color} data-draggable={dragLegal}
         data-power-shift={power != null && power !== card.power ? power > card.power ? 'up' : 'down' : undefined}
         aria-pressed={target ? chosenIds.has(card.instanceId) : undefined} aria-label={[name, state, power != null && `power ${power}`, repriced && `costs ${cost}`, target && 'selectable'].filter(Boolean).join(', ')}
         onPointerDown={(event) => dragControl.start(event, card)} onDragStart={(event) => event.preventDefault()}
@@ -410,7 +433,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
         <span className="play-card-art"><CardFace card={card} />
           {power != null && <span className="play-power" title="Inspect power and attached Gear" aria-hidden="true">{power}</span>}
           {repriced && <span className="play-cost" aria-hidden="true">{cost} €$</span>}
-          {!legendSlot && state && <small>{visibleRole ?? state}</small>}
+          {!legendSlot && (visibleRole || card.hasLag || card.damage) ? <small>{visibleRole ?? [card.hasLag && 'Lag', card.damage && `${card.damage} dmg`].filter(Boolean).join(' · ')}</small> : null}
         </span><span className="play-card-name">{name}</span>
       </button>
       {legendSlot && slotNote && <span className="play-legend-note" aria-hidden="true">{slotNote}</span>}
@@ -422,6 +445,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
   function actionButton(index: number, label?: string, className = 'btn quiet') {
     const action = actions[index];
     return <button key={`${action.id}:${index}`} type="button" className={className} disabled={busy || (!!selected && !choice && action.id === 'passPhase')} data-move={action.id} data-action-index={index}
+      aria-describedby={action.id === 'mulligan' && panel !== 'actions' ? `${panelId}-mulligan` : undefined}
       aria-pressed={action.fields({}).length ? selection === index : undefined} onClick={() => beginIntent({ action: index, picks: {} }, true)}>{label ?? action.label}</button>;
   }
   const special = actions.map((action, index) => ({ action, index })).filter(({ action }) => !action.fields({}).length);
@@ -430,7 +454,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     ? snapshot.presentation.beats.findLast(beat => beat.fight) ?? (snapshot.presentation.feedback?.fight ? snapshot.presentation.feedback : undefined)
     : undefined;
   const outcome = feedback && { id: feedback.id, changes: feedback.changes };
-  const targeting = { snapshot, outcome, responseIds: new Set(reactions.keys()), onPick: pickOnBoard, targetIds: busy ? new Set<string>() : targetIds, chosenIds, effectIds: new Set(playback?.beat.targetIds ?? []), dropZones, dropOver };
+  const targeting = { snapshot, outcome, dropActions, responseIds: new Set(reactions.keys()), onPick: pickOnBoard, targetIds: busy ? new Set<string>() : targetIds, chosenIds, effectIds: new Set(playback?.beat.targetIds ?? []), dropZones, dropOver };
   const shownArrow = drag?.destination && (drag.destination.cardId || drag.destination.key === 'gigs:rival')
     ? { x1: drag.originX, y1: drag.originY, x2: drag.x, y2: drag.y } : arrow?.state === stateKey && !drag ? arrow : undefined;
   const yourTurn = view.activePlayerId === 'player';
@@ -439,9 +463,6 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
   const resolveButtons = special.filter(({ action }) => action.id === 'resolveAttack').map(({ index }) => actionButton(index));
   const turnButtons = special.filter(({ action }) => !choice && ['passPhase', 'resolveAttack'].includes(action.id) && !(combat && action.id === 'resolveAttack'))
     .map(({ action, index }) => actionButton(index, undefined, action.id === 'passPhase' ? 'btn play-end-turn' : 'btn quiet'));
-  const canSell = yourTurn && view.players.player.eddies === 0 && actions.some(action => action.id === 'sellCard');
-  const hint = busy ? 'Resolving the move.' : waiting ? 'The rival is choosing a move.'
-    : canSell ? 'Select a card to play it or sell it for an Eddie.' : 'Select a card or drag it to a highlighted destination.';
   const closePanel = <button type="button" className="btn quiet" aria-label="Close panel" onClick={() => setPanel(undefined)}>×</button>;
   if (campaign && view.gameEnded) return <CampaignMatchResult details={campaign} snapshot={snapshot}
     busy={busy} error={error} onContinue={rematch} />;
@@ -464,20 +485,21 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     }}>
     <header className="play-match-header" inert={opening.showing}>
       <div className="play-match-identity">
-        {contract ? <button type="button" className="play-eyebrow circuit-contract-trigger" aria-expanded={panel === 'contract'} aria-controls={`${panelId}-contract`} onClick={() => setPanel(panel === 'contract' ? undefined : 'contract')} title="View contract objective">◆ {contract.title} <span>/</span> {error ? 'Match alert' : saving ? 'Saving…' : 'Saved'}</button>
-          : <p className="play-eyebrow" title={error ? 'See the match alert below' : saving ? 'Saving the current match' : 'Match saved in this browser'}>{campaign?.title ?? 'Practice table'}{campaign?.act && <> <span>/</span> Act {campaign.act}</>} <small data-match-error={!!error || undefined}>{error ? 'Match alert' : saving ? 'Saving…' : 'Saved'}</small></p>}
+        {contract ? <button type="button" className="play-eyebrow circuit-contract-trigger" aria-expanded={panel === 'contract'} aria-controls={`${panelId}-contract`} onClick={() => setPanel(panel === 'contract' ? undefined : 'contract')} title="View contract objective">◆ {contract.title}</button>
+          : <p className="play-eyebrow" title={error ? 'See the match alert below' : undefined}>{campaign?.title ?? 'Practice table'}{campaign?.act && <> <span>/</span> Act {campaign.act}</>} {(error || saving) && <small data-match-error={!!error || undefined}>{error ? 'Match alert' : 'Saving…'}</small>}</p>}
         <h1 title={`${names.player} vs. ${names.rival}`}>{names.player} <span>vs.</span> {names.rival}</h1>
       </div>
       {recentFight && <output className="play-last-fight">{recentFight.text}</output>}
       <div className="play-header-actions">
         {tableEffects.length > 0 && <button type="button" className="btn quiet" aria-expanded={panel === 'effects'} aria-controls={`${panelId}-effects`} onClick={() => setPanel(panel === 'effects' ? undefined : 'effects')}>Effects <b>{tableEffects.length}</b></button>}
-        <button type="button" className="btn quiet" aria-expanded={panel === 'log'} aria-controls={`${panelId}-log`} onClick={() => setPanel(panel === 'log' ? undefined : 'log')}>Log <b>{log.length}</b></button>
+        <button type="button" className="btn quiet" aria-expanded={panel === 'log'} aria-controls={`${panelId}-log`} onClick={() => setPanel(panel === 'log' ? undefined : 'log')}>Log</button>
         {navigation}
         <details className="play-more play-match-options" ref={menuRef}
           onBlur={event => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false; }}
           onKeyDown={event => { if (event.key === 'Escape' && event.currentTarget.open) { event.stopPropagation(); event.preventDefault(); closeOptions(); } }}>
           <summary className="btn quiet" aria-label="Match options">…</summary>
           <div className="play-more-actions">
+            <span className="play-save-state">{error ? 'Match alert' : saving ? 'Saving…' : 'Saved on this device'}</span>
             {!view.gameEnded && <button type="button" className="btn quiet" aria-expanded={panel === 'actions'} aria-controls={`${panelId}-actions`}
               disabled={!!playback} onClick={() => { closeOptions(); setPanel(panel === 'actions' ? undefined : 'actions'); }}>All actions</button>}
             {togglePace && <button type="button" className="btn quiet" aria-pressed={quick} onClick={togglePace}>
@@ -521,25 +543,26 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     </section>}
     {panel === 'log' && <aside id={`${panelId}-log`} className="play-drawer play-log" aria-label="Match activity">
       <div className="play-drawer-head"><h3>Action log</h3>{closePanel}</div>
-      {log.length ? <ol>{log.slice().reverse().map((entry) => <li key={entry.id}><small>T{entry.turn} · {entry.seat === 'player' ? 'You' : 'Rival'}</small><span>{entry.text}</span></li>)}</ol>
+      {log.length ? <ol>{log.slice().reverse().map((entry) => <li key={entry.id}><small>T{entry.turn} · {entry.seat === 'player' ? 'You' : 'Rival'}</small><div>{entry.text}{entry.changes?.length ? <details className="play-log-changes"><summary>Changes</summary>
+        {entry.changes.map((change, index) => <span key={index}>{change}</span>)}</details> : null}</div></li>)}</ol>
         : <p className="play-empty">Match events appear here.</p>}
     </aside>}
     <div ref={table} className="play-table" inert={opening.showing} data-opening={opening.showing || undefined} data-setup-choice={choice?.type === 'chooseFirstPlayer' || undefined} data-turn={playing ? view.activePlayerId : undefined} data-combat={!!combat} data-reduced={reduced || undefined} data-ended={view.gameEnded}>
       <GigRollAnnouncement rolls={snapshot.gigRolls} />
-      <RivalBench portrait={campaign?.rival ?? freePlay?.rival} rolls={rolls} name={names.rival} active={playing && !yourTurn} {...targeting} renderCard={renderCard} renderFace={face} />
+      <RivalBench portrait={campaign?.rival ?? freePlay?.rival} rolls={rolls} active={playing && !yourTurn} {...targeting} renderCard={renderCard} renderFace={face} />
       <SeatField seat="rival" active={playing && !yourTurn} {...targeting} renderCard={renderCard} />
       <GigZones {...targeting} threatened={combat && !combat.defenderId ? fightContext?.defendingSeat : undefined} adjustedGig={adjustedGig} />
       <div className="play-command" data-responding={responding || undefined} data-presentation={command.variant} data-attention={command.attention} data-reduced={reduced || undefined} data-seat={playing ? view.activePlayerId : undefined} data-state={playback ? 'playback' : selected || choice || setup ? 'decision' : combat ? 'combat' : 'idle'}>
         <div className="play-command-inner" tabIndex={-1}>
           {command.attention === 'mandatory' && <span className="play-command-arrival" key={`${snapshot.matchId}:${command.cueKey}`} aria-hidden="true" />}
-          <div className="play-turn-plate"><span>{setup ? 'Setup' : view.overtimeActive ? `Overtime · Turn ${view.turnNumber}` : `Turn ${view.turnNumber}`}</span>
-            <strong>{view.gameEnded ? 'Match over' : setup ? command.variant === 'opening-hand' ? 'Opening hand' : 'Opening' : responding ? 'Your response' : yourTurn ? 'Your turn' : 'Rival turn'}</strong></div>
-          <h2 className="sr-only" aria-live="polite">{decisionTitle}</h2>
+          <div className="play-turn-plate">{!setup && <span>{view.overtimeActive ? `Overtime · Turn ${view.turnNumber}` : `Turn ${view.turnNumber}`}</span>}
+            <strong>{view.gameEnded ? 'Match over' : setup ? 'Setup' : responding ? 'Your response' : yourTurn ? 'Your turn' : 'Rival turn'}</strong></div>
+          <h2 className="sr-only" aria-live="polite">{responding && !selected ? `${decisionTitle}. ${fightContext.caption.replace(' → ', ' attacks ')}.` : decisionTitle}</h2>
           <div className="play-command-content">
           {view.gameEnded ? <div className="play-command-lead"><strong>{decisionTitle}</strong><p>{winReasons[view.winReason ?? ''] ?? 'Match ended'}</p></div>
             : playback ? <>{combat && <CombatBanner view={view} watching compact />}<PlayPresentation playback={playback} /></>
             : selected ? <div className="play-table-decision" key={stateKey}>
-              <PlayChoices presentation={command} context={combat && <CombatBanner view={view} watching={false} compact inspect={inspect} />} view={view} action={selected} picks={picks} fields={fields} active={step} cards={cards} busy={busy} forced={!!choice} revealed={reveal?.revealedCards} select={chooseValue}
+              <PlayChoices presentation={command} context={combat && <CombatBanner view={view} watching={false} compact inspect={inspect} />} view={view} action={selected} picks={picks} fields={fields} active={step} cards={cards} busy={busy} forced={!!choice} revealed={reveal?.revealedCards ?? reveal?.cards} select={chooseValue}
                 step={(id) => {
                   clearHover();
                   if (selected.id === 'resolveAdjustGig' && id === 'die') {
@@ -548,21 +571,27 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
                   } else setChoice(selection, picks, id);
                 }} reorder={(field, ids) => { const next = reorderPick(selected, picks, field, ids); if (next) setChoice(selection, next, field); }}
                 submit={() => selection !== undefined && commit({ action: selection, picks })}
-                cancel={() => { setChoice(choice ? defaultSelection : undefined, {}); clearHover(); }}
-                inspect={inspect} alternatives={choice ? special.map(({ index }) => actionButton(index)) : null} /></div>
+                cancel={() => { setChoice(choice ? defaultSelection : undefined, {}); clearHover(); }} resetPayment={resetPayment}
+                inspect={inspect} highlightSource={id => setEffectFocus(id ? { state: stateKey, id } : undefined)} alternatives={choice ? special.map(({ index }) => actionButton(index)) : null} /></div>
             : choice || setup ? <div className="play-opening-choices">
               {combat && <CombatBanner view={view} watching={false} compact inspect={inspect} />}
               <div className="play-command-lead">
                 <h3>{decisionTitle}</h3>
-                {command.detail && <p><Rules text={command.detail} /></p>}
-                {!setup && command.detail && <PlayDecisionPanel label="Effect details" title={decisionTitle}><p><Rules text={command.detail} /></p></PlayDecisionPanel>}
+                {!setup && command.detail && <PlayDecisionPanel label="Effect rules" title="Effect rules"><p><Rules text={command.detail} /></p></PlayDecisionPanel>}
               </div>
-              <div className="play-command-actions">{actions.map((action, index) => actionButton(index, undefined, action.id === 'keepHand' ? 'btn play-confirm' : 'btn quiet'))}</div>
+              <div className="play-command-actions">{actions.map((action, index) => action.id === 'mulligan'
+                ? <div className="play-mulligan" key={action.id}>{actionButton(index, 'Mulligan')}<small id={`${panelId}-mulligan`}>Shuffle back · Draw six</small></div>
+                : actionButton(index, undefined, action.id === 'keepHand' ? 'btn play-confirm' : 'btn quiet'))}</div>
             </div>
-            : combat ? <div className="play-table-decision play-combat-decision"><div className="play-command-lead"><h3>{decisionTitle}</h3><p>{command.detail}</p></div>
+            : combat ? <div className="play-table-decision play-combat-decision">
+              {command.detail && <div className="play-command-lead"><p>{command.detail}</p></div>}
               <CombatBanner view={view} watching={false} compact inspect={inspect} /></div>
-            : <><div className="play-command-lead"><strong>{decisionTitle}</strong>
-              <p role="status">{feedback && !busy ? <>{!feedback.fight && <b>{feedback.seat === 'player' ? 'You' : 'Rival'} </b>}{feedback.text}</> : hint}</p></div>{turnButtons.length > 0 && <div className="play-command-actions">{turnButtons}</div>}</>}
+            : <>
+              {(busy || command.variant === 'waiting' || feedback && !feedback.gigRolls.length) && <div className="play-command-lead">
+                {busy || command.variant === 'waiting' ? <p>{decisionTitle}</p> : <PlayPresentation feedback={feedback} />}
+              </div>}
+              {turnButtons.length > 0 && <div className="play-command-actions">{turnButtons}</div>}
+            </>}
           </div>
           {!choice && combat && resolveButtons.length > 0 && <div className="play-response-pass">{resolveButtons}</div>}
           {error && <p className="play-error play-command-error" role="alert">{error}</p>}
@@ -576,21 +605,20 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
         </section>
       </PlayerBench>
       {!playback && snapshot.peeks.length > 0 && <section className="play-private-peek" aria-label="Private Legend peek">
-        <h3>Private Legend peek</h3><p>Only you can see this identity.</p>
+        <h3>Private peek</h3>
         {snapshot.peeks.map((card) => {
           const owner = (['player', 'rival'] as const).find((seat) => zoneCards(view.players[seat], 'legendArea').some((slot) => slot.instanceId === card.instanceId));
           const slot = owner ? zoneCards(view.players[owner], 'legendArea').findIndex((item) => item.instanceId === card.instanceId) + 1 : undefined;
           return <button key={card.instanceId} type="button" className="btn quiet" onClick={(event) => inspect(card, event.currentTarget)}>
-            <CardFace card={card} /><span>{owner ? `${owner === 'player' ? 'Your' : 'Rival'} slot ${slot}` : 'Revealed Legend'}<strong>{card.cardName}</strong><small>Inspect</small></span>
+            <CardFace card={card} /><span>{owner ? `${owner === 'player' ? 'Your' : 'Rival'} slot ${slot}` : 'Revealed Legend'}<strong>{card.cardName}</strong></span>
           </button>;
         })}
       </section>}
       {playing && turnKey !== firstTurn && <div className="play-turn-banner" key={turnKey} data-seat={view.activePlayerId} aria-hidden="true">
-        <span>Turn {view.turnNumber}</span><strong>{yourTurn ? 'Your turn' : 'Rival turn'}</strong>
+        <strong>{yourTurn ? 'Your turn' : 'Rival turn'}</strong>
       </div>}
       {view.gameEnded && <MatchResult view={view} report={snapshot.report} receipt={snapshot.circuit?.receipt} circuit={circuit} title={decisionTitle} reason={winReasons[view.winReason ?? ''] ?? 'Match ended'} busy={busy} rematch={rematch} edit={edit} quote={freePlay?.resultQuote} />}
-      <span className="sr-only" role="status">{notice}{busy ? ' Resolving move.' : ''}</span>
-      {notice && <p className="play-table-notice">{notice}</p>}
+      <p className={notice ? 'play-table-notice' : 'sr-only'} role="status">{notice}</p>
       {rolling && <PlayGigRoll key={view.stateID} rolls={rolls} thrown={activeThrow} cue={cue} onComplete={playback?.finishRoll} resultHold={playback?.resultHold} />}
     </div>
     {opening.showing && <section className="play-intro" aria-labelledby={`${panelId}-intro`} data-reduced={reduced || undefined}
@@ -622,7 +650,6 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
         '--home-pose': returning && `translate3d(${returning.left}px, ${returning.top}px, 0) rotate(${returning.rotation}deg)`,
       } as CSSProperties} aria-hidden="true">
       {gigChoice ? <DieFace type={held.card.definitionId} /> : <CardFace card={held.card} />}
-      {!returning && <span className="play-drag-hint">{gigChoice ? (held.destination ? 'Release to roll' : 'Drag onto your field') : (held.destination ? 'Release to choose this action' : 'Choose a highlighted destination')}</span>}
     </div>, document.body)}
     {combat && <CombatArrow view={view} root={grid} reduced={reduced} quick={quick} />}
     {shownArrow && createPortal(<svg className="play-target-arrow" aria-hidden="true"><defs><marker id="play-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 6 3 0 6" /></marker></defs><path d={`M${shownArrow.x1} ${shownArrow.y1} Q${shownArrow.x1} ${shownArrow.y2} ${shownArrow.x2} ${shownArrow.y2}`} markerEnd="url(#play-arrowhead)" /></svg>, document.body)}

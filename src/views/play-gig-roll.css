@@ -34,8 +34,6 @@
 .play-die[data-roll-pending] > * { visibility: hidden; }
 .play-die[data-roll-docked] { border-color: var(--die-rim); box-shadow: 0 0 9px color-mix(in srgb, var(--die-light) 38%, transparent); }
 .play-die[data-roll-docked="decisive"] { box-shadow: 0 0 14px var(--die-rim); }
-.play-roll-wait { display: none; }
-.play-grid:has(.play-gig-roll[data-phase="air"]) .play-roll-wait { display: block; }
 .play-grid:has(.play-gig-roll[data-phase="air"]) .play-roll-outcome { display: none; }
 .play-grid:has(.play-gig-roll[data-phase="air"]) .play-gigs .play-gig-cred b,
 .play-grid:has(.play-gig-roll[data-phase="air"]) .play-gigs h3 span { visibility: hidden; }

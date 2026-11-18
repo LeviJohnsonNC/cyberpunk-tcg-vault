@@ -102,9 +102,13 @@ export function intentLabel(action: MatchActionForm, picks: Picks, source?: Card
 }
 
 export function commitLabel(action: MatchActionForm, picks: Picks) {
+  if (action.confirm) return action.confirm(picks);
   const paid = action.fields(picks).some((field) => field.id === 'payment');
   const labels: Record<string, string> = { playCard: 'Play card', callLegend: 'Call Legend', goSolo: 'Go solo',
     sellCard: 'Sell for an Eddie', attackUnit: 'Attack Unit', attackRival: 'Attack rival', useBlocker: 'Block attack',
-    activateAbility: 'Activate ability', gainGig: 'Roll die', resolveScry: 'Place cards' };
+    activateAbility: 'Activate ability', gainGig: 'Roll die', resolveScry: 'Place cards',
+    resolveDiscardFromHand: 'Discard', resolveStealGigs: 'Steal Gigs', resolveSacrificialGear: 'Sacrifice Gear',
+    resolveCardToPlay: 'Play card', resolveCardToMove: 'Move card', resolvePreventGigSteal: 'Resolve theft',
+    resolveTrigger: 'Resolve ability' };
   return `${paid ? 'Pay & ' : ''}${paid ? (labels[action.id] ?? 'resolve').toLowerCase() : labels[action.id] ?? 'Resolve'}`;
 }
