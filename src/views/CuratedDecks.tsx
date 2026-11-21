@@ -6,6 +6,7 @@ import { estimateText } from '../lib/currency';
 import { CLOSE_THRESHOLD, completion, deckFromRecommended, costRank, matchesFilter, validate, type BuildFilter } from '../lib/decks';
 import { useStore, type Deck } from '../lib/store';
 import { communityCrewMatches, communityPopularityLabel } from '../lib/communityPopularity';
+import { showdownCrewEntries, showdownMeta } from '../data/showdown-meta';
 
 const KIND_LABEL = { budget: 'Budget', meta: 'Community meta', brew: 'Brew' } as const;
 const LS_KEY = 'cptv.meta.filters.v1';
@@ -13,7 +14,8 @@ const BUILD_LABEL: Record<BuildFilter, string> = { all: 'All decks', close: `${C
 const SORTS = [
   { value: 'fit', label: 'Best fit for my vault' },
   { value: 'cost', label: 'Cheapest to finish' },
-  { value: 'popularity', label: 'Meta popularity' },
+  { value: 'popularity', label: 'Community popularity' },
+  { value: 'showdown', label: 'Showdown entries' },
   { value: 'name', label: 'Name' },
 ] as const;
 
@@ -29,6 +31,7 @@ const LISTS = RECOMMENDED.map((deck) => ({
   deck,
   legal: validate({ ...deck, sideboard: {} }).legal,
   crewMatches: communityCrewMatches(deck.legends),
+  showdownEntries: showdownCrewEntries(deck.legends),
 }));
 const needsVault = (sort: SortKey) => sort === 'fit' || sort === 'cost';
 
@@ -65,6 +68,7 @@ export function CuratedDecks({ onOpen, openInBuilder, onPlayAgainst }: { onOpen:
     .sort((a, b) => {
       const byName = a.deck.name.localeCompare(b.deck.name);
       if (sort === 'popularity') return b.crewMatches - a.crewMatches || byName;
+      if (sort === 'showdown') return (b.showdownEntries ?? -1) - (a.showdownEntries ?? -1) || byName;
       if (sort === 'name' || !a.fit || !b.fit) return byName;
       const fit = b.fit.pct - a.fit.pct;
       const cost = costRank(a.fit.estimate) - costRank(b.fit.estimate);
@@ -114,6 +118,10 @@ export function CuratedDecks({ onOpen, openInBuilder, onPlayAgainst }: { onOpen:
       {sort === 'popularity' && <p className="meta-popularity-source">
         {communityPopularityLabel}
       </p>}
+      {sort === 'showdown' && <p className="meta-popularity-source">
+        Entries with the same three Legends among {showdownMeta.entries} published Showdown lists.
+        {' '}<a href={showdownMeta.source}>{showdownMeta.window} report</a>. Crews outside its entry chart appear last.
+      </p>}
       {shown.length === 0 ? (
         <div className="panel meta-state">
           <h3>No deck matches these filters</h3>
@@ -124,7 +132,7 @@ export function CuratedDecks({ onOpen, openInBuilder, onPlayAgainst }: { onOpen:
         </div>
       ) : (
         <div className="meta-curated-list">
-          {shown.map(({ deck: d, legal, fit, crewMatches }) => {
+          {shown.map(({ deck: d, legal, fit, crewMatches, showdownEntries }) => {
             const base = d.base ? RECOMMENDED.find((item) => item.id === d.base)?.name : null;
             return (
               <article key={d.id} className="meta-curated-card panel" aria-labelledby={`deck-${d.id}`}>
@@ -138,6 +146,7 @@ export function CuratedDecks({ onOpen, openInBuilder, onPlayAgainst }: { onOpen:
                     <h3 id={`deck-${d.id}`}>{d.name}</h3>
                     <div className="meta-deck-colours"><span aria-hidden="true">{d.colors.map((color) => <Pip key={color} color={color} bare />)}</span> {d.colors.join(' / ')}</div>
                     {sort === 'popularity' && <p className="meta-popularity-count">{crewMatches} public {crewMatches === 1 ? 'deck' : 'decks'} with this crew</p>}
+                    {sort === 'showdown' && showdownEntries !== undefined && <p className="meta-popularity-count">{showdownEntries} Showdown entries with this crew</p>}
                     <p className="meta-curated-hook">{d.summary}</p>
                   </div>
                   <dl className="meta-curated-fit">

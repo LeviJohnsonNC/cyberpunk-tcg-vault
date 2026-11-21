@@ -6,6 +6,8 @@ import { browseRivals, freePlayRoster } from './freePlayRoster';
 import { curatedOpponents } from './opponents';
 import { advanceRivalDialogue, rivalDialogueLine, rivalResult } from './rivalDialogue';
 
+const tournamentDecks = new Set(['jackie-padre-streetkid', 'smasher-muamar-streetkid']);
+
 describe('Free Play rival browser', () => {
   it('features the six intended portrait matches without removing or changing curated decks', () => {
     const { rows, counts } = browseRivals('', 'all', 'recommended');
@@ -18,10 +20,11 @@ describe('Free Play rival browser', () => {
       ['smasher-surge', 'red-line', 'Brake'],
     ]);
     const assets = import.meta.glob('../../assets/play/free-play-rivals/*.webp');
-    const mapped = rows.slice(6).map(({ portrait }) => portrait && 'art' in portrait ? portrait.art : '');
+    const authored = rows.filter(row => !tournamentDecks.has(row.id));
+    const mapped = authored.slice(6).map(({ portrait }) => portrait && 'art' in portrait ? portrait.art : '');
     expect(new Set(mapped).size).toBe(mapped.length);
     for (const art of mapped) expect(assets).toHaveProperty([`../../assets/play/free-play-rivals/${art}.webp`]);
-    expect(new Set(rows.map(row => row.portrait?.alias)).size).toBe(rows.length);
+    expect(new Set(authored.map(row => row.portrait?.alias)).size).toBe(authored.length);
     expect(new Set(rows.map(row => row.deck))).toEqual(new Set(curatedOpponents.map(row => row.deck)));
     expect(counts.all).toBe(curatedOpponents.length);
     expect(counts.meta + counts.budget + counts.brew).toBe(counts.all);
@@ -37,9 +40,10 @@ describe('Free Play rival browser', () => {
     expect(browseRivals('Aftercare', 'meta', 'recommended').rows.map(row => row.id)).toEqual(['baby-girl-bbg']);
   });
 
-  it('has distinct win and loss artwork for every curated rival', () => {
+  it('has distinct win and loss artwork for the authored rivals', () => {
     const assets = import.meta.glob('../../assets/play/results/*.webp');
     for (const { id, portrait } of freePlayRoster) {
+      if (tournamentDecks.has(id)) continue;
       expect(portrait, id).toBeDefined();
       if (!portrait) continue;
       const artKey = 'encounter' in portrait ? portrait.encounter : portrait.art;
@@ -52,7 +56,8 @@ describe('Free Play rival browser', () => {
   it('gives every curated portrait its own voice and keeps Campaign plot lines out of Free Play endings', () => {
     const moments = Object.keys(campaignChapters['first-call'].lines).sort();
     const intros = new Set<string>();
-    for (const { key, deck, portrait } of freePlayRoster) {
+    const authored = freePlayRoster.filter(row => !tournamentDecks.has(row.id));
+    for (const { key, deck, portrait } of authored) {
       const profile = freePlayRivalProfile(key, deck.name);
       expect(profile.name).toBe(portrait?.alias);
       expect(Object.keys(profile.lines).sort()).toEqual(moments);
@@ -66,7 +71,13 @@ describe('Free Play rival browser', () => {
         expect(profile.lines.rivalWon).not.toEqual(campaignChapters[portrait.encounter].lines.rivalWon);
       }
     }
-    expect(intros.size).toBe(freePlayRoster.length);
+    expect(intros.size).toBe(authored.length);
+  });
+
+  it.each([...tournamentDecks])('offers %s as a playable tournament list with the neutral rival profile', (id) => {
+    const entry = freePlayRoster.find(row => row.id === id)!;
+    expect(entry.kind).toBe('meta');
+    expect(freePlayRivalProfile(entry.key, entry.deck.name)).toMatchObject({ name: entry.deck.name, portrait: undefined });
   });
 
   it('uses a neutral identity for custom and older saved rivals and resolves the same outcome line on resume', () => {

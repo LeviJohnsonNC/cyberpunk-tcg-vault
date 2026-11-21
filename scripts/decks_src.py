@@ -125,6 +125,21 @@ dict(id='smasher-padre-streetkid',name='Smasher / Padre / Streetkid',tier="meta"
   'Satori: Sword of Saburo':3,'Detonate':1,'Industrial Assembly':3,'Peace Offering':3,
   'Synapse Burnout':3,'Bonnie and Clyde':3,'Memory Relapse':3,'Carnage at the Colosseum':3,
  }),
+dict(id='jackie-padre-streetkid',name='Jackie / Padre / Streetkid',tier='meta',colors=['Green', 'Red'],archetype='GGR Gig-pair tempo',
+ legends=["Jackie Welles: Mama's Favorite", 'Padre: Man of the Cross', 'V: Streetkid'],
+ cards={
+  'Corpo Security':2,'MaxTac Squadron':2,'Meredith Stout: Stone Cold Corpo':2,'Pepe Najarro: Working Doubles':3,
+  'MaxTac AV':3,'Johnny Silverhand: Never Stop Fighting':3,'Mantis Blades':3,'Riot Shield':2,'Sandevistan':3,
+  "Overwatch: Panam's Gift":3,'Industrial Assembly':2,'Peace Offering':2,'Synapse Burnout':2,'Memory Relapse':3,
+  'Wild in the Streets':2,"(Don't Fear) The Reaper":3,
+ }),
+dict(id='smasher-muamar-streetkid',name='Smasher / Muamar / Streetkid',tier='meta',colors=['Red', 'Yellow'],archetype='RRY removal midrange',
+ legends=['Adam Smasher: Ender of Legends', 'Muamar Reyes: El Capitán', 'V: Streetkid'],
+ cards={
+  'Augmented Negotiators':3,'6th Street Recruits':3,"Rockn' Rockerboy":3,'Animals Wrecker':3,'Yorinobu Arasaka: Steel Dragon':3,
+  'Mantis Blades':3,'Satori: Sword of Saburo':3,'Zetatech Faceplate':3,'Deadman Transmitter':2,
+  'Detonate':3,'Industrial Assembly':3,'Bonnie and Clyde':3,'Over the Edge':2,'Carnage at the Colosseum':3,
+ }),
 ]
 ok=True
 for d in DECKS:

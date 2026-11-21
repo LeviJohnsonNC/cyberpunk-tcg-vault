@@ -499,5 +499,45 @@
   "weaknesses": "The deck spends time and cards setting Gig values. A rival can disrupt those values or remove your strongest Unit before Carnage turns that setup into board control.",
   "kind": "meta",
   "sourceUrl": "https://nightcitytracker.com/deck/01a1db41-80da-7556-ba52-a1e5e22b8dd0"
+ },
+ "jackie-padre-streetkid": {
+  "confidence": "High · published tournament main deck",
+  "source": "kapi · 1st of 29, SG Night City Showdown · Nov 15, 2026",
+  "sourceUrl": "https://nightcitytracker.com/deck/01a1e05e-314a-7cf5-b74f-603f20f7db2f",
+  "kind": "meta",
+  "summary": "Pair Gig values for Pepe, keep threats ready with Sandevistan, and use Green's spend effects to open profitable attacks for Johnny.",
+  "plan": [
+   "Develop a cheap Unit and use Padre’s spend or Peace Offering to set up a value-pair before Pepe attacks.",
+   "Spend rival Units with Memory Relapse or Padre. Johnny can win a fight, ready once, then attack again for Gigs.",
+   "Use Overwatch during the Rival’s attack when a valuable target is spent. Keep The Reaper for crowded boards where removing one Unit and spending the rest opens several attacks."
+  ],
+  "mulligan": "Keep an early Unit and sellable cards. Against fast Gear decks, prioritize a hand that can establish a blocker or use Memory Relapse on curve.",
+  "keyCards": [
+   ["pepe-najarro-working-doubles", "A Gig value-pair turns his attack into up to two Merc Legend readies."],
+   ["sandevistan", "Readies the equipped card at end of turn so it can block, use a Quick spend effect or help pay for a response."],
+   ["overwatch-panam-s-gift", "Turns spare cards into removal against spent Units during an attack."],
+   ["don-t-fear-the-reaper", "Spends the rival field and defeats one spent Unit."]
+  ],
+  "weaknesses": "Spend effects buy time. Without a live attacker to capitalize, the Rival can rebuild before you turn that opening into Gigs."
+ },
+ "smasher-muamar-streetkid": {
+  "confidence": "High · published tournament main deck",
+  "source": "Guillem_Pin · 1st of 31, Sant Boi City Showdown · Nov 15, 2026",
+  "sourceUrl": "https://nightcitytracker.com/deck/01a1e079-d466-7111-b7ca-dee9472cfbae",
+  "kind": "meta",
+  "summary": "Use Yellow blockers and Gig adjustment to buy time for large Red Units, efficient removal, and a late Smasher Go Solo.",
+  "plan": [
+   "Develop Augmented Negotiators or 6th Street Recruits. Save Detonate for a Gear that would swing an attack.",
+   "Use Muamar or Zetatech Faceplate to adjust a Gig for the next payoff. An eight-plus Gig discounts Carnage, while a larger d20 gives Over the Edge a wider choice of targets.",
+   "Clear blockers and push with Animals Wrecker or Yorinobu. Save Smasher for a turn when his removal and ready attack can both matter."
+  ],
+  "mulligan": "Keep a turn-three or turn-four Unit with enough Sell Tags to keep spending on curve. Keep Detonate against Gear-heavy crews when the rest of the hand develops a board.",
+  "keyCards": [
+   ["augmented-negotiators", "Blocks early and forces a discard when it does."],
+   ["zetatech-faceplate", "Adjusts a Gig when its wearer spends and can draw with three distinct Gig values."],
+   ["over-the-edge", "Removes a Unit with power up to your d20’s current value."],
+   ["carnage-at-the-colosseum", "Lets your large Units turn high Gig values into discounted removal."]
+  ],
+  "weaknesses": "You need to keep a strong Unit in play for Carnage. Control decks can remove that Unit or disrupt the Gig setup before you threaten a multi-Gig swing."
  }
 }
