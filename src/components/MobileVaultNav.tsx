@@ -1,4 +1,9 @@
+import { useEffect, useState } from 'react';
 import type { PrimaryTab, TabId } from '../lib/vaultNavigation';
+
+const KEYBOARD_INPUT = `:is(input:not([type]), input:is([type=text], [type=search], [type=email],
+  [type=number], [type=tel], [type=url], [type=password]), textarea):not([readonly], :disabled)`;
+const MIN_KEYBOARD_HEIGHT = 100;
 
 const links = [
   { id: 'collection', label: 'Vault', icon: 'M3 8h18v12H3zM3 8l2-4h14l2 4M10 12h4v4h-4z' },
@@ -9,9 +14,45 @@ const links = [
 ] satisfies { id: PrimaryTab; label: string; icon: string }[];
 
 export function MobileVaultNav({ tab }: { tab: TabId }) {
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    let frame: number | undefined;
+    const update = () => {
+      frame = undefined;
+      const focused = document.activeElement;
+      const editing = focused instanceof HTMLElement && focused.inputMode !== 'none'
+        && (focused.isContentEditable || focused.matches(KEYBOARD_INPUT));
+      // Normalize for pinch zoom. Small height differences can come from browser toolbars.
+      const obscuredHeight = window.innerHeight - viewport.height * viewport.scale;
+      setKeyboardOpen(editing && obscuredHeight >= MIN_KEYBOARD_HEIGHT);
+    };
+
+    function schedule() {
+      frame ??= window.requestAnimationFrame(update);
+    }
+
+    schedule();
+    viewport.addEventListener('resize', schedule);
+    window.addEventListener('resize', schedule);
+    window.addEventListener('pageshow', schedule);
+    document.addEventListener('focusin', schedule);
+    document.addEventListener('focusout', schedule);
+    return () => {
+      viewport.removeEventListener('resize', schedule);
+      window.removeEventListener('resize', schedule);
+      window.removeEventListener('pageshow', schedule);
+      document.removeEventListener('focusin', schedule);
+      document.removeEventListener('focusout', schedule);
+      if (frame !== undefined) window.cancelAnimationFrame(frame);
+    };
+  }, []);
+
   const active = tab === 'shared' || tab === 'upgrade' ? 'builder' : tab;
   return (
-    <nav className="vault-mobile-nav" aria-label="Sections">
+    <nav className="vault-mobile-nav" aria-label="Sections" data-keyboard-open={keyboardOpen || undefined}>
       {links.map(({ id, label, icon }) => (
         <a key={id} href={`#/${id}`} aria-current={active === id ? 'page' : undefined}>
           <span className="vault-mobile-nav-icon" aria-hidden="true">
