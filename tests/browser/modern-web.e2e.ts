@@ -37,6 +37,48 @@ test('empty screens have accessible controls and fit the viewport', async ({ pag
   }
 });
 
+test('phone navigation recovers when the keyboard or a modal closes', async ({ page, isMobile }) => {
+  test.skip(!isMobile, 'The bottom navigation is only rendered on phones');
+  await page.goto('/#/collection');
+  await page.getByRole('button', { name: 'Browse the full catalog' }).click();
+  const nav = page.locator('.vault-mobile-nav');
+  const search = page.getByRole('searchbox', { name: 'Search cards' });
+  await search.fill('Jackie');
+  await expect(nav).toBeVisible();
+
+  // Browser emulation can focus a field but has no OS keyboard. Simulate its viewport changes.
+  const resizeVisibleArea = (heightLost: number, scale = 1) => page.evaluate(({ heightLost, scale }) => {
+    const viewport = window.visualViewport!;
+    Object.defineProperties(viewport, {
+      height: { configurable: true, value: (window.innerHeight - heightLost) / scale },
+      scale: { configurable: true, value: scale },
+    });
+    viewport.dispatchEvent(new Event('resize'));
+  }, { heightLost, scale });
+
+  await resizeVisibleArea(295);
+  await expect(nav).toBeHidden();
+  await resizeVisibleArea(50, 1.5);
+  await expect(nav).toBeVisible();
+  await expect(search).toBeFocused();
+  await resizeVisibleArea(295, 1.5);
+  await expect(nav).toBeHidden();
+  await resizeVisibleArea(0);
+  await expect(nav).toBeVisible();
+  await expect(search).toBeFocused();
+
+  // A modal can restore focus to the prior field when its trigger didn't take focus.
+  await page.getByRole('button', { name: 'Filters', exact: true }).evaluate((button: HTMLButtonElement) => button.click());
+  await expect(page.getByRole('dialog', { name: 'Filters' })).toBeVisible();
+  await expect(nav).toBeHidden();
+  await page.getByRole('button', { name: 'Close filters' }).click();
+  await expect(search).toBeFocused();
+  await expect(nav).toBeVisible();
+  await nav.getByRole('link', { name: 'Prices' }).click();
+  await expect(page).toHaveTitle('Price Book · Cyberpunk TCG Vault');
+  await expect(nav).toBeVisible();
+});
+
 test('sample vault builds in a worker and opens an inspectable card', async ({ page }, testInfo) => {
   await page.goto('/');
   await expect(page.locator('main h1:visible')).toBeVisible();

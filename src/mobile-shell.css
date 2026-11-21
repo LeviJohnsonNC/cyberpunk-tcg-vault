@@ -45,7 +45,8 @@
     content: ''; position: absolute; inset: -1px 24% auto; height: 2px; background: var(--color-accent);
   }
   .vault-mobile-nav a:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -3px; }
-  body:has(dialog:modal, :is(input:not([type]), input[type='text'], input[type='email'], input[type='search'], input[type='number'], textarea, [contenteditable='true']):focus) .vault-mobile-nav { visibility: hidden; }
+  .vault-mobile-nav[data-keyboard-open],
+  body:has(dialog:modal) .vault-mobile-nav { visibility: hidden; }
   .app .toasts { bottom: calc(var(--vault-tab-inset) + var(--space-2)); right: var(--space-3); max-width: calc(100% - 2 * var(--space-3)); pointer-events: none; }
   .al-dialog.vault-mobile-menu {
     margin: auto auto calc(env(safe-area-inset-bottom, 0px) + var(--space-2));
