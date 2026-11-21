@@ -20,7 +20,7 @@ export function MobileVaultNav({ tab }: { tab: TabId }) {
     if (!viewport) return;
 
     let frame: number | undefined;
-    function update() {
+    const update = () => {
       frame = undefined;
       const focused = document.activeElement;
       const editing = focused instanceof HTMLElement && focused.inputMode !== 'none'
@@ -28,7 +28,7 @@ export function MobileVaultNav({ tab }: { tab: TabId }) {
       // Normalize for pinch zoom. Small height differences can come from browser toolbars.
       const obscuredHeight = window.innerHeight - viewport.height * viewport.scale;
       setKeyboardOpen(editing && obscuredHeight >= MIN_KEYBOARD_HEIGHT);
-    }
+    };
 
     function schedule() {
       frame ??= window.requestAnimationFrame(update);
