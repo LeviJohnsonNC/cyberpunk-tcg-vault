@@ -11,7 +11,7 @@ Repo: `cyberpunk-tcg-vault`. A Night City-styled collection tracker, price book 
 - **Feedback:** an in-app form (stored in Supabase) plus a How it works page.
 - **Upgrade planner:** from the Deck Builder, a Meta Intel auto-build or a freshly logged starter, see up to three legal upgrade options (Strongest, Fewest changes, Best value) for a $0, $10, $25 or custom budget in USD or CAD: cuts, adds, owned vs to-buy copies, the price basis and the cost to finish the deck. Lock cards to keep them. Read-only, no sign-in or AI needed.
 - **Starter decks:** "I own The Heist / Embracing Power" logs the whole box (3 Legends + 40 cards, Retail or Beta printing) in one step, from the official WeirdCo decklists.
-- **Add cards:** search, scan with the live camera, or upload photos. A vision model proposes matches and you confirm before anything is saved. Live scans preselect the standard Retail printing when available.
+- **Add cards:** search, scan with the live camera, or upload photos. Photo scans use the printed collector number and set code to suggest an exact printing. Review the suggestions before saving and choose a printing for any ambiguous matches.
 - **Accounts:** email magic-link login through Supabase, with per-user collections and decks protected by row-level security. Without Supabase configured, the app runs in local mode (browser storage).
 
 > Unofficial fan project. Not affiliated with WeirdCo or CD PROJEKT RED. Card data and images come from the official Cyberpunk TCG card database (netdeck.gg). Prices come from TCGplayer via the [tcgcsv.com](https://tcgcsv.com) daily mirror.

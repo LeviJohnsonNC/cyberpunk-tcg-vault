@@ -3,6 +3,7 @@ import { CardImg } from '../components/bits';
 import { PrintingArt } from '../components/PrintingArt';
 import { VaultSelect } from '../components/VaultSelect';
 import { BY_SLUG, CARDS, editionPrinting, isUnspecified, normalizePrinting, printingLabel, unspecifiedId } from '../lib/data';
+import { preparePhotoScan } from '../lib/photoScanImage';
 import { useStore, type Entry } from '../lib/store';
 import { cloudEnabled } from '../lib/supabase';
 
@@ -13,18 +14,9 @@ interface ScanRow {
   printingId: string;
   confidence: number;
   read: string;
+  collectorNumber: string | null;
+  printingCode: string | null;
   on: boolean;
-}
-
-async function shrink(file: File, max = 1600): Promise<string> {
-  const bmp = await createImageBitmap(file);
-  const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(bmp.width * scale);
-  canvas.height = Math.round(bmp.height * scale);
-  canvas.getContext('2d')!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
-  bmp.close();
-  return canvas.toDataURL('image/jpeg', 0.85);
 }
 
 const sortedCards = [...CARDS].sort((a, b) => a.display.localeCompare(b.display));
@@ -49,11 +41,11 @@ export function PhotoScanIntake() {
     for (let i = 0; i < list.length; i++) {
       setScanning(`Scanning photo ${i + 1} of ${list.length}…`);
       try {
-        const image = await shrink(list[i]);
+        const payload = await preparePhotoScan(list[i]);
         const r = await fetch('/api/scan', {
           method: 'POST',
           headers: { 'content-type': 'application/json', ...(session ? { authorization: `Bearer ${session.access_token}` } : {}) },
-          body: JSON.stringify({ image }),
+          body: JSON.stringify(payload),
         });
         const data = await r.json().catch(() => ({}));
         if (!r.ok) {
@@ -64,9 +56,13 @@ export function PhotoScanIntake() {
           const c = BY_SLUG.get(m.slug);
           if (!c) continue;
           const printingId = normalizePrinting(c.slug, m.printingId);
-          const ex = found.find((f) => f.slug === c.slug && f.printingId === printingId);
+          const collectorNumber = m.collectorNumber ?? null;
+          const printingCode = m.printingCode ?? null;
+          const ex = found.find((f) => f.slug === c.slug && f.printingId === printingId
+            && (!isUnspecified(printingId) || (f.collectorNumber === collectorNumber && f.printingCode === printingCode)));
           if (ex) ex.qty += m.qty;
-          else found.push({ key: `${m.slug}-${Date.now()}-${found.length}`, slug: c.slug, qty: m.qty, printingId, confidence: m.confidence ?? 0.8, read: m.read ?? '', on: true });
+          else found.push({ key: `${m.slug}-${Date.now()}-${found.length}`, slug: c.slug, qty: m.qty, printingId,
+            confidence: m.confidence ?? 0.8, read: m.read ?? '', collectorNumber, printingCode, on: true });
         }
         if (data.unmatched?.length) toast(`Couldn't match: ${data.unmatched.slice(0, 5).join(', ')}`, 'err');
         if (typeof data.remaining === 'number') toast(`${data.remaining} scans left today`);
@@ -97,7 +93,7 @@ export function PhotoScanIntake() {
       const i = rows.findIndex((r) => r.key === key);
       if (i < 0 || rows[i].qty < 2) return rows;
       const r = rows[i];
-      const copy: ScanRow = { ...r, key: `${r.key}-s${Date.now()}`, qty: 1, printingId: unspecifiedId(r.slug) };
+      const copy: ScanRow = { ...r, key: `${r.key}-s${Date.now()}`, qty: 1, printingId: unspecifiedId(r.slug), collectorNumber: null, printingCode: null };
       return [...rows.slice(0, i), { ...r, qty: r.qty - 1 }, copy, ...rows.slice(i + 1)];
     });
   const fillEdition = (edition: 'Retail' | 'Beta') =>
@@ -119,7 +115,7 @@ export function PhotoScanIntake() {
             onDragLeave={() => setOver(false)}
             onDrop={(event) => { event.preventDefault(); setOver(false); if (!scanning) void runScan(event.dataTransfer.files); }}>
             <span className="big">Choose photos</span>
-            <span className="intake-scan-tip">Try 20 to 30 cards per photo.</span>
+            <span className="intake-scan-tip">Use smaller groups for readable collector numbers.</span>
           </button>
           <p className="al-action-feedback intake-scan-feedback" data-tone="success" role="status">
             {addedCopies > 0 ? `Added ${addedCopies} ${addedCopies === 1 ? 'card' : 'cards'} to your vault` : ''}
@@ -134,7 +130,7 @@ export function PhotoScanIntake() {
               <ol>
                 <li>Lay cards flat with space between them.</li>
                 <li>Shoot straight down in good light.</li>
-                <li>Keep card names and collector numbers readable.</li>
+                <li>Keep the yellow collector numbers at the lower left in focus.</li>
               </ol>
             </figcaption>
           </figure>
@@ -177,7 +173,7 @@ export function PhotoScanIntake() {
                       onValueChange={(value) => editScan(s.key, { slug: value, printingId: unspecifiedId(value) })}
                       options={sortedCards.map((x) => ({ value: x.slug, label: x.display }))} />
                     <div className="tiny muted">
-                      {s.read && <>read "{s.read}" · </>}
+                      {s.collectorNumber ? <>Read #{s.collectorNumber}{s.printingCode && ` · ${s.printingCode}`} · </> : s.read && <>Read “{s.read}” · </>}
                       <span className={s.confidence < 0.6 ? 'danger-text' : undefined}>{Math.round(s.confidence * 100)}% sure</span>
                     </div>
                   </div>
