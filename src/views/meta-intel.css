@@ -191,6 +191,14 @@
 .meta-colour-identity p:last-child { color: var(--color-text-muted); font-size: 14px; }
 .meta-data-note { margin: var(--space-4) 0; color: var(--color-text-muted); font-size: 14px; }
 .meta-data-note b { color: var(--color-text); }
+.meta-learn-topic > .meta-data-note:last-child { margin-bottom: 0; }
+.meta-showdown-results { display: grid; grid-template-columns: minmax(0, 560px) minmax(0, 360px); gap: var(--space-5); }
+.meta-showdown-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.meta-showdown-table :is(th, td) { padding: var(--space-2); border-bottom: 1px solid var(--color-divider); text-align: right; }
+.meta-showdown-table th:first-child { text-align: left; }
+.meta-showdown-table thead th { color: var(--color-text-muted); font-size: 12px; }
+.meta-showdown-notes { margin: 0; }
+.meta-showdown-notes p { margin: 0 0 var(--space-3); }
 .meta-chart-source { color: var(--color-text-muted); font: 400 12px/1.4 var(--font-mono); margin: var(--space-1) 0 var(--space-3); }
 .meta-chart .hbar { grid-template-columns: minmax(0, 1.4fr) minmax(30px, 0.7fr) 48px; }
 .meta-chart-legend { display: flex; align-items: baseline; gap: var(--space-2); overflow-wrap: anywhere; }
@@ -205,6 +213,7 @@
   .meta-curated-fit { grid-template-columns: 1fr; }
 }
 @media (max-width: 760px) {
+  .meta-showdown-results { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
   .meta-tabs { gap: var(--space-1); margin: var(--space-4) 0; }
   .meta-tabs button { flex: 1; }
   .meta-section-head { column-gap: var(--space-3); }
