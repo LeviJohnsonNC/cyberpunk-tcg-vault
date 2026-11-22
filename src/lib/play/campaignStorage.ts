@@ -22,7 +22,7 @@ export async function readCampaign(scope: string): Promise<{ run?: CampaignRun; 
     const store = tx.objectStore(STORE);
     const run = store.get(runKey(scope)), profile = store.get(profileKey(scope));
     tx.oncomplete = () => resolve({ run: run.result, profile: profile.result ?? emptyProfile() });
-    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error ?? new Error('Could not read the saved campaign.'));
   });
 }
 
