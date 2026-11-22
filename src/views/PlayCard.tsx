@@ -89,14 +89,14 @@ export function CardInspection({ card, cards = [], hostName, shortcuts, onClose 
             </section>}
             {printing && <section className="play-printed-text"><h3>Printed rules</h3><p className="play-inspect-rules"><Rules text={printing.text} /></p></section>}
             {!printing && <p className="play-choice-detail">Printed rules unavailable.</p>}
-            {shortcuts.length > 0 && <div className="play-actions">{shortcuts.map(({ label, select }) =>
-              <button key={label} type="button" className="btn ghost" onClick={() => {
-                dismiss();
-                select();
-              }}>{label}</button>)}</div>}
           </> : <p className="play-choice-detail">This card’s identity is concealed.</p>}
         </div>
       </div>
+      {shortcuts.length > 0 && <div className="play-actions phone-inspect-actions">{shortcuts.map(({ label, select }) =>
+        <button key={label} type="button" className="btn ghost" onClick={() => {
+          dismiss();
+          select();
+        }}>{label}</button>)}</div>}
     </div>
   </dialog>;
 }

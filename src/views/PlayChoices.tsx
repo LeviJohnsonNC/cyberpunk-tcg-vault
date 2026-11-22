@@ -41,8 +41,18 @@ function triggerRules(active: PickField | undefined) {
   return unique.size === 1 ? [...unique.values()].map(rule => ({ ...rule, label: 'Ability rules' })) : [...unique.values()];
 }
 
-export function PlayChoices({ presentation, context, view, action, picks, fields, active, cards, busy, forced, select, step, submit, cancel, resetPayment, alternatives, reorder, inspect, revealed, previewSource, leaveSource }: {
-  presentation: CommandPresentation; context?: ReactNode;
+// Field positions count visible hosts, matching the phone lane. Attached Gear lives under its host.
+function boardPosition(view: PlayerView, card: CardView) {
+  for (const seat of ['player', 'rival'] as const) {
+    const cards = zoneCards(view.players[seat], card.zone ?? '');
+    const slots = card.zone === 'field' && !card.attachedToId ? cards.filter(item => !item.attachedToId) : cards;
+    const index = slots.findIndex(item => item.instanceId === card.instanceId);
+    if (index >= 0) return { seat, slot: index + 1 };
+  }
+}
+
+export function PlayChoices({ phone = false, presentation, context, view, action, picks, fields, active, cards, busy, forced, select, step, submit, cancel, resetPayment, alternatives, reorder, inspect, revealed, previewSource, leaveSource }: {
+  phone?: boolean; presentation: CommandPresentation; context?: ReactNode;
   view: PlayerView;
   revealed?: CardView[]; action: MatchActionForm; picks: Picks; fields: PickField[]; active?: PickField; cards: CardView[];
   previewSource: (card: CardView, trigger: HTMLElement, note: string | undefined, canInspect: boolean) => void;
@@ -104,6 +114,7 @@ export function PlayChoices({ presentation, context, view, action, picks, fields
           const previewCard = option.sourceCardId ? triggerPreviewCard(source, option.sourceCardId, option.label) : undefined;
           const descriptionId = triggerChoice && option.note ? `${choiceId}-effect-${index}` : undefined;
           const duplicateTriggers = triggerChoice ? active.options.filter(item => item.label === option.label) : [];
+          const position = phone && card && boardPosition(view, card);
           const label = duplicateTriggers.length > 1 ? `${option.label} · ${duplicateTriggers.indexOf(option) + 1}` : option.label;
           return <div key={option.id} className="play-choice-option"><button type="button" className={`play-option${artwork ? ' play-option-card' : ''}`}
             data-pick-option={option.id} aria-pressed={rank >= 0} aria-disabled={capped || undefined}
@@ -124,12 +135,36 @@ export function PlayChoices({ presentation, context, view, action, picks, fields
             <span className="play-option-label">
               {rank >= 0 && <span className="play-option-mark" aria-hidden="true">{active.ordered ? rank + 1 : '✓'}</span>}
               {label}
+              {position && card && <small>{position.seat === 'player' ? 'Yours' : 'Rival'} · {card.zone === 'legendArea' ? 'Legend' : 'Slot'} {position.slot}{card.zone === 'field' && card.type !== 'gear' && ` · Power ${card.effectivePower}`}{card.spent && ' · Spent'}{card.hasLag && ' · Lag'}</small>}
               {active.ordered && rank >= 0 && <span className="sr-only">{`, position ${rank + 1}`}</span>}
             </span>
             {showNote && !triggerChoice && <small><Rules text={option.note!} /></small>}
           </button>{descriptionId && <span id={descriptionId} className="sr-only"><Rules text={option.note!} /></span>}{artwork && <button type="button" className="play-choice-details" aria-label={`Details for ${option.label}`} title={`Details for ${option.label}`} onClick={(event) => inspect(card, event.currentTarget)}><span aria-hidden="true">ⓘ</span></button>}</div>;
         })}{!active.options.length && <p className="play-empty">{fields.length > 1 ? 'No eligible options. Choose an earlier step to change your selection.' : 'No eligible options.'}</p>}</div>
       </fieldset>;
+  if (phone && !placement && !fields.some(field => field.ordered)) {
+    const host = fields.find(field => field.id === 'host')?.options.find(option => picks.host?.includes(option.id));
+    const blocker = action.id === 'useBlocker' ? active?.options.find(option => picks[active.id]?.includes(option.id)) : undefined;
+    const cost = fields.find(field => field.id === 'payment')?.min;
+    const target = host || blocker;
+    const targetCard = target?.cardId && byId.get(target.cardId);
+    const position = targetCard && boardPosition(view, targetCard);
+    const duplicate = target && fields.some(field => field.options.filter(option => option.label === target.label).length > 1);
+    const targetName = target && `${target.label}${duplicate && position ? ` · slot ${position.slot}` : ''}`;
+    const equipCost = cost ? ` · ${cost} €$` : '';
+    const confirmText = host ? `Equip to ${targetName}${equipCost}` : blocker ? `Block with ${targetName}` : fields.length ? confirm : action.label;
+    return <div className="phone-choice play-decision-tray">
+      <h3>{host ? sourceCard?.cardName : active?.id === 'host' ? 'Choose an equip target' : !fields.length ? action.label : heading}</h3>
+      {fields.length > 1 && <div className="phone-steps">{fields.filter(field => field.id !== 'card' || !picks.card?.length).map(field =>
+        <button type="button" key={field.id} data-step={field.id} aria-pressed={field.id === active?.id} disabled={busy} onClick={() => step(field.id)}>
+          {stepLabel(field)}{field.id === 'payment' ? ` · ${picks.payment?.length ?? 0}/${field.min}` : ''}</button>)}</div>}
+      {active && <details key={active.id} className="phone-options" open={!onMat || rollingGig || undefined}>
+        <summary>{paying ? 'Payment sources' : onMat ? 'Eligible targets' : active.label} ({active.options.length})</summary>{options}
+      </details>}
+      <div className="phone-commit"><button type="button" className="btn play-confirm" data-confirm-move={action.id} disabled={busy || !ready} onClick={submit}>{confirmText}</button>
+        {(!forced || hasPicks) && <button className="btn quiet" type="button" disabled={busy} onClick={resettingPayment ? resetPayment : cancel}>{forced ? 'Reset' : 'Cancel'}</button>}{alternatives}</div>
+    </div>;
+  }
   return <section className="play-decision-tray" aria-label="Table decision" data-forced={forced} data-placement={placement || undefined}>
     <form className="play-picks" onSubmit={(event) => { event.preventDefault(); if (!busy && ready) submit(); }}>
       <div className="play-tray-head">
