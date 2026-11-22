@@ -1,4 +1,4 @@
-import { Activity, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Activity, lazy, Suspense, useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
 import { Analytics, type BeforeSendEvent } from '@vercel/analytics/react';
 import { useStore, type Deck } from './lib/store';
 import { cloudEnabled } from './lib/supabase';
@@ -8,6 +8,7 @@ import { Collection } from './views/Collection';
 import { MatchRadioContainer } from './lib/play/matchRadio';
 import { MusicPlayer } from './components/MusicPlayer';
 import { MobileVaultNav } from './components/MobileVaultNav';
+import { ScreenBoundary } from './components/ScreenBoundary';
 import { PlayNavigation } from './components/PlayNavigation';
 import { CURRENCIES, getCurrency, setCurrency, type Currency } from './lib/currency';
 import { clearSampleDraft, newDeck, readDeckDraft, rememberDeckDraft, SAMPLE_DRAFT_OWNER, type DeckDraft } from './lib/deckDraft';
@@ -19,16 +20,33 @@ import { PENDING_DECK_KEY } from './lib/handoff';
 import type { MatchSnapshot, MatchSummary } from './lib/play/protocol';
 import './mobile-shell.css';
 
-const CardDrawer = lazy(() => import('./components/CardDrawer').then((module) => ({ default: module.CardDrawer })));
-const PriceBook = lazy(() => import('./views/PriceBook').then((module) => ({ default: module.PriceBook })));
-const DeckBuilder = lazy(() => import('./views/DeckBuilder').then((module) => ({ default: module.DeckBuilder })));
-const MetaIntel = lazy(() => import('./views/MetaIntel').then((module) => ({ default: module.MetaIntel })));
-const AddCards = lazy(() => import('./views/AddCards').then((module) => ({ default: module.AddCards })));
-const HowItWorks = lazy(() => import('./views/HowItWorks').then((module) => ({ default: module.HowItWorks })));
-const UpgradePlanner = lazy(() => import('./views/UpgradePlanner').then((module) => ({ default: module.UpgradePlanner })));
-const SharedDeck = lazy(() => import('./views/SharedDeck').then((module) => ({ default: module.SharedDeck })));
+function lazyScreen<P extends object>(label: string, load: () => Promise<{ default: ComponentType<P> }>) {
+  // React.lazy remembers a rejection. Retry a transient request before it reaches React.
+  const Screen = lazy(async () => {
+    try {
+      return await load();
+    } catch (error) {
+      // A failed script fetch rejects import() with TypeError. Vite remembers CSS
+      // preload failures, so repeating those imports could show an unstyled screen.
+      if (!(error instanceof TypeError)) throw error;
+      return load();
+    }
+  });
+  return function LazyScreen(props: P) {
+    return <ScreenBoundary label={label}><Screen {...props} /></ScreenBoundary>;
+  };
+}
 
-const PlayMode = playPreviewEnabled ? lazy(() => import('./views/PlayMode')) : null;
+const CardDrawer = lazy(() => import('./components/CardDrawer').then((module) => ({ default: module.CardDrawer })));
+const PriceBook = lazyScreen('Price Book', async () => ({ default: (await import('./views/PriceBook')).PriceBook }));
+const DeckBuilder = lazyScreen('Deck Builder', async () => ({ default: (await import('./views/DeckBuilder')).DeckBuilder }));
+const MetaIntel = lazyScreen('Meta Intel', async () => ({ default: (await import('./views/MetaIntel')).MetaIntel }));
+const AddCards = lazyScreen('Add Cards', async () => ({ default: (await import('./views/AddCards')).AddCards }));
+const HowItWorks = lazyScreen('How it works', async () => ({ default: (await import('./views/HowItWorks')).HowItWorks }));
+const UpgradePlanner = lazyScreen('Upgrade planner', async () => ({ default: (await import('./views/UpgradePlanner')).UpgradePlanner }));
+const SharedDeck = lazyScreen('Shared deck', async () => ({ default: (await import('./views/SharedDeck')).SharedDeck }));
+
+const PlayMode = playPreviewEnabled ? lazyScreen('Play Mode', () => import('./views/PlayMode')) : null;
 
 function stripAnalyticsUrlDetails(event: BeforeSendEvent): BeforeSendEvent {
   const url = new URL(event.url);
@@ -134,6 +152,13 @@ export default function App() {
     if (tab !== 'play') setPlayDraft(undefined);
     window.location.hash = `/${tab}${deck ? `?deck=${encodeURIComponent(deck)}` : ''}`;
   };
+
+  function closeCard() {
+    const opener = openCard?.opener?.isConnected ? openCard.opener
+      : openCard?.opener ? document.querySelector<HTMLElement>(route.tab === 'prices' ? '#pb-holdings-title' : '.collection-heading') : null;
+    opener?.focus({ preventScroll: true });
+    setOpenCard(null);
+  }
 
   function practiceAgainst(opponent: Deck, curatedId?: string) {
     const draft = readDeckDraft(scope) ?? { deck: newDeck(), dirty: false };
@@ -264,7 +289,7 @@ export default function App() {
 
       <main key={scope} id="main-content" aria-label={screenLabel} ref={main} tabIndex={-1}>
         <Suspense fallback={<p className="callout" role="status">Opening screen…</p>}>
-        {showSection('collection') && <Activity mode={route.tab === 'collection' ? 'visible' : 'hidden'}><Collection mobile={mobile} onOpen={showCard} goAdd={() => go('add')} /></Activity>}
+        {showSection('collection') && <Activity mode={route.tab === 'collection' ? 'visible' : 'hidden'}><ScreenBoundary label="Collection"><Collection mobile={mobile} onOpen={showCard} goAdd={() => go('add')} /></ScreenBoundary></Activity>}
         {showSection('prices') && <Activity mode={route.tab === 'prices' ? 'visible' : 'hidden'}><PriceBook mobile={mobile} onOpen={showCard} goAdd={() => go('add')} /></Activity>}
         {(showSection('builder') || (route.tab === 'play' && (matchDraft || (savedMatch && readDeckDraft(scope))))) && <Activity mode={route.tab === 'builder' ? 'visible' : 'hidden'}><DeckBuilder mobile={mobile} onOpen={showCard} initialDeck={route.tab === 'builder' ? route.deck : undefined} onConsumeDeck={consumeDeck}
           onResume={PlayMode && !mobile && savedMatch ? () => {
@@ -287,7 +312,7 @@ export default function App() {
         {playPage && (PlayMode && store.ready && matchInfo
           ? <Suspense fallback={<p className="callout" role="status">Opening Play Mode…</p>}>
             <MatchRadioContainer.Provider value={desktopPlay ? setMatchRadioContainer : undefined}>
-              <PlayMode key={scope} scope={scope} mode={route.playMode} preparationOnly={mobile} draft={matchDraft} saved={savedMatch}
+              <PlayMode key={route.playMode} scope={scope} mode={route.playMode} preparationOnly={mobile} draft={matchDraft} saved={savedMatch}
                 onMatchRead={acceptPlayEntryMatch} requestedMatch={route.match}
                 onLeaveMatch={() => { if (route.match) window.location.replace(playHref('free')); }}
                 initialRival={playRival?.scope === scope ? playRival.id : undefined}
@@ -317,12 +342,11 @@ export default function App() {
         </Suspense>
       </main>
 
-      {openCard && <Suspense fallback={<p role="status">Opening card…</p>}><CardDrawer {...openCard} onClose={() => {
-        const opener = openCard.opener?.isConnected ? openCard.opener
-          : openCard.opener ? document.querySelector<HTMLElement>(route.tab === 'prices' ? '#pb-holdings-title' : '.collection-heading') : null;
-        opener?.focus({ preventScroll: true });
-        setOpenCard(null);
-      }} /></Suspense>}
+      {openCard && <ScreenBoundary label="Card details" onClose={closeCard}>
+        <Suspense fallback={<p role="status">Opening card…</p>}>
+          <CardDrawer {...openCard} onClose={closeCard} />
+        </Suspense>
+      </ScreenBoundary>}
       <MusicPlayer controlsContainer={mobile ? musicContainer : desktopPlay && matchRadioContainer ? matchRadioContainer : undefined} />
       <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} page={route.tab} />
 

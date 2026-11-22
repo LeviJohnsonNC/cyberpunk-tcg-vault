@@ -15,7 +15,7 @@ export default defineConfig({
   webServer: {
     // An isolated local-mode production build; browser tests never mutate a cloud account.
     command: 'npm run build && npm run preview -- --host 127.0.0.1 --port 4173 --strictPort',
-    env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_ANON_KEY: '', VITE_PLAY_MODE: '0' },
+    env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_ANON_KEY: '', VITE_PLAY_MODE: '1' },
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: false,
     timeout: 120_000,
