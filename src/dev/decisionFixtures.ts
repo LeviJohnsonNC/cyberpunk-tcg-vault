@@ -81,8 +81,9 @@ export function createDecisionFixture(name: DecisionFixture) {
   eddie('player'); eddie('player');
   if (name === 'Equip Satori') {
     place('player', 'satori-sword-of-saburo', 'hand');
-    const [legend] = state.G.players.player.zones.legendArea;
-    state.G.cardIndex[legend].meta.faceDown = false;
+    const legends = state.G.players.player.zones.legendArea;
+    for (const legend of legends) state.G.cardIndex[legend].meta.spent = true;
+    state.G.cardIndex[legends[0]].meta.faceDown = false;
   }
   if (name === 'Table exchange') {
     for (let i = 0; i < 4; i++) eddie('player');

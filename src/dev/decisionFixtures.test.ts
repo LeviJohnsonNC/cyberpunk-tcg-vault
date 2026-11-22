@@ -125,6 +125,7 @@ it('equips Satori only after choosing a legal host and paying exactly two Eddies
   const revised = updatePick(play, first, 'host', unit.instanceId)!;
   expect(revised.payment).toBeUndefined();
   const final = suggestPayment(play, revised, cards);
+  expect(play.fields(final).find(field => field.id === 'payment')?.options).toHaveLength(2);
   expect(final.payment).toHaveLength(2);
   expect(final.payment.every(id => cards.find(card => card.instanceId === id)?.zone === 'eddieArea')).toBe(true);
   expect(unit.effectivePower).toBe(2);
