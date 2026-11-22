@@ -9,6 +9,17 @@ async function openPosition(page: Page, position: string) {
   await expect(page.locator('.phone-table')).toBeVisible();
 }
 
+test('the preview phone footer leads to the playable table and Back returns to Play', async ({ page }) => {
+  await page.route('https://**/*', route => route.abort());
+  await page.goto('/#/collection');
+  const play = page.locator('.vault-mobile-nav').getByRole('link', { name: 'Play', exact: true });
+  await play.tap();
+  await page.getByRole('link', { name: 'Try the phone table' }).tap();
+  await expect(page.locator('.phone-hand').getByRole('button', { name: /^Satori/ })).toBeVisible();
+  await page.goBack();
+  await expect(play).toHaveAttribute('aria-current', 'page');
+});
+
 test('inspect, change the equip host and payment, rotate and confirm once', async ({ page }) => {
   await openPosition(page, 'satori');
   const table = page.locator('.phone-table');

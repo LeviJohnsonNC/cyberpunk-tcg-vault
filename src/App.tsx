@@ -13,7 +13,7 @@ import { PlayNavigation } from './components/PlayNavigation';
 import { CURRENCIES, getCurrency, setCurrency, type Currency } from './lib/currency';
 import { clearSampleDraft, newDeck, readDeckDraft, rememberDeckDraft, SAMPLE_DRAFT_OWNER, type DeckDraft } from './lib/deckDraft';
 import { TABS, useVaultNavigation, type TabId } from './lib/vaultNavigation';
-import { playPreviewEnabled } from './lib/play/playPreview';
+import { playPreviewEnabled, playWorkbenchEnabled } from './lib/play/playPreview';
 import { playHref } from './lib/playNavigation';
 import { readMatchSummary } from './lib/play/matchStorage';
 import { PENDING_DECK_KEY } from './lib/handoff';
@@ -309,6 +309,9 @@ export default function App() {
         {route.tab === 'about' && <HowItWorks openFeedback={() => setFeedbackOpen(true)} />}
         {route.tab === 'upgrade' && <UpgradePlanner onOpen={showCard} />}
         {route.tab === 'shared' && <SharedDeck onPlayAgainst={PlayMode && !mobile ? practiceAgainst : undefined} token={route.deck} onOpen={showCard} goAdd={() => go('add')} />}
+        {playPage && mobile && playWorkbenchEnabled && <div className="phone-playtest-entry">
+          <a className="btn quiet" href="/campaign-preview.html?decisions=satori">Try the phone table</a>
+        </div>}
         {playPage && (PlayMode && store.ready && matchInfo
           ? <Suspense fallback={<p className="callout" role="status">Opening Play Mode…</p>}>
             <MatchRadioContainer.Provider value={desktopPlay ? setMatchRadioContainer : undefined}>
@@ -362,7 +365,7 @@ export default function App() {
         <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a>
       </footer>}
     </div>
-    {mobile && <MobileVaultNav tab={route.tab} />}
+    {mobile && <MobileVaultNav tab={route.tab} onEnterPlay={PlayMode ? enterPlayFromNavigation : undefined} />}
     </>
   );
 }
