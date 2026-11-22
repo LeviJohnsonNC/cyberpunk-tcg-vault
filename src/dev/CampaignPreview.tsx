@@ -94,7 +94,7 @@ export function Preview() {
 if (import.meta.env.DEV || import.meta.env.VAULT_PLAY_PREVIEW) {
   const params = new URLSearchParams(location.search);
   const opener = params.has('opener');
-  const decisions: Record<string, DecisionFixture> = { exchange: 'Table exchange', block: 'Block a Gig attack', hand: 'Add to hand', effects: 'Attack effects' };
+  const decisions: Record<string, DecisionFixture> = { satori: 'Equip Satori', crowded: 'Crowded table', reaction: 'Reaction', exchange: 'Table exchange', block: 'Block a Gig attack', hand: 'Add to hand', effects: 'Attack effects' };
   createRoot(document.getElementById('root')!).render(params.has('dice-proof') ? <CrystalDiceProof /> : params.has('dice') ? <DicePreview /> : params.has('decisions') ? <PlayDecisionPreview initial={decisions[params.get('decisions') ?? ''] ?? 'Turn order'} /> : params.has('materials') ? <PackMaterialPreview /> : opener
     ? <CampaignMode scope="qa:campaign-opener" openInBuilder={() => {}} />
     : <Preview />);

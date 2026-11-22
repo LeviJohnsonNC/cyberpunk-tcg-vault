@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { createDecisionFixture, decisionFixtures, decisionSetup } from './decisionFixtures';
 import { createEngineSession } from '../lib/play/engineSession';
 import { isReady, matchActions } from '../lib/play/matchActions';
-import { updatePick } from '../lib/play/matchInteraction';
+import { suggestPayment, updatePick } from '../lib/play/matchInteraction';
 import { triggerPreviewCard } from '../lib/play/cardDisplay';
-import { visibleCards } from '../lib/play/matchView';
+import { visibleCards, zoneCards } from '../lib/play/matchView';
 import { gigAdjustmentTarget } from '../lib/play/tacticalInfo';
 
 describe('engine-backed decision review positions', () => {
@@ -107,4 +107,31 @@ describe('Gig adjustment positions', () => {
     expect(next.view.players.player).toMatchObject({ streetCred: 3, gigCount: 1 });
     expect(next.view.prompt.choice).toBeNull();
   });
+});
+
+it('equips Satori only after choosing a legal host and paying exactly two Eddies', () => {
+  const { session, snapshot } = createDecisionFixture('Equip Satori');
+  const cards = visibleCards(snapshot.view);
+  const gear = cards.find(card => card.cardName?.startsWith('Satori'))!;
+  const unit = cards.find(card => card.cardName === 'Corpo Security' && card.zone === 'field')!;
+  const legends = zoneCards(snapshot.view.players.player, 'legendArea');
+  const legend = legends.find(card => !card.faceDown)!;
+  const play = matchActions(snapshot.view).find(action => action.id === 'playCard')!;
+  const start = { card: [gear.instanceId] };
+  const hosts = play.fields(start).find(field => field.id === 'host')!;
+  expect(legends.some(card => card.faceDown)).toBe(true);
+  expect(hosts.options.map(option => option.id).sort()).toEqual([unit.instanceId, legend.instanceId].sort());
+  const first = suggestPayment(play, updatePick(play, start, 'host', legend.instanceId)!, cards);
+  const revised = updatePick(play, first, 'host', unit.instanceId)!;
+  expect(revised.payment).toBeUndefined();
+  const final = suggestPayment(play, revised, cards);
+  expect(final.payment).toHaveLength(2);
+  expect(final.payment.every(id => cards.find(card => card.instanceId === id)?.zone === 'eddieArea')).toBe(true);
+  expect(unit.effectivePower).toBe(2);
+  const after = session.move(snapshot.view.stateID, play.move(final));
+  const publicCards = visibleCards(after.view);
+  expect(publicCards.find(card => card.instanceId === unit.instanceId)?.effectivePower).toBe(4);
+  expect(publicCards.find(card => card.instanceId === gear.instanceId)?.attachedToId).toBe(unit.instanceId);
+  expect(final.payment.every(id => publicCards.find(card => card.instanceId === id)?.spent)).toBe(true);
+  expect(() => session.move(snapshot.view.stateID, play.move(final))).toThrow();
 });
