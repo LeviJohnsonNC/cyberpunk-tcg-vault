@@ -47,7 +47,7 @@ test('inspect, change the equip host and payment, rotate and confirm once', asyn
   await expect(page.locator(`[data-board-card="${unitId}"]`)).toHaveAccessibleName(/power 4/i);
 });
 
-test('a native hand swipe reveals the eleventh card without inspecting or moving', async ({ page, context }) => {
+test('a native hand swipe reveals the eleventh card without inspecting or moving', { tag: '@chromium-swipe' }, async ({ page, context }) => {
   await openPosition(page, 'crowded');
   const table = page.locator('.phone-table');
   const initialState = await table.getAttribute('data-state-id');
