@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { matchActions } from './matchActions';
-import { decisionSource, powerExplanation, previewPosition } from './tacticalInfo';
+import { cardPreviewPosition, cardPreviewStatus, decisionSource, powerExplanation } from './tacticalInfo';
 import type { CardEffectView, CardView, PlayerView } from './protocol';
 
 const card = (id: string, extra: Partial<CardView> = {}): CardView => ({ instanceId: id, definitionId: id, cardName: id, zone: 'field', type: 'unit', faceDown: false, spent: false, power: 4, effectivePower: 4, cost: 2, ...extra });
@@ -47,18 +47,36 @@ describe('decision source', () => {
   });
 });
 
-describe('preview placement', () => {
-  it('keeps the close-up off the hand and decision controls', () => {
-    const anchor = { left: 550, top: 620, width: 100, height: 140 };
-    const blocked = [{ left: 300, top: 600, width: 700, height: 180 }, { left: 20, top: 420, width: 1240, height: 60 }];
-    // A shorter, wider close-up fits above the command bar on a laptop.
-    expect(previewPosition(anchor, { width: 1280, height: 800 }, blocked)).toEqual({ x: 828, y: 12, landscape: true });
-    const roomy = previewPosition(anchor, { width: 1800, height: 1000 }, [{ left: 300, top: 600, width: 700, height: 180 }]);
-    expect(roomy).toEqual({ x: 1502, y: 12, landscape: false });
+describe('card art previews', () => {
+  const lane = { left: 200, top: 500, width: 800, height: 300 };
+  const slot = { left: 205, top: 620, width: 100, height: 140 };
+
+  it('rises from the hand baseline, fits below the command and stays inside the hand lane', () => {
+    const preview = cardPreviewPosition(slot, lane, 300, true, 0, [], [])!;
+    expect(preview.x).toBe(lane.left);
+    expect(preview.y).toBeGreaterThanOrEqual(lane.top);
+    expect(preview.y + preview.height).toBe(slot.top + slot.height);
+    expect(preview.width / preview.height).toBeCloseTo(5 / 7);
+    const roomy = { left: 0, top: 0, width: 1800, height: 1000 };
+    expect(cardPreviewPosition(slot, roomy, 340, true, 1, [], [])).toMatchObject({ width: 340, height: 496 });
   });
-  it('yields when eligible targets or a short viewport leave no room', () => {
-    const anchor = { left: 500, top: 200, width: 100, height: 140 };
-    expect(previewPosition(anchor, { width: 1280, height: 360 }, [])).toBeUndefined();
-    expect(previewPosition(anchor, { width: 1280, height: 800 }, [{ left: 0, top: 0, width: 1280, height: 800 }])).toBeUndefined();
+
+  it('uses the empty side of a field card and gives protected controls priority', () => {
+    const area = { left: 0, top: 0, width: 1400, height: 800 };
+    const anchor = { left: 600, top: 300, width: 100, height: 140 };
+    const unit = { left: 720, top: 290, width: 110, height: 154 };
+    const left = cardPreviewPosition(anchor, area, 300, false, 0, [], [unit])!;
+    expect(left.x + left.width).toBeLessThan(anchor.left);
+    expect(left.width).toBe(300);
+    expect(cardPreviewPosition(anchor, area, 300, false, 0, [area], [])).toBeUndefined();
+    expect(cardPreviewPosition(slot, lane, 300, true, 0, [slot], [])).toBeUndefined();
+    expect(cardPreviewPosition(slot, { ...lane, top: 610 }, 300, true, 0, [], [])).toBeUndefined();
+  });
+
+  it('only adds live changes to visible card art', () => {
+    const changed = card('v', { type: 'unit', cost: 2, effectiveCost: 1, power: 3, effectivePower: 5, hasLag: true });
+    expect(cardPreviewStatus(changed)).toEqual(['Cost 1 €$', 'Power 5', 'Lag']);
+    expect(cardPreviewStatus({ ...changed, definitionId: '' })).toEqual([]);
+    expect(cardPreviewStatus({ ...changed, effectiveCost: 2, effectivePower: 3, hasLag: false })).toEqual([]);
   });
 });
