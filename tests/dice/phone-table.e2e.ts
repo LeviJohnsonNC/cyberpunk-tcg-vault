@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 
 test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
 
@@ -139,4 +140,88 @@ test('concealed slots stay private and browsing restores focus without advancing
     return Math.min(width,height);
   }));
   expect(Math.min(...sizes)).toBeGreaterThanOrEqual(44);
+});
+
+test('a damaged fixture checkpoint opens a fresh playable position', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('qa:command-bar:checkpoint:Equip Satori', '{'));
+  await openPosition(page, 'satori');
+  await expect(page.getByRole('status').filter({ hasText: 'Opened a fresh table' })).toBeVisible();
+  await page.getByRole('button', { name: /^Satori/ }).tap();
+  await expect(page.getByRole('dialog').getByRole('button', { name: 'Equip', exact: true })).toBeEnabled();
+});
+
+test('blocked fixture storage still applies a confirmed payment and preserves the current table', async ({ page }) => {
+  await page.addInitScript(() => {
+    const read = Storage.prototype.getItem;
+    const write = Storage.prototype.setItem;
+    Storage.prototype.getItem = function(key) {
+      if (key.startsWith('qa:command-bar:checkpoint')) throw new DOMException('Read blocked', 'SecurityError');
+      return read.call(this, key);
+    };
+    Storage.prototype.setItem = function(key, value) {
+      if (key.startsWith('qa:command-bar:checkpoint')) throw new DOMException('Write blocked', 'QuotaExceededError');
+      return write.call(this, key, value);
+    };
+  });
+  await openPosition(page, 'satori');
+  await page.getByRole('button', { name: /^Satori/ }).tap();
+  await page.getByRole('dialog').getByRole('button', { name: 'Equip', exact: true }).tap();
+  const unit = page.locator('.phone-side[data-seat=player] .phone-card').first();
+  await unit.tap();
+  await page.locator('[data-confirm-move=playCard]').tap();
+  await expect(unit).toHaveAccessibleName(/Power 4/i);
+  await expect(page.locator('.phone-side[data-seat=player] header')).toContainText('0 €$');
+  await expect(page.getByRole('status').filter({ hasText: 'keep playing in this tab' })).toBeVisible();
+  await page.getByRole('button', { name: 'Show test controls' }).tap();
+  await page.getByRole('button', { name: 'Resume saved fixture' }).tap();
+  await expect(unit).toHaveAccessibleName(/Power 4/i);
+});
+
+test('switching review positions preserves each direct link and checkpoint', async ({ page }) => {
+  await openPosition(page, 'satori');
+  await page.getByRole('button', { name: /^Satori/ }).tap();
+  await page.getByRole('dialog').getByRole('button', { name: 'Equip', exact: true }).tap();
+  await page.locator('.phone-side[data-seat=player] .phone-card').first().tap();
+  await page.locator('[data-confirm-move]').tap();
+  await page.getByRole('button', { name:'Show test controls' }).tap();
+  await page.getByRole('combobox', { name:'Position' }).click();
+  await page.getByRole('option', { name:'Crowded defense', exact:true }).click();
+  await page.reload();
+  await expect(page.locator('.phone-command')).toContainText('Your response');
+  await page.goto('/campaign-preview.html?decisions=satori');
+  await expect(page.locator('.phone-side[data-seat=player] .phone-card').first()).toHaveAccessibleName(/Power 4/i);
+});
+
+test('enlarged text keeps the field reachable and confirms the intended blocker in short landscape', async ({ page }) => {
+  await page.setViewportSize({width:667, height:320});
+  await openPosition(page, 'defense');
+  await page.addStyleTag({content:'html { font-size: 200%; }'});
+  const field = page.locator('.phone-side[data-seat=player]');
+  expect((await field.boundingBox())!.height).toBeGreaterThan(44);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(667);
+  await page.locator('[data-move=useBlocker]').tap();
+  await page.locator('.phone-options summary').tap();
+  const option = page.locator('[data-pick-option]').last();
+  const target = await option.getAttribute('data-pick-option');
+  await option.tap();
+  const confirm = page.locator('[data-confirm-move=useBlocker]');
+  await expect(confirm).toContainText('slot 9');
+  await confirm.tap();
+  await expect(field.locator(`[data-board-card="${target}"]`)).toContainText('Defender');
+});
+
+test('card and combat names and chosen payment sources pass the accessibility scan', async ({ page }) => {
+  async function scan() {
+    const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+    expect(results.violations.map(issue => ({ id: issue.id, nodes: issue.nodes.map(node => node.target) }))).toEqual([]);
+  }
+  await openPosition(page, 'satori');
+  await page.getByRole('button', { name: /^Satori/ }).tap();
+  await page.getByRole('dialog').getByRole('button', { name: 'Equip', exact: true }).tap();
+  await page.locator('.phone-side[data-seat=player] .phone-card').first().tap();
+  await page.getByText('Payment sources (2)', { exact: true }).tap();
+  await scan();
+  await page.goto('/campaign-preview.html?decisions=defense');
+  await expect(page.locator('.phone-command')).toContainText('Your response');
+  await scan();
 });

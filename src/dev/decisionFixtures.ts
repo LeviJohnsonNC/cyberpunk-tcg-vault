@@ -176,9 +176,9 @@ export function saveDecisionFixture(session: ReturnType<typeof createEngineSessi
   const checkpoint = session.checkpoint();
   localStorage.setItem(fixtureKey(initial), JSON.stringify({ ...checkpoint, legendMemory: [...(checkpoint.legendMemory ?? [])], known: [...checkpoint.known].map(([id, seats]) => [id, [...seats]]) }));
 }
-export function resumeDecisionFixture(initial: DecisionFixture = 'Turn order'): { session: ReturnType<typeof createEngineSession>; snapshot: MatchSnapshot } {
+export function resumeDecisionFixture(initial: DecisionFixture = 'Turn order'): { session: ReturnType<typeof createEngineSession>; snapshot: MatchSnapshot } | undefined {
   const saved = JSON.parse(localStorage.getItem(fixtureKey(initial)) ?? 'null');
-  if (!saved) return createDecisionFixture(initial);
+  if (!saved) return;
   const checkpoint: EngineCheckpoint = { ...saved,
     legendMemory: Array.isArray(saved.legendMemory) ? new Map(saved.legendMemory) : undefined,
     known: new Map(saved.known.map(([id, seats]: [string, Seat[]]) => [id, new Set(seats)])) };

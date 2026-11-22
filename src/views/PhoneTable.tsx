@@ -80,19 +80,20 @@ export function PhoneTable({ snapshot, names, title, turn, busy, decision, comba
     const name = card.cardName || (card.zone === 'legendArea' ? `Legend slot ${slot}` : 'Face-down card');
     const target = eligible.has(id);
     const fieldUnit = card.zone === 'field' && card.type !== 'gear';
-    const stats = [fieldUnit && `Power ${card.effectivePower}`, card.spent && 'Spent', card.hasLag && 'Lag'].filter(Boolean).join(' · ');
     const role = view.attackState?.attackerId === id ? 'Attacker' : view.attackState?.defenderId === id ? 'Defender' : undefined;
+    const flags = [chosen.has(id) && 'Selected', role, card.spent && 'Spent', card.hasLag && 'Lag'].filter(Boolean).join(' · ');
     return <div className="phone-slot" key={id} data-selected={chosen.has(id) || undefined}>
       <button type="button" className="phone-card" data-board-card={id} data-target={target || undefined} aria-pressed={target ? chosen.has(id) : undefined}
-        aria-label={[name, stats, role, target && 'eligible'].filter(Boolean).join(', ')} onClick={event => {
+        onClick={event => {
           if (!busy && target && pick(id)) return;
           inspect(card, event.currentTarget);
         }}>
-        <span className="phone-art"><CardFace card={card} />{fieldUnit && <b>{card.effectivePower}</b>}</span>
+        <span className="phone-art" aria-hidden="true"><CardFace card={card} />{fieldUnit && <b>{card.effectivePower}</b>}</span>
         <span className="phone-card-name">{name}</span>
-        {(role || card.spent || card.hasLag || chosen.has(id)) && <small>{chosen.has(id) ? 'Selected' : role || (card.spent ? 'Spent' : 'Lag')}</small>}
+        {flags && <small>{flags}</small>}
+        <span className="sr-only">{fieldUnit && ` Power ${card.effectivePower}`}{target && ' eligible'}</span>
       </button>
-      {gearCount > 0 && <button type="button" className="phone-details" aria-label={`Attached Gear on ${name}, slot ${slot}`} onClick={() => setEquipment(card)}>Gear · {gearCount}</button>}
+      {gearCount > 0 && <button type="button" className="phone-details" aria-label={`Gear · ${gearCount} attached to ${name}, slot ${slot}`} onClick={() => setEquipment(card)}>Gear · {gearCount}</button>}
       {target && <button type="button" className="phone-details" aria-label={`Details for ${name}`} onClick={event => inspect(card, event.currentTarget)}>Details</button>}
     </div>;
   };
