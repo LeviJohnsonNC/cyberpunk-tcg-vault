@@ -16,7 +16,7 @@ const adjustmentSources = {
   'Increase a Gig': 'industrial-assembly',
   'Decrease a Gig': 'trust-no-one',
 } as const;
-export const decisionFixtures = ['Turn order', 'Opening hand', 'Gig die', 'Main turn', 'Table exchange', 'Block a Gig attack', 'Crowded table', 'Reaction', 'Forced payment', 'Target effect', 'Order effects', 'Attack effects', 'Card placement', 'Add to hand',
+export const decisionFixtures = ['Turn order', 'Opening hand', 'Gig die', 'Main turn', 'Table exchange', 'Equip Satori', 'Block a Gig attack', 'Crowded table', 'Reaction', 'Forced payment', 'Target effect', 'Order effects', 'Attack effects', 'Card placement', 'Add to hand',
   'Gig adjustment', 'Single Gig adjustment', 'Increase a Gig', 'Decrease a Gig', 'Overtime', 'Complete'] as const;
 export type DecisionFixture = typeof decisionFixtures[number];
 type Position = EngineState & { G: {
@@ -79,6 +79,12 @@ export function createDecisionFixture(name: DecisionFixture) {
   place('player', 'floor-it', 'hand');
   place('player', 'kiroshi-optics', 'hand');
   eddie('player'); eddie('player');
+  if (name === 'Equip Satori') {
+    place('player', 'satori-sword-of-saburo', 'hand');
+    const legends = state.G.players.player.zones.legendArea;
+    for (const legend of legends) state.G.cardIndex[legend].meta.spent = true;
+    state.G.cardIndex[legends[0]].meta.faceDown = false;
+  }
   if (name === 'Table exchange') {
     for (let i = 0; i < 4; i++) eddie('player');
     state.G.cardIndex[attacker].meta.spent = true;
