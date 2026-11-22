@@ -76,8 +76,9 @@ export function CombatBanner({ view, watching, compact = false, inspect }: { vie
   const stage = view.prompt.choice ? 'Effect choice' : view.attackState?.step === 'react' ? 'Response window'
     : view.attackState?.step === 'attack' ? 'Attack declared' : 'Resolving combat';
   const participant = (card: CardView | undefined, role: string) => card ? <button type="button" className="play-combat-card" disabled={watching || !inspect}
-    aria-label={`Inspect ${role}: ${card.cardName}, current power ${card.effectivePower}`} onClick={(event) => inspect?.(card, event.currentTarget)}>
-    <CardFace card={card} /><span><small>{role}</small><strong>{card.cardName}</strong></span><b>{card.effectivePower}</b></button> : <span>{role}</span>;
+    onClick={(event) => inspect?.(card, event.currentTarget)}>
+    <CardFace card={card} /><span aria-hidden="true"><small>{role}</small><strong>{card.cardName}</strong></span><b aria-hidden="true">{card.effectivePower}</b>
+    <span className="sr-only">{`Inspect ${role}: ${card.cardName}, current power ${card.effectivePower}`}</span></button> : <span>{role}</span>;
   return <section className="play-combat-banner" aria-label="Combat" data-compact={compact} data-responding={combat.responding && !watching} data-attacker={combat.attackerSeat}>
     <div className="play-combat-stage"><small>Combat</small><strong>{stage}</strong></div>
     <div className="play-versus">

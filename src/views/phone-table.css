@@ -1,0 +1,122 @@
+/* The preview owns one dynamic viewport. Only the card lanes pan horizontally. */
+.decision-preview:has(.phone-table) { height: 100dvh; display: flex; flex-direction: column; min-width: 0; }
+.decision-preview:has(.phone-table) > .play-mode { flex: 1; min-height: 0; min-width: 0; padding: 0; margin: 0; width: 100%; }
+.decision-preview:has(.phone-table) .decision-preview-tools { flex: none; max-height: 32dvh; overflow-y: auto; }
+.phone-table-root { min-width: 0; height: 100%; font-size: .9375rem; container: handset / size; }
+.phone-table { height: 100%; display: grid; grid-template: "head" auto "board" minmax(3lh,1fr) "hand" auto "command" auto / minmax(0,1fr); isolation: isolate; color: var(--color-text); background: var(--color-canvas-deep); }
+.phone-table :is(h1,h2,h3,p), .phone-sheet :is(h2,h3,p) { margin: 0; }
+.phone-table button, .phone-table summary, .phone-sheet button, .phone-table-root .play-inspect button { min-height: 44px; min-width: 44px; touch-action: manipulation; }
+.phone-match-head, .phone-side > header, .phone-hand > header, .phone-command > header, .phone-sheet header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.phone-match-head { grid-area: head; padding: 5px 12px; border-block: 1px solid var(--color-divider); background: linear-gradient(110deg,var(--color-surface-raised),var(--color-canvas-deep)); }
+.phone-match-head p, .phone-side header span, .phone-log small { color: var(--color-text-muted); font: 500 .6875rem/1.4 var(--font-mono); }
+.phone-match-head p { color: var(--color-accent); text-transform: uppercase; letter-spacing: .09em; }
+.phone-match-head h1 { font: 700 clamp(1.125rem,4.7vw,1.625rem)/1.1 var(--font-display); }
+.phone-match-head h1 i { color: var(--color-text-faint); font-size: .68em; }
+.phone-board { grid-area: board; overflow: auto; min-height: 0; display: flex; flex-flow: column; scrollbar-width: thin; }
+.phone-side { flex: 1 0 auto; min-width: 0; padding-bottom: 5px; border-bottom: 1px solid var(--color-divider); background: linear-gradient(90deg, rgb(18 10 22 / .80), rgb(18 10 22 / .32)), url('../assets/play/field-glass.webp') center / cover; }
+.phone-side[data-seat="rival"] { background-image: linear-gradient(90deg, rgb(18 10 22 / .80), rgb(18 10 22 / .32)), url('../assets/play/field-glass-rival.webp'); }
+.phone-side > header, .phone-hand > header { padding-inline: 12px; }
+.phone-side > header > div { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 10px; }
+.phone-side h2, .phone-hand h2, .phone-choice h3, .phone-sheet h2 { font: 700 1.375rem/1.08 var(--font-display); color: var(--color-ticket); }
+.phone-side[data-seat="rival"] h2 { color: var(--color-text-muted); }
+.phone-piles, .phone-more, .phone-details { padding: 0 6px; background: transparent; border: 0; color: var(--color-text-muted); font: 600 .8125rem var(--font-ui); text-decoration: underline; text-underline-offset: 4px; }
+.phone-strip { display: flex; align-items: flex-start; gap: 8px; padding: 2px 12px 6px; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; scroll-padding-inline: 12px; scrollbar-width: thin; scrollbar-color: var(--color-divider) transparent; }
+.phone-slot { flex: 0 0 clamp(64px,19vw,84px); min-width: 0; }
+.phone-card { position: relative; display: block; width: 100%; text-align: start; padding: 0; border: none; border-radius: 5px; background: none; color: var(--color-text); }
+.phone-card:focus-visible, .phone-details:focus-visible { outline-offset: 1px; }
+.phone-art { display: block; position: relative; aspect-ratio: 5/7; border-radius: 4px; box-shadow: 0 3px 8px #09050c; }
+.phone-art .card-art { display: block; inline-size: 100%; block-size: 100%; object-fit: contain; border-radius: inherit; transform: none; border: 0; box-shadow: none; }
+.phone-art b { position: absolute; bottom: 2px; right: 2px; color: var(--color-ticket); background: var(--color-canvas-deep); padding: 2px 5px; border-radius: 2px; font: 700 .875rem var(--font-mono); }
+.phone-card-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 4px; font: 600 .75rem/1.3 var(--font-ui); }
+.phone-slot small, .phone-choice .play-option-label small { display: block; color: var(--color-text-muted); font-size: .6875rem; }
+.phone-card[data-target] .phone-art { outline: 2px solid var(--color-ticket); }
+.phone-slot[data-selected] .phone-art { outline: 3px solid var(--color-accent); }
+.phone-hand { grid-area: hand; min-width: 0; padding-top: 5px; border-top: 1px solid var(--color-divider); background: linear-gradient(180deg,var(--color-surface),var(--color-canvas-deep)); }
+.phone-hand h2 { font-size: 1.1875rem; padding-bottom: 4px; }
+.phone-hand h2 b { color: var(--color-accent); font: 600 .8125rem var(--font-mono); }
+.phone-hand .phone-slot { flex-basis: clamp(82px,23vw,108px); }
+.phone-command { grid-area: command; padding: 0 12px max(9px,env(safe-area-inset-bottom)); border-top: 2px solid var(--color-accent-deep); background: var(--color-surface); min-width: 0; max-height: 46dvh; overflow: auto; overscroll-behavior: contain; }
+.phone-command > header p { font: 600 .75rem var(--font-mono); color: var(--color-ticket); }
+.phone-command .btn, .phone-sheet .btn { white-space: normal; }
+.phone-idle, .phone-steps, .phone-commit, .phone-action-list, .phone-resource-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.phone-idle > .btn:only-child { margin-left: auto; }
+.phone-choice.play-decision-tray { display: grid; position: static; gap: 6px; width: 100%; }
+.phone-steps button { background: var(--color-canvas-deep); border: 1px solid var(--color-divider); border-radius: 4px; color: var(--color-text); padding: 4px 10px; }
+.phone-steps button[aria-pressed=true] { color: var(--color-ticket); border-color: var(--color-ticket-muted); }
+.phone-options > summary { align-content: center; color: var(--color-text-muted); cursor: pointer; font-size: .875rem; }
+.phone-choice .play-active-choice, .phone-choice .play-pick-list { min-width: 0; max-width: none; width: 100%; margin: 0; padding: 0; }
+.phone-choice .play-pick-list { display: grid; grid-template-columns: minmax(0,1fr); max-height: 24dvh; overflow-y: auto; }
+.phone-choice .play-choice-option { display: flex; min-width: 0; gap: 4px; }
+.phone-choice .play-option { flex: 1; min-width: 0; max-width: none; text-align: start; }
+.phone-choice .play-choice-details { position: static; flex: 0 0 44px; align-self: stretch; }
+.phone-commit { position: sticky; bottom: -1px; background: var(--color-surface); padding-top: 4px; }
+.phone-commit .play-confirm { flex: 1; }
+.phone-command .play-combat-banner { display: block; margin: 0 0 6px; width: 100%; }
+.phone-command .play-versus { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.phone-command .play-combat-stage { display: none; }
+.phone-command .play-combat-card { min-height: 44px; }
+.phone-log { padding-inline-start: 20px; }
+.phone-log li { margin-bottom: 10px; }
+.phone-log small { display: block; }
+.phone-sheet, .phone-table-root .play-inspect { position: fixed; inset: auto 0 0; box-sizing: border-box; width: min(100%,540px); max-width: 100%; max-height: 92dvh; margin: auto auto 0; padding: 0; border: 1px solid var(--color-divider); border-radius: 14px 14px 0 0; color: var(--color-text); background: var(--color-canvas); overflow-y: auto; overscroll-behavior: contain; }
+.phone-sheet::backdrop, .phone-table-root .play-inspect::backdrop { background: rgb(9 5 12 / .76); }
+.phone-sheet-inner, .phone-table-root .play-inspect-body { padding: 12px 14px max(14px,env(safe-area-inset-bottom)); }
+.phone-sheet header, .phone-table-root .play-inspect-head { position: sticky; top: 0; z-index: 2; background: var(--color-canvas); padding-block: 4px; }
+.phone-sheet h3 { margin: 12px 0 4px; }
+.phone-table-root .play-inspect-content { display: flex; flex-direction: column; gap: 14px; }
+.phone-table-root .play-inspect-art { align-self: center; width: min(67vw,28dvh,250px); aspect-ratio: 5/7; }
+.phone-table-root .play-inspect-art .card-art { width: 100%; height: 100%; object-fit: contain; transform: none; box-shadow: none; }
+.phone-table-root .play-inspect-rules { font-size: 1.0rem; line-height: 1.45; }
+.phone-inspect-actions { position: sticky; bottom: 0; padding: 8px 0; background: var(--color-canvas); }
+.phone-inspect-actions .btn:first-child { color: var(--color-accent-ink); background: var(--color-accent); }
+@media (orientation: landscape) and (max-height: 540px) {
+  .phone-table { grid-template: "head head" auto "board command" minmax(3lh,1fr) "hand command" auto / minmax(0,1.35fr) minmax(0,1fr); }
+  .phone-board { flex-direction: row; }
+  .phone-side { flex: 1 1 0; }
+  .phone-side > header > div { display: block; }
+  .phone-slot { flex-basis: 48px; }
+  .phone-hand .phone-slot { flex-basis: 54px; }
+  .phone-command { max-height: none; border-left: 1px solid var(--color-divider); }
+  .phone-table-root .play-inspect-content { display: grid; grid-template-columns: minmax(84px,24%) 1fr; }
+  .phone-table-root .play-inspect-art { width: 100%; }
+}
+
+.phone-range { display: block; padding: 0 12px 4px; text-align: end; color: var(--color-text-muted); font: 500 .625rem/1.2 var(--font-mono); }
+.phone-art .play-face-placeholder { border: 1px solid var(--face-accent); }
+.phone-card-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; line-height: 1.15; }
+.phone-board .phone-art { background: var(--color-canvas-deep); }
+.phone-slot .phone-details { font-size: .75rem; }
+.phone-command { display: flex; flex-flow: column; overflow-y: auto; overflow-wrap: anywhere; }
+.phone-command > header, .phone-command > .play-combat-banner { flex: none; }
+.phone-controls { min-height: 44px; overflow-y: auto; }
+.phone-table[data-combat] .phone-side .phone-slot { flex: 0 0 118px; }
+.phone-table[data-combat] .phone-side .phone-card { display: grid; grid-template-columns: 34px minmax(0,1fr); grid-template-rows: auto auto; align-content: center; column-gap: 6px; min-height: 54px; padding: 3px; border: 1px solid var(--color-divider); background: var(--color-canvas-deep); }
+.phone-table[data-combat] .phone-side .phone-card[data-target] { border-color: var(--color-ticket); }
+.phone-table[data-combat] .phone-side .phone-slot[data-selected] .phone-card { border-color: var(--color-accent); }
+.phone-table[data-combat] .phone-side .phone-art { grid-row: 1 / 3; align-self: center; }
+.phone-table[data-combat] .phone-side .phone-art b { font-size: .75rem; bottom: 0; right: 0; }
+.phone-table[data-combat] .phone-side .phone-card-name { align-self: end; font-size: .75rem; }
+.phone-table[data-combat] .phone-side .phone-card small { align-self: start; }
+.phone-table[data-combat] .phone-hand .phone-slot { flex-basis: clamp(58px,18vw,80px); }
+.phone-table[data-combat] .phone-side .phone-details { padding-inline: 4px; }
+@media (orientation: landscape) and (max-height: 540px) {
+  .phone-table[data-combat] .phone-side .phone-slot { flex-basis: 106px; }
+  .phone-table[data-combat] .phone-hand .phone-slot { flex-basis: 54px; }
+}
+
+.phone-choice .play-option[aria-pressed=true] .play-option-label small { color: inherit; }
+.phone-match-head > div, .phone-command > *, .phone-command .play-versus-side { min-width: 0; }
+.phone-command .play-versus-side em { white-space: normal; }
+
+/* When large type or browser chrome leaves too little room for two pinned
+   regions, let the document scroll, keeping the field and decisions reachable. */
+@container handset (height < 17em) or ((width < 20em) and (height < 32em)) {
+  .phone-table { display: flex; flex-direction: column; height: auto; min-height: 100%; }
+  .phone-board { display: block; overflow: visible; }
+  .phone-command, .phone-controls { max-height: none; min-height: auto; overflow: visible; }
+  .phone-choice .play-pick-list { max-height: none; }
+  .phone-commit { position: static; }
+  .phone-table[data-combat] .phone-side .phone-slot { flex-basis: 8.75rem; }
+  .phone-side .phone-card-name { overflow-wrap: anywhere; -webkit-line-clamp: unset; }
+  .phone-table .btn, .phone-sheet .btn, .phone-table-root .play-inspect .btn { font-size: .875rem; }
+}

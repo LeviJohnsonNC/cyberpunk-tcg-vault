@@ -16,7 +16,7 @@ const adjustmentSources = {
   'Increase a Gig': 'industrial-assembly',
   'Decrease a Gig': 'trust-no-one',
 } as const;
-export const decisionFixtures = ['Turn order', 'Opening hand', 'Gig die', 'Main turn', 'Table exchange', 'Equip Satori', 'Block a Gig attack', 'Crowded table', 'Reaction', 'Forced payment', 'Target effect', 'Order effects', 'Attack effects', 'Card placement', 'Add to hand',
+export const decisionFixtures = ['Turn order', 'Opening hand', 'Gig die', 'Main turn', 'Table exchange', 'Equip Satori', 'Block a Gig attack', 'Crowded table', 'Crowded defense', 'Reaction', 'Forced payment', 'Target effect', 'Order effects', 'Attack effects', 'Card placement', 'Add to hand',
   'Gig adjustment', 'Single Gig adjustment', 'Increase a Gig', 'Decrease a Gig', 'Overtime', 'Complete'] as const;
 export type DecisionFixture = typeof decisionFixtures[number];
 type Position = EngineState & { G: {
@@ -89,14 +89,16 @@ export function createDecisionFixture(name: DecisionFixture) {
     for (let i = 0; i < 4; i++) eddie('player');
     state.G.cardIndex[attacker].meta.spent = true;
   }
-  if (name === 'Crowded table') {
+  if (name === 'Crowded table' || name === 'Crowded defense') {
     const legend = state.G.players.player.zones.legendArea[0];
     state.G.cardIndex[legend].meta.faceDown = false;
     for (let index = 0; index < 8; index++) {
       const unit = place('player', 'corpo-security', 'field');
       const gear = place('player', 'kiroshi-optics', 'field');
-      state.G.cardIndex[gear].meta.attachedToId = index < 3 ? legend : unit;
-      place('player', 'floor-it', 'hand');
+      const host = index < 3 ? legend : unit;
+      state.G.cardIndex[gear].meta.attachedToId = host;
+      state.G.cardIndex[host].meta.attachedGearIds.push(gear);
+      place('player', index === 7 ? 'psycho-squad' : 'floor-it', 'hand');
       eddie('rival');
     }
   }
@@ -146,14 +148,14 @@ export function createDecisionFixture(name: DecisionFixture) {
     }
   }
   if (name === 'Overtime') { state.G.overtime = true; state.G.turnMetadata.overtimeActive = true; }
-  if (name === 'Reaction' || name === 'Block a Gig attack' || name === 'Forced payment') state.G.turnMetadata.activePlayerId = 'rival';
+  if (name === 'Reaction' || name === 'Block a Gig attack' || name === 'Crowded defense' || name === 'Forced payment') state.G.turnMetadata.activePlayerId = 'rival';
   if (program) state.G.manualPaymentPlayerId = undefined;
   const engine = new LocalEngine(state);
   const issue = (seat: Seat, move: string, args: Record<string, unknown> = {}) => {
     const result = engine.processCommand({ commandID: `fixture-${move}`, move, input: { args } }, seat);
     if (!result.success) throw new Error(result.error);
   };
-  if (name === 'Reaction' || name === 'Block a Gig attack') issue('rival', 'attackRival', { attackerId: attacker });
+  if (name === 'Reaction' || name === 'Block a Gig attack' || name === 'Crowded defense') issue('rival', 'attackRival', { attackerId: attacker });
   if (name === 'Forced payment') {
     issue('rival', 'attackUnit', { attackerId: attacker, defenderId: defender });
     if (engine.getFilteredView('player').attackState?.step === 'react') issue('player', 'resolveAttack', { pass: true });
@@ -174,9 +176,9 @@ export function saveDecisionFixture(session: ReturnType<typeof createEngineSessi
   const checkpoint = session.checkpoint();
   localStorage.setItem(fixtureKey(initial), JSON.stringify({ ...checkpoint, legendMemory: [...(checkpoint.legendMemory ?? [])], known: [...checkpoint.known].map(([id, seats]) => [id, [...seats]]) }));
 }
-export function resumeDecisionFixture(initial: DecisionFixture = 'Turn order'): { session: ReturnType<typeof createEngineSession>; snapshot: MatchSnapshot } {
+export function resumeDecisionFixture(initial: DecisionFixture = 'Turn order'): { session: ReturnType<typeof createEngineSession>; snapshot: MatchSnapshot } | undefined {
   const saved = JSON.parse(localStorage.getItem(fixtureKey(initial)) ?? 'null');
-  if (!saved) return createDecisionFixture(initial);
+  if (!saved) return;
   const checkpoint: EngineCheckpoint = { ...saved,
     legendMemory: Array.isArray(saved.legendMemory) ? new Map(saved.legendMemory) : undefined,
     known: new Map(saved.known.map(([id, seats]: [string, Seat[]]) => [id, new Set(seats)])) };

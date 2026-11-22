@@ -11,7 +11,8 @@
     "test": "vitest run",
     "check": "npm run lint && npm test && npm run build",
     "test:browser": "playwright test",
-    "test:dice": "playwright test --config playwright.dice.config.ts",
+    "test:dice": "playwright test --project table-chromium --config playwright.dice.config.ts",
+    "test:phone:webkit": "playwright test --project phone-webkit --config playwright.dice.config.ts",
     "check:budget": "node scripts/check-bundle-budget.mjs"
   },
   "dependencies": {
