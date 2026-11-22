@@ -314,11 +314,7 @@
   rotate: calc(var(--spread) * 13deg / max(var(--n), 5));
   translate: 0 calc((var(--spread) * var(--spread) - var(--arc) * var(--arc)) * 11px / max(var(--n), 5));
 }
-/* The card rises inside its slot, so the pointer never loses it and the layout never moves. */
-.play-hand .play-card { transform-origin: 50% 100%; }
-.play-hand .play-card-shell:hover, .play-hand .play-card-shell:focus-within { z-index: 25; rotate: 0deg; }
-.play-hand .play-card-shell:hover > .play-card, .play-hand .play-card-shell:focus-within > .play-card { translate: 0 calc(var(--w) * -.24); scale: 1.16; }
-.play-hand .play-card-shell:hover > .play-details, .play-hand .play-card-shell:focus-within > .play-details { translate: calc(var(--w) * .07) calc(var(--w) * -.46); }
+/* The fan keeps its resting hit boxes while its close-up is displayed above the table. */
 .play-hand .play-card[data-draggable="true"] .play-card-art { --card-depth: 0 0 0 1px color-mix(in srgb, var(--color-accent) 60%, transparent), 0 6px 16px var(--play-shadow); }
 .play-hand .play-card[data-unplayable]:not(:hover, :focus-visible) .play-card-art { filter: brightness(.58) saturate(.6); }
 
@@ -470,7 +466,5 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .play-card-art { transition: translate 170ms ease, rotate 220ms ease, scale 170ms ease, filter 220ms ease, box-shadow 170ms ease; }
-  .play-hand .play-card-shell { transition: rotate 170ms ease; }
-  .play-hand .play-card, .play-hand .play-details { transition: translate 170ms cubic-bezier(.2, .8, .2, 1), scale 170ms cubic-bezier(.2, .8, .2, 1), opacity 120ms ease; }
   .play-details { transition: opacity 120ms ease; }
 }

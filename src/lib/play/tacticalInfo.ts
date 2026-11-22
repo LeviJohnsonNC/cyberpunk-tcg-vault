@@ -49,13 +49,79 @@ export function gigAdjustmentTarget(view: PlayerView, dieId: unknown) {
 }
 
 export interface PreviewRect { left: number; top: number; width: number; height: number }
-const cardPreviewSizes = [{ width: 286, height: 464, landscape: false }, { width: 440, height: 330, landscape: true }];
 
-/** Find a readable close-up that does not cover the hand, decision controls or eligible targets. */
-export function previewPosition(anchor: PreviewRect, viewport: { width: number; height: number }, blocked: PreviewRect[],
-  sizes?: typeof cardPreviewSizes) {
-  if (!sizes && viewport.height < 480) return;
-  for (const { width, height, landscape } of sizes ?? cardPreviewSizes) {
+const previewGap = 8;
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
+export function cardPreviewStatus(card: CardView) {
+  if (!card.definitionId || card.zone === 'eddieArea') return [];
+  const labels: string[] = [];
+  if (card.effectiveCost != null && card.cost != null && card.effectiveCost !== card.cost) labels.push(`Cost ${card.effectiveCost} €$`);
+  if ((card.type === 'unit' || card.type === 'legend') && card.effectivePower !== card.power) labels.push(`Power ${card.effectivePower}`);
+  if (card.spent) labels.push('Spent');
+  if (card.hasLag) labels.push('Lag');
+  if (card.damage) labels.push(`${card.damage} damage`);
+  return labels;
+}
+
+/** Bounds are the visible table, or the hand lane below the command bar. */
+export function cardPreviewPosition(anchor: PreviewRect, bounds: PreviewRect, preferredWidth: number,
+  inHand: boolean, statusCount: number, blocked: PreviewRect[], pieces: PreviewRect[]) {
+  const right = bounds.left + bounds.width, bottom = bounds.top + bounds.height;
+  const anchorRight = anchor.left + anchor.width, anchorBottom = anchor.top + anchor.height;
+  const middle = anchor.left + anchor.width / 2, centerY = anchor.top + anchor.height / 2;
+  const footer = Math.ceil(statusCount / 2) * 20;
+  const baseline = Math.min(bottom, anchorBottom);
+  const maxHeight = inHand ? baseline - bounds.top : bounds.height;
+  const maxWidth = Math.floor(Math.min(preferredWidth, bounds.width, (maxHeight - footer) * 5 / 7));
+  // Below this threshold the close-up adds little legibility. Details remains available.
+  const minWidth = Math.max(inHand ? 144 : 120, Math.ceil(anchor.width * 1.25));
+
+  for (let width = maxWidth; width >= minWidth; width--) {
+    const height = width * 7 / 5 + footer;
+
+    if (inHand) {
+      const x = clamp(middle - width / 2, bounds.left, right - width);
+      const y = baseline - height;
+      const obstructed = blocked.some(r => x < r.left + r.width + previewGap && x + width + previewGap > r.left &&
+        y < r.top + r.height + previewGap && y + height + previewGap > r.top);
+      if (!obstructed) return { x, y, width, height };
+      continue;
+    }
+
+    // Stay alongside the source. Its nearest usable space may start just past a target.
+    const leftX = anchor.left - previewGap - width, rightX = anchorRight + previewGap;
+    const xs = new Set([leftX, rightX, ...blocked.flatMap(r => [r.left - previewGap - width, r.left + r.width + previewGap])]);
+    const idealY = centerY - height / 2;
+    let best: { x: number; y: number; score: number } | undefined;
+    for (const x of xs) {
+      const sideGap = x >= rightX ? x - rightX : leftX - x;
+      if (x < bounds.left || x + width > right || sideGap < 0 || sideGap > preferredWidth) continue;
+
+      // Find the clear vertical strip alongside the source, then center the art within it.
+      let top = bounds.top, floor = bottom;
+      for (const r of blocked) {
+        if (x >= r.left + r.width + previewGap || x + width + previewGap <= r.left) continue;
+        if (r.top + r.height + previewGap <= centerY) top = Math.max(top, r.top + r.height + previewGap);
+        else floor = Math.min(floor, r.top - previewGap);
+      }
+      if (floor < centerY || floor - top < height) continue;
+      const y = clamp(idealY, top, floor - height);
+      const covered = pieces.reduce((area, r) => area +
+        Math.max(0, Math.min(x + width, r.left + r.width) - Math.max(x, r.left)) *
+        Math.max(0, Math.min(y + height, r.top + r.height) - Math.max(y, r.top)), 0);
+      const room = x >= rightX ? right - anchorRight : anchor.left - bounds.left;
+      const score = covered / width + sideGap + Math.abs(y - idealY) * .25 - Math.min(room, preferredWidth * 2) * .01;
+      if (!best || score < best.score) best = { x, y, score };
+    }
+    if (best) return { x: best.x, y: best.y, width, height };
+  }
+}
+
+/** Effect options also carry a rules excerpt and have their own compact layouts. */
+export function effectPreviewPosition(anchor: PreviewRect, viewport: { width: number; height: number }, blocked: PreviewRect[],
+  sizes: { width: number; height: number; landscape: boolean }[]) {
+  for (const { width, height, landscape } of sizes) {
     const margin = 12;
     const clampX = (x: number) => Math.max(margin, Math.min(viewport.width - width - margin, x));
     const clampY = (y: number) => Math.max(margin, Math.min(viewport.height - height - margin, y));
@@ -66,16 +132,16 @@ export function previewPosition(anchor: PreviewRect, viewport: { width: number; 
       { x: clampX(anchor.left + anchor.width + margin), y: clampY(anchor.top) },
       { x: clampX(anchor.left - width - margin), y: clampY(anchor.top) },
       { x: centerX, y: clampY(anchor.top - height - margin) },
-      ...(sizes ? blocked.flatMap(rect => [
+      ...blocked.flatMap(rect => [
         { x: clampX(rect.left - width - margin), y: alongsideY },
         { x: clampX(rect.left + rect.width + margin), y: alongsideY },
         { x: centerX, y: clampY(rect.top - height - margin) },
         { x: centerX, y: clampY(rect.top + rect.height + margin) },
-      ]) : []),
+      ]),
       { x: viewport.width - width - margin, y: margin }, { x: margin, y: margin },
     ];
     const position = positions.find(({ x, y }) => ![anchor, ...blocked].some((rect) =>
       x < rect.left + rect.width + 4 && x + width + 4 > rect.left && y < rect.top + rect.height + 4 && y + height + 4 > rect.top));
-    if (position) return { ...position, landscape };
+    if (position) return { ...position, width, height, landscape };
   }
 }

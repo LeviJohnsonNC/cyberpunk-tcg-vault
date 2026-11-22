@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useContext, useEffect, useEffectEvent, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal, preload } from 'react-dom';
 import sevenGigPlayer from '../assets/play/field-seven-gigs-player.webp';
 import sevenGigRival from '../assets/play/field-seven-gigs-rival.webp';
@@ -8,7 +8,7 @@ import { visibleCards, zoneCards } from '../lib/play/matchView';
 import type { CardView, MatchBeat, MatchSnapshot, Move, Seat } from '../lib/play/protocol';
 import { CardFace, CardInspection } from './PlayCard';
 import { vaultCard } from '../lib/play/cardDisplay';
-import { decisionSource, previewPosition } from '../lib/play/tacticalInfo';
+import { cardPreviewPosition, cardPreviewStatus, decisionSource, effectPreviewPosition } from '../lib/play/tacticalInfo';
 import { combatContext } from '../lib/play/matchPresentation';
 import { commandPresentation } from '../lib/play/commandPresentation';
 import { DieFace, GigRollAnnouncement } from './PlayDice';
@@ -43,10 +43,10 @@ import './play-resource-dock.css';
 const winReasons: Record<string, string> = { gig_victory: 'Seven Gigs secured', overtime_majority: 'Majority of Gigs in overtime', deck_out_victory: 'Deck-out', concede: 'Concession', concession: 'Concession' };
 type SavedDecision = { matchId: string; state: number; selection?: number; picks: Picks; step?: string };
 type Context = { state: string; card: CardView; intents: Intent[]; x: number; y: number; trigger?: HTMLElement };
-type Preview = {
-  state: string; card: CardView; x: number; y: number; landscape: boolean;
-  effect?: { width: number; height: number; note?: string; canInspect: boolean };
-};
+type Preview = { state: string; card: CardView } & (
+  | { kind: 'art'; trigger: HTMLElement; inHand: boolean; keyboard: boolean; status: string[]; position: ReturnType<typeof cardPreviewPosition> }
+  | { kind: 'effect'; x: number; y: number; width: number; height: number; landscape: boolean; note?: string; canInspect: boolean }
+);
 const effectPreviewSizes = [
   { width: 354, height: 248, landscape: true },
   { width: 294, height: 174, landscape: true },
@@ -54,6 +54,13 @@ const effectPreviewSizes = [
   { width: 238, height: 104, landscape: true },
   { width: 120, height: 174, landscape: false },
 ];
+
+const cardPreviewObstacles = [
+  '.play-command', '.play-decision-panel', '.play-drawer', '.play-private-peek', '.play-radio-panel', '.play-match-options[open] .play-more-actions',
+  '.play-bench-piles', '.play-bench-seat', '.play-rival-seat', '.play-eddies', '.play-legends h3', '.play-legend-slot .play-card',
+  '.play-gig-count', '.play-gig-cred', '.play-gig-threat', '.play-gigs .play-die', '[data-target="true"]',
+  '[data-board-card][data-combat="true"]', '[data-board-card][data-source="true"]',
+].join(', ');
 
 function readDecision(key: string, snapshot: MatchSnapshot): SavedDecision | undefined {
   try {
@@ -256,24 +263,58 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     setArrow(undefined);
     setEffectFocus(undefined);
   }, []);
-  const reviewingEffect = !!hovered?.effect;
   useEffect(() => () => clearTimeout(hoverTimer.current), []);
   useEffect(() => {
     window.addEventListener('resize', clearHover);
+    window.addEventListener('blur', clearHover);
     document.addEventListener('scroll', clearHover, true);
-    return () => { window.removeEventListener('resize', clearHover); document.removeEventListener('scroll', clearHover, true); };
+    return () => {
+      window.removeEventListener('resize', clearHover);
+      window.removeEventListener('blur', clearHover);
+      document.removeEventListener('scroll', clearHover, true);
+    };
   }, [clearHover]);
+
+  const inspectPreview = useEffectEvent((art: Extract<Preview, { kind: 'art' }>) => inspect(art.card, art.trigger));
   useEffect(() => {
-    if (!reviewingEffect) return;
-    const dismiss = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
+    if (!hovered || busy || menu || inspected) return;
+    const shortcut = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || document.querySelector('dialog[open]')) return;
+      if (event.key === 'Escape' && (hovered.kind === 'effect' || hovered.position)) clearHover();
+      else if (event.key.toLowerCase() === 'i' && hovered.kind === 'art' &&
+        !(event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable="true"]'))) inspectPreview(hovered);
+      else return;
       event.preventDefault();
       event.stopPropagation();
-      clearHover();
     };
-    window.addEventListener('keydown', dismiss, true);
-    return () => window.removeEventListener('keydown', dismiss, true);
-  }, [reviewingEffect, clearHover]);
+    window.addEventListener('keydown', shortcut, true);
+    return () => window.removeEventListener('keydown', shortcut, true);
+  }, [hovered, busy, menu, inspected, clearHover]);
+
+  // The artwork is click-through. Track its bounds so a player can still move over it to read.
+  useEffect(() => {
+    if (hovered?.kind !== 'art') return;
+    const box = hovered.position;
+    let leave: ReturnType<typeof setTimeout> | undefined;
+    const track = (event: PointerEvent) => {
+      const { clientX: x, clientY: y } = event;
+      if (hovered.trigger.contains(event.target as Node) ||
+        (box && x >= box.x && x <= box.x + box.width && y >= box.y && y <= box.y + box.height)) {
+        clearTimeout(leave);
+        leave = undefined;
+      } else leave ??= setTimeout(clearHover, 100);
+    };
+    const exit = (event: PointerEvent) => { if (!event.relatedTarget) clearHover(); };
+    if (!hovered.keyboard) document.addEventListener('pointermove', track);
+    document.addEventListener('pointerdown', clearHover, true);
+    document.addEventListener('pointerout', exit);
+    return () => {
+      clearTimeout(leave);
+      document.removeEventListener('pointermove', track);
+      document.removeEventListener('pointerdown', clearHover, true);
+      document.removeEventListener('pointerout', exit);
+    };
+  }, [hovered, clearHover]);
 
   function setChoice(selection: number | undefined, chosen: Picks, step?: string) {
     // Payment starts filled in, so an ordinary play is one confirmation. The sources stay selectable on the mat.
@@ -392,9 +433,8 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
       } else if (intents.length) dropActions.set(spot.cardId ?? spot.key, 'Choose action');
     }
   }
-  function previewBlocks() {
-    // Keep the hand, decision controls, and other active targets reachable.
-    return [...(grid.current?.querySelectorAll<HTMLElement>('.play-hand, .play-command-inner, .play-decision-panel, .play-drawer, [data-target="true"]') ?? [])]
+  function previewBlocks(selectors: string, except?: HTMLElement) {
+    return [...(grid.current?.querySelectorAll<HTMLElement>(selectors) ?? [])].filter(node => node !== except)
       .map(node => node.getBoundingClientRect()).filter(box => box.width && box.height);
   }
   function showEffectSource(card: CardView, element: HTMLElement, note: string | undefined, canInspect: boolean) {
@@ -403,21 +443,16 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     if (canInspect) setEffectFocus({ state: stateKey, id: card.instanceId });
     const anchor = element.getBoundingClientRect();
     const viewport = { width: innerWidth, height: innerHeight };
-    const blocked = previewBlocks();
-    for (const size of effectPreviewSizes) {
-      const position = previewPosition(anchor, viewport, blocked, [size]);
-      if (position) {
-        setPreview({ state: stateKey, card, ...position, effect: { width: size.width, height: size.height, note, canInspect } });
-        break;
-      }
-    }
+    const blocked = previewBlocks('.play-hand, .play-command-inner, .play-decision-panel, .play-drawer, [data-target="true"]');
+    const position = effectPreviewPosition(anchor, viewport, blocked, effectPreviewSizes);
+    if (position) setPreview({ kind: 'effect', state: stateKey, card, ...position, note, canInspect });
   }
   function leaveEffectSource(wait = false) {
     if (!wait) return clearHover();
     clearTimeout(hoverTimer.current);
     hoverTimer.current = setTimeout(clearHover, 240);
   }
-  function enterCard(card: CardView, element: HTMLElement) {
+  function enterCard(card: CardView, element: HTMLElement, keyboard = false) {
     if (drag || menu || inspected || busy) return;
     clearTimeout(hoverTimer.current);
     if (sourceId && targetIds.has(card.instanceId) && sourceId !== card.instanceId && step?.id !== 'payment') {
@@ -425,8 +460,30 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
       if (source) { const a = source.getBoundingClientRect(), b = element.getBoundingClientRect();
         setArrow({ state: stateKey, x1: a.x + a.width / 2, y1: a.y + a.height / 2, x2: b.x + b.width / 2, y2: b.y + b.height / 2 }); }
     }
-    const position = previewPosition(element.getBoundingClientRect(), { width: innerWidth, height: innerHeight }, previewBlocks());
-    if (position) hoverTimer.current = setTimeout(() => setPreview({ state: stateKey, card, ...position }), 400);
+    const show = () => {
+      const mat = table.current;
+      if (!mat || !element.isConnected || element.closest('dialog') || !card.definitionId || card.zone === 'eddieArea') {
+        setPreview(undefined);
+        return;
+      }
+      const hand = element.closest('.play-hand');
+      const lane = (hand ?? mat).getBoundingClientRect();
+      const surface = mat.getBoundingClientRect();
+      const width = document.documentElement.clientWidth;
+      const left = Math.max(8, lane.left), right = Math.min(width - 8, lane.right);
+      const top = Math.max(8, surface.top, document.querySelector('.appbar')?.getBoundingClientRect().bottom ?? 0,
+        hand ? (mat.querySelector('.play-command')?.getBoundingClientRect().bottom ?? 0) + 8 : 0);
+      const bottom = Math.min(document.documentElement.clientHeight - 8, surface.bottom);
+      const blocked = previewBlocks(hand ? cardPreviewObstacles : cardPreviewObstacles + ', .play-hand [data-board-card]', element);
+      const status = cardPreviewStatus(card);
+      const preferredWidth = Math.min(340, Math.max(300, Math.round(width * .17)));
+      const bounds = { left, top, width: right - left, height: bottom - top };
+      const fieldCards = hand ? [] : previewBlocks('.play-field [data-board-card]', element);
+      const position = cardPreviewPosition(element.getBoundingClientRect(), bounds, preferredWidth, !!hand, status.length, blocked, fieldCards);
+      setPreview({ kind: 'art', state: stateKey, card, trigger: element, inHand: !!hand, keyboard, status, position });
+    };
+    if (keyboard || hovered?.kind === 'art') show();
+    else hoverTimer.current = setTimeout(show, 250);
   }
   function renderCard(card: CardView, fallback = 'Face-down card', options?: {
     legendSlot?: boolean; attachedGear?: boolean; fan?: { index: number; count: number };
@@ -461,10 +518,19 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
         data-source={!!selected && sourceId === card.instanceId} data-target={target} data-unplayable={unavailable || undefined} data-spent={card.spent} data-combat={!!combatRole} data-combat-role={combatRole === 'Blocking' ? 'defending' : combatRole?.toLowerCase()} data-response={response || undefined} data-effect-target={effectTarget || undefined} data-effect-source={effectSource || undefined} data-feedback={change?.kind} data-color={printing?.color} data-draggable={dragLegal}
         data-power-shift={power != null && power !== card.power ? power > card.power ? 'up' : 'down' : undefined}
         aria-pressed={target ? chosenIds.has(card.instanceId) : undefined} aria-label={[name, state, power != null && `power ${power}`, repriced && `costs ${cost}`, target && 'selectable'].filter(Boolean).join(', ')}
-        onPointerDown={(event) => dragControl.start(event, card)} onDragStart={(event) => event.preventDefault()}
-        onMouseEnter={(event) => enterCard(card, event.currentTarget)} onMouseLeave={clearHover}
-        onFocus={(event) => { if (event.currentTarget.matches(':focus-visible')) enterCard(card, event.currentTarget); }} onBlur={clearHover}
-        onKeyDown={(event) => { if (!playback && event.key.toLowerCase() === 'i') { event.preventDefault(); inspect(card, event.currentTarget); } }}
+        onPointerDown={(event) => { clearHover(); dragControl.start(event, card); }} onDragStart={(event) => event.preventDefault()}
+        onPointerEnter={event => { if (event.pointerType !== 'touch' && !event.buttons) enterCard(card, event.currentTarget); }}
+        onPointerLeave={() => {
+          clearTimeout(hoverTimer.current);
+          setArrow(undefined);
+        }}
+        onFocus={(event) => { if (event.currentTarget.matches(':focus-visible')) enterCard(card, event.currentTarget, true); }} onBlur={clearHover}
+        onKeyDown={event => {
+          if (!playback && !event.ctrlKey && !event.metaKey && !event.altKey && event.key.toLowerCase() === 'i') {
+            event.preventDefault();
+            inspect(card, event.currentTarget);
+          }
+        }}
         onClick={(event) => {
           if (playback || dragControl.suppressClick()) return;
           cue?.('select');
@@ -486,7 +552,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
         </span><span className="play-card-name">{name}</span>
       </button>
       {legendSlot && slotNote && <span className="play-legend-note" aria-hidden="true">{slotNote}</span>}
-      <button type="button" className="play-details" disabled={!!playback} aria-label={`Details for ${name}`} title="Inspect card · I" onClick={(event) => inspect(card, event.currentTarget)}>i</button>
+      <button type="button" className="play-details" disabled={!!playback} aria-label={`Details for ${name}`} title="Inspect card · I" onPointerEnter={clearHover} onClick={(event) => inspect(card, event.currentTarget)}>i</button>
       {power != null && <CardPowerReceipt beat={feedback} id={card.instanceId} power={power} />}
       {feedback && change?.kind === 'called' && <span className="play-float" key={feedback.id} aria-hidden="true">{change.label}</span>}
     </div>;
@@ -684,25 +750,22 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
       {menu.intents.some((intent) => actions[intent.action].id === 'activateAbility') && vaultCard(menu.card) && <details className="play-menu-rules"><summary>Printed abilities</summary><Rules text={vaultCard(menu.card)!.text} /></details>}
       {!menu.intents.length && <p className="play-choice-detail">{selected ? 'Finish or cancel the current selection to start another action.' : 'No action available for this card now.'}</p>}
       <button type="button" className="btn play-card-menu-action" onClick={() => inspect(menu.card, menu.trigger)}><span>Details</span><span aria-hidden="true">→</span></button></ContextMenu>}
-    {hovered && !drag && !menu && !inspected && createPortal(<div className="play-hover-preview" data-landscape={hovered.landscape}
-      data-effect-preview={!!hovered.effect || undefined}
-      style={{ left: hovered.x, top: hovered.y, width: hovered.effect?.width, height: hovered.effect?.height }} aria-hidden="true"
-      onMouseEnter={hovered.effect ? () => clearTimeout(hoverTimer.current) : undefined}
-      onMouseLeave={hovered.effect ? () => leaveEffectSource(true) : undefined}>
-      <CardFace card={hovered.card} />
-      <div className="play-hover-copy">
-        <strong>{(hovered.effect && vaultCard(hovered.card)?.display) || hovered.card.cardName || 'Concealed card'}</strong>
-        {hovered.effect ? <>
-          {hovered.effect.note && hovered.landscape && <div className="play-hover-rules"><Rules text={hovered.effect.note} /></div>}
-          {hovered.effect.canInspect && hovered.landscape && <small>I to inspect card</small>}
-        </> : <>
-          {hovered.card.definitionId && <p>{hovered.card.type !== 'gear' && hovered.card.type !== 'program' && <>Power <b>{hovered.card.effectivePower}</b> · </>}
-            Cost <b>{hovered.card.effectiveCost ?? hovered.card.cost ?? '—'} €$</b>{hovered.card.spent && ' · Spent'}{hovered.card.hasLag && ' · Lag'}</p>}
-          {hovered.landscape && vaultCard(hovered.card) && <div className="play-hover-rules"><Rules text={vaultCard(hovered.card)!.text} /></div>}
-          <small>I to inspect rules and effects</small>
-        </>}
-      </div>
-    </div>, document.body)}
+    {hovered && !busy && !drag && !menu && !inspected && createPortal(hovered.kind === 'art'
+      ? hovered.position && <div className="play-art-preview" data-hand={hovered.inHand || undefined} data-keyboard={hovered.keyboard || undefined}
+          style={{ left: hovered.position.x, top: hovered.position.y, width: hovered.position.width }} aria-hidden="true">
+          <CardFace card={hovered.card} />
+          {hovered.status.length > 0 && <div className="play-art-status">{hovered.status.map(label => <span key={label}>{label}</span>)}</div>}
+        </div>
+      : <div className="play-hover-preview" data-landscape={hovered.landscape} data-effect-preview="true"
+          style={{ left: hovered.x, top: hovered.y, width: hovered.width, height: hovered.height }} aria-hidden="true"
+          onMouseEnter={() => clearTimeout(hoverTimer.current)} onMouseLeave={() => leaveEffectSource(true)}>
+          <CardFace card={hovered.card} />
+          <div className="play-hover-copy">
+            <strong>{vaultCard(hovered.card)?.display || hovered.card.cardName || 'Concealed card'}</strong>
+            {hovered.note && hovered.landscape && <div className="play-hover-rules"><Rules text={hovered.note} /></div>}
+            {hovered.canInspect && hovered.landscape && <small>I to inspect card</small>}
+          </div>
+        </div>, document.body)}
     {held && createPortal(<div className="play-drag-ghost" data-kind={gigChoice ? 'die' : 'card'}
       data-returning={!!returning || undefined} data-over={!!held.destination || undefined}
       onAnimationEnd={returning ? dragControl.finishReturn : undefined}
