@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { VaultSelect } from '../components/VaultSelect';
+import { PhoneTable } from '../views/PhoneTable';
 import { PlayTable } from '../views/PlayTable';
 import { useMatchPresentation } from '../views/useMatchPresentation';
 import { CampaignRivalSeat } from '../views/CampaignRivalDossier';
@@ -9,10 +10,17 @@ import '../views/play-tactics.css';
 import '../views/campaign.css';
 import './play-decision-preview.css';
 
+const handset = window.matchMedia('(max-width: 760px), (pointer: coarse) and (max-height: 540px) and (max-width: 1000px)');
+function subscribeHandset(update: () => void) {
+  handset.addEventListener('change', update);
+  return () => handset.removeEventListener('change', update);
+}
+
 export function PlayDecisionPreview({ initial = 'Turn order' }: { initial?: DecisionFixture }) {
+  const phone = useSyncExternalStore(subscribeHandset, () => handset.matches);
   const [fixture, setFixture] = useState(() => resumeDecisionFixture(initial));
   const [name, setName] = useState<DecisionFixture>(initial);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(!phone);
   const [campaign, setCampaign] = useState(true);
   const [reduced, setReduced] = useState(false);
   const [error, setError] = useState('');
@@ -40,7 +48,7 @@ export function PlayDecisionPreview({ initial = 'Turn order' }: { initial?: Deci
         <label><input type="checkbox" checked={reduced} onChange={e => { presentation.playback?.skip(); setReduced(e.target.checked); }} />Reduced motion</label>
         <span role="status">{error || lastMove}</span></>}
     </nav>
-    <div className="play-mode"><PlayTable scope="qa:command-bar" snapshot={snapshot} names={snapshot.names} busy={!reduced && presentation.playing}
+    <div className="play-mode"><PlayTable phoneLayout={phone ? PhoneTable : undefined} scope={`qa:command-bar:${initial}`} snapshot={snapshot} names={snapshot.names} busy={!reduced && presentation.playing}
       error={error || undefined} send={send} reduced={reduced || presentation.reduced} playback={reduced ? undefined : presentation.playback} feedback={presentation.feedback} quick={presentation.quick} togglePace={presentation.togglePace}
       rematch={() => load('Turn order')} edit={() => load('Main turn')}
       navigation={<button className="btn quiet" onClick={() => load('Main turn')}>{campaign ? 'Campaign board' : 'Free Play'}</button>}

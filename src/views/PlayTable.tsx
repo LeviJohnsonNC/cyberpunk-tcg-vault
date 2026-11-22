@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useEffectEvent, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useContext, useEffect, useEffectEvent, useId, useLayoutEffect, useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react';
 import { createPortal, preload } from 'react-dom';
 import sevenGigPlayer from '../assets/play/field-seven-gigs-player.webp';
 import sevenGigRival from '../assets/play/field-seven-gigs-rival.webp';
@@ -15,6 +15,7 @@ import { DieFace, GigRollAnnouncement } from './PlayDice';
 import { releaseOnField, type PointerRelease } from '../lib/play/diceThrow';
 import { PlayGigRoll } from './PlayGigRoll';
 import { GigZones, PlayerBench, RivalBench, SeatField } from './PlayMat';
+import type { PhoneTableProps } from './PhoneTable';
 import { PlayChoices } from './PlayChoices';
 import { PlayDecisionPanel } from './PlayDecisionPanel';
 import { useTableDrag, type TableDrag } from './useTableDrag';
@@ -110,7 +111,8 @@ function ContextMenu({ context, children, close }: { context: Context; children:
   </div>, document.body);
 }
 
-export function PlayTable({ scope, snapshot, names, busy: saving, error, send, rematch, edit, circuit, playback, feedback, reduced, quick = false, togglePace, controls, navigation, audio, cue, campaign, freePlay, practiceLobby }: {
+export function PlayTable({ phoneLayout: PhoneLayout, scope, snapshot, names, busy: saving, error, send, rematch, edit, circuit, playback, feedback, reduced, quick = false, togglePace, controls, navigation, audio, cue, campaign, freePlay, practiceLobby }: {
+  phoneLayout?: ComponentType<PhoneTableProps>;
   campaign?: CampaignResultDetails & { rival: ReactNode; act?: number };
   freePlay?: { rival: ReactNode; resultQuote?: { rival: string; text: string } };
   cue?: TableSoundCue;
@@ -251,7 +253,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     if (!focusAfter.current) return;
     focusAfter.current = false;
     // Start at the choice list when it is open. Otherwise prefer the available confirmation or step.
-    const targets = ['.play-gig-adjustment [data-pick-option]:enabled', '.play-gig-adjustment .play-decision-panel-trigger', '.play-decision-panel [data-pick-option]:enabled:not([aria-disabled=true])', '.play-decision-tray [data-confirm-move]:not(:disabled)', '.play-decision-tray [data-step][aria-pressed=true]', '.play-decision-tray button:not(:disabled)', '.play-command-inner'];
+    const targets = ['.play-gig-adjustment [data-pick-option]:enabled', '.play-gig-adjustment .play-decision-panel-trigger', '.play-decision-panel [data-pick-option]:enabled:not([aria-disabled=true])', '.play-decision-tray [data-confirm-move]:not(:disabled)', '.play-decision-tray [data-step][aria-pressed=true]', '.play-decision-tray button:not(:disabled)', '.phone-command [data-confirm-move]:enabled', '.phone-command summary', '.play-command-inner'];
     for (const target of targets) {
       const element = grid.current?.querySelector<HTMLElement>(target);
       if (element) { element.focus({ preventScroll: true }); break; }
@@ -340,6 +342,8 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     const action = actions[intent.action];
     if (!action || busy) return;
     clearHover(); setContext(undefined); setNotice(''); setPanel(undefined);
+    // Starting an action from an inspected pile also returns control to the board.
+    if (PhoneLayout) grid.current?.querySelectorAll<HTMLDialogElement>('dialog.phone-sheet[open]').forEach(dialog => dialog.close());
     focusAfter.current = true;
     if (immediate && (!choice || !action.fields({}).length) && !action.fields(intent.picks).some((field) => field.id === 'payment') && isReady(action.fields(intent.picks), intent.picks)) return commit(intent);
     else setChoice(intent.action, intent.picks);
@@ -355,6 +359,15 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     if (!next) return;
     clearHover();
     const field = fields.find((field) => field.id === fieldId);
+    if (PhoneLayout) {
+      const id = field?.options.find(option => option.id === value)?.cardId;
+      const tile = id && grid.current?.querySelector<HTMLElement>(`[data-board-card="${CSS.escape(id)}"]`);
+      const strip = tile && tile.closest<HTMLElement>('.phone-strip');
+      if (strip && tile) {
+        const offset = tile.getBoundingClientRect().left - strip.getBoundingClientRect().left;
+        if (offset < 0 || offset + tile.offsetWidth > strip.clientWidth) strip.scrollLeft += offset - 8;
+      }
+    }
     const nextFields = selected.fields(next);
     const nextStep = field?.max === 1 && (next[fieldId]?.length ?? 0) === 1 ? activeStep(nextFields, next)?.id : fieldId;
     if (selected.id === 'resolveAdjustGig' ? fieldId === 'die' : document.activeElement?.closest('[data-pick-field]')) focusAfter.current = true;
@@ -584,6 +597,44 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
   if (practiceLobby && view.gameEnded) return <PracticeMatchResult snapshot={snapshot}
     busy={busy} error={error} rematch={rematch} lobby={practiceLobby} edit={edit} quote={freePlay?.resultQuote?.text} />;
 
+  const decisionControls = selected && <PlayChoices phone={!!PhoneLayout} presentation={command}
+    context={!PhoneLayout && combat && <CombatBanner view={view} watching={false} compact inspect={inspect} />}
+    view={view} action={selected} picks={picks} fields={fields} active={step} cards={cards} busy={busy} forced={!!choice}
+    revealed={reveal?.revealedCards ?? reveal?.cards} select={chooseValue} step={id => {
+      clearHover();
+      if (selected.id === 'resolveAdjustGig' && id === 'die') {
+        focusAfter.current = true;
+        setChoice(selection, {}, id);
+      } else setChoice(selection, picks, id);
+    }} reorder={(field, ids) => {
+      const next = reorderPick(selected, picks, field, ids);
+      if (next) setChoice(selection, next, field);
+    }} submit={() => selection !== undefined && commit({ action: selection, picks })}
+    cancel={() => { setChoice(choice ? defaultSelection : undefined, {}); clearHover(); }} resetPayment={resetPayment}
+    inspect={inspect} previewSource={showEffectSource} leaveSource={leaveEffectSource}
+    alternatives={choice ? special.map(({ index }) => actionButton(index)) : null} />;
+  const inspector = inspected && <CardInspection card={inspected} cards={cards}
+    hostName={cards.find(card => card.instanceId === inspected.attachedToId)?.cardName ?? undefined}
+    shortcuts={PhoneLayout ? availableIntents(inspected).map(intent => ({
+      label: actions[intent.action].id === 'playCard' && inspected.type === 'gear' ? 'Equip' : intentLabel(actions[intent.action], intent.picks, inspected),
+      select: () => beginIntent(intent),
+    })) : []} onClose={() => { setInspection(undefined); focusReturn.current?.focus({ preventScroll: true }); }} />;
+  if (PhoneLayout) {
+    const turn = setup ? 'Setup' : `Turn ${view.turnNumber} · ${responding ? 'Your response' : playback ? 'Rival action' : yourTurn ? 'Your turn' : 'Rival turn'}`;
+    const pickedCards = new Set(fields.flatMap(field => field.options.filter(option => picks[field.id]?.includes(option.id)).flatMap(option => option.cardId ? [option.cardId] : [])));
+    const phoneAction = (action: typeof actions[number], index: number) => <button key={index} type="button" className="btn quiet" data-move={action.id} disabled={busy}
+      onClick={() => beginIntent({action:index, picks:{}}, false)}>{action.label}</button>;
+    return <div ref={grid} className="phone-table-root"><PhoneLayout snapshot={snapshot} names={names} title={campaign?.title ?? 'Practice table'} turn={turn}
+      busy={busy} error={error} eligible={busy ? new Set() : targetIds} chosen={pickedCards} inspect={inspect} pick={pickOnBoard}
+      combat={combat && <CombatBanner view={view} watching={!!playback} compact inspect={inspect} />}
+      decision={opening.showing ? <button className="btn quiet" ref={introSkip} onClick={opening.skip}>Skip intro</button>
+        : playback ? <PlayPresentation playback={playback} /> : decisionControls || <div className="phone-idle">
+          {feedback && <PlayPresentation feedback={feedback} />}
+          {(choice || setup || combat ? actions : actions.filter(action => action.id === 'passPhase')).map(action => phoneAction(action, actions.indexOf(action)))}
+        </div>}
+      history={<ol className="phone-log">{log.slice().reverse().map(entry => <li key={entry.id}><small>Turn {entry.turn} · {entry.seat === 'player' ? 'You' : 'Rival'}</small>{entry.text}</li>)}</ol>}
+      actions={actions.map(phoneAction)} navigation={navigation} />{inspector}</div>;
+  }
   preload(sevenGigPlayer, { as: 'image', fetchPriority: 'low' });
   preload(sevenGigRival, { as: 'image', fetchPriority: 'low' });
 
@@ -677,17 +728,7 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
           {view.gameEnded ? <div className="play-command-lead"><strong>{decisionTitle}</strong><p>{winReasons[view.winReason ?? ''] ?? 'Match ended'}</p></div>
             : playback ? <>{combat && <CombatBanner view={view} watching compact />}<PlayPresentation playback={playback} /></>
             : selected ? <div className="play-table-decision" key={stateKey}>
-              <PlayChoices presentation={command} context={combat && <CombatBanner view={view} watching={false} compact inspect={inspect} />} view={view} action={selected} picks={picks} fields={fields} active={step} cards={cards} busy={busy} forced={!!choice} revealed={reveal?.revealedCards ?? reveal?.cards} select={chooseValue}
-                step={(id) => {
-                  clearHover();
-                  if (selected.id === 'resolveAdjustGig' && id === 'die') {
-                    focusAfter.current = true;
-                    setChoice(selection, {}, id);
-                  } else setChoice(selection, picks, id);
-                }} reorder={(field, ids) => { const next = reorderPick(selected, picks, field, ids); if (next) setChoice(selection, next, field); }}
-                submit={() => selection !== undefined && commit({ action: selection, picks })}
-                cancel={() => { setChoice(choice ? defaultSelection : undefined, {}); clearHover(); }} resetPayment={resetPayment}
-                inspect={inspect} previewSource={showEffectSource} leaveSource={leaveEffectSource} alternatives={choice ? special.map(({ index }) => actionButton(index)) : null} /></div>
+              {decisionControls}</div>
             : choice || setup ? <div className="play-opening-choices">
               {combat && <CombatBanner view={view} watching={false} compact inspect={inspect} />}
               <div className="play-command-lead">
@@ -778,6 +819,6 @@ export function PlayTable({ scope, snapshot, names, busy: saving, error, send, r
     </div>, document.body)}
     {combat && <CombatArrow view={view} root={grid} reduced={reduced} quick={quick} />}
     {shownArrow && createPortal(<svg className="play-target-arrow" aria-hidden="true"><defs><marker id="play-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 6 3 0 6" /></marker></defs><path d={`M${shownArrow.x1} ${shownArrow.y1} Q${shownArrow.x1} ${shownArrow.y2} ${shownArrow.x2} ${shownArrow.y2}`} markerEnd="url(#play-arrowhead)" /></svg>, document.body)}
-    {inspected && <CardInspection card={inspected} cards={cards} hostName={cards.find((card) => card.instanceId === inspected.attachedToId)?.cardName ?? undefined} shortcuts={[]} onClose={() => { setInspection(undefined); focusReturn.current?.focus({ preventScroll: true }); }} />}
+    {inspector}
   </div>;
 }
