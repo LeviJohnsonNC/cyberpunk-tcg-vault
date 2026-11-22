@@ -79,6 +79,33 @@ test('phone navigation recovers when the keyboard or a modal closes', async ({ p
   await expect(nav).toBeVisible();
 });
 
+test('Play fits in the phone footer and stays selected through Campaign and Back', async ({ page, isMobile }) => {
+  test.skip(!isMobile, 'The footer is a phone navigation surface.');
+  await page.goto('/#/prices');
+  const footer = page.locator('.vault-mobile-nav');
+  const play = footer.getByRole('link', { name: 'Play', exact: true });
+  await expect(play).toHaveAttribute('href', '#/play');
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    const boxes = await footer.getByRole('link').evaluateAll(links => links.map(link => {
+      const { top, width, height } = link.getBoundingClientRect();
+      return { top, width, height };
+    }));
+    expect(boxes).toHaveLength(6);
+    expect(boxes.every(box => box.top === boxes[0].top && box.width >= 44 && box.height >= 44)).toBe(true);
+  }
+  await play.tap();
+  await expect(play).toHaveAttribute('aria-current', 'page');
+  await page.getByRole('link', { name: /Campaign.*Begin story/i }).tap();
+  await expect(page).toHaveURL(/#\/play\?mode=campaign$/);
+  await expect(play).toHaveAttribute('aria-current', 'page');
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/play$/);
+  await page.goBack();
+  await expect(footer.getByRole('link', { name: 'Prices' })).toHaveAttribute('aria-current', 'page');
+  await expect(play).not.toHaveAttribute('aria-current');
+});
+
 test('sample vault builds in a worker and opens an inspectable card', async ({ page }, testInfo) => {
   await page.goto('/');
   await expect(page.locator('main h1:visible')).toBeVisible();
