@@ -253,7 +253,7 @@ export function PlayTable({ phoneLayout: PhoneLayout, scope, snapshot, names, bu
     if (!focusAfter.current) return;
     focusAfter.current = false;
     // Start at the choice list when it is open. Otherwise prefer the available confirmation or step.
-    const targets = ['.play-gig-adjustment [data-pick-option]:enabled', '.play-gig-adjustment .play-decision-panel-trigger', '.play-decision-panel [data-pick-option]:enabled:not([aria-disabled=true])', '.play-decision-tray [data-confirm-move]:not(:disabled)', '.play-decision-tray [data-step][aria-pressed=true]', '.play-decision-tray button:not(:disabled)', '.play-command-inner'];
+    const targets = ['.play-gig-adjustment [data-pick-option]:enabled', '.play-gig-adjustment .play-decision-panel-trigger', '.play-decision-panel [data-pick-option]:enabled:not([aria-disabled=true])', '.play-decision-tray [data-confirm-move]:not(:disabled)', '.play-decision-tray [data-step][aria-pressed=true]', '.play-decision-tray button:not(:disabled)', '.phone-command [data-confirm-move]:enabled', '.phone-command summary', '.play-command-inner'];
     for (const target of targets) {
       const element = grid.current?.querySelector<HTMLElement>(target);
       if (element) { element.focus({ preventScroll: true }); break; }
@@ -342,6 +342,8 @@ export function PlayTable({ phoneLayout: PhoneLayout, scope, snapshot, names, bu
     const action = actions[intent.action];
     if (!action || busy) return;
     clearHover(); setContext(undefined); setNotice(''); setPanel(undefined);
+    // Starting an action from an inspected pile also returns control to the board.
+    if (PhoneLayout) grid.current?.querySelectorAll<HTMLDialogElement>('dialog.phone-sheet[open]').forEach(dialog => dialog.close());
     focusAfter.current = true;
     if (immediate && (!choice || !action.fields({}).length) && !action.fields(intent.picks).some((field) => field.id === 'payment') && isReady(action.fields(intent.picks), intent.picks)) return commit(intent);
     else setChoice(intent.action, intent.picks);
@@ -595,18 +597,25 @@ export function PlayTable({ phoneLayout: PhoneLayout, scope, snapshot, names, bu
   if (practiceLobby && view.gameEnded) return <PracticeMatchResult snapshot={snapshot}
     busy={busy} error={error} rematch={rematch} lobby={practiceLobby} edit={edit} quote={freePlay?.resultQuote?.text} />;
 
-  const decisionControls = selected && <PlayChoices phone={!!PhoneLayout} presentation={command} context={!PhoneLayout && combat && <CombatBanner view={view} watching={false} compact inspect={inspect} />} view={view} action={selected} picks={picks} fields={fields} active={step} cards={cards} busy={busy} forced={!!choice} revealed={reveal?.revealedCards ?? reveal?.cards} select={chooseValue}
-                step={(id) => {
-                  clearHover();
-                  if (selected.id === 'resolveAdjustGig' && id === 'die') {
-                    focusAfter.current = true;
-                    setChoice(selection, {}, id);
-                  } else setChoice(selection, picks, id);
-                }} reorder={(field, ids) => { const next = reorderPick(selected, picks, field, ids); if (next) setChoice(selection, next, field); }}
-                submit={() => selection !== undefined && commit({ action: selection, picks })}
-                cancel={() => { setChoice(choice ? defaultSelection : undefined, {}); clearHover(); }} resetPayment={resetPayment}
-                inspect={inspect} previewSource={showEffectSource} leaveSource={leaveEffectSource} alternatives={choice ? special.map(({ index }) => actionButton(index)) : null} />;
-  const inspector = inspected && <CardInspection card={inspected} cards={cards} hostName={cards.find((card) => card.instanceId === inspected.attachedToId)?.cardName ?? undefined} shortcuts={PhoneLayout ? availableIntents(inspected).map(intent => ({
+  const decisionControls = selected && <PlayChoices phone={!!PhoneLayout} presentation={command}
+    context={!PhoneLayout && combat && <CombatBanner view={view} watching={false} compact inspect={inspect} />}
+    view={view} action={selected} picks={picks} fields={fields} active={step} cards={cards} busy={busy} forced={!!choice}
+    revealed={reveal?.revealedCards ?? reveal?.cards} select={chooseValue} step={id => {
+      clearHover();
+      if (selected.id === 'resolveAdjustGig' && id === 'die') {
+        focusAfter.current = true;
+        setChoice(selection, {}, id);
+      } else setChoice(selection, picks, id);
+    }} reorder={(field, ids) => {
+      const next = reorderPick(selected, picks, field, ids);
+      if (next) setChoice(selection, next, field);
+    }} submit={() => selection !== undefined && commit({ action: selection, picks })}
+    cancel={() => { setChoice(choice ? defaultSelection : undefined, {}); clearHover(); }} resetPayment={resetPayment}
+    inspect={inspect} previewSource={showEffectSource} leaveSource={leaveEffectSource}
+    alternatives={choice ? special.map(({ index }) => actionButton(index)) : null} />;
+  const inspector = inspected && <CardInspection card={inspected} cards={cards}
+    hostName={cards.find(card => card.instanceId === inspected.attachedToId)?.cardName ?? undefined}
+    shortcuts={PhoneLayout ? availableIntents(inspected).map(intent => ({
       label: actions[intent.action].id === 'playCard' && inspected.type === 'gear' ? 'Equip' : intentLabel(actions[intent.action], intent.picks, inspected),
       select: () => beginIntent(intent),
     })) : []} onClose={() => { setInspection(undefined); focusReturn.current?.focus({ preventScroll: true }); }} />;

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import type { CardView, MatchSnapshot, Seat } from '../lib/play/protocol';
 import { zoneCards, zoneCount } from '../lib/play/matchView';
 import { CardFace } from './PlayCard';
@@ -43,16 +43,29 @@ function CardLane({ label, count, children }: { label: string; count: number; ch
     lane.addEventListener('scroll', measure, { passive: true });
     return () => { observer.disconnect(); lane.removeEventListener('scroll', measure); };
   }, [count]);
-  return <><div ref={strip} className="phone-strip" aria-label={label}>{children}</div>{range && <small className="phone-range">{range}</small>}</>;
+  return <><div ref={strip} className="phone-strip" role="group" aria-label={label}>{children}</div>{range && <small className="phone-range">{range}</small>}</>;
+}
+
+const resourceLabels = {
+  legendArea: 'Legends', eddieArea: 'Eddies', gigArea: 'Gigs', fixerArea: 'Fixer dice',
+  field: 'Attached Gear', trash: 'Trash', removedFromGame: 'Removed from game',
+};
+
+function resourceName(card: CardView, slot: number) {
+  if (card.zone === 'eddieArea') return `Eddie ${slot}`;
+  if (card.zone === 'fixerArea') return card.definitionId;
+  if (card.zone === 'gigArea') return `${card.definitionId} · ${card.power}`;
+  return card.cardName ?? (card.zone === 'legendArea' ? `Legend slot ${slot}` : 'Face-down card');
 }
 
 function Sheet({ title, close, children }: { title: string; close: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
   useEffect(() => { ref.current?.showModal(); }, []);
-  return <dialog ref={ref} className="phone-sheet" aria-labelledby={id} onCancel={event => { event.preventDefault(); close(); }}
-    onClick={event => { if (event.target === ref.current) close(); }}>
-    <div className="phone-sheet-inner"><header><h2 id={id}>{title}</h2><button type="button" className="btn quiet" onClick={close}>Close</button></header>{children}</div>
+  const dismiss = () => ref.current?.close();
+  return <dialog ref={ref} className="phone-sheet" aria-labelledby={id} onClose={close}
+    onClick={event => { if (event.target === ref.current) dismiss(); }}>
+    <div className="phone-sheet-inner"><header><h2 id={id}>{title}</h2><button type="button" className="btn quiet" onClick={dismiss}>Close</button></header>{children}</div>
   </dialog>;
 }
 
@@ -97,7 +110,7 @@ export function PhoneTable({ snapshot, names, title, turn, busy, decision, comba
   }
   const resourceSeat = sheet === 'player' || sheet === 'rival' ? sheet : undefined;
   const resource = resourceSeat && view.players[resourceSeat];
-  return <div className="phone-table" data-match-id={snapshot.matchId} data-state-id={view.stateID} data-busy={busy}>
+  return <div className="phone-table" data-combat={!!view.attackState || undefined} data-match-id={snapshot.matchId} data-state-id={view.stateID} data-busy={busy}>
     <header className="phone-match-head"><div><p>{title}</p><h1>{names.player} <i>vs</i> {names.rival}</h1></div>
       <button type="button" className="btn quiet" onClick={() => setSheet('Match log')}>Log</button></header>
     <div className="phone-board">{side('rival')}{side('player')}</div>
@@ -105,25 +118,23 @@ export function PhoneTable({ snapshot, names, title, turn, busy, decision, comba
       <CardLane label="Cards in your hand" count={hand.length}>{hand.map((card,index) => cardTile(card, index + 1))}{!hand.length && <span className="play-empty">No cards in hand</span>}</CardLane></section>
     <section className="phone-command" aria-label="Match decision"><header><p aria-live="polite">{turn}</p>
       <button type="button" className="phone-more" aria-label="All actions" onClick={() => setSheet('All actions')}>Actions</button></header>
-      {combat}{decision}{error && <p role="alert">{error}</p>}
+      {combat}<div className="phone-controls">{decision}{error && <p role="alert">{error}</p>}</div>
     </section>
     {equipment && equipmentCards && <Sheet title={`Gear on ${equipment.cardName ?? 'Legend'}`} close={() => setEquipment(undefined)}>
       <div className="phone-resource-list">{equipmentCards.map(card => <button type="button" className="btn quiet" key={card.instanceId} onClick={event => inspect(card, event.currentTarget)}>{card.cardName ?? 'Face-down card'}</button>)}</div>
     </Sheet>}
     {sheet && <Sheet title={resourceSeat ? resourceSeat === 'player' ? 'Your resources and piles' : 'Rival resources and piles' : sheet} close={() => setSheet(undefined)}>
       {sheet === 'Match log' && history}
-      {sheet === 'All actions' && <><div className="phone-action-list" onClick={event => { if ((event.target as HTMLElement).closest('button:enabled')) setSheet(undefined); }}>{actions}</div>{navigation}</>}
+      {sheet === 'All actions' && <><div className="phone-action-list" onClick={event => { if ((event.target as HTMLElement).closest('button:enabled')) event.currentTarget.closest('dialog')?.close(); }}>{actions}</div>{navigation}</>}
       {resource && <><p>Deck {zoneCount(resource, 'deck')} · Hand {zoneCount(resource, 'hand')} · Trash {zoneCount(resource, 'trash')}</p>
-        {['legendArea','eddieArea','gigArea','fixerArea','field','trash','removedFromGame'].map(zone => {
+        {Object.entries(resourceLabels).map(([zone, label]) => {
           const cards = zoneCards(resource, zone).filter(card => zone !== 'field' || card.attachedToId);
-          const label: Record<string,string> = {legendArea:'Legends', eddieArea:'Eddies', gigArea:'Gigs', fixerArea:'Fixer dice', field:'Attached Gear', trash:'Trash', removedFromGame:'Removed from game'};
-          return cards.length > 0 && <section key={zone}><h3>{label[zone]}</h3><div className="phone-resource-list">{cards.map((card,index) => {
+          return cards.length > 0 && <section key={zone}><h3>{label}</h3><div className="phone-resource-list">{cards.map((card,index) => {
             const host = card.attachedToId && [...zoneCards(resource, 'field'), ...zoneCards(resource, 'legendArea')].find(item => item.instanceId === card.attachedToId);
-            const name = zone === 'eddieArea' ? `Eddie ${index+1}` : zone === 'gigArea' || zone === 'fixerArea' ? `${card.definitionId}${zone === 'gigArea' ? ' · ' + card.power : ''}` : card.cardName || `Legend slot ${index+1}`;
             return <button type="button" className="btn quiet" key={card.instanceId} onClick={event => {
-              if (eligible.has(card.instanceId) && pick(card.instanceId)) setSheet(undefined);
+              if (eligible.has(card.instanceId) && pick(card.instanceId)) event.currentTarget.closest('dialog')?.close();
               else inspect(card, event.currentTarget);
-            }}>{name}{host && ` · on ${host.cardName ?? 'Legend'}`}{card.spent && ' · spent'}</button>;
+            }}>{resourceName(card, index + 1)}{host && ` · on ${host.cardName ?? 'Legend'}`}{card.spent && ' · spent'}</button>;
           })}</div></section>;
         })}</>}
     </Sheet>}

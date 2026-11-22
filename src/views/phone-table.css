@@ -86,3 +86,20 @@
 .phone-card-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; line-height: 1.15; }
 .phone-board .phone-art { background: var(--color-canvas-deep); }
 .phone-slot .phone-details { font-size: 12px; }
+.phone-command { display: flex; flex-flow: column; overflow: hidden; }
+.phone-command > header, .phone-command > .play-combat-banner { flex: none; }
+.phone-controls { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.phone-table[data-combat] .phone-side .phone-slot { flex: 0 0 118px; }
+.phone-table[data-combat] .phone-side .phone-card { display: grid; grid-template-columns: 34px minmax(0,1fr); grid-template-rows: auto auto; align-content: center; column-gap: 6px; min-height: 54px; padding: 3px; border: 1px solid var(--color-divider); background: var(--color-canvas-deep); }
+.phone-table[data-combat] .phone-side .phone-card[data-target] { border-color: var(--color-ticket); }
+.phone-table[data-combat] .phone-side .phone-slot[data-selected] .phone-card { border-color: var(--color-accent); }
+.phone-table[data-combat] .phone-side .phone-art { grid-row: 1 / 3; align-self: center; }
+.phone-table[data-combat] .phone-side .phone-art b { font-size: 12px; bottom: 0; right: 0; }
+.phone-table[data-combat] .phone-side .phone-card-name { align-self: end; font-size: 12px; }
+.phone-table[data-combat] .phone-side .phone-card small { align-self: start; }
+.phone-table[data-combat] .phone-hand .phone-slot { flex-basis: clamp(58px,18vw,80px); }
+.phone-table[data-combat] .phone-side .phone-details { padding-inline: 4px; }
+@media (orientation: landscape) and (max-height: 540px) {
+  .phone-table[data-combat] .phone-side .phone-slot { flex-basis: 106px; }
+  .phone-table[data-combat] .phone-hand .phone-slot { flex-basis: 54px; }
+}
