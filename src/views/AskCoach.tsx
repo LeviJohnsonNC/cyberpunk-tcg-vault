@@ -238,7 +238,7 @@ export function AskCoach({
                 )}
                 {result.lesson && (
                   <section className="coach-lesson">
-                    <h3>Coach’s lesson</h3>
+                    <h3>Gemini’s lesson</h3>
                     <p>{result.lesson.explanation}</p>
                     <h3>What to watch for</h3>
                     <p>{result.lesson.watchFor}</p>

@@ -33,7 +33,7 @@ export function coachFacts(view: PlayerView) {
   return facts;
 }
 
-export function explainMove(view: PlayerView, move: Move): CoachStep {
+export function explainMove(view: PlayerView, move: Move, alternative = false): CoachStep {
   const a = move.args ?? {};
   const payload = view.prompt.choice?.payload as
     | {
@@ -96,6 +96,15 @@ export function explainMove(view: PlayerView, move: Move): CoachStep {
       const cheap = hand.filter((c) => c.cost !== null && c.cost <= 2);
       const sellable = hand.filter((c) => (c as EngineCardView).hasSellTag);
       title = move.move === 'mulligan' ? 'Mulligan this hand' : 'Keep this hand';
+      if (alternative) {
+        const earlyUnit = units(view)[0];
+        const opener = earlyUnit ? `${earlyUnit.cardName} at ${cost(earlyUnit)} €$` : cheap[0]?.cardName;
+        why =
+          move.move === 'mulligan'
+            ? `A fresh six could offer a stronger opening, but you give up ${opener ?? 'the early cards already in hand'} and cannot count on drawing it again.`
+            : `Keeping guarantees ${opener ?? 'these six cards'}. ${sellable.length ? 'That line depends on finding enough early plays for your Eddies.' : 'Without a sell-tagged card, you have fewer ways to fund your next play.'}`;
+        break;
+      }
       why = `${
         cheap.length
           ? 'Your early options at 2 €$ or less include ' +
@@ -127,7 +136,7 @@ export function explainMove(view: PlayerView, move: Move): CoachStep {
     case 'resolveCardToPlay':
       title = a.attachToId ? `Equip ${label(a.cardId)} to ${label(a.attachToId)}` : `Play ${label(a.cardId)}`;
       why = a.attachToId
-        ? `The equipment goes on ${label(a.attachToId)}. ${card?.effectivePower ? 'Its printed power contribution is ' + card.effectivePower + '. ' : ''}${(card && vaultCard(card)?.text) || 'Keep the host available to use the equipment.'}`
+        ? `The equipment goes on ${label(a.attachToId)}. ${card?.effectivePower ? 'Its current power contribution is ' + card.effectivePower + '. ' : ''}${(card && vaultCard(card)?.text) || 'Keep the host available to use the equipment.'}`
         : card?.type === 'unit'
           ? `Develop a ${card.effectivePower}-power Unit before spending your remaining resources. Check its Lag and ready status before planning an attack.`
           : (card && vaultCard(card)?.text) || why;
@@ -231,7 +240,11 @@ export function explainMove(view: PlayerView, move: Move): CoachStep {
 
 export function continuation(view: PlayerView, last: Move, boundary: string): string[] {
   if (last.move === 'passPhase') return [];
-  const lines = [boundary];
+  const lines = [
+    last.move === 'keepHand'
+      ? 'Once both opening hands are settled, follow the active player’s draw and Gig step.'
+      : boundary,
+  ];
   if (view.activePlayerId === 'rival' && view.gamePhase !== 'setup') {
     lines.push(
       'After your response resolves, priority returns according to the combat prompt. Reassess your defense if the rival acts again.'

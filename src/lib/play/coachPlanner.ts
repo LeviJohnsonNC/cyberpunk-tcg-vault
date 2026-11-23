@@ -203,13 +203,13 @@ export function planTurn({ setup, checkpoint }: CoachPosition): CoachPlan {
           ? pick({ ...view, prompt })
           : undefined;
       if (other) {
-        const runnerUp = explainMove(view, other);
+        const runnerUp = explainMove(view, other, true);
         if (runnerUp.title !== step.title) alternative = runnerUp;
       }
       if (!alternative) {
         for (const form of matchActions(view)) {
           for (const option of formMoves(form, view)) {
-            const alt = explainMove(view, option);
+            const alt = explainMove(view, option, true);
             if (
               alt.title !== step.title &&
               line.handle.fork().processCommand(command(option), 'player').success
