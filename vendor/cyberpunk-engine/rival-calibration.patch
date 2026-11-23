@@ -1,0 +1,214 @@
+--- a/submodules/cyberpunk/packages/engine/src/automation/util/gig-plan.ts
++++ b/submodules/cyberpunk/packages/engine/src/automation/util/gig-plan.ts
+@@ -1,20 +1,21 @@
+ import type { FilteredAbilityHint } from "../../view/ability-hints.ts";
+ import type { FilteredCardView, FilteredMatchView } from "../../view/filter.ts";
+ import { abilityHintCanResolveInPlan } from "./ability-value.ts";
+-import { gigConditionSatisfied, isGigCondition } from "./gig-conditions.ts";
++import { gigConditionSatisfied, isGigCondition, pairCount } from "./gig-conditions.ts";
+
+ /** Value of visible cards whose Gig setup is already met. Hidden cards are never read. */
+ export function gigPlanValue(
+   view: FilteredMatchView,
+   playerId: string,
+   gigValues?: readonly number[],
++  includeHand = true,
+ ): number {
+   const player = view.players[playerId];
+   if (!player) return 0;
+   const values = gigValues ?? listedCards(player.zones.gigArea).map((gig) => gig.effectivePower);
+   const opportunities: number[] = [];
+
+-  for (const card of listedCards(player.zones.hand)) {
++  for (const card of includeHand ? listedCards(player.zones.hand) : []) {
+     opportunities.push(
+       cardGigPlanValue(card, values, "hand", player.availableEddies, view, playerId),
+     );
+@@ -49,7 +50,10 @@
+     if (zone === "hand" && hint.timing !== "play") continue;
+     if (zone === "field" && hint.timing === "play") continue;
+     const gigConditions = hint.conditions.filter(isGigCondition);
+-    if (gigConditions.length === 0) continue;
++    const perPair = hint.effects.includes("forEachFriendlyGigPair");
++    if (!perPair && gigConditions.length === 0) continue;
++    const repeats = perPair ? pairCount(values) : 1;
++    if (repeats === 0) continue;
+     if (!gigConditions.every((condition) => gigConditionSatisfied(condition, values, hint)))
+       continue;
+     if (
+@@ -71,7 +75,7 @@
+     const affordability =
+       zone === "hand" && (card.effectiveCost ?? card.cost ?? 0) > availableEddies ? 0.5 : 1;
+     const timing = zone === "field" && card.hasLag && hint.timing === "attack" ? 0.5 : 1;
+-    best = Math.max(best, (payoff + body) * affordability * timing);
++    best = Math.max(best, (payoff * repeats + body) * affordability * timing);
+   }
+   return best;
+ }
+--- a/submodules/cyberpunk/packages/engine/src/automation/util/gig-steal-plan.ts
++++ b/submodules/cyberpunk/packages/engine/src/automation/util/gig-steal-plan.ts
+@@ -1,5 +1,6 @@
+ import type { CardColor } from "@tcg/cyberpunk-types";
+ import type { FilteredCardView, FilteredMatchView } from "../../view/filter.ts";
++import { pairCount } from "./gig-conditions.ts";
+ import { gigPlanValue } from "./gig-plan.ts";
+
+ type EligibleDie = { dieId: string; faceValue: number };
+@@ -35,12 +36,6 @@
+     )[0]?.color;
+ }
+
+-function pairCount(values: readonly number[]): number {
+-  const counts = new Map<number, number>();
+-  for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
+-  return [...counts.values()].reduce((total, count) => total + Math.floor(count / 2), 0);
+-}
+-
+ function compareScores(a: readonly number[], b: readonly number[]): number {
+   for (let index = 0; index < Math.max(a.length, b.length); index++) {
+     const difference = (a[index] ?? 0) - (b[index] ?? 0);
+@@ -55,11 +50,14 @@
+   playerId: string,
+   eligibleDice: readonly EligibleDie[],
+   count: number,
++  considerRivalBoard = false,
+ ): string[] | null {
+   if (count < 0 || eligibleDice.length < count) return null;
+   const ownGigs = view.players[playerId]?.zones.gigArea;
+   const ownValues = Array.isArray(ownGigs) ? ownGigs.map((gig) => gig.effectivePower) : [];
+   const color = ownColor(view, playerId);
++  const rivalId = Object.keys(view.players).find(id => id !== playerId);
++  const rivalGigs = rivalId && view.players[rivalId]?.zones.gigArea;
+   const sorted = [...eligibleDice].sort((a, b) => a.dieId.localeCompare(b.dieId));
+   let bestIds: string[] | null = null;
+   let bestScore: number[] | null = null;
+@@ -84,7 +82,15 @@
+             return [];
+         }
+       })();
+-      const score = [payoff, ...colorScore, rivalCredLoss];
++      // The same stolen die leaves their area and enters ours without rerolling.
++      // Count every remaining rival die, including dice excluded from the prompt.
++      // Only public permanents can supply a rival payoff.
++      let rivalPayoff = 0;
++      if (considerRivalBoard && rivalId && Array.isArray(rivalGigs)) {
++        const remaining = rivalGigs.filter(gig => !selected.some(die => die.dieId === gig.instanceId));
++        rivalPayoff = gigPlanValue(view, rivalId, remaining.map(gig => gig.effectivePower), false);
++      }
++      const score = [payoff - rivalPayoff, payoff, ...colorScore, rivalCredLoss];
+       const ids = selected.map((die) => die.dieId);
+       if (
+         bestScore === null ||
+--- a/submodules/cyberpunk/packages/engine/src/automation/search/gig-race.ts
++++ b/submodules/cyberpunk/packages/engine/src/automation/search/gig-race.ts
+@@ -18,11 +18,12 @@
+  * lose Lag, but we do not assume a hidden Program will enable a conditional Unit.
+  * The engine search resolves actual combat, triggers, and card restrictions.
+  */
+-function potentialSteals(
++export function potentialSteals(
+   view: FilteredMatchView,
+   attackerId: string,
+   defenderId: string,
+   nextTurn: boolean,
++  unavailable?: { defeated?: string; spentBlocker: string },
+ ): number {
+   const programPlayed =
+     !nextTurn && view.playedCardTypesThisTurn[attackerId]?.includes("program") === true;
+@@ -33,6 +34,7 @@
+   let unblockable = 0;
+   const blockable: number[] = [];
+   for (const card of field(view, attackerId)) {
++    if (card.instanceId === unavailable?.defeated) continue;
+     const inAttack = pending?.attackerId === card.instanceId;
+     const ready = nextTurn ? { ...card, spent: false, hasLag: false } : card;
+     if (!inAttack && !canAttackRivalThisTurn(ready, programPlayed)) continue;
+@@ -48,7 +50,8 @@
+       unblockable += amount;
+     else blockable.push(amount);
+   }
+-  const blockers = field(view, defenderId).filter(isReadyBlocker).length;
++  const blockers = field(view, defenderId).filter(card =>
++    isReadyBlocker(card) && card.instanceId !== unavailable?.spentBlocker).length;
+   blockable.sort((a, b) => b - a);
+   return Math.min(
+     view.players[defenderId]?.gigCount ?? 0,
+--- a/submodules/cyberpunk/packages/engine/src/automation/search/tactical.ts
++++ b/submodules/cyberpunk/packages/engine/src/automation/search/tactical.ts
+@@ -22,7 +22,7 @@
+ } from "../types.ts";
+ import { semanticViewHash } from "../public-view-hash.ts";
+ import { directStealPotential, evaluateBoard } from "./evaluate-board.ts";
+-import { evaluateLateGigRace, isLateGigRace } from "./gig-race.ts";
++import { evaluateLateGigRace, isLateGigRace, potentialSteals } from "./gig-race.ts";
+ import { enumerateCandidateActions, enumerateChoiceActions, passPhaseAction } from "./shared.ts";
+ import {
+   abilityHintCanResolveInPlan,
+@@ -700,7 +700,7 @@
+   if (prompt.status === "choice" && prompt.choice) {
+     if (prompt.choice.type === "chooseGigsToSteal") {
+       const { eligibleDice, count } = prompt.choice.payload;
+-      const dieIds = bestGigsToSteal(ctx.view, ctx.playerId as string, eligibleDice, count);
++      const dieIds = bestGigsToSteal(ctx.view, ctx.playerId as string, eligibleDice, count, scoring.abilityAware);
+       if (dieIds) return [{ kind: "command", move: "resolveStealGigs", args: { dieIds } }];
+     }
+     if (choiceCrossesHiddenInformation(prompt.choice.type)) {
+@@ -2050,15 +2050,38 @@
+       ? evaluateLateGigRace(before, rootPlayerId as string, true) -
+         evaluateLateGigRace(before, rootPlayerId as string)
+       : 0) +
+-    (actor === rootPlayerId ? 1 : -1) *
+-      actionPrior(
+-        action,
+-        before,
+-        actor as string,
+-        actor === rootPlayerId ? profile : undefined,
+-        scoring,
+-      )
++    (actor === rootPlayerId ? 1 : -1) * (
++      actionPrior(action, before, actor as string, actor === rootPlayerId ? profile : undefined, scoring) +
++      (scoring.abilityAware ? combatAtResponseWindow(before, actor, action) : 0)
++    )
+   );
++}
++
++/** Value a public combat opportunity when the search must stop before a private
++ * response. Discount a possible defeat; a reaction can still change the fight. */
++function combatAtResponseWindow(view: FilteredMatchView, actor: PlayerId, action: CommandMove): number {
++  if (action.move !== "attackRival" && action.move !== "attackUnit") return 0;
++  const rivalId = Object.keys(view.players).find(id => id !== actor);
++  const attacker = findCard(view, stringArg(action.args?.attackerId));
++  if (!attacker || !rivalId) return 0;
++  const rival = view.players[rivalId]!;
++  const blockable = !attacker.grantedRules.includes("cantBeBlocked") && readyBlockers(rival.zones.field).length > 0;
++  const discount = blockable ? 0.4 : 1;
++  if (action.move === "attackRival") {
++    const steals = Math.min(rival.gigCount, directStealPotential(attacker.effectivePower,
++      attacker.grantedRules.includes("stealsOneFewerGig")));
++    const own = view.players[actor]!.gigCount;
++    return own < 7 && own + steals >= 7 ? 120 * discount : 0;
++  }
++  const target = findCard(view, stringArg(action.args?.defenderId));
++  if (!target || attacker.effectivePower <= target.effectivePower) return 0;
++  // Both lines spend our attacker. Removing a second threat might deny no
++  // extra Gigs if our remaining blockers already cover it or we own only one.
++  const spentBlocker = attacker.instanceId;
++  const incoming = potentialSteals(view, rivalId, actor, true, { spentBlocker });
++  const remaining = potentialSteals(view, rivalId, actor, true, { spentBlocker, defeated: target.instanceId });
++  const material = Math.min(20, Math.max(0, target.effectivePower) + 2 * (target.cost ?? 0));
++  return (material + 32 * (incoming - remaining)) * discount;
+ }
+
+ const HOST_PRIOR: Record<ReturnType<typeof gearHostMatch>, number> = {
+--- a/submodules/cyberpunk/packages/engine/src/automation/util/gig-conditions.ts
++++ b/submodules/cyberpunk/packages/engine/src/automation/util/gig-conditions.ts
+@@ -38,3 +38,9 @@
+       return values.some((value) => value % 2 === 0) && values.some((value) => value % 2 !== 0);
+   }
+ }
++
++export function pairCount(values: readonly number[]): number {
++  const counts = new Map<number, number>();
++  for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
++  return [...counts.values()].reduce((total, count) => total + Math.floor(count / 2), 0);
++}

@@ -154,3 +154,27 @@ Two comparisons check when the second purchase earns its cost. Give the player a
 The tactical search compares equipping and attacking with the same host within its existing search budget. It counts Gear power on its host once, caps immediate steals at the rival’s Gig count, and gives retained buying power a bounded value when an attack can reveal new choices. If a concealed response, Legend Call, or eligible draw, peek, or search could intervene, it scores the declaration using the deciding seat’s view. Tests change the concealed rival response, deck order, face-down crew and RNG, then compare the resulting decisions.
 
 Two runs reproduced the decisions across all eight baseline positions. The roster sweep completed 114 games, covering all 19 lists in both seats at each difficulty against Standard. Sharp and Masterful each won 32 of their 38 games. Comparing the strength of those two levels requires the separate difficulty-calibration phase.
+
+## Calibrating Standard, Sharp and Masterful
+
+Consider a steal with a choice between a 5 and one of two 2s. Standard takes the 5 for Street Cred. Sharp takes a 2 if it completes a friendly pair for Hanako’s next draw. With Hanako face up across the table, Masterful can take a 2 to break the rival’s only pair. With three rival 2s, taking one still leaves a pair, so Masterful takes the 5 in the fixture. The same calculation uses printed ability hints across the card pool. The regression also checks that changing a concealed Legend’s identity cannot change the decision. [Hanako Arasaka](https://cyberpunktcg.com/cards/hanako-arasaka-daughter-of-the-emperor) · [Comprehensive Rules §§6.6, 6.8, 11.5](https://cyberpunktcg.com/comprehensive-rules)
+
+Masterful also compares fighting a spent Unit with attacking Gigs when a private reaction could interrupt either line. In the regression, Sharp takes the available Gig. Masterful uses Saul Bright to fight Animals Wrecker, which could otherwise steal two Gigs on the return attack. Give Saul’s side six Gigs and Masterful attacks for the seventh. Each projection accounts for available Gigs and ready blockers. Hidden cards, future draws and responses still require a fresh decision when revealed. The session regression resumes the same board under all three difficulty settings and checks the attack the player actually faces. [Official combat guide](https://cyberpunktcg.com/gameplay-guide)
+
+### Paired full matches
+
+Two held-out seed families each cover the 19 curated lists. For each deal, the benchmark fixes the decks, seats, initial shuffle and random streams, uses automatic payments on both sides, then swaps which policy pilots which deck. Each adjacent difficulty comparison therefore has 38 deals and 76 completed games. The table counts a sweep when the higher tier wins on both sides of the same deal. [Winners and command counts for every game](qa/rival-tier-calibration.csv)
+
+| Higher tier vs. lower | Wins on seed family A | Wins on seed family B | Combined | Deals swept / split / lost twice |
+| --- | ---: | ---: | ---: | ---: |
+| Sharp vs. Standard | 35/38 | 34/38 | 69/76 | 31 / 7 / 0 |
+| Masterful vs. Sharp | 23/38 | 26/38 | 49/76 | 14 / 21 / 3 |
+
+All 152 games reached an engine-declared result. The eight Phase 2 fixtures reproduced every recorded coach line, alternative and opponent decision. The smaller gap between Sharp and Masterful held on both seed families. These are head-to-head results for this roster. Human difficulty and performance against new deck archetypes remain unmeasured.
+
+To reproduce the four runs from the repository root, use the command below with seed families `a` and `b`, first with Sharp against Standard and then with Masterful against Sharp.
+
+```sh
+BENCH_SEED_PREFIX=vault-tier-holdout-a-v1 BENCH_SKILL=masterful BENCH_OPPONENT_SKILL=sharp \
+  node scripts/benchmark-rivals.mjs --paired /tmp/masterful-sharp-a.json
+```
