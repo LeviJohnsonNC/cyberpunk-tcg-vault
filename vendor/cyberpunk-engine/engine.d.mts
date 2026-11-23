@@ -11,7 +11,7 @@ interface Catalog {
 }
 
 export interface EngineState {
-  ctx: { stateID: number };
+  ctx: { stateID: number; rngState?: { state: number } };
   G: {
     players: Record<Seat, { zones: Record<string, string[]> }>;
     cardIndex: Record<string, { definitionId: string }>;
@@ -66,6 +66,7 @@ export class LocalEngine {
 export class SeededRNG {
   constructor(seed: string);
   next(): number;
+  rollDie(type: string): number;
   getState(): { state: number };
   setState(state: { state: number }): void;
 }

@@ -12,6 +12,7 @@ export interface PhoneTableProps {
   busy: boolean;
   decision: ReactNode;
   combat: ReactNode;
+  coach?: ReactNode;
   history: ReactNode;
   actions: ReactNode;
   navigation?: ReactNode;
@@ -69,7 +70,7 @@ function Sheet({ title, close, children }: { title: string; close: () => void; c
   </dialog>;
 }
 
-export function PhoneTable({ snapshot, names, title, turn, busy, decision, combat, history, actions, navigation, error, eligible, chosen, inspect, pick }: PhoneTableProps) {
+export function PhoneTable({ snapshot, names, title, turn, busy, decision, combat, coach, history, actions, navigation, error, eligible, chosen, inspect, pick }: PhoneTableProps) {
   const { view } = snapshot;
   const [sheet, setSheet] = useState<'Match log' | 'All actions' | Seat>();
   const [equipment, setEquipment] = useState<CardView>();
@@ -113,7 +114,7 @@ export function PhoneTable({ snapshot, names, title, turn, busy, decision, comba
   const resource = resourceSeat && view.players[resourceSeat];
   return <div className="phone-table" data-combat={!!view.attackState || undefined} data-match-id={snapshot.matchId} data-state-id={view.stateID} data-busy={busy}>
     <header className="phone-match-head"><div><p>{title}</p><h1>{names.player} <i>vs</i> {names.rival}</h1></div>
-      <button type="button" className="btn quiet" onClick={() => setSheet('Match log')}>Log</button></header>
+      {coach}<button type="button" className="btn quiet" onClick={() => setSheet('Match log')}>Log</button></header>
     <div className="phone-board">{side('rival')}{side('player')}</div>
     <section className="phone-hand" aria-label="Your hand"><header><h2>Your hand <b>{hand.length}</b></h2></header>
       <CardLane label="Cards in your hand" count={hand.length}>{hand.map((card,index) => cardTile(card, index + 1))}{!hand.length && <span className="play-empty">No cards in hand</span>}</CardLane></section>

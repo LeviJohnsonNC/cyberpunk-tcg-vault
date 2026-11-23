@@ -433,7 +433,7 @@ export function CampaignMode({ scope, openInBuilder, preparationOnly = false, on
     data-campaign-board={!choosingStarter && (!tableOpen || resultOpen) || undefined} data-environment={profile?.equipped ?? 'default'}
     onPointerDownCapture={sound.unlock} onKeyDownCapture={sound.unlock}>
     {tableOpen && !resultOpen && <ReactiveRoom />}
-    {tableOpen && snapshot && displayedMatch ? <PlayTable key={snapshot.matchId} scope={`${scope}:campaign`} snapshot={displayedMatch} names={snapshot.names}
+    {tableOpen && snapshot && displayedMatch ? <PlayTable key={snapshot.matchId} coachSource={()=>({mode:'campaign',scope})} scope={`${scope}:campaign`} snapshot={displayedMatch} names={snapshot.names}
       playback={presentation.playback} feedback={presentation.feedback} quick={presentation.quick} togglePace={presentation.togglePace} reduced={presentation.reduced} cue={sound.cue}
       campaign={run && encounter && {
         title: encounter.title,

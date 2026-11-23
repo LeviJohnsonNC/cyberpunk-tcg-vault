@@ -4,6 +4,9 @@
   "buildCommand": "npm run check && npm run check:budget",
   "outputDirectory": "dist",
   "functions": {
+    "api/ask-coach.ts": {
+      "maxDuration": 45
+    },
     "api/scan.ts": {
       "maxDuration": 60
     },

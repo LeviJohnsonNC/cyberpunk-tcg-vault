@@ -32,6 +32,15 @@ export function openDatabase() {
   });
 }
 
+export async function readSavedMatch(scope: string) {
+  const db = await openDatabase();
+  return new Promise<StoredMatch | undefined>((resolve, reject) => {
+    const request = db.transaction(matches).objectStore(matches).get(scope);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
 export async function readMatchSummary(scope: string) {
   const db = await openDatabase();
   return new Promise<MatchSummary | undefined>((resolve, reject) => {

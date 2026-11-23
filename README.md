@@ -64,12 +64,14 @@ Support targets maintained Chrome, Edge, and Firefox releases and Safari 18+. Ne
 
 | Name | Value | Notes |
 | --- | --- | --- |
-| `OPENROUTER_API_KEY` | `sk-or-…` | Required for photo scan. Server-only. |
+| `OPENROUTER_API_KEY` | `sk-or-…` | Server-only key for photo scan, deck refinement, and Ask Coach lessons. |
 | `SUPABASE_URL` | `https://<ref>.supabase.co` | |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase secret key | Verifies logins and counts scans. Server-only. |
 | `SUPABASE_ANON_KEY` | Supabase publishable key | Optional. Used by the `/d/<token>` link preview, which only calls `get_shared_deck`. Falls back to the service key. |
 | `OPENROUTER_MODEL` | `google/gemini-2.5-flash` | Optional. Any OpenRouter vision model. |
 | `SCAN_DAILY_LIMIT` | `25` | Optional. Scans per user per day. |
+| `COACH_MODEL` | `google/gemini-3.8-flash` | Optional. Explains the engine’s turn plan for signed-in players. The local plan also works offline. |
+| `COACH_DAILY_LIMIT` / `COACH_GLOBAL_DAILY_LIMIT` | `30` / `150` | Optional. Per-user and shared daily lesson allowances. Uses the existing AI usage counters. |
 | `DECK_MODEL` | `anthropic/claude-sonnet-5.5` | Optional. OpenRouter model for AI deck refinement. |
 | `DECK_DAILY_LIMIT` | `3` | Optional. AI refinements per user per day (about $0.02 each on the default model). |
 | `UNLIMITED_EMAILS` | `you@example.com` | Optional. Comma-separated accounts that skip all AI limits. Keep it out of git. |
