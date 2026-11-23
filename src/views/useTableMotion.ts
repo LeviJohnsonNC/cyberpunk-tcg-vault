@@ -299,7 +299,7 @@ export function useTableMotion(root: RefObject<HTMLElement | null>, cue: {
             from = { ...from, x: release.x - bounds.left - table.clientLeft, y: release.y - bounds.top - table.clientTop, w: release.width };
           }
           if (moved > 3) fly(piece, from, { delay: id === strike?.attackerId ? impact : 0,
-            cue: !['eddies', 'gigs'].includes(arriving) && earlier.zone === 'hand:player' ? arrivalCue(id) : undefined });
+            cue: earlier.zone !== piece.zone && !['eddies', 'gigs'].includes(arriving) && earlier.zone === 'hand:player' ? arrivalCue(id) : undefined });
         } else if (moved > 3 && id !== strike?.attackerId) {
           const animation = piece.el.animate([{ transform: `translate(${earlier.spot.x - piece.spot.x}px, ${earlier.spot.y - piece.spot.y}px)` }, { transform: 'none' }],
             { duration: time(280), easing: EASE });
@@ -466,9 +466,12 @@ function restingTransform(shell: HTMLElement | null) {
 
 function measure(table: HTMLElement) {
   const found = new Map<string, Piece>();
+  const spread = table.hasAttribute('data-reviewing-hand') ? table.querySelector(':scope > .play-hand') : null;
   for (const el of table.querySelectorAll<HTMLElement>(tracked)) {
     if (el.closest('dialog, .play-flight-layer')) continue;
-    const spot = spotOf(el, table);
+    // Captions sit below the opening cards. Flights travel between the art centers.
+    const face = spread?.contains(el) ? el.querySelector<HTMLElement>('.play-card-art') : null;
+    const spot = spotOf(face ?? el, table);
     const zone = el.closest<HTMLElement>('[data-zone]')?.dataset.zone;
     if (spot && zone && el.dataset.cardId) found.set(el.dataset.cardId, { el, spot, zone });
   }
