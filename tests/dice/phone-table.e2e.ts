@@ -253,6 +253,7 @@ test('card and combat names and chosen payment sources pass the accessibility sc
 });
 
 test('a campaign combat win on the phone awards the pack and opens the next contract', async ({ page }, testInfo) => {
+  test.slow(); // Two launches, two reloads, combat, story, and every individual pack reveal.
   await page.route('https://**/*', route => route.abort());
   await page.goto('/#/play?mode=campaign');
   await page.getByRole('button', { name: 'Choose your crew' }).tap();
