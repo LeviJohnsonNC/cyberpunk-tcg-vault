@@ -33,6 +33,12 @@ export function informedChoice(ctx: DecisionContext, advanced: boolean,
   deckTypePrior?: Readonly<Record<string, number>>): MoveDecision | undefined {
   const choice = ctx.prompt.choice;
   if (!choice) return undefined;
+  if (choice.type === 'chooseGigsToSteal' && !advanced) {
+    const { count, eligibleDice } = choice.payload;
+    if (eligibleDice.length < count) return undefined;
+    const dice = [...eligibleDice].sort((a, b) => b.faceValue - a.faceValue || a.dieId.localeCompare(b.dieId));
+    return { kind: 'command', move: 'resolveStealGigs', args: { dieIds: dice.slice(0, count).map(die => die.dieId) } };
+  }
   if (choice.type === 'chooseTarget' && choice.payload.effect?.effect === 'lookAt') {
     const visible = Object.values(ctx.view.players).flatMap(player => cards(player.zones.legendArea));
     const eligible = [...(choice.payload.eligibleIds ?? [])].sort((a, b) =>
