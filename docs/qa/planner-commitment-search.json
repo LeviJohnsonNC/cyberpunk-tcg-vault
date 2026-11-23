@@ -1,0 +1,354 @@
+{
+  "environment": {
+    "node": "v24.22.1",
+    "platform": "linux",
+    "arch": "x64",
+    "cpu": "AMD EPYC 9V74 80-Core Processor"
+  },
+  "timing": {
+    "warmups": 1,
+    "samples": 5,
+    "statistic": "median, milliseconds",
+    "scope": "local full coach plan or one local opponent decision"
+  },
+  "cases": [
+    {
+      "name": "Ripper before equipment",
+      "inputHash": "32b9515d757a6336620afb27af3f44284e5bdc273f09bdc700d96527318f32bc",
+      "decisions": {
+        "coach": {
+          "focus": {
+            "move": "playCard",
+            "cards": [
+              "ci_82996933",
+              "ci_556376454",
+              "ci_912099694",
+              "hidden-crew:player:0"
+            ]
+          },
+          "line": [
+            "Equip Arasaka Emergency Radioport to Sketchy Ripper",
+            "Attack the rival with Sketchy Ripper"
+          ],
+          "alternative": "Sell Zetatech Faceplate",
+          "medianMs": 210.05
+        },
+        "standard": {
+          "move": "playCard",
+          "args": {
+            "cardId": "ci_149145055",
+            "attachToId": "ci_556376454"
+          },
+          "title": "Equip Zetatech Faceplate to Sketchy Ripper",
+          "medianMs": 0.48
+        },
+        "sharp": {
+          "move": "playCard",
+          "args": {
+            "cardId": "ci_82996933",
+            "attachToId": "ci_556376454"
+          },
+          "title": "Equip Arasaka Emergency Radioport to Sketchy Ripper",
+          "medianMs": 58.63
+        },
+        "masterful": {
+          "move": "playCard",
+          "args": {
+            "cardId": "ci_82996933",
+            "attachToId": "ci_556376454"
+          },
+          "title": "Equip Arasaka Emergency Radioport to Sketchy Ripper",
+          "medianMs": 64.62
+        }
+      }
+    },
+    {
+      "name": "Ripper after Radioport",
+      "inputHash": "b74a9fa2eaa1cf2f8afd70343506e6c200ac8e2aa0602cdb78fa064f36a3011b",
+      "decisions": {
+        "coach": {
+          "focus": {
+            "move": "attackRival",
+            "cards": [
+              "ci_556376454"
+            ]
+          },
+          "line": [
+            "Attack the rival with Sketchy Ripper"
+          ],
+          "alternative": "Sell Zetatech Faceplate",
+          "medianMs": 105.16
+        },
+        "standard": {
+          "move": "playCard",
+          "args": {
+            "cardId": "ci_149145055",
+            "attachToId": "ci_556376454"
+          },
+          "title": "Equip Zetatech Faceplate to Sketchy Ripper",
+          "medianMs": 0.26
+        },
+        "sharp": {
+          "move": "attackRival",
+          "args": {
+            "attackerId": "ci_556376454"
+          },
+          "title": "Attack the rival with Sketchy Ripper",
+          "medianMs": 57.25
+        },
+        "masterful": {
+          "move": "attackRival",
+          "args": {
+            "attackerId": "ci_556376454"
+          },
+          "title": "Attack the rival with Sketchy Ripper",
+          "medianMs": 46.87
+        }
+      }
+    },
+    {
+      "name": "Equip for two Gigs",
+      "inputHash": "6820c6130940b71a6a0f4ed9168c2b7740b5d488835767e42ebea87d8c27ed01",
+      "decisions": {
+        "coach": {
+          "focus": {
+            "move": "playCard",
+            "cards": [
+              "ci_253786030",
+              "ci_978803782",
+              "ci_786685653"
+            ]
+          },
+          "line": [
+            "Equip Mantis Blades to MaxTac AV",
+            "Attack the rival with MaxTac AV"
+          ],
+          "alternative": "Attack the rival with MaxTac AV",
+          "medianMs": 81.69
+        },
+        "standard": {
+          "move": "playCard",
+          "args": {
+            "cardId": "ci_253786030",
+            "attachToId": "ci_978803782"
+          },
+          "title": "Equip Mantis Blades to MaxTac AV",
+          "medianMs": 0.19
+        },
+        "sharp": {
+          "move": "playCard",
+          "args": {
+            "cardId": "ci_253786030",
+            "attachToId": "ci_978803782"
+          },
+          "title": "Equip Mantis Blades to MaxTac AV",
+          "medianMs": 72.63
+        },
+        "masterful": {
+          "move": "playCard",
+          "args": {
+            "cardId": "ci_253786030",
+            "attachToId": "ci_978803782"
+          },
+          "title": "Equip Mantis Blades to MaxTac AV",
+          "medianMs": 61.82
+        }
+      }
+    },
+    {
+      "name": "Opening hand",
+      "inputHash": "a41ebcb664bf3b7c0928328e26aa310cb3753db0ea9552b62234bccafdeda217",
+      "decisions": {
+        "coach": {
+          "focus": {
+            "move": "keepHand",
+            "cards": []
+          },
+          "line": [
+            "Keep this hand"
+          ],
+          "alternative": "Mulligan this hand",
+          "medianMs": 2.07
+        },
+        "standard": {
+          "move": "keepHand",
+          "title": "Keep this hand",
+          "medianMs": 0.09
+        },
+        "sharp": {
+          "move": "keepHand",
+          "title": "Keep this hand",
+          "medianMs": 0.12
+        },
+        "masterful": {
+          "move": "keepHand",
+          "title": "Keep this hand",
+          "medianMs": 0.1
+        }
+      }
+    },
+    {
+      "name": "Mulligan expensive hand",
+      "inputHash": "abbf445f3573d6f013df33180dfb9ce9164ee18aae06d7d64a1426c077d2aa45",
+      "decisions": {
+        "coach": {
+          "focus": {
+            "move": "mulligan",
+            "cards": []
+          },
+          "line": [
+            "Mulligan this hand"
+          ],
+          "alternative": "Keep this hand",
+          "medianMs": 2.37
+        },
+        "standard": {
+          "move": "mulligan",
+          "title": "Mulligan this hand",
+          "medianMs": 0.11
+        },
+        "sharp": {
+          "move": "mulligan",
+          "title": "Mulligan this hand",
+          "medianMs": 0.11
+        },
+        "masterful": {
+          "move": "mulligan",
+          "title": "Mulligan this hand",
+          "medianMs": 0.12
+        }
+      }
+    },
+    {
+      "name": "Gig die",
+      "inputHash": "dcbd14e6b0d73833352ba074d26d76d69cf4287d014a4a8c72c30c45e535a9e5",
+      "decisions": {
+        "coach": {
+          "focus": {
+            "move": "gainGig",
+            "cards": [
+              "gd_701796118"
+            ]
+          },
+          "line": [
+            "Roll the d12"
+          ],
+          "alternative": "Roll the d10",
+          "medianMs": 138.41
+        },
+        "standard": {
+          "move": "gainGig",
+          "args": {
+            "dieId": "gd_701796118"
+          },
+          "title": "Roll the d12",
+          "medianMs": 0.13
+        },
+        "sharp": {
+          "move": "gainGig",
+          "args": {
+            "dieId": "gd_701796118"
+          },
+          "title": "Roll the d12",
+          "medianMs": 0.13
+        },
+        "masterful": {
+          "move": "gainGig",
+          "args": {
+            "dieId": "gd_701796118"
+          },
+          "title": "Roll the d12",
+          "medianMs": 0.17
+        }
+      }
+    },
+    {
+      "name": "Block a Gig attack",
+      "inputHash": "b81f7478f1e00300e8ec88cee1ed7ffdff5cd79e1d1d89dea2925005c837ed6b",
+      "decisions": {
+        "coach": {
+          "focus": {
+            "move": "playCard",
+            "cards": [
+              "ci_492822059",
+              "ci_940034738"
+            ]
+          },
+          "line": [
+            "Play Floor It",
+            "Choose a target · Field Operator"
+          ],
+          "alternative": "Call your Legend in slot 1",
+          "medianMs": 35.95
+        },
+        "standard": {
+          "move": "playCard",
+          "args": {
+            "cardId": "ci_492822059"
+          },
+          "title": "Play Floor It",
+          "medianMs": 0.29
+        },
+        "sharp": {
+          "move": "callLegend",
+          "args": {
+            "legendId": "hidden-crew:player:0"
+          },
+          "title": "Call your Legend in slot 1",
+          "medianMs": 13.78
+        },
+        "masterful": {
+          "move": "playCard",
+          "args": {
+            "cardId": "ci_492822059"
+          },
+          "title": "Play Floor It",
+          "medianMs": 15.95
+        }
+      }
+    },
+    {
+      "name": "Win in overtime",
+      "inputHash": "e72e79f964aece63a086323d25d5829887d1e5150925f2dd12bc0ce416f88c2a",
+      "decisions": {
+        "coach": {
+          "focus": {
+            "move": "attackRival",
+            "cards": [
+              "ci_786685653"
+            ]
+          },
+          "line": [
+            "Attack the rival with Psycho Squad"
+          ],
+          "alternative": "Attack Corpo Security with Psycho Squad",
+          "medianMs": 14.52
+        },
+        "standard": {
+          "move": "attackRival",
+          "args": {
+            "attackerId": "ci_786685653"
+          },
+          "title": "Attack the rival with Psycho Squad",
+          "medianMs": 0.09
+        },
+        "sharp": {
+          "move": "attackRival",
+          "args": {
+            "attackerId": "ci_786685653"
+          },
+          "title": "Attack the rival with Psycho Squad",
+          "medianMs": 8.5
+        },
+        "masterful": {
+          "move": "attackRival",
+          "args": {
+            "attackerId": "ci_786685653"
+          },
+          "title": "Attack the rival with Psycho Squad",
+          "medianMs": 9.27
+        }
+      }
+    }
+  ]
+}
