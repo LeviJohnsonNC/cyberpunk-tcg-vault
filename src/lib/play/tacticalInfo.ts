@@ -118,6 +118,27 @@ export function cardPreviewPosition(anchor: PreviewRect, bounds: PreviewRect, pr
   }
 }
 
+/** Fit readable text against either edge of the lifted art, clear of interactive pieces. */
+export function cardRulesPosition(art: { x: number; y: number; width: number; height: number }, bounds: { left: number; right: number }, blocked: PreviewRect[]) {
+  const left = bounds.left + previewGap, right = bounds.right - previewGap;
+  const artRight = art.x + art.width;
+  const moreSpaceAfter = right - artRight >= art.x - left;
+  for (const width of [256, 216, 176]) {
+    for (const after of [moreSpaceAfter, !moreSpaceAfter]) {
+      if ((after ? right - artRight : art.x - left) < width) continue;
+      const x = after ? artRight : art.x - width;
+      let top = art.y, bottom = art.y + art.height;
+      for (const r of blocked) {
+        if (r.left >= x + width || r.left + r.width <= x || r.top >= bottom || r.top + r.height <= top) continue;
+        // Keep the larger clear interval when a resource dock touches this side.
+        if (r.top - top >= bottom - r.top - r.height) bottom = r.top - previewGap;
+        else top = r.top + r.height + previewGap;
+      }
+      if (bottom - top >= 124) return { x, y: top, width, height: bottom - top };
+    }
+  }
+}
+
 /** Effect options also carry a rules excerpt and have their own compact layouts. */
 export function effectPreviewPosition(anchor: PreviewRect, viewport: { width: number; height: number }, blocked: PreviewRect[],
   sizes: { width: number; height: number; landscape: boolean }[]) {

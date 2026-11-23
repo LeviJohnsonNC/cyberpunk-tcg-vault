@@ -121,3 +121,63 @@ test('a crowded hand still opens full inspection when the close-up has no safe s
   await page.locator('.play-hand .play-details').nth(1).click();
   await expect(page.locator('dialog.play-inspect')).toBeVisible();
 });
+
+test('the opening spread shows six priced cards, supports inspection and keeps the same cards in the fan', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await openTable(page, 'Opening hand');
+  const spread = page.getByRole('region', { name: 'Your opening hand' });
+  const cards = spread.locator('.play-card');
+  await expect(cards).toHaveCount(6);
+  const ids = await cards.evaluateAll(nodes => nodes.map(node => node.getAttribute('data-card-id')));
+  const first = await bounds(cards.first());
+  const last = await bounds(cards.last());
+  expect(first.width).toBeGreaterThanOrEqual(130);
+  expect(first.y).toBe(last.y);
+  for (const card of await cards.all()) {
+    await expect(card.locator('.play-opening-caption strong')).toBeVisible();
+    await expect(card.locator('.play-opening-caption b')).toHaveText(/\d+ €\$/);
+  }
+  const keep = page.getByRole('button', { name: 'Keep hand', exact: true });
+  expect((await bounds(keep)).y).toBeGreaterThanOrEqual(first.y + first.height);
+  await cards.first().focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('dialog.play-inspect')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(cards.first()).toBeFocused();
+  await keep.click();
+  await expect(spread).toHaveCount(0);
+  const hand = page.getByRole('region', { name: 'Your hand', exact: true });
+  for (const id of ids) await expect(hand.locator(`[data-board-card="${id}"]`)).toBeVisible();
+});
+
+test('mulligan replaces the opening hand and the saved decision resumes', async ({ page }) => {
+  await openTable(page, 'Opening hand');
+  const hand = page.locator('.play-hand');
+  const ids = () => hand.locator('.play-card').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-card-id')));
+  const initial = await ids();
+  await page.getByRole('button', { name: 'Mulligan', exact: true }).click();
+  await expect.poll(ids).not.toEqual(initial);
+  const redrawn = await ids();
+  await page.reload();
+  await expect.poll(ids).toEqual(redrawn);
+  await expect(page.locator('button[data-move="mulligan"]')).toHaveCount(0);
+});
+
+test('hover shows printed rules beside the art and leaves full inspection and card actions accessible', async ({ page }) => {
+  await openTable(page, 'Equip Satori');
+  const card = page.locator('.play-hand').getByRole('button', { name: 'Satori', exact: true });
+  await card.hover();
+  const tooltip = page.getByRole('tooltip');
+  await expect(tooltip).toContainText(/draw 1/i);
+  const art = await bounds(page.locator('.play-art-preview'));
+  const rules = await bounds(tooltip);
+  expect(rules.x + rules.width <= art.x + 1 || rules.x >= art.x + art.width - 1).toBe(true);
+  await page.mouse.move(rules.x + rules.width / 2, rules.y + 18);
+  await expect(tooltip).toBeVisible();
+  await page.keyboard.press('i');
+  await expect(page.locator('dialog.play-inspect')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await card.click();
+  await expect(page.getByRole('dialog', { name: /Actions for Satori/ })).toBeVisible();
+  await expect(tooltip).toHaveCount(0);
+});

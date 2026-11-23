@@ -175,3 +175,97 @@ html:has(.play-direct) { scrollbar-gutter: stable; }
   min-width: min(330px, 100%);
   max-width: min(670px, 100%);
 }
+
+/* During the opening decision the hand occupies the empty field. Its cards keep
+   their normal identities so the motion layer can settle them into the bench. */
+.play-direct .play-table[data-reviewing-hand] {
+  --opening-dock-height: var(--play-player-dock-height);
+  min-block-size: var(--play-available-height);
+  grid-template-rows: auto auto minmax(min-content, 1fr) auto auto;
+}
+.play-table[data-reviewing-hand] .play-field[data-seat="rival"] { display: none; }
+.play-table[data-reviewing-hand] .play-gigs { block-size: 38px; min-block-size: 38px; }
+.play-table[data-reviewing-hand] .play-bench[data-seat="player"] { block-size: var(--opening-dock-height); }
+.play-table[data-reviewing-hand] .play-bench[data-seat="player"] .play-bench-piles { grid-column: 3; }
+.play-direct .play-table[data-reviewing-hand] > .play-hand {
+  --w-opening: clamp(104px, min(12vw, calc((var(--play-available-height) - var(--play-rival-height) - var(--opening-dock-height) - 210px) / 1.4)), 150px);
+  display: grid;
+  align-self: stretch;
+  align-content: center;
+  padding: 12px;
+  border: 1px solid var(--play-edge);
+  border-radius: 9px 9px 0 0;
+  background: linear-gradient(90deg, transparent, rgb(18 12 23 / .7) 28% 72%, transparent),
+    url('../assets/play/field-glass.webp') center / cover var(--color-canvas-deep);
+}
+.play-direct [data-reviewing-hand] .play-hand .play-card-row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, var(--w-opening)));
+  justify-content: center;
+  align-items: start;
+  gap: clamp(6px, 1.4vw, 24px);
+  block-size: auto;
+  min-block-size: 0;
+  padding: 0;
+}
+.play-direct [data-reviewing-hand] .play-hand .play-card-shell {
+  --w: 100%;
+  width: 100%;
+  min-width: 0;
+  rotate: none;
+  translate: none;
+}
+.play-opening-caption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 5px;
+  margin-block-start: 7px;
+  min-block-size: 2.3em;
+  font: 650 15px/1.15 var(--font-ui);
+  color: var(--color-text);
+}
+.play-opening-caption strong { overflow-wrap: anywhere; font-weight: inherit; }
+.play-opening-caption b {
+  flex: none;
+  color: var(--color-ticket);
+  font: 600 12px/1.2 var(--font-mono);
+  white-space: nowrap;
+}
+.play-table[data-reviewing-hand] .play-turn-plate, .play-flight .play-opening-caption { display: none; }
+.play-direct [data-reviewing-hand] .play-command { min-block-size: 0; }
+.play-direct [data-reviewing-hand] .play-command .play-command-inner {
+  padding: 8px 14px;
+  margin-block-start: -5px;
+  border-radius: 0 0 9px 9px;
+  border-color: var(--play-edge);
+}
+.play-direct [data-reviewing-hand] .play-command .play-opening-choices {
+  grid-template-columns: auto auto;
+  justify-content: center;
+  width: 100%;
+  max-width: none;
+}
+
+@media (min-height: 850px) {
+  .play-direct .play-table[data-reviewing-hand] {
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto auto;
+  }
+  .play-table[data-reviewing-hand] .play-field[data-seat="rival"] { display: flex; block-size: auto; }
+  .play-direct .play-table[data-reviewing-hand] > .play-hand { padding-block: 22px; }
+}
+
+@media (max-height: 800px) {
+  .play-direct .play-table[data-reviewing-hand] {
+    --opening-dock-height: max(calc(var(--play-fixer-die) * 2 + 22px), calc(var(--play-legend-slot-height) + 24px));
+  }
+  .play-direct [data-reviewing-hand] .play-bench[data-seat="player"] { grid-template-columns: minmax(0, 1fr) auto; }
+  .play-direct [data-reviewing-hand] .play-bench[data-seat="player"] .play-bench-crew {
+    inline-size: max-content;
+    flex-direction: row;
+    align-items: end;
+    gap: var(--space-3);
+  }
+  .play-table[data-reviewing-hand] .play-bench[data-seat="player"] .play-eddies { inline-size: var(--play-crew-width); }
+  .play-table[data-reviewing-hand] .play-bench[data-seat="player"] .play-bench-piles { grid-column: 2; }
+}

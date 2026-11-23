@@ -10,7 +10,7 @@ import { visibleCards, zoneCards } from '../lib/play/matchView';
 import type { CardView, MatchBeat, MatchSnapshot, Move, Seat } from '../lib/play/protocol';
 import { CardFace, CardInspection } from './PlayCard';
 import { vaultCard } from '../lib/play/cardDisplay';
-import { cardPreviewPosition, cardPreviewStatus, decisionSource, effectPreviewPosition } from '../lib/play/tacticalInfo';
+import { cardPreviewPosition, cardPreviewStatus, cardRulesPosition, decisionSource, effectPreviewPosition } from '../lib/play/tacticalInfo';
 import { combatContext } from '../lib/play/matchPresentation';
 import { commandPresentation } from '../lib/play/commandPresentation';
 import { DieFace, GigRollAnnouncement } from './PlayDice';
@@ -47,7 +47,7 @@ const winReasons: Record<string, string> = { gig_victory: 'Seven Gigs secured', 
 type SavedDecision = { matchId: string; state: number; selection?: number; picks: Picks; step?: string };
 type Context = { state: string; card: CardView; intents: Intent[]; x: number; y: number; trigger?: HTMLElement };
 type Preview = { state: string; card: CardView } & (
-  | { kind: 'art'; trigger: HTMLElement; inHand: boolean; keyboard: boolean; status: string[]; position: ReturnType<typeof cardPreviewPosition> }
+  | { kind: 'art'; trigger: HTMLElement; inHand: boolean; keyboard: boolean; status: string[]; position: ReturnType<typeof cardPreviewPosition>; rules?: ReturnType<typeof cardRulesPosition> }
   | { kind: 'effect'; x: number; y: number; width: number; height: number; landscape: boolean; note?: string; canInspect: boolean }
 );
 const effectPreviewSizes = [
@@ -179,6 +179,7 @@ export function PlayTable({ phoneLayout: PhoneLayout, coachSource, scope, snapsh
   const grid = useRef<HTMLDivElement>(null);
   const cardRelease = useRef<CardFlightOrigin | null>(null);
   const table = useRef<HTMLDivElement>(null);
+  const rulesPreview = useRef<HTMLElement>(null);
   const rolls = playback?.beat.gigRolls;
   const rolling = !!rolls?.length;
   const activeThrow = dieThrow?.matchId === snapshot.matchId && dieThrow.fromState < view.stateID
@@ -207,6 +208,7 @@ export function PlayTable({ phoneLayout: PhoneLayout, coachSource, scope, snapsh
   const cards = [...visibleCards(view), ...(reveal?.revealedCards ?? reveal?.cards ?? []), ...snapshot.peeks];
   const tableEffects = (['player', 'rival'] as const).flatMap((seat) => (view.players[seat].activeEffects ?? []).map((effect) => ({ seat, effect })));
   const hand = zoneCards(view.players.player, 'hand');
+  const reviewingHand = setup && !playback && actions.some(action => action.id === 'keepHand');
   const handIds = new Set(hand.map((card) => card.instanceId));
   const combat = view.attackState;
   const fightContext = combat && combatContext(view);
@@ -300,10 +302,12 @@ export function PlayTable({ phoneLayout: PhoneLayout, coachSource, scope, snapsh
   useEffect(() => {
     if (hovered?.kind !== 'art') return;
     const box = hovered.position;
+    const rules = rulesPreview.current?.getBoundingClientRect();
     let leave: ReturnType<typeof setTimeout> | undefined;
     const track = (event: PointerEvent) => {
       const { clientX: x, clientY: y } = event;
       if (hovered.trigger.contains(event.target as Node) ||
+        (rules && x >= rules.left && x <= rules.right && y >= rules.top && y <= rules.bottom) ||
         (box && x >= box.x && x <= box.x + box.width && y >= box.y && y <= box.y + box.height)) {
         clearTimeout(leave);
         leave = undefined;
@@ -483,6 +487,11 @@ export function PlayTable({ phoneLayout: PhoneLayout, coachSource, scope, snapsh
         return;
       }
       const hand = element.closest('.play-hand');
+      if (hand && reviewingHand) {
+        // The opening spread already shows each card upright. I opens its full text.
+        setPreview({ kind: 'art', state: stateKey, card, trigger: element, inHand: true, keyboard, status: [], position: undefined });
+        return;
+      }
       const lane = (hand ?? mat).getBoundingClientRect();
       const surface = mat.getBoundingClientRect();
       const width = document.documentElement.clientWidth;
@@ -495,8 +504,10 @@ export function PlayTable({ phoneLayout: PhoneLayout, coachSource, scope, snapsh
       const preferredWidth = Math.min(340, Math.max(300, Math.round(width * .17)));
       const bounds = { left, top, width: right - left, height: bottom - top };
       const fieldCards = hand ? [] : previewBlocks('.play-field [data-board-card]', element);
-      const position = cardPreviewPosition(element.getBoundingClientRect(), bounds, preferredWidth, !!hand, status.length, blocked, fieldCards);
-      setPreview({ kind: 'art', state: stateKey, card, trigger: element, inHand: !!hand, keyboard, status, position });
+      const anchor = element.getBoundingClientRect();
+      const position = cardPreviewPosition(anchor, bounds, preferredWidth, !!hand, status.length, blocked, fieldCards);
+      const rules = position && vaultCard(card)?.text ? cardRulesPosition(position, { left: Math.max(0, surface.left), right: Math.min(width, surface.right) }, hand ? blocked : [...blocked, anchor]) : undefined;
+      setPreview({ kind: 'art', state: stateKey, card, trigger: element, inHand: !!hand, keyboard, status, position, rules });
     };
     if (keyboard || hovered?.kind === 'art') show();
     else hoverTimer.current = setTimeout(show, 250);
@@ -526,6 +537,7 @@ export function PlayTable({ phoneLayout: PhoneLayout, coachSource, scope, snapsh
     const cost = card.effectiveCost ?? card.cost;
     const repriced = inHand && cost != null && card.cost != null && cost !== card.cost;
     const change = feedback?.changes.find((item) => item.card?.instanceId === card.instanceId);
+    const openingCard = reviewingHand && !!fan;
     return <div key={card.instanceId} className="play-card-shell" data-legend-slot={legendSlot || undefined} data-dragging={drag?.card.instanceId === card.instanceId}
       style={fan && { '--i': fan.index, '--n': fan.count } as CSSProperties}>
       <button type="button" className="play-card" disabled={!!playback} data-card-id={card.instanceId} data-board-card={card.instanceId}
@@ -533,7 +545,8 @@ export function PlayTable({ phoneLayout: PhoneLayout, coachSource, scope, snapsh
         data-drop-zone={card.instanceId === combat?.attackerId ? 'attacker' : undefined} data-drop-available={!!dropLegal} data-drop-over={drag?.destination?.cardId === card.instanceId}
         data-source={!!selected && sourceId === card.instanceId} data-target={target} data-unplayable={unavailable || undefined} data-spent={card.spent} data-combat={!!combatRole} data-combat-role={combatRole === 'Blocking' ? 'defending' : combatRole?.toLowerCase()} data-response={response || undefined} data-effect-target={effectTarget || undefined} data-effect-source={effectSource || undefined} data-feedback={change?.kind} data-color={printing?.color} data-draggable={dragLegal}
         data-power-shift={power != null && power !== card.power ? power > card.power ? 'up' : 'down' : undefined}
-        aria-pressed={target ? chosenIds.has(card.instanceId) : undefined} aria-label={[name, state, power != null && `power ${power}`, repriced && `costs ${cost}`, target && 'selectable'].filter(Boolean).join(', ')}
+        aria-describedby={hovered?.kind === 'art' && hovered.rules && hovered.card.instanceId === card.instanceId ? `${panelId}-card-rules` : undefined}
+        aria-pressed={target ? chosenIds.has(card.instanceId) : undefined} aria-label={[name, state, power != null && `power ${power}`, (openingCard || repriced) && cost != null && `costs ${cost}`, target && 'selectable'].filter(Boolean).join(', ')}
         onPointerDown={(event) => { clearHover(); dragControl.start(event, card); }} onDragStart={(event) => event.preventDefault()}
         onPointerEnter={event => { if (event.pointerType !== 'touch' && !event.buttons) enterCard(card, event.currentTarget); }}
         onPointerLeave={() => {
@@ -550,6 +563,7 @@ export function PlayTable({ phoneLayout: PhoneLayout, coachSource, scope, snapsh
         onClick={(event) => {
           if (playback || dragControl.suppressClick()) return;
           cue?.('select');
+          if (openingCard) { inspect(card, event.currentTarget); return; }
           if (pickOnBoard(card.instanceId)) return;
           if ((event.target as HTMLElement).closest('.play-power')) { inspect(card, event.currentTarget); return; }
           const intents = availableIntents(card);
@@ -565,7 +579,7 @@ export function PlayTable({ phoneLayout: PhoneLayout, coachSource, scope, snapsh
           {power != null && <span className="play-power" title="Inspect power and attached Gear" aria-hidden="true">{power}</span>}
           {repriced && <span className="play-cost" aria-hidden="true">{cost} €$</span>}
           {!legendSlot && (visibleRole || card.hasLag || card.damage) ? <small>{visibleRole ?? [card.hasLag && 'Lag', card.damage && `${card.damage} dmg`].filter(Boolean).join(' · ')}</small> : null}
-        </span><span className="play-card-name">{name}</span>
+        </span>{openingCard ? <span className="play-opening-caption"><strong>{name}</strong>{cost != null && <b>{cost} €$</b>}</span> : <span className="play-card-name">{name}</span>}
       </button>
       {legendSlot && slotNote && <span className="play-legend-note" aria-hidden="true">{slotNote}</span>}
       <button type="button" className="play-details" disabled={!!playback} aria-label={`Details for ${name}`} title="Inspect card · I" onPointerEnter={clearHover} onClick={(event) => inspect(card, event.currentTarget)}>i</button>
@@ -649,6 +663,11 @@ export function PlayTable({ phoneLayout: PhoneLayout, coachSource, scope, snapsh
   preload(sevenGigPlayer, { as: 'image', fetchPriority: 'low' });
   preload(sevenGigRival, { as: 'image', fetchPriority: 'low' });
 
+  const playerHand = <section className="play-hand" data-zone="hand:player" data-crowded={hand.length > 9 || undefined} aria-label={reviewingHand ? 'Your opening hand' : 'Your hand'}>
+    <div className="play-card-row">{hand.length ? hand.map((card, index) => renderCard(card, undefined, { fan: { index, count: hand.length } })) : !setup && <span className="play-empty">No cards in hand</span>}</div>
+  </section>;
+  const hoverPrinting = hovered?.kind === 'art' && hovered.rules ? vaultCard(hovered.card) : undefined;
+
   return <div ref={grid} className="play-grid play-direct" data-match-id={snapshot.matchId} data-state-id={view.stateID} data-busy={busy} data-playback={!!playback} data-campaign={!!campaign}
     onKeyDown={(event) => {
       if (event.key === 'Escape' && opening.showing) { event.preventDefault(); opening.skip(); return; }
@@ -723,11 +742,12 @@ export function PlayTable({ phoneLayout: PhoneLayout, coachSource, scope, snapsh
         {entry.changes.map((change, index) => <span key={index}>{change}</span>)}</details> : null}</div></li>)}</ol>
         : <p className="play-empty">Match events appear here.</p>}
     </aside>}
-    <div ref={table} className="play-table" inert={opening.showing} data-opening={opening.showing || undefined} data-setup-choice={choice?.type === 'chooseFirstPlayer' || undefined} data-turn={playing ? view.activePlayerId : undefined} data-combat={!!combat} data-reduced={reduced || undefined} data-ended={view.gameEnded}>
+    <div ref={table} className="play-table" inert={opening.showing} data-reviewing-hand={reviewingHand || undefined} data-opening={opening.showing || undefined} data-setup-choice={choice?.type === 'chooseFirstPlayer' || undefined} data-turn={playing ? view.activePlayerId : undefined} data-combat={!!combat} data-reduced={reduced || undefined} data-ended={view.gameEnded}>
       <GigRollAnnouncement rolls={snapshot.gigRolls} />
       <RivalBench portrait={campaign?.rival ?? freePlay?.rival} rolls={rolls} active={playing && !yourTurn} {...targeting} renderCard={renderCard} renderFace={face} />
       <SeatField seat="rival" active={playing && !yourTurn} {...targeting} renderCard={renderCard} />
       <GigZones {...targeting} threatened={combat && !combat.defenderId ? fightContext?.defendingSeat : undefined} adjustedGig={adjustedGig} />
+      {reviewingHand && playerHand}
       <div className="play-command" data-responding={responding || undefined} data-presentation={command.variant} data-attention={command.attention} data-reduced={reduced || undefined} data-seat={playing ? view.activePlayerId : undefined} data-state={playback ? 'playback' : selected || choice || setup ? 'decision' : combat ? 'combat' : 'idle'}>
         <div className="play-command-inner" tabIndex={-1}>
           {command.attention === 'mandatory' && <span className="play-command-arrival" key={`${snapshot.matchId}:${command.cueKey}`} aria-hidden="true" />}
@@ -763,12 +783,10 @@ export function PlayTable({ phoneLayout: PhoneLayout, coachSource, scope, snapsh
           {error && <p className="play-error play-command-error" role="alert">{error}</p>}
         </div>
       </div>
-      <SeatField seat="player" active={playing && yourTurn} {...targeting} renderCard={renderCard}
-        overlay={dropZones.has('program') && <div className="play-program-drop" data-drop-zone="program" data-drop-available="true" data-drop-over={dropOver === 'program'}>Play Program</div>} />
+      {!reviewingHand && <SeatField seat="player" active={playing && yourTurn} {...targeting} renderCard={renderCard}
+        overlay={dropZones.has('program') && <div className="play-program-drop" data-drop-zone="program" data-drop-available="true" data-drop-over={dropOver === 'program'}>Play Program</div>} />}
       <PlayerBench rolls={rolls} active={playing && yourTurn} {...targeting} dieDrag={gigChoice ? dragControl : undefined} renderCard={renderCard} renderFace={face}>
-        <section className="play-hand" data-zone="hand:player" data-crowded={hand.length > 9 || undefined} aria-label="Your hand">
-          <div className="play-card-row">{hand.length ? hand.map((card, index) => renderCard(card, undefined, { fan: { index, count: hand.length } })) : !setup && <span className="play-empty">No cards in hand</span>}</div>
-        </section>
+        {!reviewingHand && playerHand}
       </PlayerBench>
       {!playback && snapshot.peeks.length > 0 && <section className="play-private-peek" aria-label="Private Legend peek">
         <h3>Private peek</h3>
@@ -802,11 +820,17 @@ export function PlayTable({ phoneLayout: PhoneLayout, coachSource, scope, snapsh
       {!menu.intents.length && <p className="play-choice-detail">{selected ? 'Finish or cancel the current selection to start another action.' : 'No action available for this card now.'}</p>}
       <button type="button" className="btn play-card-menu-action" onClick={() => inspect(menu.card, menu.trigger)}><span>Details</span><span aria-hidden="true">→</span></button></ContextMenu>}
     {hovered && !busy && !drag && !menu && !inspected && createPortal(hovered.kind === 'art'
-      ? hovered.position && <div className="play-art-preview" data-hand={hovered.inHand || undefined} data-keyboard={hovered.keyboard || undefined}
+      ? hovered.position && <><div className="play-art-preview" data-hand={hovered.inHand || undefined} data-keyboard={hovered.keyboard || undefined}
           style={{ left: hovered.position.x, top: hovered.position.y, width: hovered.position.width }} aria-hidden="true">
           <CardFace card={hovered.card} />
           {hovered.status.length > 0 && <div className="play-art-status">{hovered.status.map(label => <span key={label}>{label}</span>)}</div>}
         </div>
+        {hovered.rules && hoverPrinting && <aside ref={rulesPreview} role="tooltip" id={`${panelId}-card-rules`} className="play-card-rules"
+          style={{ left: hovered.rules.x, top: hovered.rules.y, width: hovered.rules.width, maxHeight: hovered.rules.height }}>
+          <strong>{hoverPrinting.display}</strong>
+          <p><Rules text={hoverPrinting.text} /></p>
+          <small><kbd>I</kbd> Inspect card</small>
+        </aside>}</>
       : <div className="play-hover-preview" data-landscape={hovered.landscape} data-effect-preview="true"
           style={{ left: hovered.x, top: hovered.y, width: hovered.width, height: hovered.height }} aria-hidden="true"
           onMouseEnter={() => clearTimeout(hoverTimer.current)} onMouseLeave={() => leaveEffectSource(true)}>
