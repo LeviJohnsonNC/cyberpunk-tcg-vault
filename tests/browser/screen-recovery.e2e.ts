@@ -78,4 +78,10 @@ test('campaign opens and restores a saved table when the window regains focus', 
   await expect(table).toHaveAttribute('data-match-id', matchId!);
   await expect(page.locator('.play-command-inner')).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('restored-campaign-table.png') });
+  const skip = page.getByRole('button', { name: /Skip intro/i });
+  if (await skip.isVisible()) await skip.click();
+  await page.getByRole('button', { name: 'Ask Coach' }).click();
+  await expect(page.getByRole('dialog', { name: 'Your turn plan' }).getByRole('heading', { name: 'Play now' })).toBeVisible();
+  await page.getByRole('button', { name: 'Back to table' }).click();
+  await expect(table).toHaveAttribute('data-match-id', matchId!);
 });

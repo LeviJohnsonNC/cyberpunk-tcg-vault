@@ -1,3 +1,5 @@
+import { AskCoach } from './AskCoach';
+import type { CoachSource } from '../lib/play/coachTypes';
 import { useCallback, useContext, useEffect, useEffectEvent, useId, useLayoutEffect, useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react';
 import { createPortal, preload } from 'react-dom';
 import sevenGigPlayer from '../assets/play/field-seven-gigs-player.webp';
@@ -111,8 +113,9 @@ function ContextMenu({ context, children, close }: { context: Context; children:
   </div>, document.body);
 }
 
-export function PlayTable({ phoneLayout: PhoneLayout, scope, snapshot, names, busy: saving, error, send, rematch, edit, circuit, playback, feedback, reduced, quick = false, togglePace, controls, navigation, audio, cue, campaign, freePlay, practiceLobby }: {
+export function PlayTable({ phoneLayout: PhoneLayout, coachSource, scope, snapshot, names, busy: saving, error, send, rematch, edit, circuit, playback, feedback, reduced, quick = false, togglePace, controls, navigation, audio, cue, campaign, freePlay, practiceLobby }: {
   phoneLayout?: ComponentType<PhoneTableProps>;
+  coachSource?: () => CoachSource;
   campaign?: CampaignResultDetails & { rival: ReactNode; act?: number };
   freePlay?: { rival: ReactNode; resultQuote?: { rival: string; text: string } };
   cue?: TableSoundCue;
@@ -619,13 +622,16 @@ export function PlayTable({ phoneLayout: PhoneLayout, scope, snapshot, names, bu
       label: actions[intent.action].id === 'playCard' && inspected.type === 'gear' ? 'Equip' : intentLabel(actions[intent.action], intent.picks, inspected),
       select: () => beginIntent(intent),
     })) : []} onClose={() => { setInspection(undefined); focusReturn.current?.focus({ preventScroll: true }); }} />;
+  const coach = !view.gameEnded && <AskCoach key={JSON.stringify([scope,snapshot.matchId,view.stateID])}
+    matchId={snapshot.matchId} stateID={view.stateID} scope={scope} source={coachSource ?? (()=>({mode:'practice',scope}))}
+    disabled={busy || !!playback || !['action','choice'].includes(view.prompt.status)} />;
   if (PhoneLayout) {
     const turn = setup ? 'Setup' : `Turn ${view.turnNumber} · ${responding ? 'Your response' : playback ? 'Rival action' : yourTurn ? 'Your turn' : 'Rival turn'}`;
     const pickedCards = new Set(fields.flatMap(field => field.options.filter(option => picks[field.id]?.includes(option.id)).flatMap(option => option.cardId ? [option.cardId] : [])));
     const phoneAction = (action: typeof actions[number], index: number) => <button key={index} type="button" className="btn quiet" data-move={action.id} disabled={busy}
       onClick={() => beginIntent({action:index, picks:{}}, false)}>{action.label}</button>;
     return <div ref={grid} className="phone-table-root"><PhoneLayout snapshot={snapshot} names={names} title={campaign?.title ?? 'Practice table'} turn={turn}
-      busy={busy} error={error} eligible={busy ? new Set() : targetIds} chosen={pickedCards} inspect={inspect} pick={pickOnBoard}
+      coach={coach} busy={busy} error={error} eligible={busy ? new Set() : targetIds} chosen={pickedCards} inspect={inspect} pick={pickOnBoard}
       combat={combat && <CombatBanner view={view} watching={!!playback} compact inspect={inspect} />}
       decision={opening.showing ? <button className="btn quiet" ref={introSkip} onClick={opening.skip}>Skip intro</button>
         : playback ? <PlayPresentation playback={playback} /> : decisionControls || <div className="phone-idle">
@@ -657,6 +663,7 @@ export function PlayTable({ phoneLayout: PhoneLayout, scope, snapshot, names, bu
       </div>
       {recentFight && <output className="play-last-fight">{recentFight.text}</output>}
       <div className="play-header-actions">
+        {coach}
         {tableEffects.length > 0 && <button type="button" className="btn quiet" aria-expanded={panel === 'effects'} aria-controls={`${panelId}-effects`} onClick={() => setPanel(panel === 'effects' ? undefined : 'effects')}>Effects <b>{tableEffects.length}</b></button>}
         <button type="button" className="btn quiet" aria-expanded={panel === 'log'} aria-controls={`${panelId}-log`} onClick={() => setPanel(panel === 'log' ? undefined : 'log')}>Log</button>
         {navigation}

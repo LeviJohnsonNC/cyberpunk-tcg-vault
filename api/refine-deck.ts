@@ -9,31 +9,13 @@
 //      UNLIMITED_EMAILS (comma-separated; bypasses the daily limits), REFINE_GLOBAL_DAILY_LIMIT (default 40)
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { CARD, fits, ramLimits, repair, resolveName, validateDeck } from './_deckrules.js';
-import { GLOBAL_CAP_MESSAGE, isUnlimited, takeGlobal } from './_aiguard.js';
+import { authAiUser, bumpUserUsage, GLOBAL_CAP_MESSAGE, isUnlimited, takeGlobal } from './_aiguard.js';
 
 const MODEL = process.env.DECK_MODEL || 'anthropic/claude-sonnet-5.5';
 const LIMIT = Number(process.env.DECK_DAILY_LIMIT || 3);
 const SB_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const STYLES = new Set(['balanced', 'aggro', 'control']);
-
-async function authUser(token: string | undefined): Promise<{ id: string; email: string } | null> {
-  if (!SB_URL || !SB_KEY || !token) return null;
-  const r = await fetch(`${SB_URL}/auth/v1/user`, { headers: { apikey: SB_KEY, authorization: `Bearer ${token}` } });
-  if (!r.ok) return null;
-  const u = (await r.json()) as { id?: string; email?: string };
-  return u.id ? { id: u.id, email: (u.email || '').toLowerCase() } : null;
-}
-
-async function bumpUsage(userId: string): Promise<number> {
-  const r = await fetch(`${SB_URL}/rest/v1/rpc/bump_ai_usage`, {
-    method: 'POST',
-    headers: { apikey: SB_KEY!, authorization: `Bearer ${SB_KEY}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ p_user: userId, p_feature: 'deck_refine' }),
-  });
-  if (!r.ok) throw new Error(`usage counter failed (${r.status}). Has migration 002 been run?`);
-  return Number(await r.json());
-}
 
 const RULES = `Cyberpunk TCG constructed rules (casual, best-of-one, no sideboard):
 - Deck = exactly 3 Legends (fixed, given) + 40 to 50 main-deck cards. Aim for exactly 40.
@@ -181,14 +163,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // ---- auth + limit ----
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || undefined;
-  const user = await authUser(token);
+  const user = await authAiUser(SB_URL, SB_KEY, token);
   if (!user) return res.status(401).json({ error: 'Sign in to refine decks with AI.' });
   const unlimited = isUnlimited(user.email);
   let remaining: number | null = null;
   if (!unlimited) {
     let used: number;
     try {
-      used = await bumpUsage(user.id);
+      used = await bumpUserUsage(SB_URL, SB_KEY, user.id, 'deck_refine');
     } catch (e) {
       return res.status(500).json({ error: (e as Error).message });
     }

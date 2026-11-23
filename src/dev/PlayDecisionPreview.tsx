@@ -80,7 +80,7 @@ export function PlayDecisionPreview({ initial = 'Turn order' }: { initial?: Deci
         <label><input type="checkbox" checked={reduced} onChange={e => { presentation.playback?.skip(); setReduced(e.target.checked); }} />Reduced motion</label>
         <span role="status">{error || lastMove}</span></>}
     </nav>
-    <div className="play-mode"><PlayTable key={name} phoneLayout={phone ? PhoneTable : undefined} scope={`qa:command-bar:${name}`} snapshot={snapshot} names={snapshot.names} busy={!reduced && presentation.playing}
+    <div className="play-mode"><PlayTable key={name} coachSource={()=>({fixture:{setup:decisionSetup,checkpoint:fixture.session.checkpoint()}})} phoneLayout={phone ? PhoneTable : undefined} scope={`qa:command-bar:${name}`} snapshot={snapshot} names={snapshot.names} busy={!reduced && presentation.playing}
       error={error || undefined} send={send} reduced={reduced || presentation.reduced} playback={reduced ? undefined : presentation.playback} feedback={presentation.feedback} quick={presentation.quick} togglePace={presentation.togglePace}
       rematch={() => load('Turn order')} edit={() => load('Main turn')}
       navigation={<button className="btn quiet" onClick={() => load('Main turn')}>{campaign ? 'Campaign board' : 'Free Play'}</button>}

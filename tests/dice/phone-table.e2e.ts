@@ -20,6 +20,21 @@ test('the preview phone footer leads to the playable table and Back returns to P
   await expect(play).toHaveAttribute('aria-current', 'page');
 });
 
+test('Ask Coach explains the phone decision and returns to the same board', async ({page})=>{
+  await openPosition(page,'satori');
+  const table=page.locator('.phone-table');
+  const state=await table.getAttribute('data-state-id');
+  const ask=page.getByRole('button',{name:'Ask Coach'});
+  await ask.tap();
+  const plan=page.getByRole('dialog',{name:'Your turn plan'});
+  await expect(plan.getByRole('heading',{name:'Play now'})).toBeVisible();
+  await expect(plan.getByRole('heading',{name:'Then play'})).toBeVisible();
+  await plan.getByRole('button',{name:'Back to table'}).tap();
+  await expect(plan).toBeHidden();
+  await expect(table).toHaveAttribute('data-state-id',state!);
+  await expect(table.locator('[data-coach-pick="true"]').first()).toBeVisible();
+});
+
 test('inspect, change the equip host and payment, rotate and confirm once', async ({ page }) => {
   await openPosition(page, 'satori');
   const table = page.locator('.phone-table');

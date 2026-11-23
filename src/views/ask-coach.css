@@ -1,0 +1,82 @@
+.coach-trigger {
+  white-space: nowrap;
+}
+dialog.coach-dialog {
+  box-sizing: border-box;
+  width: min(36rem, calc(100vw - 1.5rem));
+  max-height: min(80dvh, 48rem);
+  padding: clamp(1rem, 3vw, 1.75rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  color: var(--color-text);
+  background: var(--color-canvas-deep);
+  text-align: left;
+}
+.coach-dialog::backdrop {
+  background: rgb(10 7 14 / 0.76);
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+.coach-dialog header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+.coach-dialog header {
+  position: sticky;
+  top: -1px;
+  z-index: 1;
+  background: var(--color-canvas-deep);
+  padding-block: 0.35rem;
+}
+[data-coach-pick='true'] {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+.coach-dialog section {
+  padding-block: 1rem;
+  border-bottom: 1px solid var(--color-divider);
+}
+.coach-dialog h2,
+.coach-dialog h3,
+.coach-dialog p,
+.coach-dialog ol,
+.coach-dialog ul {
+  margin: 0;
+}
+.coach-dialog h3 {
+  font-size: 0.85rem;
+  color: var(--color-accent);
+  margin-bottom: 0.45rem;
+}
+.coach-dialog strong {
+  font-size: 1.05rem;
+}
+.coach-dialog .coach-next strong {
+  font-size: 1.35rem;
+}
+.coach-dialog p,
+.coach-dialog li {
+  font-size: 0.94rem;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+.coach-dialog ul,
+.coach-dialog ol {
+  padding-inline-start: 1.3rem;
+}
+.coach-dialog li + li,
+.coach-dialog p + h3 {
+  margin-top: 0.65rem;
+}
+.coach-dialog strong + p {
+  margin-top: 0.3rem;
+}
+.coach-status:not(:empty) {
+  margin-block: 0.75rem;
+}
+.coach-dialog .btn,
+.phone-table .coach-trigger {
+  min-height: 44px;
+}
