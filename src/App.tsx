@@ -309,13 +309,13 @@ export default function App() {
         {route.tab === 'about' && <HowItWorks openFeedback={() => setFeedbackOpen(true)} />}
         {route.tab === 'upgrade' && <UpgradePlanner onOpen={showCard} />}
         {route.tab === 'shared' && <SharedDeck onPlayAgainst={PlayMode && !mobile ? practiceAgainst : undefined} token={route.deck} onOpen={showCard} goAdd={() => go('add')} />}
-        {playPage && mobile && playWorkbenchEnabled && <div className="phone-playtest-entry">
+        {playPage && mobile && !route.playMode && playWorkbenchEnabled && <div className="phone-playtest-entry">
           <a className="btn quiet" href="/campaign-preview.html?decisions=satori">Try the phone table</a>
         </div>}
         {playPage && (PlayMode && store.ready && matchInfo
           ? <Suspense fallback={<p className="callout" role="status">Opening Play Mode…</p>}>
             <MatchRadioContainer.Provider value={desktopPlay ? setMatchRadioContainer : undefined}>
-              <PlayMode key={route.playMode} scope={scope} mode={route.playMode} preparationOnly={mobile} draft={matchDraft} saved={savedMatch}
+              <PlayMode key={route.playMode} scope={scope} mode={route.playMode} mobile={mobile} draft={matchDraft} saved={savedMatch}
                 onMatchRead={acceptPlayEntryMatch} requestedMatch={route.match}
                 onLeaveMatch={() => { if (route.match) window.location.replace(playHref('free')); }}
                 initialRival={playRival?.scope === scope ? playRival.id : undefined}

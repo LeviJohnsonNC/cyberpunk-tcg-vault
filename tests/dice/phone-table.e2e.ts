@@ -226,7 +226,7 @@ test('enlarged text keeps the field reachable and confirms the intended blocker 
   expect((await field.boundingBox())!.height).toBeGreaterThan(44);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(667);
   await page.locator('[data-move=useBlocker]').tap();
-  await page.locator('.phone-options summary').tap();
+  await page.locator('.phone-options > summary').tap();
   const option = page.locator('[data-pick-option]').last();
   const target = await option.getAttribute('data-pick-option');
   await option.tap();
@@ -250,4 +250,80 @@ test('card and combat names and chosen payment sources pass the accessibility sc
   await page.goto('/campaign-preview.html?decisions=defense');
   await expect(page.locator('.phone-command')).toContainText('Your response');
   await scan();
+});
+
+test('a campaign combat win on the phone awards the pack and opens the next contract', async ({ page }, testInfo) => {
+  await page.route('https://**/*', route => route.abort());
+  await page.goto('/#/play?mode=campaign');
+  await page.getByRole('button', { name: 'Choose your crew' }).tap();
+  await page.getByRole('button', { name: 'Start with The Heist' }).tap();
+  await page.getByRole('button', { name: 'Take the contract' }).tap();
+  const table = page.locator('.phone-table');
+  await expect(table).toBeVisible();
+  const firstMatch = await table.getAttribute('data-match-id');
+  // Resume the real contract at a known six-Gig position. Everything after
+  // the attack, including opponent responses and reward settlement, runs live.
+  await page.evaluate(async () => {
+    const positions = '/src/dev/plannerPositions.ts';
+    const storage = '/src/lib/play/campaignStorage.ts';
+    const { plannerPosition } = await import(positions) as typeof import('../../src/dev/plannerPositions');
+    const { updateCampaign } = await import(storage) as typeof import('../../src/lib/play/campaignStorage');
+    const { setup, checkpoint } = plannerPosition('Win in overtime');
+    await updateCampaign('local', run => {
+      if (!run?.match) throw new Error('Expected an active campaign contract');
+      checkpoint.matchId = run.match.summary.matchId;
+      return { run: { ...run, match: { ...run.match, setup, checkpoint } }, value: undefined };
+    });
+  });
+  await page.reload();
+  await table.getByRole('button', { name: 'All actions' }).tap();
+  await page.getByRole('dialog', { name: 'All actions' }).getByRole('button', { name: 'Attack the rival', exact: true }).tap();
+  await table.getByRole('button', { name: /Psycho Squad/ }).first().tap();
+  await table.locator('[data-confirm-move="attackRival"]').tap();
+  const steal = table.locator('[data-confirm-move="resolveStealGigs"]');
+  await expect(steal).toBeVisible();
+  const gigOptions = table.locator('[data-pick-field="gigs"]');
+  if (!await gigOptions.isVisible()) await table.locator('.phone-options > summary').tap();
+  await gigOptions.locator('[data-pick-option]').first().tap();
+  await steal.tap();
+
+  const story = page.getByRole('button', { name: 'Continue story' });
+  await expect(story).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('contract-result.png') });
+  await page.reload();
+  await story.tap();
+  await page.getByRole('button', { name: /Skip to pack|Open your pack/ }).tap();
+  await page.getByRole('button', { name: 'Tear the seal' }).tap();
+  const pack = page.getByRole('group', { name: 'Cards in this pack' });
+  const slots = pack.getByRole('button');
+  await expect(slots.first()).toBeVisible();
+  const count = await slots.count();
+  for (let i = 0; i < count; i++) {
+    await pack.getByRole('button', { name: `Reveal card ${i + 1}`, exact: true }).tap();
+  }
+  await page.getByRole('button', { name: 'Choose your bonus card' }).tap();
+  await page.getByRole('group', { name: 'Bonus cards' }).getByRole('button', { pressed: false }).first().tap();
+  await page.getByRole('button', { name: 'Add to reserve' }).tap();
+  await page.getByRole('button', { name: 'Back to contract' }).tap();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: /Chrome Debt/i })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('next-contract.png') });
+  await page.getByRole('button', { name: 'Take the contract' }).tap();
+  await expect(table).toBeVisible();
+  await expect(table).not.toHaveAttribute('data-match-id', firstMatch!);
+});
+
+test('two revealed Gear can be tapped and added to hand from the phone decision tray', async ({ page }) => {
+  await openPosition(page, 'hand');
+  const table = page.locator('.phone-table');
+  const state = await table.getAttribute('data-state-id');
+  const decision = table.getByRole('region', { name: 'Match decision' });
+  for (const name of ['Arasaka Emergency Radioport', 'Adrenaline Converter']) {
+    await decision.locator('[data-pick-option]').filter({ hasText: name }).tap();
+  }
+  await decision.getByRole('button', { name: 'Add 2 to hand' }).tap();
+  await expect(table).not.toHaveAttribute('data-state-id', state!);
+  const hand = table.getByRole('group', { name: 'Cards in your hand' });
+  await expect(hand.getByRole('button', { name: /Arasaka Emergency Radioport/ })).toBeVisible();
+  await expect(hand.getByRole('button', { name: /Adrenaline Converter/ })).toBeVisible();
 });

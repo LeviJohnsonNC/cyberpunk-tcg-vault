@@ -625,6 +625,9 @@ export function PlayTable({ phoneLayout: PhoneLayout, coachSource, scope, snapsh
   const coach = !view.gameEnded && <AskCoach key={JSON.stringify([scope,snapshot.matchId,view.stateID])}
     matchId={snapshot.matchId} stateID={view.stateID} scope={scope} source={coachSource ?? (()=>({mode:'practice',scope}))}
     disabled={busy || !!playback || !['action','choice'].includes(view.prompt.status)} />;
+  const paceControl = togglePace && <button type="button" className="btn quiet" aria-pressed={quick} onClick={togglePace}>
+    Quick pace <b>{quick ? 'On' : 'Off'}</b>
+  </button>;
   if (PhoneLayout) {
     const turn = setup ? 'Setup' : `Turn ${view.turnNumber} · ${responding ? 'Your response' : playback ? 'Rival action' : yourTurn ? 'Your turn' : 'Rival turn'}`;
     const pickedCards = new Set(fields.flatMap(field => field.options.filter(option => picks[field.id]?.includes(option.id)).flatMap(option => option.cardId ? [option.cardId] : [])));
@@ -639,7 +642,9 @@ export function PlayTable({ phoneLayout: PhoneLayout, coachSource, scope, snapsh
           {(choice || setup || combat ? actions : actions.filter(action => action.id === 'passPhase')).map(action => phoneAction(action, actions.indexOf(action)))}
         </div>}
       history={<ol className="phone-log">{log.slice().reverse().map(entry => <li key={entry.id}><small>Turn {entry.turn} · {entry.seat === 'player' ? 'You' : 'Rival'}</small>{entry.text}</li>)}</ol>}
-      actions={actions.map(phoneAction)} navigation={navigation} />{inspector}</div>;
+      actions={actions.map(phoneAction)} navigation={campaign ? <section className="phone-campaign-options" aria-label="Campaign options">
+        {navigation}{campaign.rival}{paceControl}{audio}{controls}
+      </section> : navigation} />{inspector}</div>;
   }
   preload(sevenGigPlayer, { as: 'image', fetchPriority: 'low' });
   preload(sevenGigRival, { as: 'image', fetchPriority: 'low' });
@@ -675,9 +680,7 @@ export function PlayTable({ phoneLayout: PhoneLayout, coachSource, scope, snapsh
             <span className="play-save-state">{error ? 'Match alert' : saving ? 'Saving…' : 'Saved on this device'}</span>
             {!view.gameEnded && <button type="button" className="btn quiet" aria-expanded={panel === 'actions'} aria-controls={`${panelId}-actions`}
               disabled={!!playback} onClick={() => { closeOptions(); setPanel(panel === 'actions' ? undefined : 'actions'); }}>All actions</button>}
-            {togglePace && <button type="button" className="btn quiet" aria-pressed={quick} onClick={togglePace}>
-              Quick pace <b>{quick ? 'On' : 'Off'}</b>
-            </button>}
+            {paceControl}
             {(audio || radioContainer) && <div className="play-match-audio" role="group" aria-label="Audio">
               {radioContainer && <button type="button" className="btn quiet" aria-expanded={radioOpen} aria-controls={`${panelId}-radio`}
                 onClick={() => { closeOptions(); setRadioOpen(!radioOpen); }}>Afterhours Radio</button>}

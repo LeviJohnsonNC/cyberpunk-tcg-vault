@@ -100,9 +100,9 @@ export function CampaignHubTools({ run, profile, busy, soundEnabled, toggleSound
   </div>;
 }
 
-export function CampaignHub({ run, titleRef, tools, issues, busy, printings, inspect, tune, reviewNew, primary, preparationOnly }: {
+export function CampaignHub({ run, titleRef, tools, issues, busy, printings, inspect, tune, reviewNew, primary }: {
   run: CampaignRun; titleRef: Ref<HTMLHeadingElement>; tools: ReactNode; issues: string[]; busy: boolean;
-  printings: ReadonlyMap<string, Printing>; inspect: CampaignInspect; tune: () => void; reviewNew?: () => void; primary: () => void; preparationOnly?: boolean;
+  printings: ReadonlyMap<string, Printing>; inspect: CampaignInspect; tune: () => void; reviewNew?: () => void; primary: () => void;
 }) {
   const encounter = campaignEncounter(run);
   const chapter = campaignChapters[encounter.id];
@@ -114,7 +114,6 @@ export function CampaignHub({ run, titleRef, tools, issues, busy, printings, ins
   const resumable = run.phase === 'inMatch' || !!run.resultPending;
   const canTune = !pending && !resumable;
   const blocked = canTune && issues.length > 0;
-  const desktopRequired = preparationOnly && !pending;
   const { colours } = campaignCrew(run.deck.legends);
   return <section className="campaign-board" data-act={actIndex + 1} aria-labelledby="campaign-contract-title">
     <header className="campaign-board-header">
@@ -161,10 +160,10 @@ export function CampaignHub({ run, titleRef, tools, issues, busy, printings, ins
       <CampaignTimeline run={run} />
       {tools}
       <div className="campaign-board-launch">
-        <button type="button" className="campaign-invitation-cta" onClick={primary} disabled={busy || blocked || desktopRequired} aria-describedby={desktopRequired || blocked ? 'campaign-launch-issue' : undefined}>
+        <button type="button" className="campaign-invitation-cta" onClick={primary} disabled={busy || blocked} aria-describedby={blocked ? 'campaign-launch-issue' : undefined}>
           {run.resultPending ? 'Return to match result' : pending ? storyPending ? 'Continue story' : 'Open your pack' : resumable ? 'Return to match' : run.attempts ? 'Retry contract' : 'Take the contract'} <span aria-hidden="true">→</span>
         </button>
-        {(desktopRequired || blocked) && <p id="campaign-launch-issue">{desktopRequired ? 'Play matches on desktop.' : issues[0]}</p>}
+        {blocked && <p id="campaign-launch-issue">{issues[0]}</p>}
       </div>
     </div>
   </section>;

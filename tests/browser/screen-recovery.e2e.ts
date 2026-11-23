@@ -41,14 +41,6 @@ test('campaign opens and restores a saved table when the window regains focus', 
   await page.getByRole('button', { name: 'Choose your crew' }).click();
   await page.getByRole('button', { name: 'Start with The Heist' }).click();
   const launch = page.getByRole('button', { name: 'Take the contract' });
-  if (isMobile) {
-    await expect(launch).toBeDisabled();
-    await expect(page.getByText('Play matches on desktop.')).toBeVisible();
-    await launch.scrollIntoViewIfNeeded();
-    await page.screenshot({ path: testInfo.outputPath('phone-campaign-board.png') });
-    return;
-  }
-
   // A failed worker download must allow another launch from the same board.
   const engine = '**/assets/campaign.worker-*.js';
   await page.route(engine, route => route.abort());
@@ -56,7 +48,7 @@ test('campaign opens and restores a saved table when the window regains focus', 
   await expect(page.getByRole('alert')).toContainText('campaign engine stopped');
   await page.unroute(engine);
   await launch.click();
-  const table = page.locator('.play-grid[data-match-id]');
+  const table = page.locator(isMobile ? '.phone-table[data-match-id]' : '.play-grid[data-match-id]');
   await expect(table).toBeVisible();
   const matchId = await table.getAttribute('data-match-id');
   await page.getByRole('link', { name: 'Cyberpunk TCG Vault home' }).click();
@@ -76,7 +68,7 @@ test('campaign opens and restores a saved table when the window regains focus', 
     location.hash = '/play?mode=campaign';
   });
   await expect(table).toHaveAttribute('data-match-id', matchId!);
-  await expect(page.locator('.play-command-inner')).toBeVisible();
+  await expect(table.locator(isMobile ? '.phone-command' : '.play-command-inner')).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('restored-campaign-table.png') });
   const skip = page.getByRole('button', { name: /Skip intro/i });
   if (await skip.isVisible()) await skip.click();
@@ -84,4 +76,17 @@ test('campaign opens and restores a saved table when the window regains focus', 
   await expect(page.getByRole('dialog', { name: 'Your turn plan' }).getByRole('heading', { name: 'Play now' })).toBeVisible();
   await page.getByRole('button', { name: 'Back to table' }).click();
   await expect(table).toHaveAttribute('data-match-id', matchId!);
+  if (isMobile) {
+    const stateId = await table.getAttribute('data-state-id');
+    await page.getByRole('button', { name: 'All actions' }).tap();
+    await page.getByRole('button', { name: 'Campaign board' }).tap();
+    await page.getByRole('button', { name: 'Return to match' }).tap();
+    await expect(table).toHaveAttribute('data-state-id', stateId!);
+    await page.setViewportSize({ width: 844, height: 390 });
+    await expect(table).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.reload();
+    await expect(table).toHaveAttribute('data-match-id', matchId!);
+    await expect(table).toHaveAttribute('data-state-id', stateId!);
+  }
 });

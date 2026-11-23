@@ -10,7 +10,7 @@
 
 - Run `npm ci` to install dependencies and `npm run check` before handing off a change. The check runs lint, tests, and the production build. Report any checks you could not complete.
 - For a local-only preview, run `VITE_SUPABASE_URL= VITE_SUPABASE_ANON_KEY= npm run dev`. Local development can otherwise pick up the Supabase settings in `.env.production`. Use local-only mode, the demo collection, or staging to exercise flows that write data.
-- Visually verify UI changes in the browser at the relevant device sizes. For the collection tools and other responsive screens, check laptop (about 1280 px wide) and phone (about 390 px wide). For Play Mode, test the changed flow on a laptop and verify the desktop-only message on a phone when the change touches that entry point.
+- Visually verify UI changes in the browser at the relevant device sizes. For the collection tools and other responsive screens, check laptop (about 1280 px wide) and phone (about 390 px wide). For Campaign, test launch and resume on both a laptop and a phone. Free Play still shows its desktop-only message on a phone.
 
 ## Design and game rules
 
