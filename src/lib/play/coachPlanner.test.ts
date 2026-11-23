@@ -57,7 +57,7 @@ describe('turn coach', () => {
     );
   });
   it('plans multiple commitments through the end of the turn', () => {
-    const plan = planTurn(position('Equip Satori'));
+    const plan = planTurn(position('Main turn'));
     expect(plan.steps.length).toBeGreaterThan(2);
     expect(plan.steps.at(-1)?.title).toBe('End your turn');
     expect(plan.alternative?.title).not.toEqual(plan.steps[0].title);
