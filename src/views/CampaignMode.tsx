@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { ConfirmDialog } from '../components/ui';
 import { BY_SLUG, PRINTING_INDEX, type Printing } from '../lib/data';
 import { STARTERS, type StarterKey } from '../lib/starters';
@@ -12,6 +12,7 @@ import type { MatchSnapshot, Move } from '../lib/play/protocol';
 import { preloadArt } from '../lib/play/cardArt';
 import { useMatchPresentation } from './useMatchPresentation';
 import { useTableSound } from './useTableSound';
+import { usePhoneTableLayout } from './usePhoneTableLayout';
 import { PlayTable } from './PlayTable';
 import { ReactiveRoom } from './ReactiveRoom';
 import { campaignPulls, packRarityLabel } from '../lib/play/campaignPack';
@@ -35,6 +36,8 @@ import { useRivalDialogue, useRivalDialoguePreference } from './useRivalDialogue
 import './campaign.css';
 import './campaign-moments.css';
 
+const PhoneTable = lazy(() => import('./PhoneTable').then(module => ({ default: module.PhoneTable })));
+
 type CardSelection = { slug: string; printingId?: string };
 type SavedRun = Pick<CampaignRun, 'id' | 'revision'>;
 type CampaignSurface = 'hub' | 'workbench' | 'new-cards' | 'pack' | 'scene';
@@ -43,9 +46,10 @@ function hasSeenIntro(key: string) {
   try { return localStorage.getItem(key) === 'seen'; } catch { return false; }
 }
 
-export function CampaignMode({ scope, openInBuilder, preparationOnly = false, onReset }: {
-  scope: string; openInBuilder: (deck: Deck) => void; preparationOnly?: boolean; onReset?: (from: string) => void;
+export function CampaignMode({ scope, openInBuilder, onReset }: {
+  scope: string; openInBuilder: (deck: Deck) => void; onReset?: (from: string) => void;
 }) {
+  const phone = usePhoneTableLayout();
   const introKey = `cptv.campaign.lastCallIntro:${scope}`;
   const [introSeen, setIntroSeen] = useState(() => hasSeenIntro(introKey));
   const { enabled: dialogue, toggle: toggleDialogue } = useRivalDialoguePreference(scope);
@@ -403,7 +407,7 @@ export function CampaignMode({ scope, openInBuilder, preparationOnly = false, on
   const inspectedCard = inspected && BY_SLUG.get(inspected.slug);
   const inspectedPrinting = PRINTING_INDEX.get(inspected?.printingId ?? '')?.printing;
   const equippedSlot = run && inspected ? run.deck.legends.indexOf(inspected.slug) : -1;
-  const tableOpen = !preparationOnly && showTable && !!snapshot && snapshot.matchId === run?.match?.summary.matchId && !newRunFrom;
+  const tableOpen = showTable && !!snapshot && snapshot.matchId === run?.match?.summary.matchId && !newRunFrom;
   const matchDeck = tableOpen ? run?.deck : undefined;
   useEffect(() => {
     if (matchDeck) return preloadArt([...matchDeck.legends, ...Object.keys(matchDeck.cards)]);
@@ -432,8 +436,8 @@ export function CampaignMode({ scope, openInBuilder, preparationOnly = false, on
   return <section className="play-mode campaign-mode" data-onboarding={choosingStarter ? (showInvitation ? 'invitation' : 'crews') : undefined}
     data-campaign-board={!choosingStarter && (!tableOpen || resultOpen) || undefined} data-environment={profile?.equipped ?? 'default'}
     onPointerDownCapture={sound.unlock} onKeyDownCapture={sound.unlock}>
-    {tableOpen && !resultOpen && <ReactiveRoom />}
-    {tableOpen && snapshot && displayedMatch ? <PlayTable key={snapshot.matchId} coachSource={()=>({mode:'campaign',scope})} scope={`${scope}:campaign`} snapshot={displayedMatch} names={snapshot.names}
+    {tableOpen && !resultOpen && !phone && <ReactiveRoom />}
+    {tableOpen && snapshot && displayedMatch ? <PlayTable key={snapshot.matchId} phoneLayout={phone ? PhoneTable : undefined} coachSource={()=>({mode:'campaign',scope})} scope={`${scope}:campaign`} snapshot={displayedMatch} names={snapshot.names}
       playback={presentation.playback} feedback={presentation.feedback} quick={presentation.quick} togglePace={presentation.togglePace} reduced={presentation.reduced} cue={sound.cue}
       campaign={run && encounter && {
         title: encounter.title,
@@ -520,7 +524,7 @@ export function CampaignMode({ scope, openInBuilder, preparationOnly = false, on
           </section>
           : <CampaignHub run={run} titleRef={focusTitle} tools={tools} issues={issues} busy={busy} printings={campaignPrintings}
             inspect={inspectCard} tune={() => changeSurface('workbench')} reviewNew={editable && latestReward ? () => changeSurface('new-cards') : undefined}
-            preparationOnly={preparationOnly} primary={run.resultPending || run.phase === 'inMatch' ? resume : earnedPack ? () => changeSurface(aftermathSurface) : launch} />)}
+            primary={run.resultPending || run.phase === 'inMatch' ? resume : earnedPack ? () => changeSurface(aftermathSurface) : launch} />)}
     </div>}
     {reviewed && run && workbench && <CampaignUpgradeDialog key={reviewed.slug} run={run} slug={reviewed.slug} printingId={reviewed.printingId} printings={campaignPrintings}
       swap={reviewed.swap} initialOutgoing={reviewed.outgoing} busy={busy} error={error} close={() => setReviewed(undefined)}

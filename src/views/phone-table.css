@@ -1,4 +1,16 @@
-/* The preview owns one dynamic viewport. Only the card lanes pan horizontally. */
+/* The live table shares the viewport with Vault navigation. The hub and results scroll normally. */
+#root:has(.campaign-mode .phone-table) { height: 100dvh; display: flex; flex-direction: column; }
+#root:has(.campaign-mode .phone-table) > .appbar { flex: none; }
+.app--play.page:has(.campaign-mode .phone-table) {
+  flex: 1; min-height: 0; width: 100%; display: flex; flex-direction: column;
+  padding: 0 env(safe-area-inset-right, 0px) calc(var(--vault-tab-inset, 0px) + 1px) env(safe-area-inset-left, 0px);
+}
+.app--play main:has(.campaign-mode .phone-table) { flex: 1; min-height: 0; }
+.campaign-mode:has(.phone-table) { height: 100%; min-height: 0; }
+.campaign-mode .phone-table-root { overflow-y: auto; }
+.phone-campaign-options { display: grid; gap: var(--space-2); border-top: 1px solid var(--color-divider); margin-top: var(--space-3); padding-top: var(--space-3); }
+
+/* The standalone playtest table has its own viewport. */
 .decision-preview:has(.phone-table) { height: 100dvh; display: flex; flex-direction: column; min-width: 0; }
 .decision-preview:has(.phone-table) > .play-mode { flex: 1; min-height: 0; min-width: 0; padding: 0; margin: 0; width: 100%; }
 .decision-preview:has(.phone-table) .decision-preview-tools { flex: none; max-height: 32dvh; overflow-y: auto; }
@@ -119,4 +131,9 @@
   .phone-table[data-combat] .phone-side .phone-slot { flex-basis: 8.75rem; }
   .phone-side .phone-card-name { overflow-wrap: anywhere; -webkit-line-clamp: unset; }
   .phone-table .btn, .phone-sheet .btn, .phone-table-root .play-inspect .btn { font-size: .875rem; }
+}
+
+/* The Gig adjustment list opens inside the scrollable phone decision area. */
+.phone-command .play-decision-panel {
+  position: static; width: 100%; min-width: 0; max-block-size: none;
 }

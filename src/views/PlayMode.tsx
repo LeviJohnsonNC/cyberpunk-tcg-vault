@@ -34,7 +34,7 @@ type Props = {
   initialRival?: string; initialOpponent?: Deck; initialCuratedId?: string; savedDecks: Deck[]; rememberRival: (id: string) => void;
   requestedMatch?: string; onLeaveMatch: () => void;
   onCheckpoint: (snapshot: MatchSnapshot, draft?: DeckDraft) => void; onEdit: () => void; onCampaignDeck: (deck: Deck) => void;
-  onFreePlayReset: () => void; preparationOnly?: boolean;
+  onFreePlayReset: () => void; mobile?: boolean;
 };
 
 export default function PlayMode(props: Props) {
@@ -43,10 +43,10 @@ export default function PlayMode(props: Props) {
   const resolveAfterReset = (from: string) => {
     if (window.location.hash === from) window.location.replace(playHref());
   };
-  if (!mode) return <PlayLanding scope={props.scope} onMatchRead={props.onMatchRead} mobile={props.preparationOnly} />;
-  if (mode === 'campaign') return <CampaignMode scope={props.scope} preparationOnly={props.preparationOnly} openInBuilder={props.onCampaignDeck}
+  if (!mode) return <PlayLanding scope={props.scope} onMatchRead={props.onMatchRead} mobile={props.mobile} />;
+  if (mode === 'campaign') return <CampaignMode scope={props.scope} openInBuilder={props.onCampaignDeck}
     onReset={resolveAfterReset} />;
-  if (props.preparationOnly) return <section className="panel play-landing"><h1 className="panel-title">Free Play</h1><p>Open the Vault on a desktop to play a match.</p></section>;
+  if (props.mobile) return <section className="panel play-landing"><h1 className="panel-title">Free Play</h1><p>Open the Vault on a desktop to play a match.</p></section>;
   return <FreePlayMode {...props} onFreePlayReset={(from) => {
     props.onFreePlayReset();
     resolveAfterReset(from);

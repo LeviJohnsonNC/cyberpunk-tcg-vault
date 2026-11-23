@@ -15,13 +15,13 @@ export function PlayLanding({ scope, mobile, onMatchRead }: {
     void readPlayEntry(scope).then(({ mode, saved }) => {
       if (!active || window.location.hash !== origin) return;
       onMatchRead(saved);
-      if (mode) window.location.replace(playHref(mode));
+      if (mode && !(mobile && mode === 'free')) window.location.replace(playHref(mode));
       else setStatus('choose');
     }).catch(() => {
       if (active && window.location.hash === origin) setStatus('error');
     });
     return () => { active = false; };
-  }, [scope, attempt, onMatchRead]);
+  }, [scope, attempt, onMatchRead, mobile]);
 
   if (status === 'loading') return <p className="callout" role="status">Checking for saved play progress…</p>;
   if (status === 'error') return <section className="panel play-landing">

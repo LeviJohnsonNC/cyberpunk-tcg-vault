@@ -142,7 +142,31 @@ export function PlayChoices({ phone = false, presentation, context, view, action
           </button>{descriptionId && <span id={descriptionId} className="sr-only"><Rules text={option.note!} /></span>}{artwork && <button type="button" className="play-choice-details" aria-label={`Details for ${option.label}`} title={`Details for ${option.label}`} onClick={(event) => inspect(card, event.currentTarget)}><span aria-hidden="true">ⓘ</span></button>}</div>;
         })}{!active.options.length && <p className="play-empty">{fields.length > 1 ? 'No eligible options. Choose an earlier step to change your selection.' : 'No eligible options.'}</p>}</div>
       </fieldset>;
-  if (phone && !placement && !fields.some(field => field.ordered)) {
+  const choiceNotes = <>
+    {active?.ordered && <p className="play-choice-detail">{active.destination === 'deckTop' ? 'First card is drawn first.' : 'Last card goes deepest in the deck.'}</p>}
+    {active?.ordered && (picks[active.id]?.length ?? 0) > 1 && <ol className="play-choice-order" aria-label="Selected order">{picks[active.id].map((id, index, ids) =>
+      <li key={id}><span>{index + 1}. {active.options.find((option) => option.id === id)?.label}</span>
+        <button type="button" className="btn quiet" disabled={busy || index === 0} aria-label={`Move ${active.options.find((option) => option.id === id)?.label} earlier`} onClick={() => {
+          // Reorder the selected cards without changing their destination.
+          const reordered = [...ids]; [reordered[index - 1], reordered[index]] = [reordered[index], reordered[index - 1]];
+          reorder(active.id, reordered);
+        }}>↑</button>
+      </li>)}</ol>}
+    {otherPlacements.length > 0 && <div className="play-placement-review" aria-label="Other destinations">
+      {otherPlacements.map((field) => <div key={field.id}><strong>{field.label}</strong><span>{picks[field.id].map((id) => field.options.find((option) => option.id === id)?.label).join(field.ordered ? ' → ' : ' · ')}</span></div>)}
+    </div>}
+    <div className="play-placement-notes">
+      {placement && unassigned.length > 0 && action.remainder && <details>
+        <summary>{unassigned.length} <span aria-hidden="true">→</span><span className="sr-only"> cards to </span> {action.remainder.toLowerCase()}</summary>
+        <p>{unassigned.map((card) => card.cardName ?? 'Revealed card').join(' · ')}</p>
+      </details>}
+      {!inlineDetail && action.detail && <details><summary>Effect rules</summary><p><Rules text={action.detail} /></p></details>}
+      {triggerChoice && triggerRules(active).map(rule => <details key={rule.note}>
+        <summary>{rule.label}</summary><p><Rules text={rule.note} /></p>
+      </details>)}
+    </div>
+  </>;
+  if (phone) {
     const host = fields.find(field => field.id === 'host')?.options.find(option => picks.host?.includes(option.id));
     const blocker = action.id === 'useBlocker' ? active?.options.find(option => picks[active.id]?.includes(option.id)) : undefined;
     const cost = fields.find(field => field.id === 'payment')?.min;
@@ -158,8 +182,9 @@ export function PlayChoices({ phone = false, presentation, context, view, action
       {fields.length > 1 && <div className="phone-steps">{fields.filter(field => field.id !== 'card' || !picks.card?.length).map(field =>
         <button type="button" key={field.id} data-step={field.id} aria-pressed={field.id === active?.id} disabled={busy} onClick={() => step(field.id)}>
           {stepLabel(field)}{field.id === 'payment' ? ` · ${picks.payment?.length ?? 0}/${field.min}` : ''}</button>)}</div>}
-      {active && <details key={active.id} className="phone-options" open={!onMat || rollingGig || undefined}>
+      {active && <details key={active.id} className="phone-options" open={placement || !onMat || rollingGig || undefined}>
         <summary>{paying ? 'Payment sources' : onMat ? 'Eligible targets' : active.label} ({active.options.length})</summary>{options}
+        {choiceNotes}
       </details>}
       <div className="phone-commit"><button type="button" className="btn play-confirm" data-confirm-move={action.id} disabled={busy || !ready} onClick={submit}>{confirmText}</button>
         {(!forced || hasPicks) && <button className="btn quiet" type="button" disabled={busy} onClick={resettingPayment ? resetPayment : cancel}>{forced ? 'Reset' : 'Cancel'}</button>}{alternatives}</div>
@@ -200,28 +225,7 @@ export function PlayChoices({ phone = false, presentation, context, view, action
               {stepLabel(field)} {isReady([field], picks) && (picks[field.id]?.length ?? 0) > 0 && <><span aria-hidden="true">✓</span><span className="sr-only"> selected</span></>}
             </button>)}</div>}
           {options}
-          {active?.ordered && <p className="play-choice-detail">{active.destination === 'deckTop' ? 'First card is drawn first.' : 'Last card goes deepest in the deck.'}</p>}
-          {active?.ordered && (picks[active.id]?.length ?? 0) > 1 && <ol className="play-choice-order" aria-label="Selected order">{picks[active.id].map((id, index, ids) =>
-            <li key={id}><span>{index + 1}. {active.options.find((option) => option.id === id)?.label}</span>
-              <button type="button" className="btn quiet" disabled={busy || index === 0} aria-label={`Move ${active.options.find((option) => option.id === id)?.label} earlier`} onClick={() => {
-                // Reorder the selected cards without changing their destination.
-                const reordered = [...ids]; [reordered[index - 1], reordered[index]] = [reordered[index], reordered[index - 1]];
-                reorder(active.id, reordered);
-              }}>↑</button>
-            </li>)}</ol>}
-          {otherPlacements.length > 0 && <div className="play-placement-review" aria-label="Other destinations">
-            {otherPlacements.map((field) => <div key={field.id}><strong>{field.label}</strong><span>{picks[field.id].map((id) => field.options.find((option) => option.id === id)?.label).join(field.ordered ? ' → ' : ' · ')}</span></div>)}
-          </div>}
-          <div className="play-placement-notes">
-            {placement && unassigned.length > 0 && action.remainder && <details>
-              <summary>{unassigned.length} <span aria-hidden="true">→</span><span className="sr-only"> cards to </span> {action.remainder.toLowerCase()}</summary>
-              <p>{unassigned.map((card) => card.cardName ?? 'Revealed card').join(' · ')}</p>
-            </details>}
-            {!inlineDetail && action.detail && <details><summary>Effect rules</summary><p><Rules text={action.detail} /></p></details>}
-            {triggerChoice && triggerRules(active).map(rule => <details key={rule.note}>
-              <summary>{rule.label}</summary><p><Rules text={rule.note} /></p>
-            </details>)}
-          </div>
+          {choiceNotes}
         </PlayDecisionPanel>}
         {context}
       </div>}

@@ -1,5 +1,6 @@
-import { useState, useSyncExternalStore } from 'react';
+import { useState } from 'react';
 import { VaultSelect } from '../components/VaultSelect';
+import { usePhoneTableLayout } from '../views/usePhoneTableLayout';
 import { PhoneTable } from '../views/PhoneTable';
 import { PlayTable } from '../views/PlayTable';
 import { useMatchPresentation } from '../views/useMatchPresentation';
@@ -9,12 +10,6 @@ import type { Move } from '../lib/play/protocol';
 import '../views/play-tactics.css';
 import '../views/campaign.css';
 import './play-decision-preview.css';
-
-const handset = window.matchMedia('(max-width: 760px), (pointer: coarse) and (max-height: 540px) and (max-width: 1000px)');
-function subscribeHandset(update: () => void) {
-  handset.addEventListener('change', update);
-  return () => handset.removeEventListener('change', update);
-}
 
 type Position = ReturnType<typeof createDecisionFixture>;
 
@@ -31,7 +26,7 @@ function restore(initial: DecisionFixture, current?: Position) {
 }
 
 export function PlayDecisionPreview({ initial = 'Turn order' }: { initial?: DecisionFixture }) {
-  const phone = useSyncExternalStore(subscribeHandset, () => handset.matches);
+  const phone = usePhoneTableLayout();
   const [fixture, setFixture] = useState(() => restore(initial));
   const [name, setName] = useState<DecisionFixture>(initial);
   const [expanded, setExpanded] = useState(!phone);
