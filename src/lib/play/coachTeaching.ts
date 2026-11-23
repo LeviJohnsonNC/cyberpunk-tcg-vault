@@ -1,7 +1,8 @@
 import { chooseMove, type EngineCardView } from '../../../vendor/cyberpunk-engine/engine.mjs';
+import { afterAttack, attackReason, equipmentReason, stealReason } from './coachCombat';
 import { vaultCard } from './cardDisplay';
 import { matchActions } from './matchActions';
-import { visibleCards, zoneCards } from './matchView';
+import { visibleCards, zoneCards, zoneCount } from './matchView';
 import type { CardView, Move, PlayerView } from './protocol';
 import type { CoachStep } from './coachTypes';
 
@@ -13,7 +14,7 @@ function units(view: PlayerView) {
 
 export function coachFacts(view: PlayerView) {
   const facts = [
-    `Turn ${view.turnNumber}. You have ${view.players.player.availableEddies} €$, ${view.players.player.gigCount} Gigs and ${view.players.player.streetCred} Street Cred. Rival has ${view.players.rival.gigCount} Gigs and ${view.players.rival.streetCred} Street Cred.`,
+    `Turn ${view.turnNumber}. You have ${view.players.player.availableEddies} €$, ${view.players.player.gigCount} Gigs and ${view.players.player.streetCred} Street Cred. Rival has ${view.players.rival.gigCount} Gigs, ${view.players.rival.streetCred} Street Cred, ${view.players.rival.availableEddies} €$ available and ${zoneCount(view.players.rival, 'hand')} cards in hand.`,
   ];
   for (const seat of ['player', 'rival'] as const) {
     for (const zone of ['hand', 'field', 'legendArea', 'gigArea'] as const) {
@@ -22,7 +23,7 @@ export function coachFacts(view: PlayerView) {
         if (zone === 'gigArea') facts.push(`${seat} Gig: ${card.definitionId} showing ${card.power}.`);
         else if (card.definitionId && card.cardName)
           facts.push(
-            `${seat} ${zone}: ${card.cardName}, ${cost(card)} €$, ${card.effectivePower} power${card.spent ? ', spent' : ''}${card.hasLag ? ', Lag' : ''}. ${vaultCard(card)?.text ?? ''}`.slice(
+            `${seat} ${zone}: ${card.cardName}, ${cost(card)} €$, ${card.effectivePower} power${card.faceDown ? ', face-down (previously seen)' : ''}${card.spent ? ', spent' : ''}${card.hasLag ? ', Lag' : ''}. ${vaultCard(card)?.text ?? ''}`.slice(
               0,
               520
             )
@@ -30,10 +31,18 @@ export function coachFacts(view: PlayerView) {
       }
     }
   }
+  const choice = view.prompt.choice;
+  if (choice?.type === 'scry' || choice?.type === 'revealDestination') {
+    const { cards, revealedCards } = choice.payload as { cards?: CardView[]; revealedCards?: CardView[] };
+    for (const card of revealedCards ?? cards ?? []) {
+      if (card.definitionId && card.cardName)
+        facts.push(`Revealed for this choice: ${card.cardName}. ${vaultCard(card)?.text ?? ''}`.slice(0, 520));
+    }
+  }
   return facts;
 }
 
-export function explainMove(view: PlayerView, move: Move, alternative = false): CoachStep {
+export function explainMove(view: PlayerView, move: Move, alternative = false, after?: PlayerView): CoachStep {
   const a = move.args ?? {};
   const payload = view.prompt.choice?.payload as
     | {
@@ -93,11 +102,12 @@ export function explainMove(view: PlayerView, move: Move, alternative = false): 
       break;
     case 'mulligan':
     case 'keepHand': {
-      const cheap = hand.filter((c) => c.cost !== null && c.cost <= 2);
+      const earlyUnit = units(view)[0];
+      const cheap = cheapFirst(hand.filter(c => c.cost !== null && cost(c) <= 2))
+        .sort((a, b) => Number(b.type === 'unit') - Number(a.type === 'unit'));
       const sellable = hand.filter((c) => (c as EngineCardView).hasSellTag);
       title = move.move === 'mulligan' ? 'Mulligan this hand' : 'Keep this hand';
       if (alternative) {
-        const earlyUnit = units(view)[0];
         const opener = earlyUnit ? `${earlyUnit.cardName} at ${cost(earlyUnit)} €$` : cheap[0]?.cardName;
         why =
           move.move === 'mulligan'
@@ -108,11 +118,8 @@ export function explainMove(view: PlayerView, move: Move, alternative = false): 
       why = `${
         cheap.length
           ? 'Your early options at 2 €$ or less include ' +
-            cheap
-              .slice(0, 2)
-              .map((c) => c.cardName)
-              .join(' and ')
-          : 'You have no cards costing 2 €$ or less'
+            [...new Set(cheap.map(c => c.cardName))].slice(0, 2).join(' and ')
+          : earlyUnit ? `Your cheapest Unit is ${earlyUnit.cardName} at ${cost(earlyUnit)} €$` : 'You have no cards costing 2 €$ or less'
       }. ${sellable.length ? sellable[0].cardName + ' gives you a sale if you need an Eddie' : 'You have no sell-tagged card to help fund the opening'}. ${move.move === 'mulligan' ? 'A fresh six gives you another chance at a usable curve, at the cost of these specific cards.' : 'Keeping secures those options. A new six could lose them.'}`;
       break;
     }
@@ -135,11 +142,17 @@ export function explainMove(view: PlayerView, move: Move, alternative = false): 
     case 'playCard':
     case 'resolveCardToPlay':
       title = a.attachToId ? `Equip ${label(a.cardId)} to ${label(a.attachToId)}` : `Play ${label(a.cardId)}`;
-      why = a.attachToId
-        ? `The equipment goes on ${label(a.attachToId)}. ${card?.effectivePower ? 'Its current power contribution is ' + card.effectivePower + '. ' : ''}${(card && vaultCard(card)?.text) || 'Keep the host available to use the equipment.'}`
-        : card?.type === 'unit'
-          ? `Develop a ${card.effectivePower}-power Unit before spending your remaining resources. Check its Lag and ready status before planning an attack.`
+      if (a.attachToId) {
+        const host = get(a.attachToId);
+        const equipped = after && zoneCards(after.players.player, 'field').find(c => c.instanceId === host?.instanceId);
+        why = card && host && equipped && after
+          ? equipmentReason(view, after, card, host, equipped)
+          : `Attach this Gear to ${label(a.attachToId)} to use its printed effect.`;
+      } else {
+        why = card?.type === 'unit'
+          ? `Develop a ${card.effectivePower}-power Unit. Check its Lag and ready status before planning an attack.`
           : (card && vaultCard(card)?.text) || why;
+      }
       break;
     case 'sellCard':
       title = `Sell ${label(a.cardId)}`;
@@ -160,7 +173,7 @@ export function explainMove(view: PlayerView, move: Move, alternative = false): 
       title = `Attack ${a.defenderId ? label(a.defenderId) : 'the rival'} with ${label(a.attackerId)}`;
       why = a.defenderId
         ? `Compare ${get(a.attackerId)?.effectivePower} attacking power against ${get(a.defenderId)?.effectivePower} defending power before reactions. Removing a Unit can improve your next attack.`
-        : `Your attacker has ${get(a.attackerId)?.effectivePower} power and the rival holds ${view.players.rival.gigCount} Gigs. A direct attack puts those Gigs under pressure. A blocker or reaction can change the result.`;
+        : get(a.attackerId) ? attackReason(view, get(a.attackerId)!) : why;
       break;
     case 'useBlocker':
       title = `Block with ${label(a.blockerId)}`;
@@ -200,6 +213,10 @@ export function explainMove(view: PlayerView, move: Move, alternative = false): 
               `${labels(d.cardIds)} → ${d.zone.replace('deckTop', 'top of deck').replace('deckBottom', 'bottom of deck')}`
           )
           .join(' · ') || 'Keep the remaining cards in the indicated pile';
+      break;
+    case 'resolveStealGigs':
+      title = `Steal ${labels(a.dieIds)}`;
+      why = stealReason(view, a.dieIds as string[]);
       break;
     case 'resolvePreventGigSteal':
       title =
@@ -250,6 +267,20 @@ export function continuation(view: PlayerView, last: Move, boundary: string): st
       'After your response resolves, priority returns according to the combat prompt. Reassess your defense if the rival acts again.'
     );
     return lines;
+  }
+  if (last.move === 'attackRival' || last.move === 'attackUnit') {
+    const attacker = zoneCards(view.players.player, 'field').find(c => c.instanceId === last.args?.attackerId);
+    const follow = attacker ? afterAttack(view, attacker) : [];
+    const reserve = view.players.player.availableEddies;
+    const blocker = units(view).find(c => cost(c) <= reserve && (c as EngineCardView).keywords?.includes('blocker'));
+    if (view.overtimeActive && last.move === 'attackRival') {
+      follow.push('If you take the majority, overtime ends immediately. If a response stops the steal, check your remaining attackers before passing.');
+      return follow;
+    }
+    follow.push(blocker
+      ? `After combat, if you still have ${cost(blocker)} €$ and need a blocker, consider ${blocker.cardName}. Otherwise keep your resources and end the turn when you have no profitable attack left.`
+      : 'After combat, use any newly revealed cards and remaining payment to compare your next play with ending the turn.');
+    return follow.length === 1 ? [boundary, ...follow] : follow;
   }
   const handChanges = last.move === 'mulligan' || last.move === 'resolveFirstPlayer';
   if (last.move === 'resolveFirstPlayer')

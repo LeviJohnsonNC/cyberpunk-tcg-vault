@@ -8,7 +8,8 @@ export interface CoachStep {
 export interface CoachPlan {
   steps: CoachStep[];
   focus: { move: string; cards: string[] };
-  alternative?: CoachStep;
+  /** Number of recommended actions both lines take before they diverge. */
+  alternative?: CoachStep & { afterStep?: number };
   continuation: string[];
   facts: string[];
   forced: boolean;

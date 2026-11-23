@@ -8,7 +8,8 @@ import {
 import { botDeckTypePrior, botView, createEngineSession } from './engineSession';
 import { isReady, matchActions, type MatchActionForm, type Picks } from './matchActions';
 import { suggestPayment } from './matchInteraction';
-import { visibleCards } from './matchView';
+import { visibleCards, zoneCards } from './matchView';
+import { canAttackGigs, compareEquipment } from './coachCombat';
 import { coachFacts, continuation, explainMove } from './coachTeaching';
 import type { CoachPlan, CoachPosition } from './coachTypes';
 import type { Move, PlayerView, Prompt, Seat } from './protocol';
@@ -122,15 +123,20 @@ function withPayment(move: Move, view: PlayerView): Move {
 function competingPrompt(view: PlayerView, move: Move): Prompt {
   const prompt = view.prompt;
   const a = move.args ?? {};
-  if (move.move === 'gainGig' && prompt.choice) {
-    const payload = prompt.choice.payload as { allowedDieIds: string[] };
-    return {
-      ...prompt,
-      choice: {
-        ...prompt.choice,
-        payload: { ...payload, allowedDieIds: payload.allowedDieIds.filter((id) => id !== a.dieId) },
-      },
-    };
+  if (prompt.choice) {
+    const payload = prompt.choice.payload as Record<string, unknown>;
+    let choice;
+    if (move.move === 'gainGig') {
+      const remaining = (payload.allowedDieIds as string[]).filter(id => id !== a.dieId);
+      if (remaining.length) choice = { ...payload, allowedDieIds: remaining };
+    }
+    if (move.move === 'resolveStealGigs') {
+      const selected = a.dieIds as string[];
+      const dice = (payload.eligibleDice as { dieId: string }[]).filter(d => d.dieId !== selected[0]);
+      if (dice.length >= Number(payload.count)) choice = { ...payload, eligibleDice: dice };
+    }
+    return { ...prompt, choice: { ...prompt.choice, payload: choice ?? payload },
+      availableMoves: choice ? prompt.availableMoves : [] };
   }
   return {
     ...prompt,
@@ -165,74 +171,115 @@ export function planTurn({ setup, checkpoint }: CoachPosition): CoachPlan {
   const steps: CoachPlan['steps'] = [];
   let focus: CoachPlan['focus'] = { move: '', cards: [] };
   let alternative: CoachPlan['alternative'];
-  let forced = false;
+  const rootHandle = line.handle.fork();
+  let first: Move | undefined;
   let last: Move | undefined;
   let lastView = root;
-  function pick(view: PlayerView, branch = line) {
+  function pick(view: PlayerView, handle = line.handle) {
     const usable = (move: Move | undefined): move is Move =>
       !!move &&
       move.move !== 'concede' &&
       view.prompt.availableMoves.some((m) => m.moveId === move.move) &&
-      branch.handle.fork().processCommand(command(move), 'player').success;
+      handle.fork().processCommand(command(move), 'player').success;
     const proposed = chooseMove(view, () => 0.5, 'player', {
       strategy: 'tactical-ability-aware',
       deckTypePrior: prior,
-      engine: branch.handle,
+      engine: handle,
     });
     const candidate = proposed && withPayment(proposed, view);
     if (usable(candidate)) return candidate;
     for (const form of matchActions(view))
       for (const move of formMoves(form, view)) if (usable(move)) return move;
   }
+  function compareAttack(view: PlayerView, attack: Move, index: number): CoachPlan['alternative'] {
+    const hostId = attack.args?.attackerId;
+    if (typeof hostId !== 'string') return;
+    // Ask the same policy which legal Gear it would buy for this attacker.
+    // Evaluate the payment on a fork and stop if that purchase opens a reveal.
+    const offered = view.prompt.availableMoves.find(m => m.moveId === 'playCard');
+    const gear = zoneCards(view.players.player, 'hand').filter(c => c.type === 'gear');
+    const candidates = (offered?.inputSpec.candidates as { cardId: string; attachTargets?: string[] }[] | undefined)
+      ?.filter(c => c.attachTargets?.includes(hostId) && gear.some(g => g.instanceId === c.cardId))
+      .map(c => ({ ...c, attachTargets: [hostId] }));
+    if (offered && candidates?.length) {
+      const prompt = { ...view.prompt, availableMoves: [{ ...offered, inputSpec: { ...offered.inputSpec, candidates } }] };
+      const purchase = pick({ ...view, prompt });
+      const card = gear.find(c => c.instanceId === purchase?.args?.cardId);
+      const branch = line.handle.fork();
+      if (card && purchase?.args?.attachToId === hostId && branch.processCommand(command(purchase), 'player').success) {
+        const equipped = branch.getFilteredView('player');
+        if (canAttackGigs(equipped, hostId)) return {
+          afterStep: index,
+          title: `Equip ${card.cardName} before attacking`,
+          why: compareEquipment(view, equipped, hostId, card, false),
+        };
+      }
+    }
+    // If the recommendation just bought Gear, compare with attacking from the
+    // last shared position without buying it (e.g. an 8-to-10 power threshold).
+    if (last?.move === 'playCard' && last.args?.attachToId === hostId && canAttackGigs(lastView, hostId)) {
+      const card = zoneCards(lastView.players.player, 'hand').find(c => c.instanceId === last?.args?.cardId);
+      if (card) return {
+        afterStep: index - 1,
+        title: `Attack before equipping ${card.cardName}`,
+        why: compareEquipment(lastView, view, hostId, card, true),
+      };
+    }
+  }
   for (let index = 0; index < 12; index++) {
     const view = line.view;
     const move = pick(view);
     if (!move) break;
-    const step = explainMove(view, move);
-    if (index === 0) {
+    if (!first) {
+      first = move;
       const publicIds = new Set(visibleCards(view).map((card) => card.instanceId));
       focus = {
         move: move.move,
-        cards: Object.values(move.args ?? {})
-          .flat()
-          .filter((id): id is string => typeof id === 'string' && publicIds.has(id)),
+        cards: Object.values(move.args ?? {}).flat().filter((id): id is string => typeof id === 'string' && publicIds.has(id)),
       };
-      const prompt = competingPrompt(view, move);
-      const other =
-        (!prompt.choice || move.move === 'gainGig') && prompt.availableMoves.length
-          ? pick({ ...view, prompt })
-          : undefined;
-      if (other) {
-        const runnerUp = explainMove(view, other, true);
-        if (runnerUp.title !== step.title) alternative = runnerUp;
-      }
-      if (!alternative) {
-        for (const form of matchActions(view)) {
-          for (const option of formMoves(form, view)) {
-            const alt = explainMove(view, option, true);
-            if (
-              alt.title !== step.title &&
-              line.handle.fork().processCommand(command(option), 'player').success
-            ) {
-              alternative = alt;
-              break;
-            }
-          }
-          if (alternative) break;
-        }
-      }
-      const forms = matchActions(view);
-      forced =
-        !alternative &&
-        forms.length === 1 &&
-        forms[0].fields({}).every((f) => f.min === f.max && f.options.length === f.min);
     }
+    if (move.move === 'attackRival') alternative = compareAttack(view, move, index);
     if (!line.handle.processCommand(command(move), 'player').success) break;
+    steps.push(explainMove(view, move, false, line.boundary ? undefined : line.view));
     lastView = view;
     last = move;
-    steps.push(step);
     if (line.boundary || line.view.gameEnded) break;
   }
+  if (!first || !last) throw new Error('The table has no coachable legal action at this position.');
+  const forms = matchActions(root);
+  if (!alternative) {
+    const prompt = competingPrompt(root, first);
+    const response = root.attackState?.step === 'react' && root.activePlayerId === 'rival';
+    const pass = response && first.move !== 'resolveAttack' && prompt.availableMoves.find(m => m.moveId === 'resolveAttack');
+    if (pass) prompt.availableMoves = [pass];
+    const other = prompt.availableMoves.length ? pick({ ...root, prompt }, rootHandle) : undefined;
+    if (other) {
+      const option = explainMove(root, other, true);
+      if (first.move === 'gainGig' && other.move === 'gainGig') {
+        const die = zoneCards(root.players.player, 'fixerArea').find(c => c.instanceId === first.args?.dieId);
+        if (die) option.why += ` This saves the ${die.definitionId} for a later Gig step.`;
+      }
+      if (other.move === 'attackUnit' && first.move === 'attackRival' && first.args?.attackerId === other.args?.attackerId)
+        option.why += ' Spending this attacker on the fight gives up its chance to steal a Gig this turn unless it readies again.';
+      if (pass && other.move === 'resolveAttack')
+        option.why = first.move === 'playCard'
+          ? `Passing keeps ${explainMove(root, first).title.replace(/^Play /, '')} in hand and leaves ${root.players.player.availableEddies} €$ available. The attack can advance at its current power.`
+          : 'Passing lets combat advance at its current power while you keep your remaining resources.';
+      if (option.title !== steps[0].title) alternative = option;
+    }
+    // Two-way choices such as starting seat or keeping revealed cards have a
+    // single counterfactual even when they share one engine command name.
+    if (!alternative && root.prompt.choice && forms.length === 2 && forms.every(f => !f.fields({}).length)) {
+      for (const form of forms) {
+        const move = form.move({});
+        const option = explainMove(root, move, true);
+        if (option.title !== steps[0].title && rootHandle.fork().processCommand(command(move), 'player').success)
+          alternative = option;
+      }
+    }
+  }
+  const forced = !alternative && forms.length === 1 &&
+    forms[0].fields({}).every((f) => f.min === f.max && f.options.length === f.min);
   // At a live Gig prompt, show two illustrations using independent rolls. Never
   // simulate from the saved RNG or carry a sampled draw/reveal into the lesson.
   function rollExamples(move: Move) {
@@ -270,7 +317,7 @@ export function planTurn({ setup, checkpoint }: CoachPosition): CoachPlan {
         continue;
       const route: string[] = [];
       for (let n = 0; n < 6 && !branch.boundary && actionable(branch.view) && !branch.view.gameEnded; n++) {
-        const next = pick(branch.view, branch);
+        const next = pick(branch.view, branch.handle);
         if (!next) break;
         const title = explainMove(branch.view, next).title;
         if (!branch.handle.processCommand(command(next), 'player').success) break;
@@ -283,7 +330,6 @@ export function planTurn({ setup, checkpoint }: CoachPosition): CoachPlan {
     }
     return examples;
   }
-  if (!last) throw new Error('The table has no coachable legal action at this position.');
   return {
     steps,
     focus,
