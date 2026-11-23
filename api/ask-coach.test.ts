@@ -20,7 +20,7 @@ function provider({
     expect(url).toBe('https://openrouter.ai/api/v1/chat/completions');
     const payload = JSON.parse(String(init?.body));
     expect(payload.model).toBe('google/gemini-3.8-flash');
-    expect(JSON.parse(payload.messages[1].content)).toEqual(plan);
+    expect(payload.messages[0].content).toContain('then diverges');
     return Response.json({ choices: [{ message: { content: text } }] });
   });
   vi.stubGlobal('fetch', fetcher);
@@ -69,6 +69,8 @@ it('sends only the public lesson fields and returns an explanation', async () =>
   expect(res.code).toBe(200);
   expect(res.body).toHaveProperty('watchFor');
   expect(calls).toHaveBeenCalledTimes(4);
+  const request = JSON.parse(String(calls.mock.calls.at(-1)?.[1]?.body));
+  expect(JSON.parse(request.messages[1].content)).toEqual(plan);
 });
 it('does not purchase a lesson for an anonymous or oversized request', async () => {
   const calls = provider();
@@ -87,4 +89,19 @@ it.each([{ userCount: 31 }, { globalCount: 151 }])(
 it('rejects incomplete provider responses', async () => {
   provider({ text: '{"explanation":"partial"}' });
   expect((await ask()).code).toBe(502);
+});
+
+it('sends a shared opening to the narrator and rejects an impossible divergence before charging', async () => {
+  const calls = provider();
+  const line = { ...plan, steps: [
+    { title: 'Equip Radioport', why: 'Power goes from 0 to 2.' },
+    { title: 'Attack with Ripper', why: 'An unblocked hit can take the only Gig.' },
+  ] };
+  const alternative = { afterStep: 1, title: 'Equip Faceplate before attacking', why: 'The second purchase spends the remaining 2 €$.' };
+  expect((await ask({ ...line, alternative: { ...alternative, afterStep: 2 } })).code).toBe(400);
+  expect(calls).not.toHaveBeenCalled();
+  expect((await ask({ ...line, alternative: { ...alternative, hidden: 'omit' } })).code).toBe(200);
+  const request = JSON.parse(String(calls.mock.calls.at(-1)?.[1]?.body));
+  expect(JSON.parse(request.messages[1].content)).toEqual({ ...line, alternative });
+  expect(calls.mock.calls.filter(([url]) => url.includes('openrouter'))).toHaveLength(1);
 });

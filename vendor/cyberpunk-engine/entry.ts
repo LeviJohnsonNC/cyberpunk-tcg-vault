@@ -7,6 +7,9 @@ import type { AIStrategy, DecisionContext, EngineHandle } from "@tcg/cyberpunk-e
 
 export { createCardCatalog } from "@tcg/cyberpunk-cards";
 export { createMatchState, LocalEngine, SeededRNG } from "@tcg/cyberpunk-engine";
+export { isReadyBlocker } from "@tcg/cyberpunk-engine/automation/util/attack-readiness";
+export { pairCount } from "@tcg/cyberpunk-engine/automation/util/gig-conditions";
+export { directStealPotential } from "@tcg/cyberpunk-engine/automation/search/evaluate-board";
 export { projectRevealedCardView } from "@tcg/cyberpunk-engine/view/filter";
 
 // Every strategy here is one upstream labels "public": it decides from the seat's own

@@ -7,7 +7,7 @@ import './ask-coach.css';
 type Result = { plan: CoachPlan; lesson?: CoachLesson };
 function readLesson(key: string): Result | undefined {
   try {
-    const stored = JSON.parse(sessionStorage.getItem('cptv.coach.v2') || 'null');
+    const stored = JSON.parse(sessionStorage.getItem('cptv.coach.v3') || 'null');
     if (
       stored?.key === key &&
       stored.result?.plan?.steps?.length &&
@@ -159,7 +159,7 @@ export function AskCoach({
       setResult(complete);
       setStatus('');
       try {
-        sessionStorage.setItem('cptv.coach.v2', JSON.stringify({ key, result: complete }));
+        sessionStorage.setItem('cptv.coach.v3', JSON.stringify({ key, result: complete }));
       } catch {
         /* In-memory caching still works. */
       }
@@ -209,7 +209,7 @@ export function AskCoach({
                 {plan.steps.length > 1 && (
                   <section>
                     <h3>Then play</h3>
-                    <ol>
+                    <ol start={2}>
                       {plan.steps.slice(1).map((s, i) => (
                         <li key={i}>
                           <strong>{s.title}</strong>
@@ -221,7 +221,7 @@ export function AskCoach({
                 )}
                 {plan.alternative && (
                   <section>
-                    <h3>Another option</h3>
+                    <h3>{plan.alternative.afterStep ? `Alternative after step ${plan.alternative.afterStep}` : 'Another option'}</h3>
                     <strong>{plan.alternative.title}</strong>
                     <p>{plan.alternative.why}</p>
                   </section>

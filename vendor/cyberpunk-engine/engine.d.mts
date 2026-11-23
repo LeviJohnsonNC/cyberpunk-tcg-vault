@@ -3,6 +3,7 @@ import type { CardView, FightResult, Move, PlayerView, Seat } from '../../src/li
 interface Definition {
   id: string;
   legality: string;
+  abilities: { text?: string }[];
   type: string;
 }
 
@@ -31,6 +32,9 @@ export type EngineEvent =
   | { type: 'gigDieRolled'; dieId: string; dieType: string; result: number; playerId: Seat; origin: 'gainGig' | 'reroll' }
   | { type: 'other' };
 
+export function pairCount(values: readonly number[]): number;
+export function isReadyBlocker(card: CardView): boolean;
+export function directStealPotential(power: number, oneFewer?: boolean): number;
 export function createCardCatalog(): Catalog;
 
 export function createMatchState(options: {
@@ -102,6 +106,9 @@ export interface EngineCardView extends CardView {
   hasSellTag: boolean;
   keywords: string[];
   triggerHints: string[];
-  abilityHints: unknown[];
+  abilityHints: {
+    abilityIndex: number; timing: string; event: string | null; effects: string[];
+    conditionThresholds: { condition: string; minCount?: number }[];
+  }[];
 }
 export function projectRevealedCardView(state: EngineState, instanceId: string): EngineCardView | null;

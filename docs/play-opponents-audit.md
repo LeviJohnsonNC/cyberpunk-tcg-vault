@@ -178,3 +178,9 @@ To reproduce the four runs from the repository root, use the command below with 
 BENCH_SEED_PREFIX=vault-tier-holdout-a-v1 BENCH_SKILL=masterful BENCH_OPPONENT_SKILL=sharp \
   node scripts/benchmark-rivals.mjs --paired /tmp/masterful-sharp-a.json
 ```
+
+## Teaching the decision
+
+In the reconstructed Ripper turn, both lines start by equipping Radioport. The coach labels the alternative “after step 1” because the decision is whether to attack immediately or spend the remaining 2 €$ on Faceplate. Both clean hits can take the rival’s only d4. Faceplate can adjust a Gig, but its draw checks before the steal, while the player controls only two Gigs. Keeping it also leaves a possible 8-to-10 power upgrade for Rockn’ Rockerboy later. Give the player a third distinct Gig value and the coach recommends Faceplate before the attack. [Sketchy Ripper](https://cyberpunktcg.com/cards/sketchy-ripper) · [Arasaka Emergency Radioport](https://cyberpunktcg.com/cards/arasaka-emergency-radioport) · [Zetatech Faceplate](https://cyberpunktcg.com/cards/zetatech-faceplate)
+
+The lesson names the Ripper search and the optional Radioport peek, explains when a paid Call would still be possible, and leaves the next commitment open until the player sees the results. For an alternative at the opening decision, such as rolling a different die or passing on a combat response, the dialog shows the comparison immediately. The local planner supplies these explanations even when Gemini is unavailable. The optional Gemini request receives the same decision point and the deciding seat’s visible facts. [Official combat guide](https://cyberpunktcg.com/gameplay-guide)

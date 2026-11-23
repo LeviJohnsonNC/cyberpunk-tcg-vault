@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { LocalEngine, SeededRNG } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import { combatSetup, giveGig, placeCard, placeEddie, quietRivalFixture, type FixtureState } from '../../dev/combatFixtures';
 import { botDecision, createEngineSession, engineCardId } from './engineSession';
+import { planTurn } from './coachPlanner';
 import type { Move, RivalSkill, Seat } from './protocol';
 
 function act(engine: LocalEngine, seat: Seat, move: Move) {
@@ -62,6 +63,14 @@ describe('rival difficulty calibration', () => {
     const move = botDecision(engine, active, () => .3, 'masterful')!;
     expect(move).toEqual({ move: 'resolveStealGigs', args: { dieIds: [high] } });
     act(engine, active, move);
+  });
+
+  it('teaches why denying a public Hanako pair can be worth more than the extra Cred', () => {
+    const { engine } = hanakoPosition('rival');
+    const state = engine.getState();
+    const plan = planTurn({ setup: combatSetup, checkpoint: { state, matchId: 'hanako-coach',
+      botRng: new SeededRNG('coach').getState(), commandNumber: state.ctx.stateID, known: new Map(), peeks: [], log: [] } });
+    expect(plan.steps[0].why).toMatch(/2 Street Cred.*rival’s Hanako Arasaka.*from 1 to 0/);
   });
 
   it('Masterful cannot deny a pair based on an unrevealed Legend', () => {

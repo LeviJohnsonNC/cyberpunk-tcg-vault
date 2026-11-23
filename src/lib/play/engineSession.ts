@@ -9,6 +9,10 @@ import type { CampaignRivalPlan, CardView, GigRoll, MatchBeat, MatchFrame, Match
 
 const catalog = createCardCatalog();
 
+export function printedAbility(card: CardView, index: number) {
+  return card.definitionId ? catalog.get(card.definitionId)?.abilities[index]?.text : undefined;
+}
+
 export function engineCardId(slug: string) {
   const card = catalog.get(engineSlug(slug));
   if (card?.legality !== 'legal') throw new Error(`No playable engine card for ${slug}`);
