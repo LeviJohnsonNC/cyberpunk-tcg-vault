@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { afterSetup, giveGig, placeCard, placeEddie, quietRivalFixture, rulesFixture, twoGigAttack, seventhGigAttack, type FixtureState } from '../../dev/combatFixtures';
 import { chooseMove, LocalEngine, projectRevealedCardView, SeededRNG } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import type { EngineState } from '../../../vendor/cyberpunk-engine/engine.mjs';
 import starters from '../../curated/starter-decks.json';
@@ -16,34 +17,11 @@ import { createMatchController } from './workerController';
 const player = prepareMatchDeck({ ...starters.decks['the-heist'], sideboard: {} });
 const setup = (id: string): MatchSetup => ({ player, rival: prepareMatchDeck(deckFromRecommended(id)!) });
 
-function afterSetup(config: MatchSetup) {
-  const engine = new LocalEngine(initialEngineState(config, 'vault-test-setup', 'test'));
-  const preview = engine.getFilteredView('player');
-  for (let n = 0; n < 12; n++) {
-    if (engine.getFilteredView('player').gamePhase === 'main') return { engine, preview };
-    const seats: Seat[] = ['player', 'rival'];
-    const seat = seats.find((s) => ['action', 'choice'].includes(engine.getFilteredView(s).prompt.status));
-    if (!seat) break;
-    const move = botDecision(engine, seat, () => 0.3);
-    if (!move) break;
-    const result = engine.processCommand({
-      commandID: `setup-${n}`, move: move.move, input: move.args ? { args: move.args } : undefined,
-    }, seat);
-    if (!result.success) throw new Error(result.error);
-  }
-  throw new Error('Expected both players to finish setup.');
-}
-
 describe('play engine', () => {
   it.each([
     ['sharp', false], ['masterful', false], ['sharp', true], ['masterful', true],
   ] as const)('%s equips before a two-Gig attack (winning fight available: %s)', (skill, fightAvailable) => {
-    const { state, active, other } = quietRivalFixture();
-    for (let i = 0; i < 3; i++) giveGig(state, other);
-    for (let i = 0; i < 4; i++) placeEddie(state, active);
-    const attacker = placeCard(state, active, 'maxtac-av', 'field');
-    const gear = placeCard(state, active, 'mantis-blades', 'hand');
-    if (fightAvailable) placeCard(state, other, 'corpo-security', 'field', true);
+    const { state, active, attacker, gear } = twoGigAttack(fightAvailable);
     const engine = new LocalEngine(state);
     const before = structuredClone(engine.getState());
     const decision = botDecision(engine, active, () => .3, skill)!;
@@ -473,15 +451,7 @@ describe('play engine', () => {
   });
 
   it.each(['sharp', 'masterful'] as const)('%s takes a seventh Gig instead of a low-value Unit fight', skill => {
-    const { state, active, other } = rulesFixture();
-    for (const seat of [active, other]) {
-      state.G.players[seat].zones.hand = [];
-      for (const id of state.G.players[seat].zones.legendArea) state.G.cardIndex[id].meta.spent = true;
-    }
-    while (state.G.players[active].fixerArea.length) giveGig(state, active);
-    giveGig(state, other);
-    const attacker = placeCard(state, active, 'psycho-squad', 'field');
-    placeCard(state, other, 'corpo-security', 'field', true);
+    const { state, active, attacker } = seventhGigAttack();
     const engine = new LocalEngine(state);
     const move = botDecision(engine, active, () => .3, skill);
     expect(move).toMatchObject({ move: 'attackRival', args: { attackerId: attacker } });
@@ -1720,24 +1690,6 @@ function changeHiddenCards(state: EngineState, rival: Seat) {
 }
 
 
-type FixtureState = EngineState & { G: {
-  manualPaymentPlayerId?: Seat;
-  turnMetadata: { activePlayerId: Seat };
-  players: Record<Seat, { eddies: number; spentEddies: number; eddieCardIds: string[]; fixerArea: string[]; gigArea: string[] }>;
-  gigDice: Record<string, { location: string; faceValue: number; ownerId: Seat; dieType: string }>;
-  cardIndex: Record<string, { zone: string; meta: { faceDown: boolean; spent: boolean; hasLag: boolean; attachedGearIds: string[]; attachedToId: string | null } }>;
-} };
-
-function rulesFixture(desiredSeat?: Seat) {
-  const { engine } = afterSetup(setup('chrome-syndicate'));
-  const active = engine.getFilteredView('player').activePlayerId;
-  const other: Seat = active === 'player' ? 'rival' : 'player';
-  const state = structuredClone(engine.getState()) as FixtureState;
-  if (!desiredSeat || desiredSeat === active) return { state, active, other };
-  state.G.turnMetadata.activePlayerId = desiredSeat;
-  return { state, active: desiredSeat, other: active };
-}
-
 function paymentFixture() {
   const fixture = rulesFixture();
   fixture.state.G.manualPaymentPlayerId = fixture.active;
@@ -1746,51 +1698,17 @@ function paymentFixture() {
   return fixture;
 }
 
-function placeEddie(state: FixtureState, seat: Seat) {
-  const id = placeCard(state, seat, 'floor-it', 'eddieArea');
-  state.G.players[seat].eddieCardIds.push(id);
-  state.G.players[seat].eddies++;
-  return id;
-}
-
 function equipFixture(state: FixtureState, host: string, gear: string) {
   state.G.cardIndex[host].meta.attachedGearIds.push(gear);
   state.G.cardIndex[gear].meta.attachedToId = host;
-}
-
-function giveGig(state: FixtureState, seat: Seat) {
-  const { fixerArea, gigArea } = state.G.players[seat];
-  const id = fixerArea.shift()!;
-  Object.assign(state.G.gigDice[id], { location: 'gigArea', faceValue: 1 });
-  gigArea.push(id);
 }
 
 function rejectedMove(engine: LocalEngine, seat: Seat, move: string, args: Record<string, unknown>) {
   return !engine.processCommand({ commandID: `reject-${move}`, move, input: { args } }, seat).success;
 }
 
-function placeCard(state: FixtureState, seat: Seat, slug: string, zone: string, spent = false) {
-  const { zones } = state.G.players[seat];
-  const id = zones.deck.shift()!;
-  const card = state.G.cardIndex[id];
-  card.definitionId = engineCardId(slug);
-  card.zone = zone;
-  Object.assign(card.meta, { faceDown: zone === 'eddieArea', spent, hasLag: false });
-  zones[zone].push(id);
-  return id;
-}
-
 function issue(engine: LocalEngine, seat: Seat, move: string, args: Record<string, unknown> = {}) {
   const result = engine.processCommand({ commandID: move, move, input: { args } }, seat);
   if (!result.success) throw new Error(result.error);
   return result;
-}
-
-function quietRivalFixture() {
-  const fixture = rulesFixture();
-  for (const seat of [fixture.active, fixture.other]) {
-    fixture.state.G.players[seat].zones.hand = [];
-    for (const id of fixture.state.G.players[seat].zones.legendArea) fixture.state.G.cardIndex[id].meta.spent = true;
-  }
-  return fixture;
 }

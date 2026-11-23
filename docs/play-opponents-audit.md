@@ -126,3 +126,21 @@ Additional sampled probes found zero mismatches across 756 concealed-card compar
 The [second-phase roster results](qa/opponent-informed-planning-benchmark.json) contain all 102 games, completed without rejected moves or stalls. Wins out of 34 against the updated Standard were Standard 15, Sharp 26, Masterful 27. The preceding release's corresponding counts were 16, 24, 24. These are fixed, small samples and all opponents changed; the one-win Sharp/Masterful difference is not a reliable strength estimate. Timing overlaps other validation and is not an isolated browser-latency measurement.
 
 The [direct Masterful-versus-Sharp comparison](qa/opponent-masterful-sharp-benchmark.json), using the separate `vault-ai-holdout-v1` seed family, completed all 34 games without rejected moves or stalls. Masterful won 20/34. This is encouraging directional evidence, not a statistically established ranking or evidence of regional-tournament strength. No deliberate randomness or handicaps were added to the lower difficulties.
+
+## Coach and opponent decision baseline
+
+Measured on the planners from `129884f`. Run `node scripts/benchmark-planner.mjs /tmp/planner.json docs/qa/planner-decision-baseline.json` from the repository root. The [recorded decisions and timings](qa/planner-decision-baseline.json) include the local coach’s line and alternative, and the first legal command chosen by each rival strategy from the same seat. The reference argument checks that every position has the same inputs before writing the new report. The hash covers the deciding player’s filtered position and registered deck-type counts.
+
+| Decision | Observed result |
+| --- | --- |
+| Ripper, before equipping | The coach recommends Radioport, Faceplate, then attack. Its alternative opens with Faceplate. Masterful opens with Radioport. Standard and Sharp open with Faceplate. |
+| Ripper, after paying for Radioport | All four choose Faceplate. With BBG passing, both lines steal the d4. Attacking immediately leaves 2 €$ and Faceplate in hand. Buying Faceplate leaves 0 €$, permits a die adjustment, and draws no card on this attack. |
+| MaxTac AV, with a spent rival Unit and three rival Gigs | All four equip Mantis Blades. The existing engine regression plays out the 8-to-10 power increase and two-Gig steal. |
+| Opening hands | All four keep the mixed-cost starter hand and mulligan the hand of three Johnny Silverhands and three MaxTac AVs. |
+| Gain a Gig | All four choose the d12 from the opening die prompt. |
+| Defend a direct attack | The coach, Standard and Masterful start with Floor It. Sharp calls its first Legend slot. This records a difference in approach. Its value depends on the ensuing combat. |
+| Win in overtime | From six Gigs each, all four attack the rival over a spent Unit. Resolving the steal wins the game through overtime majority. |
+
+The Ripper position comes from three engine-played turns. The public cards, hand and deck counts, Gig faces, available currency and first equipment payment match the report. The original save and private YYR list were unavailable. The reconstruction uses the curated Smasher/River/Viktor deck with two Secondhand Bombus and one Rockn’ Rockerboy replacing two 6th Street Recruits and one MaxTac Suppression Team. BBG uses its curated list. The fixture assumes its spent first Legend is Jackie Welles and that the player sold on turn one. The MaxTac and overtime cases use staged combat positions shared with the rules regressions.
+
+Timing uses one warm-up and the median of five fresh runs per case and policy. The coach measurement covers a complete local plan. Opponent measurements cover one local decision with automatic payment. Setup, result labeling, command validation, network requests and Gemini narration are outside the timed region. Browser latency and comparative playing strength need separate measurements.
