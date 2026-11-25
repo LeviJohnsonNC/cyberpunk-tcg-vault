@@ -1,56 +1,56 @@
 {
-  "asOf": "2026-11-24",
-  "windowStart": "2026-10-26",
-  "latestDeckAt": "2026-11-24T21:14:15.985Z",
-  "deckCount": 874,
+  "asOf": "2026-11-25",
+  "windowStart": "2026-10-27",
+  "latestDeckAt": "2026-11-25T20:29:43.171Z",
+  "deckCount": 881,
   "legends": [
     {
       "slug": "river-ward-detective-on-the-hunt",
-      "count": 286
+      "count": 288
     },
     {
       "slug": "adam-smasher-ender-of-legends",
-      "count": 208
+      "count": 214
     },
     {
       "slug": "alt-cunningham-soulkiller-architect",
-      "count": 188
+      "count": 180
     },
     {
       "slug": "v-streetkid",
-      "count": 171
+      "count": 178
     },
     {
       "slug": "hanako-arasaka-daughter-of-the-emperor",
-      "count": 169
+      "count": 172
     },
     {
       "slug": "jackie-welles-pour-one-out-for-me",
-      "count": 129
+      "count": 125
     },
     {
       "slug": "rogue-amendiares-preem-solo",
-      "count": 111
-    },
-    {
-      "slug": "muamar-reyes-el-capita-n",
-      "count": 108
+      "count": 116
     },
     {
       "slug": "viktor-vektor-sit-down-and-relax",
-      "count": 108
+      "count": 109
     },
     {
       "slug": "v-corporate-exile",
+      "count": 108
+    },
+    {
+      "slug": "muamar-reyes-el-capita-n",
       "count": 106
     },
     {
       "slug": "royce-psycho-on-the-edge",
-      "count": 104
+      "count": 101
     },
     {
       "slug": "dexter-deshawn-off-the-grid",
-      "count": 97
+      "count": 98
     },
     {
       "slug": "panam-palmer-nomad-cavalry",
@@ -58,31 +58,31 @@
     },
     {
       "slug": "judy-a-lvarez-braindance-maestro",
-      "count": 92
+      "count": 91
     },
     {
       "slug": "padre-man-of-the-cross",
-      "count": 83
+      "count": 88
     },
     {
       "slug": "dum-dum-maelstrom-triggerman",
-      "count": 82
+      "count": 83
+    },
+    {
+      "slug": "jackie-welles-mama-s-favorite",
+      "count": 75
     },
     {
       "slug": "johnny-silverhand-rocking-renegade",
       "count": 72
     },
     {
-      "slug": "jackie-welles-mama-s-favorite",
+      "slug": "saburo-arasaka-stubborn-patriarch",
       "count": 71
     },
     {
-      "slug": "saburo-arasaka-stubborn-patriarch",
-      "count": 69
-    },
-    {
       "slug": "goro-takemura-vengeful-bodyguard",
-      "count": 55
+      "count": 53
     },
     {
       "slug": "kerry-eurodyne-axe-attitude-audience",
@@ -90,23 +90,23 @@
     },
     {
       "slug": "goro-takemura-hands-unclean",
-      "count": 42
+      "count": 43
     },
     {
       "slug": "evelyn-parker-beautiful-enigma",
-      "count": 37
-    },
-    {
-      "slug": "yorinobu-arasaka-embracing-destruction",
-      "count": 30
-    },
-    {
-      "slug": "sasha-yakovleva-won-t-let-you-down",
-      "count": 28
+      "count": 39
     },
     {
       "slug": "wakako-okada-peace-and-harmony",
-      "count": 28
+      "count": 30
+    },
+    {
+      "slug": "yorinobu-arasaka-embracing-destruction",
+      "count": 29
+    },
+    {
+      "slug": "sasha-yakovleva-won-t-let-you-down",
+      "count": 26
     },
     {
       "slug": "lucyna-kushinada-fresh-beginnings",
@@ -119,21 +119,21 @@
         "Red",
         "Yellow"
       ],
-      "count": 202
+      "count": 203
     },
     {
       "colours": [
         "Green",
         "Red"
       ],
-      "count": 171
+      "count": 180
     },
     {
       "colours": [
         "Blue",
         "Green"
       ],
-      "count": 144
+      "count": 143
     },
     {
       "colours": [
@@ -147,26 +147,26 @@
         "Blue",
         "Yellow"
       ],
-      "count": 72
+      "count": 75
     },
     {
       "colours": [
         "Green",
         "Yellow"
       ],
-      "count": 61
+      "count": 62
     },
     {
       "colours": [
         "Yellow"
       ],
-      "count": 45
+      "count": 46
     },
     {
       "colours": [
         "Blue"
       ],
-      "count": 32
+      "count": 29
     },
     {
       "colours": [
@@ -174,7 +174,7 @@
         "Red",
         "Yellow"
       ],
-      "count": 22
+      "count": 20
     },
     {
       "colours": [
@@ -204,47 +204,47 @@
       "colours": [
         "Green"
       ],
-      "count": 5
+      "count": 4
     },
     {
       "colours": [
         "Red"
       ],
-      "count": 3
+      "count": 2
     }
   ],
   "crews": {
-    "alt-cunningham-soulkiller-architect/hanako-arasaka-daughter-of-the-emperor/jackie-welles-pour-one-out-for-me": 66,
+    "alt-cunningham-soulkiller-architect/hanako-arasaka-daughter-of-the-emperor/jackie-welles-pour-one-out-for-me": 63,
     "adam-smasher-ender-of-legends/river-ward-detective-on-the-hunt/viktor-vektor-sit-down-and-relax": 36,
     "alt-cunningham-soulkiller-architect/judy-a-lvarez-braindance-maestro/v-streetkid": 25,
-    "dum-dum-maelstrom-triggerman/river-ward-detective-on-the-hunt/royce-psycho-on-the-edge": 24,
+    "dum-dum-maelstrom-triggerman/river-ward-detective-on-the-hunt/royce-psycho-on-the-edge": 23,
+    "adam-smasher-ender-of-legends/padre-man-of-the-cross/v-streetkid": 20,
     "adam-smasher-ender-of-legends/saburo-arasaka-stubborn-patriarch/v-streetkid": 20,
-    "adam-smasher-ender-of-legends/padre-man-of-the-cross/v-streetkid": 18,
-    "river-ward-detective-on-the-hunt/rogue-amendiares-preem-solo/v-corporate-exile": 18,
+    "river-ward-detective-on-the-hunt/rogue-amendiares-preem-solo/v-corporate-exile": 19,
     "adam-smasher-ender-of-legends/muamar-reyes-el-capita-n/river-ward-detective-on-the-hunt": 17,
     "river-ward-detective-on-the-hunt/royce-psycho-on-the-edge/viktor-vektor-sit-down-and-relax": 15,
-    "jackie-welles-mama-s-favorite/padre-man-of-the-cross/v-streetkid": 10,
+    "jackie-welles-mama-s-favorite/padre-man-of-the-cross/v-streetkid": 12,
+    "muamar-reyes-el-capita-n/river-ward-detective-on-the-hunt/rogue-amendiares-preem-solo": 11,
+    "alt-cunningham-soulkiller-architect/hanako-arasaka-daughter-of-the-emperor/judy-a-lvarez-braindance-maestro": 10,
     "jackie-welles-pour-one-out-for-me/v-corporate-exile/viktor-vektor-sit-down-and-relax": 10,
-    "muamar-reyes-el-capita-n/river-ward-detective-on-the-hunt/rogue-amendiares-preem-solo": 10,
-    "alt-cunningham-soulkiller-architect/hanako-arasaka-daughter-of-the-emperor/judy-a-lvarez-braindance-maestro": 9,
-    "alt-cunningham-soulkiller-architect/jackie-welles-pour-one-out-for-me/judy-a-lvarez-braindance-maestro": 9,
     "adam-smasher-ender-of-legends/dum-dum-maelstrom-triggerman/v-streetkid": 8,
     "adam-smasher-ender-of-legends/saburo-arasaka-stubborn-patriarch/yorinobu-arasaka-embracing-destruction": 8,
     "river-ward-detective-on-the-hunt/rogue-amendiares-preem-solo/royce-psycho-on-the-edge": 8,
+    "alt-cunningham-soulkiller-architect/jackie-welles-pour-one-out-for-me/judy-a-lvarez-braindance-maestro": 7,
+    "dum-dum-maelstrom-triggerman/river-ward-detective-on-the-hunt/viktor-vektor-sit-down-and-relax": 7,
     "goro-takemura-hands-unclean/saburo-arasaka-stubborn-patriarch/yorinobu-arasaka-embracing-destruction": 7,
     "dexter-deshawn-off-the-grid/muamar-reyes-el-capita-n/v-streetkid": 6,
     "dum-dum-maelstrom-triggerman/river-ward-detective-on-the-hunt/rogue-amendiares-preem-solo": 6,
-    "dum-dum-maelstrom-triggerman/river-ward-detective-on-the-hunt/viktor-vektor-sit-down-and-relax": 6,
-    "jackie-welles-pour-one-out-for-me/judy-a-lvarez-braindance-maestro/v-streetkid": 6,
     "panam-palmer-nomad-cavalry/river-ward-detective-on-the-hunt/viktor-vektor-sit-down-and-relax": 6,
     "adam-smasher-ender-of-legends/goro-takemura-hands-unclean/saburo-arasaka-stubborn-patriarch": 5,
-    "dum-dum-maelstrom-triggerman/muamar-reyes-el-capita-n/river-ward-detective-on-the-hunt": 5,
-    "hanako-arasaka-daughter-of-the-emperor/panam-palmer-nomad-cavalry/v-corporate-exile": 5,
-    "johnny-silverhand-rocking-renegade/panam-palmer-nomad-cavalry/river-ward-detective-on-the-hunt": 5,
+    "hanako-arasaka-daughter-of-the-emperor/jackie-welles-pour-one-out-for-me/judy-a-lvarez-braindance-maestro": 5,
+    "jackie-welles-pour-one-out-for-me/judy-a-lvarez-braindance-maestro/v-streetkid": 5,
     "kerry-eurodyne-axe-attitude-audience/muamar-reyes-el-capita-n/river-ward-detective-on-the-hunt": 5,
     "adam-smasher-ender-of-legends/dexter-deshawn-off-the-grid/saburo-arasaka-stubborn-patriarch": 4,
+    "adam-smasher-ender-of-legends/hanako-arasaka-daughter-of-the-emperor/saburo-arasaka-stubborn-patriarch": 4,
     "adam-smasher-ender-of-legends/jackie-welles-mama-s-favorite/panam-palmer-nomad-cavalry": 4,
     "adam-smasher-ender-of-legends/johnny-silverhand-rocking-renegade/river-ward-detective-on-the-hunt": 4,
+    "adam-smasher-ender-of-legends/river-ward-detective-on-the-hunt/rogue-amendiares-preem-solo": 4,
     "alt-cunningham-soulkiller-architect/hanako-arasaka-daughter-of-the-emperor/padre-man-of-the-cross": 4,
     "alt-cunningham-soulkiller-architect/jackie-welles-pour-one-out-for-me/v-corporate-exile": 4,
     "alt-cunningham-soulkiller-architect/jackie-welles-pour-one-out-for-me/v-streetkid": 4,
@@ -252,10 +252,14 @@
     "dexter-deshawn-off-the-grid/jackie-welles-mama-s-favorite/panam-palmer-nomad-cavalry": 4,
     "dexter-deshawn-off-the-grid/johnny-silverhand-rocking-renegade/kerry-eurodyne-axe-attitude-audience": 4,
     "dexter-deshawn-off-the-grid/johnny-silverhand-rocking-renegade/v-corporate-exile": 4,
+    "dexter-deshawn-off-the-grid/v-streetkid/wakako-okada-peace-and-harmony": 4,
+    "dum-dum-maelstrom-triggerman/muamar-reyes-el-capita-n/river-ward-detective-on-the-hunt": 4,
     "dum-dum-maelstrom-triggerman/panam-palmer-nomad-cavalry/river-ward-detective-on-the-hunt": 4,
     "dum-dum-maelstrom-triggerman/royce-psycho-on-the-edge/viktor-vektor-sit-down-and-relax": 4,
-    "hanako-arasaka-daughter-of-the-emperor/jackie-welles-pour-one-out-for-me/judy-a-lvarez-braindance-maestro": 4,
+    "hanako-arasaka-daughter-of-the-emperor/panam-palmer-nomad-cavalry/v-corporate-exile": 4,
+    "jackie-welles-mama-s-favorite/panam-palmer-nomad-cavalry/river-ward-detective-on-the-hunt": 4,
     "johnny-silverhand-rocking-renegade/kerry-eurodyne-axe-attitude-audience/rogue-amendiares-preem-solo": 4,
+    "johnny-silverhand-rocking-renegade/panam-palmer-nomad-cavalry/river-ward-detective-on-the-hunt": 4,
     "kerry-eurodyne-axe-attitude-audience/river-ward-detective-on-the-hunt/rogue-amendiares-preem-solo": 4,
     "muamar-reyes-el-capita-n/river-ward-detective-on-the-hunt/royce-psycho-on-the-edge": 4,
     "muamar-reyes-el-capita-n/river-ward-detective-on-the-hunt/v-corporate-exile": 4,
@@ -267,37 +271,34 @@
     "adam-smasher-ender-of-legends/hanako-arasaka-daughter-of-the-emperor/panam-palmer-nomad-cavalry": 3,
     "adam-smasher-ender-of-legends/judy-a-lvarez-braindance-maestro/v-streetkid": 3,
     "adam-smasher-ender-of-legends/kerry-eurodyne-axe-attitude-audience/river-ward-detective-on-the-hunt": 3,
-    "adam-smasher-ender-of-legends/river-ward-detective-on-the-hunt/rogue-amendiares-preem-solo": 3,
     "alt-cunningham-soulkiller-architect/evelyn-parker-beautiful-enigma/judy-a-lvarez-braindance-maestro": 3,
     "alt-cunningham-soulkiller-architect/goro-takemura-vengeful-bodyguard/judy-a-lvarez-braindance-maestro": 3,
     "alt-cunningham-soulkiller-architect/hanako-arasaka-daughter-of-the-emperor/panam-palmer-nomad-cavalry": 3,
     "alt-cunningham-soulkiller-architect/jackie-welles-pour-one-out-for-me/wakako-okada-peace-and-harmony": 3,
-    "alt-cunningham-soulkiller-architect/judy-a-lvarez-braindance-maestro/sasha-yakovleva-won-t-let-you-down": 3,
     "dexter-deshawn-off-the-grid/johnny-silverhand-rocking-renegade/muamar-reyes-el-capita-n": 3,
     "dexter-deshawn-off-the-grid/judy-a-lvarez-braindance-maestro/v-streetkid": 3,
     "dexter-deshawn-off-the-grid/padre-man-of-the-cross/v-streetkid": 3,
     "dexter-deshawn-off-the-grid/river-ward-detective-on-the-hunt/royce-psycho-on-the-edge": 3,
-    "dexter-deshawn-off-the-grid/v-streetkid/wakako-okada-peace-and-harmony": 3,
+    "hanako-arasaka-daughter-of-the-emperor/jackie-welles-mama-s-favorite/v-corporate-exile": 3,
     "hanako-arasaka-daughter-of-the-emperor/padre-man-of-the-cross/v-streetkid": 3,
     "hanako-arasaka-daughter-of-the-emperor/panam-palmer-nomad-cavalry/sasha-yakovleva-won-t-let-you-down": 3,
     "hanako-arasaka-daughter-of-the-emperor/saburo-arasaka-stubborn-patriarch/yorinobu-arasaka-embracing-destruction": 3,
     "jackie-welles-mama-s-favorite/padre-man-of-the-cross/v-corporate-exile": 3,
-    "jackie-welles-mama-s-favorite/panam-palmer-nomad-cavalry/river-ward-detective-on-the-hunt": 3,
-    "johnny-silverhand-rocking-renegade/muamar-reyes-el-capita-n/river-ward-detective-on-the-hunt": 3,
     "johnny-silverhand-rocking-renegade/river-ward-detective-on-the-hunt/royce-psycho-on-the-edge": 3,
     "muamar-reyes-el-capita-n/river-ward-detective-on-the-hunt/viktor-vektor-sit-down-and-relax": 3,
+    "panam-palmer-nomad-cavalry/river-ward-detective-on-the-hunt/rogue-amendiares-preem-solo": 3,
     "river-ward-detective-on-the-hunt/rogue-amendiares-preem-solo/v-streetkid": 3,
     "river-ward-detective-on-the-hunt/v-corporate-exile/viktor-vektor-sit-down-and-relax": 3,
     "river-ward-detective-on-the-hunt/v-streetkid/viktor-vektor-sit-down-and-relax": 3,
     "adam-smasher-ender-of-legends/alt-cunningham-soulkiller-architect/judy-a-lvarez-braindance-maestro": 2,
     "adam-smasher-ender-of-legends/dexter-deshawn-off-the-grid/evelyn-parker-beautiful-enigma": 2,
     "adam-smasher-ender-of-legends/evelyn-parker-beautiful-enigma/royce-psycho-on-the-edge": 2,
-    "adam-smasher-ender-of-legends/hanako-arasaka-daughter-of-the-emperor/saburo-arasaka-stubborn-patriarch": 2,
     "adam-smasher-ender-of-legends/hanako-arasaka-daughter-of-the-emperor/v-streetkid": 2,
     "adam-smasher-ender-of-legends/johnny-silverhand-rocking-renegade/saburo-arasaka-stubborn-patriarch": 2,
     "adam-smasher-ender-of-legends/muamar-reyes-el-capita-n/v-streetkid": 2,
     "adam-smasher-ender-of-legends/panam-palmer-nomad-cavalry/saburo-arasaka-stubborn-patriarch": 2,
     "adam-smasher-ender-of-legends/river-ward-detective-on-the-hunt/royce-psycho-on-the-edge": 2,
+    "adam-smasher-ender-of-legends/river-ward-detective-on-the-hunt/v-streetkid": 2,
     "adam-smasher-ender-of-legends/rogue-amendiares-preem-solo/v-corporate-exile": 2,
     "adam-smasher-ender-of-legends/royce-psycho-on-the-edge/saburo-arasaka-stubborn-patriarch": 2,
     "alt-cunningham-soulkiller-architect/dexter-deshawn-off-the-grid/v-streetkid": 2,
@@ -309,6 +310,7 @@
     "alt-cunningham-soulkiller-architect/v-corporate-exile/wakako-okada-peace-and-harmony": 2,
     "dexter-deshawn-off-the-grid/goro-takemura-vengeful-bodyguard/johnny-silverhand-rocking-renegade": 2,
     "dexter-deshawn-off-the-grid/goro-takemura-vengeful-bodyguard/v-streetkid": 2,
+    "dexter-deshawn-off-the-grid/hanako-arasaka-daughter-of-the-emperor/jackie-welles-mama-s-favorite": 2,
     "dexter-deshawn-off-the-grid/hanako-arasaka-daughter-of-the-emperor/v-streetkid": 2,
     "dexter-deshawn-off-the-grid/johnny-silverhand-rocking-renegade/rogue-amendiares-preem-solo": 2,
     "dexter-deshawn-off-the-grid/muamar-reyes-el-capita-n/river-ward-detective-on-the-hunt": 2,
@@ -323,19 +325,21 @@
     "goro-takemura-hands-unclean/hanako-arasaka-daughter-of-the-emperor/saburo-arasaka-stubborn-patriarch": 2,
     "goro-takemura-hands-unclean/hanako-arasaka-daughter-of-the-emperor/v-corporate-exile": 2,
     "goro-takemura-hands-unclean/panam-palmer-nomad-cavalry/royce-psycho-on-the-edge": 2,
+    "goro-takemura-hands-unclean/panam-palmer-nomad-cavalry/v-streetkid": 2,
     "goro-takemura-vengeful-bodyguard/panam-palmer-nomad-cavalry/river-ward-detective-on-the-hunt": 2,
     "goro-takemura-vengeful-bodyguard/river-ward-detective-on-the-hunt/rogue-amendiares-preem-solo": 2,
     "goro-takemura-vengeful-bodyguard/saburo-arasaka-stubborn-patriarch/yorinobu-arasaka-embracing-destruction": 2,
-    "hanako-arasaka-daughter-of-the-emperor/jackie-welles-mama-s-favorite/v-corporate-exile": 2,
+    "hanako-arasaka-daughter-of-the-emperor/johnny-silverhand-rocking-renegade/v-streetkid": 2,
     "hanako-arasaka-daughter-of-the-emperor/muamar-reyes-el-capita-n/river-ward-detective-on-the-hunt": 2,
     "hanako-arasaka-daughter-of-the-emperor/panam-palmer-nomad-cavalry/rogue-amendiares-preem-solo": 2,
     "jackie-welles-mama-s-favorite/muamar-reyes-el-capita-n/padre-man-of-the-cross": 2,
     "jackie-welles-mama-s-favorite/panam-palmer-nomad-cavalry/sasha-yakovleva-won-t-let-you-down": 2,
     "jackie-welles-mama-s-favorite/panam-palmer-nomad-cavalry/v-corporate-exile": 2,
     "jackie-welles-mama-s-favorite/river-ward-detective-on-the-hunt/rogue-amendiares-preem-solo": 2,
-    "johnny-silverhand-rocking-renegade/kerry-eurodyne-axe-attitude-audience/river-ward-detective-on-the-hunt": 2,
+    "johnny-silverhand-rocking-renegade/kerry-eurodyne-axe-attitude-audience/muamar-reyes-el-capita-n": 2,
     "johnny-silverhand-rocking-renegade/kerry-eurodyne-axe-attitude-audience/v-corporate-exile": 2,
     "johnny-silverhand-rocking-renegade/kerry-eurodyne-axe-attitude-audience/v-streetkid": 2,
+    "johnny-silverhand-rocking-renegade/muamar-reyes-el-capita-n/river-ward-detective-on-the-hunt": 2,
     "johnny-silverhand-rocking-renegade/river-ward-detective-on-the-hunt/rogue-amendiares-preem-solo": 2,
     "johnny-silverhand-rocking-renegade/river-ward-detective-on-the-hunt/viktor-vektor-sit-down-and-relax": 2,
     "kerry-eurodyne-axe-attitude-audience/river-ward-detective-on-the-hunt/viktor-vektor-sit-down-and-relax": 2,
@@ -343,7 +347,6 @@
     "muamar-reyes-el-capita-n/padre-man-of-the-cross/river-ward-detective-on-the-hunt": 2,
     "muamar-reyes-el-capita-n/rogue-amendiares-preem-solo/v-corporate-exile": 2,
     "padre-man-of-the-cross/sasha-yakovleva-won-t-let-you-down/v-corporate-exile": 2,
-    "panam-palmer-nomad-cavalry/river-ward-detective-on-the-hunt/rogue-amendiares-preem-solo": 2,
     "river-ward-detective-on-the-hunt/rogue-amendiares-preem-solo/sasha-yakovleva-won-t-let-you-down": 2,
     "adam-smasher-ender-of-legends/alt-cunningham-soulkiller-architect/v-streetkid": 1,
     "adam-smasher-ender-of-legends/alt-cunningham-soulkiller-architect/wakako-okada-peace-and-harmony": 1,
@@ -353,7 +356,6 @@
     "adam-smasher-ender-of-legends/dexter-deshawn-off-the-grid/johnny-silverhand-rocking-renegade": 1,
     "adam-smasher-ender-of-legends/dexter-deshawn-off-the-grid/judy-a-lvarez-braindance-maestro": 1,
     "adam-smasher-ender-of-legends/dexter-deshawn-off-the-grid/rogue-amendiares-preem-solo": 1,
-    "adam-smasher-ender-of-legends/dexter-deshawn-off-the-grid/royce-psycho-on-the-edge": 1,
     "adam-smasher-ender-of-legends/dexter-deshawn-off-the-grid/v-corporate-exile": 1,
     "adam-smasher-ender-of-legends/dexter-deshawn-off-the-grid/wakako-okada-peace-and-harmony": 1,
     "adam-smasher-ender-of-legends/evelyn-parker-beautiful-enigma/hanako-arasaka-daughter-of-the-emperor": 1,
@@ -371,13 +373,13 @@
     "adam-smasher-ender-of-legends/jackie-welles-pour-one-out-for-me/judy-a-lvarez-braindance-maestro": 1,
     "adam-smasher-ender-of-legends/jackie-welles-pour-one-out-for-me/sasha-yakovleva-won-t-let-you-down": 1,
     "adam-smasher-ender-of-legends/johnny-silverhand-rocking-renegade/kerry-eurodyne-axe-attitude-audience": 1,
+    "adam-smasher-ender-of-legends/johnny-silverhand-rocking-renegade/padre-man-of-the-cross": 1,
     "adam-smasher-ender-of-legends/johnny-silverhand-rocking-renegade/panam-palmer-nomad-cavalry": 1,
     "adam-smasher-ender-of-legends/johnny-silverhand-rocking-renegade/rogue-amendiares-preem-solo": 1,
     "adam-smasher-ender-of-legends/muamar-reyes-el-capita-n/rogue-amendiares-preem-solo": 1,
     "adam-smasher-ender-of-legends/muamar-reyes-el-capita-n/royce-psycho-on-the-edge": 1,
     "adam-smasher-ender-of-legends/padre-man-of-the-cross/saburo-arasaka-stubborn-patriarch": 1,
     "adam-smasher-ender-of-legends/panam-palmer-nomad-cavalry/river-ward-detective-on-the-hunt": 1,
-    "adam-smasher-ender-of-legends/river-ward-detective-on-the-hunt/v-streetkid": 1,
     "adam-smasher-ender-of-legends/rogue-amendiares-preem-solo/yorinobu-arasaka-embracing-destruction": 1,
     "adam-smasher-ender-of-legends/v-streetkid/wakako-okada-peace-and-harmony": 1,
     "alt-cunningham-soulkiller-architect/dexter-deshawn-off-the-grid/jackie-welles-pour-one-out-for-me": 1,
@@ -387,13 +389,13 @@
     "alt-cunningham-soulkiller-architect/goro-takemura-vengeful-bodyguard/hanako-arasaka-daughter-of-the-emperor": 1,
     "alt-cunningham-soulkiller-architect/goro-takemura-vengeful-bodyguard/jackie-welles-mama-s-favorite": 1,
     "alt-cunningham-soulkiller-architect/hanako-arasaka-daughter-of-the-emperor/muamar-reyes-el-capita-n": 1,
-    "alt-cunningham-soulkiller-architect/hanako-arasaka-daughter-of-the-emperor/sasha-yakovleva-won-t-let-you-down": 1,
     "alt-cunningham-soulkiller-architect/hanako-arasaka-daughter-of-the-emperor/v-streetkid": 1,
     "alt-cunningham-soulkiller-architect/jackie-welles-pour-one-out-for-me/muamar-reyes-el-capita-n": 1,
     "alt-cunningham-soulkiller-architect/jackie-welles-pour-one-out-for-me/royce-psycho-on-the-edge": 1,
     "alt-cunningham-soulkiller-architect/johnny-silverhand-rocking-renegade/kerry-eurodyne-axe-attitude-audience": 1,
     "alt-cunningham-soulkiller-architect/judy-a-lvarez-braindance-maestro/kerry-eurodyne-axe-attitude-audience": 1,
     "alt-cunningham-soulkiller-architect/judy-a-lvarez-braindance-maestro/padre-man-of-the-cross": 1,
+    "alt-cunningham-soulkiller-architect/judy-a-lvarez-braindance-maestro/sasha-yakovleva-won-t-let-you-down": 1,
     "alt-cunningham-soulkiller-architect/judy-a-lvarez-braindance-maestro/wakako-okada-peace-and-harmony": 1,
     "alt-cunningham-soulkiller-architect/kerry-eurodyne-axe-attitude-audience/muamar-reyes-el-capita-n": 1,
     "alt-cunningham-soulkiller-architect/kerry-eurodyne-axe-attitude-audience/river-ward-detective-on-the-hunt": 1,
@@ -403,7 +405,6 @@
     "alt-cunningham-soulkiller-architect/padre-man-of-the-cross/panam-palmer-nomad-cavalry": 1,
     "alt-cunningham-soulkiller-architect/padre-man-of-the-cross/sasha-yakovleva-won-t-let-you-down": 1,
     "alt-cunningham-soulkiller-architect/river-ward-detective-on-the-hunt/sasha-yakovleva-won-t-let-you-down": 1,
-    "alt-cunningham-soulkiller-architect/river-ward-detective-on-the-hunt/v-corporate-exile": 1,
     "alt-cunningham-soulkiller-architect/river-ward-detective-on-the-hunt/viktor-vektor-sit-down-and-relax": 1,
     "alt-cunningham-soulkiller-architect/rogue-amendiares-preem-solo/royce-psycho-on-the-edge": 1,
     "alt-cunningham-soulkiller-architect/rogue-amendiares-preem-solo/v-corporate-exile": 1,
@@ -412,14 +413,13 @@
     "alt-cunningham-soulkiller-architect/sasha-yakovleva-won-t-let-you-down/wakako-okada-peace-and-harmony": 1,
     "alt-cunningham-soulkiller-architect/v-streetkid/wakako-okada-peace-and-harmony": 1,
     "dexter-deshawn-off-the-grid/dum-dum-maelstrom-triggerman/muamar-reyes-el-capita-n": 1,
+    "dexter-deshawn-off-the-grid/dum-dum-maelstrom-triggerman/rogue-amendiares-preem-solo": 1,
     "dexter-deshawn-off-the-grid/evelyn-parker-beautiful-enigma/hanako-arasaka-daughter-of-the-emperor": 1,
     "dexter-deshawn-off-the-grid/evelyn-parker-beautiful-enigma/panam-palmer-nomad-cavalry": 1,
     "dexter-deshawn-off-the-grid/evelyn-parker-beautiful-enigma/royce-psycho-on-the-edge": 1,
     "dexter-deshawn-off-the-grid/goro-takemura-hands-unclean/jackie-welles-mama-s-favorite": 1,
     "dexter-deshawn-off-the-grid/goro-takemura-vengeful-bodyguard/jackie-welles-mama-s-favorite": 1,
     "dexter-deshawn-off-the-grid/goro-takemura-vengeful-bodyguard/padre-man-of-the-cross": 1,
-    "dexter-deshawn-off-the-grid/goro-takemura-vengeful-bodyguard/yorinobu-arasaka-embracing-destruction": 1,
-    "dexter-deshawn-off-the-grid/hanako-arasaka-daughter-of-the-emperor/jackie-welles-mama-s-favorite": 1,
     "dexter-deshawn-off-the-grid/hanako-arasaka-daughter-of-the-emperor/royce-psycho-on-the-edge": 1,
     "dexter-deshawn-off-the-grid/hanako-arasaka-daughter-of-the-emperor/v-corporate-exile": 1,
     "dexter-deshawn-off-the-grid/hanako-arasaka-daughter-of-the-emperor/yorinobu-arasaka-embracing-destruction": 1,
@@ -450,6 +450,7 @@
     "dum-dum-maelstrom-triggerman/judy-a-lvarez-braindance-maestro/muamar-reyes-el-capita-n": 1,
     "dum-dum-maelstrom-triggerman/kerry-eurodyne-axe-attitude-audience/rogue-amendiares-preem-solo": 1,
     "dum-dum-maelstrom-triggerman/muamar-reyes-el-capita-n/rogue-amendiares-preem-solo": 1,
+    "dum-dum-maelstrom-triggerman/river-ward-detective-on-the-hunt/v-corporate-exile": 1,
     "dum-dum-maelstrom-triggerman/rogue-amendiares-preem-solo/royce-psycho-on-the-edge": 1,
     "dum-dum-maelstrom-triggerman/rogue-amendiares-preem-solo/sasha-yakovleva-won-t-let-you-down": 1,
     "dum-dum-maelstrom-triggerman/rogue-amendiares-preem-solo/v-corporate-exile": 1,
@@ -464,12 +465,15 @@
     "evelyn-parker-beautiful-enigma/hanako-arasaka-daughter-of-the-emperor/panam-palmer-nomad-cavalry": 1,
     "evelyn-parker-beautiful-enigma/jackie-welles-mama-s-favorite/v-streetkid": 1,
     "evelyn-parker-beautiful-enigma/jackie-welles-pour-one-out-for-me/v-corporate-exile": 1,
+    "evelyn-parker-beautiful-enigma/judy-a-lvarez-braindance-maestro/viktor-vektor-sit-down-and-relax": 1,
     "evelyn-parker-beautiful-enigma/padre-man-of-the-cross/royce-psycho-on-the-edge": 1,
     "evelyn-parker-beautiful-enigma/padre-man-of-the-cross/v-streetkid": 1,
     "evelyn-parker-beautiful-enigma/panam-palmer-nomad-cavalry/v-corporate-exile": 1,
+    "evelyn-parker-beautiful-enigma/river-ward-detective-on-the-hunt/v-corporate-exile": 1,
     "evelyn-parker-beautiful-enigma/v-corporate-exile/viktor-vektor-sit-down-and-relax": 1,
     "goro-takemura-hands-unclean/hanako-arasaka-daughter-of-the-emperor/panam-palmer-nomad-cavalry": 1,
     "goro-takemura-hands-unclean/hanako-arasaka-daughter-of-the-emperor/river-ward-detective-on-the-hunt": 1,
+    "goro-takemura-hands-unclean/hanako-arasaka-daughter-of-the-emperor/rogue-amendiares-preem-solo": 1,
     "goro-takemura-hands-unclean/hanako-arasaka-daughter-of-the-emperor/yorinobu-arasaka-embracing-destruction": 1,
     "goro-takemura-hands-unclean/jackie-welles-mama-s-favorite/river-ward-detective-on-the-hunt": 1,
     "goro-takemura-hands-unclean/jackie-welles-mama-s-favorite/rogue-amendiares-preem-solo": 1,
@@ -478,11 +482,9 @@
     "goro-takemura-hands-unclean/muamar-reyes-el-capita-n/river-ward-detective-on-the-hunt": 1,
     "goro-takemura-hands-unclean/padre-man-of-the-cross/viktor-vektor-sit-down-and-relax": 1,
     "goro-takemura-hands-unclean/panam-palmer-nomad-cavalry/rogue-amendiares-preem-solo": 1,
-    "goro-takemura-hands-unclean/panam-palmer-nomad-cavalry/v-streetkid": 1,
     "goro-takemura-hands-unclean/panam-palmer-nomad-cavalry/yorinobu-arasaka-embracing-destruction": 1,
     "goro-takemura-hands-unclean/river-ward-detective-on-the-hunt/rogue-amendiares-preem-solo": 1,
     "goro-takemura-hands-unclean/rogue-amendiares-preem-solo/royce-psycho-on-the-edge": 1,
-    "goro-takemura-hands-unclean/royce-psycho-on-the-edge/viktor-vektor-sit-down-and-relax": 1,
     "goro-takemura-vengeful-bodyguard/hanako-arasaka-daughter-of-the-emperor/river-ward-detective-on-the-hunt": 1,
     "goro-takemura-vengeful-bodyguard/hanako-arasaka-daughter-of-the-emperor/yorinobu-arasaka-embracing-destruction": 1,
     "goro-takemura-vengeful-bodyguard/jackie-welles-mama-s-favorite/muamar-reyes-el-capita-n": 1,
@@ -495,7 +497,6 @@
     "goro-takemura-vengeful-bodyguard/muamar-reyes-el-capita-n/padre-man-of-the-cross": 1,
     "goro-takemura-vengeful-bodyguard/muamar-reyes-el-capita-n/panam-palmer-nomad-cavalry": 1,
     "goro-takemura-vengeful-bodyguard/muamar-reyes-el-capita-n/river-ward-detective-on-the-hunt": 1,
-    "goro-takemura-vengeful-bodyguard/muamar-reyes-el-capita-n/rogue-amendiares-preem-solo": 1,
     "goro-takemura-vengeful-bodyguard/panam-palmer-nomad-cavalry/royce-psycho-on-the-edge": 1,
     "goro-takemura-vengeful-bodyguard/panam-palmer-nomad-cavalry/v-corporate-exile": 1,
     "goro-takemura-vengeful-bodyguard/panam-palmer-nomad-cavalry/v-streetkid": 1,
@@ -504,10 +505,8 @@
     "goro-takemura-vengeful-bodyguard/river-ward-detective-on-the-hunt/viktor-vektor-sit-down-and-relax": 1,
     "goro-takemura-vengeful-bodyguard/royce-psycho-on-the-edge/viktor-vektor-sit-down-and-relax": 1,
     "goro-takemura-vengeful-bodyguard/saburo-arasaka-stubborn-patriarch/v-streetkid": 1,
-    "hanako-arasaka-daughter-of-the-emperor/jackie-welles-mama-s-favorite/panam-palmer-nomad-cavalry": 1,
     "hanako-arasaka-daughter-of-the-emperor/jackie-welles-mama-s-favorite/viktor-vektor-sit-down-and-relax": 1,
     "hanako-arasaka-daughter-of-the-emperor/jackie-welles-pour-one-out-for-me/v-corporate-exile": 1,
-    "hanako-arasaka-daughter-of-the-emperor/johnny-silverhand-rocking-renegade/v-streetkid": 1,
     "hanako-arasaka-daughter-of-the-emperor/judy-a-lvarez-braindance-maestro/kerry-eurodyne-axe-attitude-audience": 1,
     "hanako-arasaka-daughter-of-the-emperor/judy-a-lvarez-braindance-maestro/v-corporate-exile": 1,
     "hanako-arasaka-daughter-of-the-emperor/kerry-eurodyne-axe-attitude-audience/padre-man-of-the-cross": 1,
@@ -516,6 +515,7 @@
     "hanako-arasaka-daughter-of-the-emperor/muamar-reyes-el-capita-n/viktor-vektor-sit-down-and-relax": 1,
     "hanako-arasaka-daughter-of-the-emperor/padre-man-of-the-cross/panam-palmer-nomad-cavalry": 1,
     "hanako-arasaka-daughter-of-the-emperor/padre-man-of-the-cross/river-ward-detective-on-the-hunt": 1,
+    "hanako-arasaka-daughter-of-the-emperor/padre-man-of-the-cross/wakako-okada-peace-and-harmony": 1,
     "hanako-arasaka-daughter-of-the-emperor/river-ward-detective-on-the-hunt/royce-psycho-on-the-edge": 1,
     "hanako-arasaka-daughter-of-the-emperor/river-ward-detective-on-the-hunt/sasha-yakovleva-won-t-let-you-down": 1,
     "hanako-arasaka-daughter-of-the-emperor/river-ward-detective-on-the-hunt/viktor-vektor-sit-down-and-relax": 1,
@@ -530,6 +530,7 @@
     "jackie-welles-mama-s-favorite/panam-palmer-nomad-cavalry/viktor-vektor-sit-down-and-relax": 1,
     "jackie-welles-mama-s-favorite/river-ward-detective-on-the-hunt/v-streetkid": 1,
     "jackie-welles-mama-s-favorite/royce-psycho-on-the-edge/viktor-vektor-sit-down-and-relax": 1,
+    "jackie-welles-pour-one-out-for-me/judy-a-lvarez-braindance-maestro/sasha-yakovleva-won-t-let-you-down": 1,
     "jackie-welles-pour-one-out-for-me/judy-a-lvarez-braindance-maestro/v-corporate-exile": 1,
     "jackie-welles-pour-one-out-for-me/kerry-eurodyne-axe-attitude-audience/v-corporate-exile": 1,
     "jackie-welles-pour-one-out-for-me/muamar-reyes-el-capita-n/v-corporate-exile": 1,
@@ -541,7 +542,7 @@
     "jackie-welles-pour-one-out-for-me/rogue-amendiares-preem-solo/sasha-yakovleva-won-t-let-you-down": 1,
     "jackie-welles-pour-one-out-for-me/rogue-amendiares-preem-solo/v-corporate-exile": 1,
     "jackie-welles-pour-one-out-for-me/v-corporate-exile/wakako-okada-peace-and-harmony": 1,
-    "johnny-silverhand-rocking-renegade/kerry-eurodyne-axe-attitude-audience/muamar-reyes-el-capita-n": 1,
+    "johnny-silverhand-rocking-renegade/kerry-eurodyne-axe-attitude-audience/river-ward-detective-on-the-hunt": 1,
     "johnny-silverhand-rocking-renegade/kerry-eurodyne-axe-attitude-audience/sasha-yakovleva-won-t-let-you-down": 1,
     "johnny-silverhand-rocking-renegade/muamar-reyes-el-capita-n/royce-psycho-on-the-edge": 1,
     "johnny-silverhand-rocking-renegade/padre-man-of-the-cross/panam-palmer-nomad-cavalry": 1,
@@ -550,11 +551,11 @@
     "johnny-silverhand-rocking-renegade/river-ward-detective-on-the-hunt/sasha-yakovleva-won-t-let-you-down": 1,
     "johnny-silverhand-rocking-renegade/rogue-amendiares-preem-solo/royce-psycho-on-the-edge": 1,
     "judy-a-lvarez-braindance-maestro/kerry-eurodyne-axe-attitude-audience/muamar-reyes-el-capita-n": 1,
-    "judy-a-lvarez-braindance-maestro/muamar-reyes-el-capita-n/v-streetkid": 1,
     "judy-a-lvarez-braindance-maestro/padre-man-of-the-cross/v-streetkid": 1,
     "judy-a-lvarez-braindance-maestro/panam-palmer-nomad-cavalry/v-streetkid": 1,
     "judy-a-lvarez-braindance-maestro/river-ward-detective-on-the-hunt/rogue-amendiares-preem-solo": 1,
     "judy-a-lvarez-braindance-maestro/rogue-amendiares-preem-solo/v-corporate-exile": 1,
+    "judy-a-lvarez-braindance-maestro/rogue-amendiares-preem-solo/v-streetkid": 1,
     "judy-a-lvarez-braindance-maestro/v-streetkid/wakako-okada-peace-and-harmony": 1,
     "kerry-eurodyne-axe-attitude-audience/muamar-reyes-el-capita-n/v-corporate-exile": 1,
     "kerry-eurodyne-axe-attitude-audience/river-ward-detective-on-the-hunt/royce-psycho-on-the-edge": 1,
@@ -566,7 +567,6 @@
     "padre-man-of-the-cross/panam-palmer-nomad-cavalry/river-ward-detective-on-the-hunt": 1,
     "padre-man-of-the-cross/panam-palmer-nomad-cavalry/royce-psycho-on-the-edge": 1,
     "padre-man-of-the-cross/panam-palmer-nomad-cavalry/sasha-yakovleva-won-t-let-you-down": 1,
-    "padre-man-of-the-cross/river-ward-detective-on-the-hunt/rogue-amendiares-preem-solo": 1,
     "padre-man-of-the-cross/river-ward-detective-on-the-hunt/royce-psycho-on-the-edge": 1,
     "padre-man-of-the-cross/saburo-arasaka-stubborn-patriarch/yorinobu-arasaka-embracing-destruction": 1,
     "panam-palmer-nomad-cavalry/river-ward-detective-on-the-hunt/royce-psycho-on-the-edge": 1,
